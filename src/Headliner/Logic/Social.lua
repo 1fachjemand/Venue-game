@@ -57,6 +57,12 @@ function Social.add(state, kind, c, n, rnd)
 		local first = pick(Data.FIRST, rnd)
 		local handle = "@" .. pick(Data.HANDLE_A, rnd) .. "." .. pick(Data.HANDLE_B, rnd)
 		local likes = math.floor((20 + rnd() * 400) * (tpl[1] > 0 and 2.5 or 1) * (1 + (c.reach or 0)))
+		-- a photo with the post?
+		local ph = Data.PHOTOS[kind]
+		local pkind = nil
+		if ph and rnd() < ph[1] then
+			pkind = ph[2][math.floor(rnd() * #ph[2]) + 1]
+		end
 		table.insert(state.social, 1, {
 			day = state.day,
 			name = first,
@@ -67,7 +73,11 @@ function Social.add(state, kind, c, n, rnd)
 			likes = likes,
 			reposts = math.floor(likes * (0.05 + rnd() * 0.2)),
 			artistId = c.artistId,
-			photo = kind == "photo",
+			photo = pkind ~= nil,
+			pkind = pkind,
+			look = v and Countries.VENUE_TYPES[v.type] and Countries.VENUE_TYPES[v.type].look or nil,
+			venue = v and v.name or nil,
+			seed = math.floor(rnd() * 100000),
 			avatar = math.floor(rnd() * 8) + 1,
 		})
 	end

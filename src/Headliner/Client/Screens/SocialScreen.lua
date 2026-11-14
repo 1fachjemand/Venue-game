@@ -50,7 +50,116 @@ local function mk(vp, size, cf, color, material, shape, tr)
 	end
 	return p
 end
-local function photo(parent, ad, seed, kind)
+-- a simple fan in a photo: legs, shirt, round head, hair (kept light: photos can hold hundreds of them)
+local function crowdFan(vp, x, z, shirt, rng, arm, phone)
+	local pants = Color3.fromRGB(20, 22, 32)
+	mk(vp, Vector3.new(1.3, 1.6, 0.8), CFrame.new(x, 0.8, z), pants)
+	mk(vp, Vector3.new(1.6, 1.6, 0.95), CFrame.new(x, 2.4, z), shirt)
+	local head = mk(vp, Vector3.new(1.1, 1.15, 1.1), CFrame.new(x, 3.75, z), People.SKINS[rng:NextInteger(1, #People.SKINS)])
+	UI.New("SpecialMesh", { MeshType = Enum.MeshType.Head, Parent = head })
+	mk(vp, Vector3.new(1.18, 0.4, 1.18), CFrame.new(x, 4.25, z + 0.06), Color3.fromRGB(30, 22, 18):Lerp(Color3.fromRGB(220, 190, 120), rng:NextNumber() * 0.6))
+	if arm then
+		mk(vp, Vector3.new(0.42, 1.8, 0.42), CFrame.new(x + 0.9, 4.1, z) * CFrame.Angles(0, 0, -0.25), shirt)
+		if phone then
+			mk(vp, Vector3.new(0.5, 0.8, 0.1), CFrame.new(x + 1.15, 5.1, z), Color3.fromRGB(255, 255, 235), Enum.Material.Neon)
+		end
+	end
+end
+
+-- the stage at the back of most photos: deck, LED wall, light beams, haze; returns the artist figure position
+local function stageSet(vp, color, rng, opts)
+	opts = opts or {}
+	mk(vp, Vector3.new(300, 1, 300), CFrame.new(0, -0.5, -20), Color3.fromRGB(12, 12, 18))
+	mk(vp, Vector3.new(44, 5, 16), CFrame.new(0, 2.5, -30), Color3.fromRGB(26, 26, 32))
+	mk(vp, Vector3.new(46, 22, 1), CFrame.new(0, 16, -38), color, Enum.Material.Neon, nil, 0.25)
+	mk(vp, Vector3.new(14, 8, 0.5), CFrame.new(0, 16, -37.3), Color3.new(1, 1, 1), Enum.Material.Neon, nil, 0.6)
+	for _, x in ipairs({ -30, 30 }) do
+		mk(vp, Vector3.new(10, 6, 0.5), CFrame.new(x, 14, -30) * CFrame.Angles(0, -x / 120, 0), color, Enum.Material.Neon, nil, 0.4)
+		for i = 0, 5 do
+			mk(vp, Vector3.new(3.4, 1.2, 2), CFrame.new(x * 0.82, 26 - i * 1.3, -26), Color3.fromRGB(16, 16, 20))
+		end
+	end
+	mk(vp, Vector3.new(60, 1.2, 1.2), CFrame.new(0, 30, -30), Color3.fromRGB(70, 70, 80), Enum.Material.Metal)
+	for i = 0, 7 do
+		local x = -21 + i * 6
+		local c = (i % 2 == 0) and color or Color3.fromRGB(255, 240, 220)
+		mk(vp, Vector3.new(0.8, 60, 0.8), CFrame.new(x, 30, -32) * CFrame.Angles(rng:NextNumber(-0.4, 0.4), 0, rng:NextNumber(-0.5, 0.5)), c, Enum.Material.Neon, nil, opts.beams or 0.75)
+	end
+	mk(vp, Vector3.new(80, 6, 30), CFrame.new(0, 3, -20), color, Enum.Material.Neon, nil, 0.93) -- haze
+	return Vector3.new(rng:NextNumber(-6, 6), 5, -30)
+end
+
+local function star(vp, ad, color, seed, rng, pos, move)
+	if not ad then
+		return
+	end
+	local f = People.new(vp, color, 1.4, "lead", seed, ad.look)
+	local moves = { "micout", "micout", "jump", "wave", "dance" }
+	f:update(pos, 0, { t = rng:NextNumber() * 10, beat = 0.5, energy = 1, walking = false, armsUp = rng:NextNumber() < 0.4 and 1 or 0, move = move or moves[rng:NextInteger(1, #moves)] })
+	return f
+end
+
+-- crowd rows between the camera and the stage
+local function crowdRows(vp, color, rng, rows, z0, sticks)
+	for row = 0, rows - 1 do
+		for col = 0, 13 do
+			local x = -26 + col * 4 + rng:NextNumber(-1, 1)
+			local z = z0 - row * 3.4 + rng:NextNumber(-0.6, 0.6)
+			local c = Color3.fromRGB(14, 14, 20):Lerp(color, rng:NextNumber() * 0.3)
+			local r = rng:NextNumber()
+			crowdFan(vp, x, z, c, rng, r < 0.45, r < 0.25)
+			if sticks and r > 0.8 then
+				mk(vp, Vector3.new(0.3, 1.6, 0.3), CFrame.new(x - 0.8, 5.0, z) * CFrame.Angles(0, 0, 0.3), color, Enum.Material.Neon)
+			end
+		end
+	end
+end
+
+-- 2D photos (ticket, poster): a styled frame instead of a 3D scene
+local function flatPhoto(parent, ad, kind, p, rng)
+	local color = ad and UI.rgb(ad.color) or T.accent
+	local f = UI.New("Frame", { Parent = parent, Size = UI.px(608, 250), BackgroundColor3 = Color3.fromRGB(40, 32, 28), BorderSizePixel = 0, UI.Corner(10) })
+	local name = ad and string.upper(ad.name) or "HEADLINER"
+	if kind == "ticket" then
+		-- a ticket on a wooden table, slightly rotated
+		for i = 0, 5 do
+			UI.New("Frame", { Parent = f, Position = UI.px(0, i * 42), Size = UI.px(608, 2), BackgroundColor3 = Color3.fromRGB(60, 46, 38), BorderSizePixel = 0 })
+		end
+		local t = UI.New("Frame", { Parent = f, Position = UI.px(84, 40), Size = UI.px(440, 170), BackgroundColor3 = Color3.fromRGB(245, 240, 230), BorderSizePixel = 0, Rotation = rng:NextNumber(-6, 6), UI.Corner(8) })
+		UI.New("Frame", { Parent = t, Size = UI.px(130, 170), BackgroundColor3 = color, BorderSizePixel = 0, UI.Corner(8) })
+		UI.Label(t, "ADMIT\nONE", UI.px(10, 40), UI.px(110, 90), { textSize = 26, font = UI.FontBlack, color = BLACK, alignX = Enum.TextXAlignment.Center })
+		UI.Label(t, name, UI.px(146, 14), UI.px(280, 34), { textSize = 26, font = UI.FontBlack, color = BLACK })
+		UI.Label(t, p.venue or "Live in concert", UI.px(146, 52), UI.px(280, 24), { textSize = 16, color = Color3.fromRGB(60, 60, 70) })
+		UI.Label(t, "SEC " .. rng:NextInteger(100, 230) .. "   ROW " .. rng:NextInteger(1, 30) .. "   SEAT " .. rng:NextInteger(1, 40), UI.px(146, 80), UI.px(280, 22), { textSize = 15, font = UI.FontBold, color = Color3.fromRGB(40, 40, 50) })
+		for i = 0, 36 do
+			local w = (rng:NextNumber() < 0.5) and 2 or 4
+			UI.New("Frame", { Parent = t, Position = UI.px(150 + i * 7, 116), Size = UI.px(w, 40), BackgroundColor3 = BLACK, BorderSizePixel = 0 })
+		end
+	else
+		-- tour poster on a street wall
+		f.BackgroundColor3 = Color3.fromRGB(70, 70, 76)
+		for i = 0, 7 do
+			for k = 0, 3 do
+				UI.New("Frame", { Parent = f, Position = UI.px(((i + k) % 2) * -30 + i * 80, k * 64), Size = UI.px(78, 62), BackgroundColor3 = Color3.fromRGB(90, 54, 44), BorderSizePixel = 0 })
+			end
+		end
+		local poster = UI.New("Frame", { Parent = f, Position = UI.px(204, 14), Size = UI.px(200, 222), BackgroundColor3 = BLACK, BorderSizePixel = 0 })
+		UI.New("UIGradient", { Parent = poster, Rotation = 90, Color = ColorSequence.new(color, BLACK) })
+		UI.Label(poster, name, UI.px(10, 120), UI.px(180, 40), { textSize = 26, font = UI.FontBlack, alignX = Enum.TextXAlignment.Center, wrap = true })
+		UI.Label(poster, "WORLD TOUR", UI.px(10, 160), UI.px(180, 24), { textSize = 16, font = UI.FontBold, color = T.gold, alignX = Enum.TextXAlignment.Center })
+		UI.Label(poster, "TICKETS ON SALE NOW", UI.px(10, 190), UI.px(180, 20), { textSize = 12, color = Color3.fromRGB(220, 220, 230), alignX = Enum.TextXAlignment.Center })
+		local circle = UI.New("Frame", { Parent = poster, Position = UI.px(60, 22), Size = UI.px(80, 80), BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.2, BorderSizePixel = 0, UI.Corner(40) })
+		local _ = circle
+	end
+	return f
+end
+
+-- a concert photo as a small 3D scene. kind: stage, selfie, wide, closeup, confetti, pyro, phones, barricade, queue, sign, merch
+local function photo(parent, ad, seed, kind, p)
+	local rng = Random.new(seed)
+	if kind == "ticket" or kind == "poster" then
+		return flatPhoto(parent, ad, kind, p or {}, rng)
+	end
 	local color = ad and UI.rgb(ad.color) or T.accent
 	local vp = UI.New("ViewportFrame", {
 		Parent = parent,
@@ -62,27 +171,56 @@ local function photo(parent, ad, seed, kind)
 		LightDirection = Vector3.new(0.2, -0.6, 1),
 		UI.Corner(10),
 	})
-	local rng = Random.new(seed)
-	-- stage: deck, LED wall in the artist colour, light beams, haze
-	mk(vp, Vector3.new(200, 1, 200), CFrame.new(0, -0.5, -20), Color3.fromRGB(12, 12, 18))
-	mk(vp, Vector3.new(44, 5, 16), CFrame.new(0, 2.5, -30), Color3.fromRGB(26, 26, 32))
-	mk(vp, Vector3.new(46, 22, 1), CFrame.new(0, 16, -38), color, Enum.Material.Neon, nil, 0.25)
-	mk(vp, Vector3.new(14, 8, 0.5), CFrame.new(0, 16, -37.3), Color3.new(1, 1, 1), Enum.Material.Neon, nil, 0.6)
-	for i = 0, 7 do
-		local x = -21 + i * 6
-		local c = (i % 2 == 0) and color or Color3.fromRGB(255, 240, 220)
-		mk(vp, Vector3.new(0.8, 60, 0.8), CFrame.new(x, 30, -32) * CFrame.Angles(rng:NextNumber(-0.4, 0.4), 0, rng:NextNumber(-0.5, 0.5)), c, Enum.Material.Neon, nil, 0.75)
-	end
-	mk(vp, Vector3.new(80, 6, 30), CFrame.new(0, 3, -20), color, Enum.Material.Neon, nil, 0.93) -- haze
-	if ad then
-		local star = People.new(vp, color, 1.4, "lead", seed, ad.look)
-		local moves = { "micout", "jump", "point", "wave", "dance" }
-		star:update(Vector3.new(rng:NextNumber(-6, 6), 5, -30), 0, { t = rng:NextNumber() * 10, beat = 0.5, energy = 1, walking = false, armsUp = rng:NextNumber() < 0.4 and 1 or 0, move = moves[rng:NextInteger(1, #moves)] })
-	end
 	local cam = UI.New("Camera", { FieldOfView = 42, Parent = vp })
 	vp.CurrentCamera = cam
+	if kind == "merch" then
+		-- flat lay of the tour shirt on a bed, with a tote and the ticket
+		vp.BackgroundColor3 = Color3.fromRGB(200, 196, 210)
+		vp.Ambient = Color3.fromRGB(200, 196, 200)
+		vp.LightDirection = Vector3.new(0.3, -1, 0.2)
+		mk(vp, Vector3.new(60, 1, 40), CFrame.new(0, -0.5, 0), Color3.fromRGB(225, 222, 232), Enum.Material.Fabric)
+		local shirt = (rng:NextNumber() < 0.5) and BLACK:Lerp(Color3.new(1, 1, 1), 0.08) or Color3.fromRGB(235, 235, 238)
+		mk(vp, Vector3.new(8, 0.3, 9), CFrame.new(-3, 0.15, 0), shirt, Enum.Material.Fabric)
+		mk(vp, Vector3.new(3.4, 0.3, 3), CFrame.new(-8, 0.15, -2.6) * CFrame.Angles(0, 0.5, 0), shirt, Enum.Material.Fabric)
+		mk(vp, Vector3.new(3.4, 0.3, 3), CFrame.new(2, 0.15, -2.6) * CFrame.Angles(0, -0.5, 0), shirt, Enum.Material.Fabric)
+		mk(vp, Vector3.new(0.32, 4.5, 4.5), CFrame.new(-3, 0.18, 0.2) * CFrame.Angles(0, 0, math.pi / 2), color, Enum.Material.Neon, Enum.PartType.Cylinder)
+		mk(vp, Vector3.new(5, 0.2, 6), CFrame.new(7, 0.1, 1) * CFrame.Angles(0, 0.2, 0), Color3.fromRGB(230, 214, 180), Enum.Material.Fabric)
+		mk(vp, Vector3.new(2.6, 0.24, 2.6), CFrame.new(7, 0.2, 1.4) * CFrame.Angles(0, 0.2, 0), color, Enum.Material.SmoothPlastic)
+		mk(vp, Vector3.new(4, 0.1, 1.8), CFrame.new(1, 0.3, 4.5) * CFrame.Angles(0, -0.15, 0), Color3.fromRGB(245, 240, 230))
+		cam.CFrame = CFrame.lookAt(Vector3.new(0, 18, 6), Vector3.new(0, 0, 0.5))
+		return vp
+	end
+	if kind == "queue" then
+		-- outside the venue at dusk: facade, sign, a long line of fans
+		vp.BackgroundColor3 = Color3.fromRGB(70, 60, 110)
+		vp.Ambient = Color3.fromRGB(150, 130, 160)
+		vp.LightDirection = Vector3.new(-0.5, -0.4, -0.6)
+		mk(vp, Vector3.new(200, 1, 200), CFrame.new(0, -0.5, 0), Color3.fromRGB(90, 90, 96), Enum.Material.Concrete)
+		mk(vp, Vector3.new(120, 40, 4), CFrame.new(0, 20, -30), Color3.fromRGB(60, 64, 80), Enum.Material.Glass)
+		for i = 0, 9 do
+			mk(vp, Vector3.new(1, 40, 1), CFrame.new(-54 + i * 12, 20, -27.8), Color3.fromRGB(200, 205, 215), Enum.Material.Metal)
+		end
+		mk(vp, Vector3.new(50, 6, 1), CFrame.new(0, 32, -27.5), color, Enum.Material.Neon)
+		mk(vp, Vector3.new(40, 4, 0.5), CFrame.new(0, 32, -26.9), Color3.new(1, 1, 1), Enum.Material.Neon, nil, 0.7)
+		for i = 0, 30 do
+			local z = 4 + math.sin(i * 0.7) * 0.8 - (i % 2) * 1.6
+			local x = -34 + i * 2.2
+			crowdFan(vp, x, z, (rng:NextNumber() < 0.4) and color or SHIRT_COLORS[rng:NextInteger(1, #SHIRT_COLORS)], rng, rng:NextNumber() < 0.15, false)
+		end
+		for i = 0, 6 do
+			mk(vp, Vector3.new(0.3, 3, 0.3), CFrame.new(-14 + i * 6, 1.5, 9), Color3.fromRGB(200, 200, 210), Enum.Material.Metal)
+		end
+		mk(vp, Vector3.new(38, 0.3, 0.2), CFrame.new(4, 2.6, 9), Color3.fromRGB(200, 40, 40))
+		for i = 0, 3 do
+			mk(vp, Vector3.new(6, 9, 0.4), CFrame.new(-18 + i * 12, 4.5, -27.6), Color3.fromRGB(255, 220, 160), Enum.Material.Neon, nil, 0.3)
+		end
+		cam.FieldOfView = 52
+		cam.CFrame = CFrame.lookAt(Vector3.new(10, 7, 30), Vector3.new(-2, 15, -12))
+		return vp
+	end
+	local artistPos = stageSet(vp, color, rng, { beams = (kind == "phones") and 0.88 or 0.75 })
 	if kind == "selfie" then
-		-- 2 to 4 fans close to the camera, arms around each other, phone glow
+		star(vp, ad, color, seed, rng, artistPos)
 		local n = rng:NextInteger(2, 4)
 		for i = 1, n do
 			local x = (i - (n + 1) / 2) * 2.6
@@ -90,32 +228,100 @@ local function photo(parent, ad, seed, kind)
 			local f = People.new(vp, fanColor, 1, "crowd", seed * 7 + i)
 			f:update(Vector3.new(x, 0, 6 + rng:NextNumber() * 0.6), rng:NextNumber(-0.25, 0.25), { t = 1, beat = 0.2, energy = 0.2, walking = false, armsUp = (i == 1) and 1 or 0, move = (i == 1) and "wave" or "idle" })
 		end
-		-- the phone flash lights the faces
 		vp.LightDirection = Vector3.new(0.1, -0.4, -1)
 		vp.Ambient = Color3.fromRGB(150, 140, 170)
 		cam.CFrame = CFrame.lookAt(Vector3.new(0, 5.6, 15), Vector3.new(0, 4.6, 0))
-	else
-		-- crowd between the camera and the stage with raised arms and phones
-		for row = 0, 5 do
-			for col = 0, 13 do
-				local x = -26 + col * 4 + rng:NextNumber(-1, 1)
-				local z = 4 - row * 3.4 + rng:NextNumber(-0.6, 0.6)
-				local c = Color3.fromRGB(14, 14, 20):Lerp(color, rng:NextNumber() * 0.25)
-				mk(vp, Vector3.new(1.6, 2.8, 1), CFrame.new(x, 1.4, z), c)
-				mk(vp, Vector3.new(1.3, 1.3, 1.3), CFrame.new(x, 3.45, z), c, nil, Enum.PartType.Ball)
-				local r = rng:NextNumber()
-				if r < 0.3 then
-					mk(vp, Vector3.new(0.45, 2.2, 0.45), CFrame.new(x + 0.9, 4.6, z) * CFrame.Angles(0, 0, -0.3), c)
-					mk(vp, Vector3.new(0.5, 0.8, 0.12), CFrame.new(x + 1.3, 5.9, z), Color3.fromRGB(255, 255, 235), Enum.Material.Neon)
-				elseif r < 0.45 then
-					mk(vp, Vector3.new(0.3, 1.6, 0.3), CFrame.new(x - 0.8, 5.2, z) * CFrame.Angles(0, 0, 0.3), color, Enum.Material.Neon)
-				end
+	elseif kind == "closeup" then
+		-- zoomed in on the artist with a spotlight cone
+		local pos = Vector3.new(0, 5, -26)
+		star(vp, ad, color, seed, rng, pos, (rng:NextNumber() < 0.5) and "micout" or "point")
+		mk(vp, Vector3.new(60, 8, 8), CFrame.new(0, 33, -26) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(255, 245, 230), Enum.Material.Neon, Enum.PartType.Cylinder, 0.9)
+		vp.Ambient = Color3.fromRGB(150, 140, 170)
+		vp.LightDirection = Vector3.new(0, -0.5, -1)
+		cam.FieldOfView = 22
+		cam.CFrame = CFrame.lookAt(Vector3.new(rng:NextNumber(-4, 4), 8, 4), Vector3.new(0, 10, -26))
+	elseif kind == "wide" then
+		-- from the upper tier: the whole bowl, thousands of phone lights
+		star(vp, ad, color, seed, rng, artistPos)
+		for side = -1, 1, 2 do
+			for r = 0, 9 do
+				mk(vp, Vector3.new(4, 2, 60), CFrame.new(side * (30 + r * 4), 1 + r * 2, 0) * CFrame.Angles(0, side * 0.15, 0), Color3.fromRGB(26, 34, 70))
 			end
+		end
+		for r = 0, 9 do
+			mk(vp, Vector3.new(60 + r * 8, 2, 4), CFrame.new(0, 1 + r * 2, 34 + r * 4), Color3.fromRGB(26, 34, 70))
+		end
+		for i = 1, 260 do
+			local x, z = rng:NextNumber(-26, 26), rng:NextNumber(-18, 30)
+			mk(vp, Vector3.new(0.35, 0.35, 0.35), CFrame.new(x, 2.5 + rng:NextNumber(), z), (rng:NextNumber() < 0.5) and Color3.fromRGB(255, 255, 230) or color, Enum.Material.Neon)
+		end
+		for i = 1, 200 do
+			local side = (rng:NextNumber() < 0.5) and -1 or 1
+			local r = rng:NextNumber() * 9
+			mk(vp, Vector3.new(0.35, 0.35, 0.35), CFrame.new(side * (31 + r * 4), 2.6 + r * 2, rng:NextNumber(-28, 28)), Color3.fromRGB(255, 255, 230), Enum.Material.Neon)
+		end
+		cam.FieldOfView = 55
+		cam.CFrame = CFrame.lookAt(Vector3.new(rng:NextNumber(-10, 10), 30, 62), Vector3.new(0, 4, -20))
+	elseif kind == "barricade" then
+		-- front row: the barricade right in front, the artist above
+		star(vp, ad, color, seed, rng, Vector3.new(rng:NextNumber(-3, 3), 5, -21))
+		mk(vp, Vector3.new(30, 2.8, 0.4), CFrame.new(0, 1.6, -12), Color3.fromRGB(150, 155, 165), Enum.Material.DiamondPlate)
+		mk(vp, Vector3.new(30, 0.3, 0.6), CFrame.new(0, 3.1, -12), Color3.fromRGB(200, 205, 215), Enum.Material.Metal)
+		for i = 0, 3 do
+			crowdFan(vp, -6 + i * 4 + rng:NextNumber(-1, 1), -9.5, Color3.fromRGB(14, 14, 20):Lerp(color, rng:NextNumber() * 0.4), rng, rng:NextNumber() < 0.6, rng:NextNumber() < 0.5)
+		end
+		crowdFan(vp, 1, -15, Color3.fromRGB(255, 214, 0), rng, false, false)
+		cam.FieldOfView = 50
+		cam.CFrame = CFrame.lookAt(Vector3.new(0.5, 6.4, -1.5), Vector3.new(0, 5.2, -24))
+	elseif kind == "sign" then
+		-- a fan holds up a sign in the crowd
+		star(vp, ad, color, seed, rng, artistPos)
+		crowdRows(vp, color, rng, 3, -2, true)
+		local sx = ((rng:NextNumber() < 0.5) and -1 or 1) * rng:NextNumber(6, 11)
+		local tilt = CFrame.new(sx, 7.6, 1) * CFrame.Angles(0, 0, rng:NextNumber(-0.08, 0.08))
+		mk(vp, Vector3.new(5.2, 3.2, 0.15), tilt, Color3.fromRGB(250, 250, 250), Enum.Material.Neon, nil, 0.15)
+		for i = 0, 2 do
+			mk(vp, Vector3.new(4.2 - i * 0.9, 0.45, 0.1), tilt * CFrame.new(0, 1 - i * 0.85, -0.15), (i == 1) and color or BLACK, (i == 1) and Enum.Material.Neon or Enum.Material.SmoothPlastic)
+		end
+		mk(vp, Vector3.new(0.9, 0.9, 0.9), tilt * CFrame.new(1.9, -1.1, -0.2), Color3.fromRGB(255, 60, 120), Enum.Material.Neon, Enum.PartType.Ball)
+		for _, ox in ipairs({ -2.2, 2.2 }) do
+			mk(vp, Vector3.new(0.4, 2.2, 0.4), CFrame.new(sx + ox, 5.4, 1.3), Color3.fromRGB(240, 200, 170))
+		end
+		cam.CFrame = CFrame.lookAt(Vector3.new(rng:NextNumber(-3, 3), 7, 19), Vector3.new(0, 8, -20))
+	else
+		star(vp, ad, color, seed, rng, artistPos)
+		crowdRows(vp, color, rng, (kind == "phones") and 7 or 6, 4, true)
+		if kind == "confetti" then
+			local cols = { color, Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 214, 0), Color3.fromRGB(255, 80, 160), Color3.fromRGB(80, 220, 255) }
+			for i = 1, 160 do
+				mk(vp, Vector3.new(0.7, 0.05, 0.45), CFrame.new(rng:NextNumber(-26, 26), rng:NextNumber(4, 26), rng:NextNumber(-30, 8)) * CFrame.Angles(rng:NextNumber(0, 6), rng:NextNumber(0, 6), rng:NextNumber(0, 6)), cols[rng:NextInteger(1, #cols)], Enum.Material.Neon)
+			end
+		elseif kind == "pyro" then
+			-- flame columns: a hot core inside softer layers, a rolling ball of fire on top, black smoke above
+			for _, x in ipairs({ -20, -12, 12, 20 }) do
+				local h = rng:NextNumber(10, 14)
+				for k, layer in ipairs({ { 4.6, 1, Color3.fromRGB(220, 60, 10), 0.45 }, { 3.2, 0.85, Color3.fromRGB(255, 140, 30), 0.25 }, { 1.8, 0.7, Color3.fromRGB(255, 240, 170), 0 } }) do
+					local f = mk(vp, Vector3.new(layer[1], h * layer[2], layer[1]), CFrame.new(x, 5 + h * layer[2] / 2, -24), layer[3], Enum.Material.Neon, nil, layer[4])
+					UI.New("SpecialMesh", { MeshType = Enum.MeshType.Sphere, Parent = f })
+					local _ = k
+				end
+				local top = mk(vp, Vector3.new(7, 5, 7), CFrame.new(x, 6 + h, -24), Color3.fromRGB(255, 120, 20), Enum.Material.Neon, nil, 0.35)
+				UI.New("SpecialMesh", { MeshType = Enum.MeshType.Sphere, Parent = top })
+				local smoke = mk(vp, Vector3.new(9, 6, 9), CFrame.new(x, 11 + h, -25), Color3.fromRGB(30, 26, 26), Enum.Material.SmoothPlastic, nil, 0.5)
+				UI.New("SpecialMesh", { MeshType = Enum.MeshType.Sphere, Parent = smoke })
+			end
+			vp.Ambient = Color3.fromRGB(200, 130, 80)
+		elseif kind == "phones" then
+			for i = 1, 160 do
+				mk(vp, Vector3.new(0.4, 0.55, 0.1), CFrame.new(rng:NextNumber(-30, 30), rng:NextNumber(4.5, 7), rng:NextNumber(-22, -4)), Color3.fromRGB(255, 255, 235), Enum.Material.Neon)
+			end
+			vp.Ambient = Color3.fromRGB(60, 60, 90)
 		end
 		cam.CFrame = CFrame.lookAt(Vector3.new(rng:NextNumber(-8, 8), 6.5, 12), Vector3.new(0, 9, -30))
 	end
 	return vp
 end
+SocialScreen.photo = photo
 
 function SocialScreen:post(list, p, order)
 	local state = self.app.state
@@ -147,7 +353,7 @@ function SocialScreen:post(list, p, order)
 	if p.photo and self.photos < 14 then
 		self.photos = self.photos + 1
 		local seed = (p.likes or 1) + (p.avatar or 1) * 31
-		photo(card, ad, seed, (seed % 2 == 0) and "selfie" or "stage").LayoutOrder = 3
+		photo(card, ad, p.seed or seed, p.pkind or ((seed % 2 == 0) and "selfie" or "stage"), p).LayoutOrder = 3
 	end
 	local foot = UI.New("Frame", { Parent = card, Size = UI.px(608, 22), BackgroundTransparency = 1, LayoutOrder = 4 })
 	UI.Label(foot, "♥ " .. Util.short(p.likes or 0) .. "      ⟲ " .. Util.short(p.reposts or 0), UI.px(0, 0), UI.px(300, 22), { textSize = 15, color = T.sub })

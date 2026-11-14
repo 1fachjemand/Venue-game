@@ -6,6 +6,10 @@
 --   The O2: dome 365 m wide, ~50 m high, 12 yellow masts ~100 m (Guinness / ICE)
 --   Madison Square Garden: 404 ft (123 m) round cable roof, 48 cables, between 7th/8th Ave and 31st/33rd St
 --   Lanxess Arena: steel arch 76 m high carrying the roof (koeln.de), cathedral spires 157 m
+--   Hallenstadion Zurich: opened 1939, rebuilt 2004-05, ~13,000 at concerts / 15,000 max (hallenstadion.ch)
+--   Stade de France: ~80,000 seats, elliptical roof on 18 masts, ~43 m above the pitch
+--   Santiago Bernabeu: rebuilt 2019-24 with a steel louvre skin, retractable roof, 360-degree screen
+--   Wembley Stadium: 90,000 seats, arch 133 m high with a 315 m span (wembleystadium.com)
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 local Root = script:FindFirstAncestor("Headliner")
@@ -500,10 +504,15 @@ local function steamStack(x, z)
 end
 
 -- figures: a simple fan (body + head) that bounces
+local PANTS = { rgb(30, 34, 50), rgb(20, 20, 24), rgb(60, 70, 100), rgb(110, 90, 70), rgb(200, 200, 205) }
+local HAIRC = { rgb(30, 24, 20), rgb(90, 60, 30), rgb(220, 190, 120), rgb(160, 60, 40), rgb(20, 20, 20) }
 local function fan(pos, shirt, yaw, holdSign, calm)
-	local body = P("Fan", V(1.6, 2.8, 1), CF(pos + V(0, 1.4, 0)), shirt)
-	local head = ball("FanHead", 1.3, pos + V(0, 3.45, 0), pick(SKINS))
-	table.insert(crowd, { body = body, head = head, base = ORIGIN + pos, ph = rng:NextNumber() * 6.28, calm = calm })
+	local legs = P("FanLegs", V(1.3, 1.5, 0.8), CF(pos + V(0, 0.75, 0)), pick(PANTS))
+	local body = P("Fan", V(1.6, 1.6, 0.95), CF(pos + V(0, 2.3, 0)), shirt)
+	local head = P("FanHead", V(1.1, 1.15, 1.1), CF(pos + V(0, 3.7, 0)), pick(SKINS))
+	New("SpecialMesh", { MeshType = Enum.MeshType.Head, Parent = head })
+	local hair = P("FanHair", V(1.18, 0.4, 1.18), CF(pos + V(0, 4.2, 0)), pick(HAIRC))
+	table.insert(crowd, { parts = { legs, body, head, hair }, offs = { 0.75, 2.3, 3.7, 4.2 }, base = ORIGIN + pos, ph = rng:NextNumber() * 6.28, calm = calm })
 	if holdSign then
 		P("FanSign", V(2.4, 1.4, 0.15), CF(pos + V(0, 5.4, 0)) * ANG(0, yaw or 0, 0), holdSign, M.Neon)
 	end
@@ -689,7 +698,7 @@ SCENES[1] = {
 	build = function(sc)
 		local color = sc.color
 		-- ground, Thames (west and north of the peninsula), Canary Wharf across the water
-		slab("Ground", -2200, -1700, 1800, 1500, 0, 2, rgb(40, 42, 46), M.Concrete)
+		slab("Ground", -2600, -2000, 2600, 2400, 0, 2, rgb(40, 42, 46), M.Concrete)
 		slab("Thames", -1060, -1700, -560, 1500, 0.15, 1, rgb(14, 26, 44), M.Glass, 0, 0.35)
 		slab("Thames", -560, -1080, 1800, -470, 0.15, 1, rgb(14, 26, 44), M.Glass, 0, 0.35)
 		P("Promenade", V(30, 0.6, 1300), CF(-545, 0.3, 200), rgb(90, 88, 84), M.Pavement)
@@ -854,6 +863,27 @@ SCENES[1] = {
 			{ 780, -200, 60, 50, 140, "white" }, { 300, 900, 70, 60, 180, "tan" }, { 1000, 600, 60, 60, 240, "glass" },
 		}) do
 			building(b[1], b[2], b[3], b[4], b[5], b[6], { blink = true, setback = false })
+		end
+		-- more of the peninsula: blocks of flats and offices around the dome (no empty ground in any view)
+		for gx = 250, 1150, 105 do
+			for gz = -400, 1050, 105 do
+				local x, z = gx + rnd(-20, 20), gz + rnd(-20, 20)
+				local onRoad = math.abs(z - 560) < 50 or math.abs(x - 512) < 40
+				local nearDome = (x * x + z * z) < 430 * 430 or (math.abs(x) < 260 and z > 300 and z < 520)
+				if not onRoad and not nearDome then
+					building(x, z, rnd(40, 70), rnd(40, 70), rnd(40, 150), pick({ "glass", "brick", "white", "tan", "dark" }), { setback = false })
+				end
+			end
+		end
+		for gx = -460, 240, 105 do
+			for gz = 640, 1150, 105 do
+				building(gx + rnd(-20, 20), gz + rnd(-20, 20), rnd(40, 70), rnd(40, 70), rnd(40, 130), pick({ "glass", "brick", "white", "tan" }), { setback = false })
+			end
+		end
+		for _ = 1, 30 do
+			local a = rnd(-PI * 0.1, PI * 1.1)
+			local r = rnd(1500, 2100)
+			farTower(math.cos(a) * r + 300, math.sin(a) * r, rnd(40, 90), rnd(40, 90), rnd(80, 260), pick({ rgb(40, 50, 70), rgb(60, 64, 76), rgb(70, 60, 56) }))
 		end
 		-- Quantum-cloud style steel sculpture on the riverside
 		local qc = V(-500, 0, 60)
@@ -1242,9 +1272,10 @@ SCENES[3] = {
 	clock = 20.6,
 	haze = 1.5,
 	keys = {
-		{ t = 0, p = V(-1330, 30, -20), l = V(-1480, 170, -180) },
-		{ t = 6, p = V(-1260, 80, -240), l = V(-1000, 50, -300) },
-		{ t = 13, p = V(-1040, 56, -255), l = V(-700, 60, -270) },
+		{ t = 0, p = V(-930, 36, -30), l = V(-1490, 160, -190) },
+		{ t = 6, p = V(-1010, 70, -90), l = V(-1500, 170, -190) },
+		{ t = 10, p = V(-1080, 64, -170), l = V(-1100, 80, -520) },
+		{ t = 14, p = V(-1040, 56, -255), l = V(-700, 60, -270) },
 		{ t = 19, p = V(-760, 62, -200), l = V(-650, 130, -400) },
 		{ t = 23, p = V(-560, 44, -178), l = V(-520, 40, 100) },
 		{ t = 27, p = V(-520, 36, 10), l = V(-440, 44, 180) },
@@ -1274,8 +1305,8 @@ SCENES[3] = {
 
 		-- CATHEDRAL (west bank): twin spires 157 m (314 studs), nave vault ~43 m
 		local cz = -180
-		local stone = rgb(118, 108, 96)
-		local dark = rgb(70, 64, 58)
+		local stone = rgb(176, 156, 126) -- floodlit at night
+		local dark = rgb(96, 88, 80)
 		local winC = BLACK:Lerp(rgb(255, 190, 110), 0.55)
 		P("Nave", V(250, 86, 64), CF(-1470, 43, cz), stone, M.Sandstone)
 		gable(CF(-1470, 86, cz), 250, 66, 36, dark, M.Slate)
@@ -1581,6 +1612,632 @@ SCENES[3] = {
 	end,
 }
 
+------------------------------------------------------------------ shared helpers for the stadium scenes
+-- calls fn(mid, dir, out, len, i, angle) for n segments of the ellipse (a, b) around (0, 0)
+local function ellRing(a, b, n, fn)
+	for i = 0, n - 1 do
+		local t0, t1 = i / n * 2 * PI, (i + 1) / n * 2 * PI
+		local p0 = V(a * math.cos(t0), 0, b * math.sin(t0))
+		local p1 = V(a * math.cos(t1), 0, b * math.sin(t1))
+		local dir = p1 - p0
+		local len = dir.Magnitude
+		dir = dir.Unit
+		fn((p0 + p1) / 2, dir, V(dir.Z, 0, -dir.X), len, i, (t0 + t1) / 2)
+	end
+end
+
+-- a ring of blocks along an ellipse: width = radial thickness
+local function ellBand(name, a, b, n, y, h, width, color, mat, tr)
+	local parts = {}
+	ellRing(a, b, n, function(mid, dir, _, len)
+		local c = V(mid.X, y, mid.Z)
+		table.insert(parts, P(name, V(width, h, len + 1.5), CFrame.lookAt(c, c + dir), color, mat, tr))
+	end)
+	return parts
+end
+
+-- inside of a stadium seen from above: stands in rings, pitch with floor cover, the stage at one end,
+-- thousands of phone lights (a, b = inner edge of the roof; top = height of the last row)
+local function bowlInside(a, b, top, seat, color, n)
+	local a0, b0 = a * 0.5, b * 0.42
+	P("Pitch", V(a0 * 2.1, 0.4, b0 * 2.1), CF(0, 0.2, 0), rgb(34, 92, 44), M.Grass)
+	P("FloorCover", V(a0 * 1.5, 0.5, b0 * 1.7), CF(-a0 * 0.15, 0.3, 0), rgb(60, 62, 70), M.DiamondPlate)
+	local rings = 7
+	for k = 0, rings - 1 do
+		local u = k / rings
+		local ra, rb = a0 * 1.08 + (a - a0 * 1.08) * u, b0 * 1.12 + (b - b0 * 1.12) * u
+		local w = (a - a0) / rings + 3
+		ellBand("Stand", ra + w / 2, rb + w / 2, n, 2 + u * top, 4 + top / rings, w, (k % 2 == 0) and seat or seat:Lerp(BLACK, 0.25), M.Fabric)
+	end
+	-- the stage at the +x end: deck, LED wall, wings, light beams up through the open roof
+	local sx = a0 * 0.95
+	P("StageDeck", V(26, 10, b0 * 1.3), CF(sx, 5, 0), rgb(24, 24, 30))
+	P("StageLED", V(3, 46, b0 * 1.1), CF(sx + 10, 33, 0), color, M.Neon)
+	P("StageRoof", V(34, 4, b0 * 1.5), CF(sx + 2, 60, 0), rgb(40, 40, 46), M.Metal)
+	for _, z in ipairs({ -b0 * 0.75, b0 * 0.75 }) do
+		P("StageTower", V(8, 60, 8), CF(sx + 2, 30, z), rgb(60, 60, 70), M.Metal)
+		P("SideScreen", V(2, 24, 30), CF(sx + 6, 34, z * 1.35), color:Lerp(WHITE, 0.3), M.Neon)
+	end
+	for i = 0, 7 do
+		local z = -b0 * 0.6 + i * b0 * 1.2 / 7
+		P("StageBeam", V(2.5, 160, 2.5), CF(sx - 4, 80, z) * ANG(rnd(-0.3, 0.3), 0, rnd(-0.35, 0.1)), (i % 2 == 0) and color or WHITE, M.Neon, 0.82)
+	end
+	-- phone lights on the floor and in the stands
+	for _ = 1, 220 do
+		local x, z = rnd(-a0 * 0.85, a0 * 0.55), rnd(-b0 * 0.8, b0 * 0.8)
+		P("PhoneLight", V(1, 1, 1), CF(x, 3, z), (rng:NextNumber() < 0.7) and rgb(255, 255, 230) or color, M.Neon)
+	end
+	for _ = 1, 260 do
+		local th, u = rnd(0, 2 * PI), rnd(0.05, 0.95)
+		local ra, rb = a0 * 1.1 + (a - a0 * 1.1) * u, b0 * 1.14 + (b - b0 * 1.14) * u
+		if math.cos(th) < 0.75 then
+			P("PhoneLight", V(1, 1, 1), CF(math.cos(th) * ra, 6 + u * top, math.sin(th) * rb), rgb(255, 255, 230), M.Neon)
+		end
+	end
+end
+
+-- city block filler: a grid of buildings in a rectangle (keeps clear of the given boxes)
+local function blocks(x0, z0, x1, z1, step, hMin, hMax, styles, keep)
+	for gx = x0, x1, step do
+		for gz = z0, z1, step do
+			local x, z = gx + rnd(-step * 0.15, step * 0.15), gz + rnd(-step * 0.15, step * 0.15)
+			local ok = true
+			for _, k in ipairs(keep or {}) do
+				if x > k[1] - 40 and x < k[3] + 40 and z > k[2] - 40 and z < k[4] + 40 then
+					ok = false
+				end
+			end
+			if ok then
+				building(x, z, step * rnd(0.55, 0.75), step * rnd(0.55, 0.75), rnd(hMin, hMax), pick(styles), { setback = false })
+			end
+		end
+	end
+end
+
+-- a straight road with lane markings, lamps on both sides and traffic in both directions
+local function road(a, b, width, kinds, n, colors, speed, lampStep)
+	local dir = (b - a).Unit
+	local len = (b - a).Magnitude
+	local mid = (a + b) / 2
+	local side = V(dir.Z, 0, -dir.X)
+	P("Road", V(width, 0.5, len), CFrame.lookAt(mid + V(0, 0.25, 0), mid + dir + V(0, 0.25, 0)), rgb(30, 30, 34), M.Asphalt)
+	for _, sgn in ipairs({ -1, 1 }) do
+		local c = mid + side * sgn * (width / 2 + 5)
+		P("Sidewalk", V(10, 0.7, len), CFrame.lookAt(c + V(0, 0.35, 0), c + dir + V(0, 0.35, 0)), rgb(96, 96, 100), M.Pavement)
+	end
+	local d = 0
+	while d < len do
+		local p = a + dir * d
+		P("LaneDash", V(0.6, 0.1, 10), CFrame.lookAt(p + V(0, 0.55, 0), p + dir + V(0, 0.55, 0)), rgb(230, 230, 230))
+		d = d + 30
+	end
+	if lampStep then
+		d = 10
+		while d < len do
+			for _, sgn in ipairs({ -1, 1 }) do
+				local p = a + dir * d + side * sgn * (width / 2 + 3)
+				streetLamp(p.X, p.Z, math.atan2(side.X * sgn, side.Z * sgn), 18)
+			end
+			d = d + lampStep
+		end
+	end
+	if n and n > 0 then
+		lane(a + side * (width * 0.25) + V(0, 0.3, 0), b + side * (width * 0.25) + V(0, 0.3, 0), n, kinds, colors, speed)
+		lane(b - side * (width * 0.25) + V(0, 0.3, 0), a - side * (width * 0.25) + V(0, 0.3, 0), n, kinds, colors, speed)
+	end
+end
+
+------------------------------------------------------------------ 4) HALL OF THE STADIUM (Zurich-Oerlikon)
+-- Hallenstadion: indoor arena from 1939, renovated 2004-05, about 13,000 at concerts (15,000 max),
+-- a long box with rounded ends, tram stop right outside, the trade fair halls next door.
+SCENES[4] = {
+	name = "Hall of the Stadium",
+	city = "Zurich - Oerlikon",
+	tonight = "VELVET JUNE",
+	color = rgb(255, 60, 70),
+	clock = 20.3,
+	haze = 1.4,
+	keys = {
+		{ t = 0, p = V(-980, 22, 158), l = V(-600, 26, 146) },
+		{ t = 7, p = V(-720, 26, 156), l = V(-300, 40, 120) },
+		{ t = 14, p = V(-430, 30, 172), l = V(-80, 40, 60) },
+		{ t = 20, p = V(-220, 44, 214), l = V(0, 30, 80) },
+		{ t = 26, p = V(-30, 26, 196), l = V(40, 28, 90) },
+		{ t = 32, p = V(150, 52, 236), l = V(0, 40, 40) },
+		{ t = 38, p = V(270, 110, 200), l = V(0, 30, 0) },
+		{ t = 44, p = V(180, 170, -70), l = V(0, 20, 30) },
+	},
+	build = function(sc)
+		local color = sc.color
+		slab("Ground", -1600, -1400, 1400, 1400, 0, 2, rgb(46, 48, 50), M.Concrete)
+		-- Wallisellen street with tram tracks in the middle and a tram stop island
+		road(V(-1300, 0, 150), V(1200, 0, 150), 44, { "car", "car", "car", "bus" }, 6, nil, 22, 70)
+		for _, z in ipairs({ 146, 154 }) do
+			P("TramTrack", V(2500, 0.3, 0.4), CF(-50, 0.6, z - 1.4), rgb(150, 150, 156), M.Metal)
+			P("TramTrack", V(2500, 0.3, 0.4), CF(-50, 0.6, z + 1.4), rgb(150, 150, 156), M.Metal)
+		end
+		P("TramWire", V(2500, 0.2, 0.2), CF(-50, 19, 150), rgb(40, 40, 44), M.Metal)
+		lane(V(-1300, 0.5, 146), V(1200, 0.5, 146), 2, { "tram" }, { rgb(40, 110, 210) }, 16)
+		lane(V(1200, 0.5, 154), V(-1300, 0.5, 154), 2, { "tram" }, { rgb(40, 110, 210) }, 16)
+		P("TramIsland", V(90, 1, 8), CF(-60, 0.8, 162), rgb(110, 110, 116), M.Pavement)
+		P("Shelter", V(30, 0.6, 7), CF(-60, 9, 162), rgb(210, 214, 222), M.Glass, 0.3)
+		P("ShelterBack", V(30, 7, 0.3), CF(-60, 4.5, 165), rgb(200, 210, 230), M.Glass, 0.5)
+		local stopSign = P("StopSign", V(5, 3, 0.4), CF(-30, 12, 162), rgb(30, 90, 200))
+		sign(stopSign, Enum.NormalId.Back, "Hall of the Stadium", WHITE, nil, 10)
+		for _ = 1, 14 do
+			fan(V(-60 + rnd(-40, 40), 1.3, 162 + rnd(-2, 2)), pick(SHIRTS), 0, nil, true)
+		end
+
+		-- THE HALL: long box with rounded ends, light facade bands, glass foyer to the street
+		local hw, hd, hh = 120, 80, 56
+		local wall = rgb(196, 198, 204)
+		P("HallCore", V(hw * 2 - 60, hh, hd * 2), CF(0, hh / 2, 0), wall, M.Concrete)
+		for _, sx in ipairs({ -1, 1 }) do
+			cylV("HallEnd", hh, hd * 2, V(sx * (hw - 30 - hd + 30), hh / 2, 0), wall, M.Concrete)
+		end
+		for k = 0, 4 do
+			local y = 8 + k * 10
+			P("FacadeBand", V(hw * 2 - 58, 2.2, hd * 2 + 1), CF(0, y, 0), rgb(150, 156, 168), M.Metal)
+			for _, sx in ipairs({ -1, 1 }) do
+				cylV("FacadeBandEnd", 2.2, hd * 2 + 1, V(sx * (hw - 30 - hd + 30), y, 0), rgb(150, 156, 168), M.Metal)
+			end
+		end
+		-- slightly arched roof
+		for k = -3, 3 do
+			P("Roof", V(hw * 2 - 50, 3, 24), CF(0, hh + 4 - math.abs(k) * 1.2, k * 22), rgb(120, 124, 130), M.Metal)
+		end
+		local sgn = P("HallSign", V(150, 14, 1), CF(0, hh - 12, hd + 0.8), BLACK)
+		sign(sgn, Enum.NormalId.Back, "HALL OF THE STADIUM", WHITE, nil, 6)
+		-- glass foyer (2005) with warm light and people inside
+		P("Foyer", V(170, 24, 22), CF(0, 12, hd + 11), rgb(60, 70, 90), M.Glass, 0.35, 0.15)
+		P("FoyerRoof", V(176, 1.5, 26), CF(0, 24.5, hd + 11), rgb(80, 84, 92), M.Metal)
+		P("FoyerLight", V(166, 20, 0.4), CF(0, 11, hd + 1.2), BLACK:Lerp(WARM, 0.7), M.Neon)
+		for i = -7, 7 do
+			P("FoyerMullion", V(0.6, 24, 0.6), CF(i * 12, 12, hd + 22), rgb(140, 146, 156), M.Metal)
+		end
+		for _ = 1, 40 do
+			fan(V(rnd(-80, 80), 0, hd + rnd(4, 18)), pick(SHIRTS), 0, nil, true)
+		end
+		ledScreen(CF(-110, 26, hd + 30), 40, 22, { sc.tonight, "TONIGHT 20:00", "SOLD OUT", "HALL OF THE STADIUM" }, BLACK:Lerp(color, 0.4), Enum.NormalId.Back)
+		P("ScreenPole", V(2, 24, 2), CF(-110, 12, hd + 30), rgb(60, 60, 66), M.Metal)
+		-- forecourt with fans, queues at the doors, security, a sausage stand
+		P("Forecourt", V(300, 0.5, 46), CF(0, 0.25, hd + 45), rgb(100, 100, 104), M.Pavement)
+		for i = -3, 3 do
+			line(V(i * 22, 0, hd + 26), V(0, 0, 1), 20, 0.5, color)
+			staff(V(i * 22 + 3, 0.5, hd + 24), "security")
+		end
+		mingle(0, hd + 50, 130, 12, 26, 0.5, color)
+		hotdogCart(V(120, 0.5, hd + 40), PI / 2)
+		hotdogCart(V(-130, 0.5, hd + 46), -PI / 2)
+		for i = 1, 16 do
+			walker(V(-600 + i * 40, 1, 128 + rnd(-3, 3)), V(-100 + i * 10, 1, hd + 40), pick(SHIRTS))
+		end
+		searchlights({ { pos = V(-150, 0, hd + 20), color = color, ph = 0 }, { pos = V(150, 0, hd + 20), ph = 2, color = WHITE } })
+		for i = 0, 5 do
+			banner(V(-150 + i * 60, 0, hd + 70), sc.tonight, color, 0)
+		end
+		-- trade fair halls next door, Swiss flags
+		P("FairHall", V(260, 40, 200), CF(330, 20, -20), rgb(70, 76, 86), M.Glass, 0, 0.1)
+		P("FairHallBand", V(262, 4, 202), CF(330, 34, -20), rgb(200, 204, 210), M.Metal)
+		local fair = P("FairSign", V(80, 10, 0.5), CF(330, 30, 80.5), BLACK)
+		sign(fair, Enum.NormalId.Back, "FAIR ZURICH", WHITE, nil, 8)
+		for i = 0, 3 do
+			P("FlagPole", V(0.6, 30, 0.6), CF(220 + i * 18, 15, 100), rgb(200, 200, 205), M.Metal)
+			P("SwissFlag", V(8, 8, 0.2), CF(224 + i * 18, 26, 100), rgb(220, 30, 40), M.Fabric)
+			P("SwissCross", V(5, 1.6, 0.3), CF(224 + i * 18, 26, 100), WHITE)
+			P("SwissCross", V(1.6, 5, 0.3), CF(224 + i * 18, 26, 100), WHITE)
+		end
+		-- Oerlikon: modernist blocks, a green glass tower, trees, the hills beyond
+		blocks(-1250, 230, 1100, 900, 110, 30, 80, { "white", "tan", "glass", "white" }, {})
+		blocks(-1250, -900, -300, 60, 110, 30, 90, { "white", "tan", "brick", "glass" }, {})
+		blocks(-200, -900, 1100, -200, 110, 30, 70, { "white", "glass", "steel" }, {})
+		building(-520, -420, 50, 50, 230, "glass", { force = true, setback = false, blink = true })
+		P("TowerGreen", V(50.5, 230, 50.5), CF(-520, 115, -420), rgb(60, 140, 110), M.Glass, 0.6, 0.2)
+		for i = 0, 40 do
+			tree(-1250 + i * 60, 196 + (i % 2) * 6, 1.1)
+			tree(-1250 + i * 60, 108 - (i % 2) * 4, 1.0)
+		end
+		for i = 0, 8 do
+			ellip("Hill", V(900, 200, 500), CF(-1500 + i * 400, -20, -1700 - (i % 3) * 120), rgb(22, 40, 30), M.Grass)
+		end
+	end,
+}
+
+------------------------------------------------------------------ 5) STADIUM OF FRANCE (Saint-Denis)
+-- Stade de France: 1998, about 80,000 seats, an elliptical roof that seems to float above the stands,
+-- held by 18 steel masts; canal Saint-Denis and the A1 motorway next to it.
+SCENES[5] = {
+	name = "Stadium of France",
+	city = "Paris - Saint-Denis",
+	tonight = "KAI RIVERS",
+	color = rgb(80, 140, 255),
+	clock = 20.8,
+	haze = 1.6,
+	keys = {
+		{ t = 0, p = V(-545, 18, -640), l = V(-545, 24, -320) },
+		{ t = 7, p = V(-545, 26, -400), l = V(-450, 40, -120) },
+		{ t = 13, p = V(-500, 42, -170), l = V(-150, 70, -40) },
+		{ t = 19, p = V(-380, 34, 10), l = V(0, 70, 0) },
+		{ t = 25, p = V(-300, 64, 170), l = V(0, 90, 0) },
+		{ t = 31, p = V(-130, 180, 310), l = V(0, 60, 0) },
+		{ t = 37, p = V(150, 240, 230), l = V(0, 20, -20) },
+		{ t = 44, p = V(270, 200, -150), l = V(0, 30, 40) },
+	},
+	build = function(sc)
+		local color = sc.color
+		slab("Ground", -1800, -1500, 1600, 1500, 0, 2, rgb(44, 46, 50), M.Concrete)
+		-- canal Saint-Denis with quays, barges and a footbridge
+		P("Canal", V(42, 1, 3000), CF(-545, 0.1, 0), rgb(14, 28, 44), M.Glass, 0, 0.35)
+		for _, x in ipairs({ -572, -518 }) do
+			P("Quay", V(12, 0.8, 3000), CF(x, 0.4, 0), rgb(110, 104, 96), M.Pavement)
+		end
+		for i = 0, 30 do
+			oldLamp(-579, -1400 + i * 95)
+			tree(-590, -1360 + i * 95, 1.1)
+		end
+		vehicle({ { P("Barge", V(10, 4, 60), CF(), rgb(60, 40, 30), M.Wood), CF(0, 1.5, 0) }, { P("BargeCabin", V(8, 5, 14), CF(), rgb(220, 220, 210)), CF(0, 5, 20) }, { P("BargeLight", V(7, 1, 12), CF(), WARM, M.Neon), CF(0, 5, 20.6) } }, V(-545, 0, -1400), V(-545, 0, 1400), 6, 0.75)
+		P("Footbridge", V(70, 2, 10), CF(-545, 12, -60), rgb(200, 205, 214), M.Metal)
+		for _, x in ipairs({ -575, -515 }) do
+			bar("BridgeRamp", V(x + ((x < -545) and -20 or 20), 0, -60), V(x, 12, -60), 6, rgb(190, 194, 200))
+		end
+		-- the esplanade around the stadium
+		ellBand("Esplanade", 330, 290, 36, 0.3, 0.6, 90, rgb(150, 146, 136), M.Pavement)
+		-- STANDS: concrete outer wall with concourses and the zig-zag stairways
+		local A, B, n = 250, 210, 40
+		local concrete = rgb(176, 174, 168)
+		ellBand("Stands", A, B, n, 36, 72, 12, concrete, M.Concrete)
+		for _, y in ipairs({ 18, 38, 58 }) do
+			ellBand("Concourse", A + 6.5, B + 6.5, n, y, 2.5, 1, BLACK:Lerp(WARM, 0.6), M.Neon)
+		end
+		ellRing(A + 10, B + 10, 20, function(mid, dir)
+			for k = 0, 5 do
+				local y0 = k * 12
+				local p0 = mid - dir * 8 + V(0, y0, 0)
+				local p1 = mid + dir * 8 + V(0, y0 + 12, 0)
+				if k % 2 == 1 then
+					p0, p1 = mid + dir * 8 + V(0, y0, 0), mid - dir * 8 + V(0, y0 + 12, 0)
+				end
+				bar("Stairway", p0, p1, 3, rgb(150, 150, 150), M.Concrete)
+			end
+		end)
+		-- THE FLOATING ROOF: an elliptical ring 43 m above the pitch, light underneath
+		local roofY = 92
+		ellRing((A + 30 + 150) / 2, (B + 30 + 110) / 2, 48, function(mid, dir, out, len)
+			local c = V(mid.X, roofY, mid.Z)
+			P("Roof", V(124, 5, len + 3), CFrame.lookAt(c, c + dir), rgb(206, 210, 216), M.Metal)
+			P("RoofUnder", V(118, 0.6, len + 3), CFrame.lookAt(c - V(0, 2.8, 0), c - V(0, 2.8, 0) + dir), rgb(255, 238, 210), M.Neon, 0.35)
+		end)
+		ellBand("RoofEdge", 150, 110, 40, roofY - 2, 3, 3, rgb(240, 244, 250), M.Neon)
+		-- 18 masts carry the roof with tie rods
+		for i = 0, 17 do
+			local th = i / 18 * 2 * PI
+			local base = V(math.cos(th) * (A + 40), 0, math.sin(th) * (B + 40))
+			local top = V(math.cos(th) * (A + 30), roofY + 46, math.sin(th) * (B + 30))
+			tube("Mast", base, top, 4, rgb(220, 224, 230))
+			blinker(top + V(0, 3, 0), 2)
+			for _, f in ipairs({ 0.55, 0.85 }) do
+				local rp = V(math.cos(th) * (A + 30 - 120 * f), roofY + 2, math.sin(th) * (B + 30 - 100 * f))
+				bar("TieRod", top, rp, 0.6, rgb(200, 204, 210))
+			end
+		end
+		bowlInside(150, 110, 70, rgb(40, 70, 160), color, 36)
+		-- gates, screens, crowds on the esplanade
+		for i = 0, 7 do
+			local th = PI * 0.65 + i * 0.13
+			local p = V(math.cos(th) * (A + 20), 0, math.sin(th) * (B + 20))
+			P("Gate", V(14, 10, 2), CFrame.lookAt(p + V(0, 5, 0), V(0, 5, 0)), BLACK:Lerp(WARM, 0.5), M.Neon)
+			line(p + (p.Unit * 6), p.Unit, 40, 0.5, color)
+			staff(p + p.Unit * 4 + V(4, 0.5, 0), "security")
+		end
+		mingle(-300, 60, 40, 90, 30, 0.5, color)
+		mingle(-120, 280, 90, 30, 24, 0.5, color)
+		for i = 1, 18 do
+			walker(V(-505, 1, -300 + i * 20), V(-280 + rnd(-20, 20), 1, rnd(-100, 100)), pick(SHIRTS))
+		end
+		ledScreen(CF(-330, 30, -140) * ANG(0, -PI / 2.6, 0), 46, 24, { sc.tonight, "WORLD TOUR", "SAINT-DENIS", "STADIUM OF FRANCE" }, BLACK:Lerp(color, 0.4))
+		P("ScreenPole", V(2, 30, 2), CF(-330, 15, -140), rgb(60, 60, 66), M.Metal)
+		searchlights({ { pos = V(-320, 0, 40), color = color }, { pos = V(-200, 0, 260), color = WHITE, ph = 1.5 }, { pos = V(-260, 0, -200), color = color, ph = 3 } })
+		for i = 0, 7 do
+			banner(V(-360 + i * 12, 0, -40 + i * 26), sc.tonight, color, PI / 2)
+		end
+		-- the A1 motorway in a trench to the east, the RER line, offices and the city
+		P("Motorway", V(70, 6, 3000), CF(560, -2, 0), rgb(32, 32, 36), M.Asphalt)
+		lane(V(545, 1.2, -1400), V(545, 1.2, 1400), 10, { "car", "car", "bus" }, nil, 34)
+		lane(V(575, 1.2, 1400), V(575, 1.2, -1400), 10, { "car", "car", "car" }, nil, 34)
+		for i = 0, 28 do
+			streetLamp(520, -1400 + i * 100, -PI / 2, 22)
+		end
+		P("RailBed", V(16, 1, 3000), CF(-700, 0.5, 0), rgb(70, 66, 60), M.Slate)
+		lane(V(-700, 1, 1400), V(-700, 1, -1400), 1, { "train" }, { rgb(230, 230, 236) }, 30)
+		P("Station", V(40, 18, 120), CF(-740, 9, 120), rgb(90, 96, 110), M.Glass, 0, 0.1)
+		local st = P("StationSign", V(30, 6, 0.5), CF(-719.5, 16, 120) * ANG(0, PI / 2, 0), rgb(20, 40, 120))
+		sign(st, Enum.NormalId.Front, "STADIUM OF FRANCE", WHITE, nil, 8)
+		blocks(-1500, -1300, -800, 1300, 120, 40, 110, { "glass", "white", "steel", "tan" }, {})
+		blocks(-480, -1300, 400, -420, 120, 40, 120, { "glass", "steel", "white" }, {})
+		blocks(-480, 420, 400, 1300, 120, 40, 120, { "glass", "white", "tan", "brick" }, {})
+		blocks(640, -1300, 1400, 1300, 120, 30, 140, { "glass", "white", "steel", "dark" }, {})
+		building(-1000, 500, 60, 60, 260, "dark", { force = true, setback = false, blink = true })
+		for _ = 1, 24 do
+			local a = rnd(0, 2 * PI)
+			local r = rnd(1700, 2300)
+			farTower(math.cos(a) * r, math.sin(a) * r, rnd(40, 80), rnd(40, 80), rnd(80, 260), pick({ rgb(40, 50, 70), rgb(60, 64, 76) }))
+		end
+		-- the Eiffel tower far away to the south-west, sparkling
+		local ex, ez = -1400, 1900
+		for _, sx in ipairs({ -1, 1 }) do
+			for _, sz in ipairs({ -1, 1 }) do
+				bar("EiffelLeg", V(ex + sx * 40, 0, ez + sz * 40), V(ex + sx * 8, 220, ez + sz * 8), 6, rgb(180, 130, 60))
+			end
+		end
+		bar("EiffelTop", V(ex, 220, ez), V(ex, 460, ez), 6, rgb(190, 140, 70))
+		P("EiffelDeck", V(60, 5, 60), CF(ex, 80, ez), rgb(200, 150, 80), M.Neon)
+		blinker(V(ex, 465, ez), 4)
+	end,
+}
+
+------------------------------------------------------------------ 6) BERNABEO STADIUM (Madrid)
+-- Santiago Bernabeu after the 2019-2024 rebuild: wrapped in a skin of stainless steel louvres,
+-- retractable roof, a 360 degree screen inside; on the Paseo de la Castellana.
+SCENES[6] = {
+	name = "Bernabeo Stadium",
+	city = "Madrid - Paseo de la Castellana",
+	tonight = "LUNA SOL",
+	color = rgb(255, 196, 60),
+	clock = 21,
+	haze = 1.2,
+	keys = {
+		{ t = 0, p = V(-300, 40, 1000), l = V(-300, 60, 600) },
+		{ t = 7, p = V(-292, 34, 720), l = V(-250, 60, 300) },
+		{ t = 14, p = V(-300, 42, 420), l = V(-60, 90, 100) },
+		{ t = 20, p = V(-330, 62, 170), l = V(0, 90, 0) },
+		{ t = 26, p = V(-390, 72, -160), l = V(0, 80, 0) },
+		{ t = 32, p = V(-170, 130, -360), l = V(0, 60, 0) },
+		{ t = 38, p = V(200, 270, -300), l = V(0, 60, 40) },
+		{ t = 45, p = V(380, 210, 120), l = V(0, 70, 0) },
+	},
+	build = function(sc)
+		local color = sc.color
+		slab("Ground", -1600, -1700, 1500, 1500, 0, 2, rgb(48, 46, 44), M.Concrete)
+		-- Paseo de la Castellana: two carriageways, side roads, tree medians
+		road(V(-300, 0, 1500), V(-300, 0, -1600), 70, { "car", "car", "taxi", "bus" }, 9, nil, 26, 80)
+		for _, x in ipairs({ -300, -350, -250 }) do
+			P("Median", V(8, 1, 3100), CF(x, 0.5, -50), rgb(60, 80, 50), M.Grass)
+			for i = 0, 60 do
+				tree(x, -1550 + i * 50 + rnd(-6, 6), (x == -300) and 1.3 or 1.0)
+			end
+		end
+		road(V(-260, 0, -270), V(900, 0, -270), 40, { "car", "taxi" }, 4, nil, 24, 90) -- Concha Espina
+		road(V(-260, 0, 260), V(900, 0, 260), 40, { "car", "taxi" }, 4, nil, 24, 90)
+		road(V(300, 0, -1200), V(300, 0, 1200), 36, { "car", "taxi" }, 4, nil, 22, 100)
+		-- THE STADIUM: dark core, a waving skin of steel louvres, roof with the retractable panels
+		local hw, hd, hh, rc = 210, 170, 140, 70
+		for _, sz in ipairs({ -1, 1 }) do
+			P("Core", V(hw * 2 - 20, hh - 4, 34), CF(0, (hh - 4) / 2, sz * (hd - 27)), rgb(26, 26, 32))
+			P("Core", V(34, hh - 4, hd * 2 - 20), CF(sz * (hw - 27), (hh - 4) / 2, 0), rgb(26, 26, 32))
+			for k = 0, 12 do
+				P("InnerGlow", V(hw * 2 - 18, 1.2, 1), CF(0, 8 + k * 10, sz * (hd - 10.5)), BLACK:Lerp(WARM, 0.45), M.Neon)
+				P("InnerGlow", V(1, 1.2, hd * 2 - 18), CF(sz * (hw - 10.5), 8 + k * 10, 0), BLACK:Lerp(WARM, 0.45), M.Neon)
+			end
+		end
+		-- rounded-rectangle outline for the louvres
+		local outline = {}
+		local function arc(cx, cz, a0)
+			for k = 0, 4 do
+				local a = a0 + k * PI / 8
+				table.insert(outline, V(cx + math.cos(a) * rc, 0, cz + math.sin(a) * rc))
+			end
+		end
+		arc(hw - rc, hd - rc, 0)
+		arc(-hw + rc, hd - rc, PI / 2)
+		arc(-hw + rc, -hd + rc, PI)
+		arc(hw - rc, -hd + rc, PI * 1.5)
+		local steel = rgb(186, 190, 198)
+		for lvl = 0, 11 do
+			local y = 6 + lvl * 11.5
+			for i = 1, #outline do
+				local a, b = outline[i], outline[i % #outline + 1]
+				local dir = b - a
+				local len = dir.Magnitude
+				local segs = math.max(1, math.floor(len / 34))
+				for s = 0, segs - 1 do
+					local p0 = a + dir * (s / segs)
+					local p1 = a + dir * ((s + 1) / segs)
+					local mid = (p0 + p1) / 2
+					local out = V(dir.Unit.Z, 0, -dir.Unit.X)
+					local wave = math.sin(mid.X * 0.02 + mid.Z * 0.017 + lvl * 0.9) * 3
+					local c = mid + out * (6 + wave) + V(0, y, 0)
+					P("Louvre", V(1.2, 7, len / segs + 1), CFrame.lookAt(c, c + dir) * ANG(0, 0, 0.35), steel, M.Metal, 0, 0.15)
+				end
+			end
+		end
+		-- roof ring around the opening; the retractable panels are parked at the west end tonight
+		local ox, oz = hw * 0.78, hd * 0.78
+		for _, sg in ipairs({ -1, 1 }) do
+			P("RoofRing", V(hw * 2 + 10, 4, hd + 5 - oz), CF(0, hh, sg * (oz + (hd + 5 - oz) / 2)), rgb(200, 204, 210), M.Metal)
+			P("RoofRing", V(hw + 5 - ox, 4, oz * 2), CF(sg * (ox + (hw + 5 - ox) / 2), hh, 0), rgb(200, 204, 210), M.Metal)
+			P("RoofOpeningRim", V(ox * 2, 1.2, 1.2), CF(0, hh + 2.2, sg * oz), rgb(255, 230, 190), M.Neon)
+			P("RoofOpeningRim", V(1.2, 1.2, oz * 2), CF(sg * ox, hh + 2.2, 0), rgb(255, 230, 190), M.Neon)
+		end
+		P("RoofPanels", V(hw * 0.45, 2, oz * 2), CF(-ox + hw * 0.22, hh + 3, 0), rgb(220, 224, 230), M.Metal)
+		bowlInside(hw * 0.75, hd * 0.75, 110, rgb(240, 240, 245), color, 32)
+		-- 360 degree screen ring inside under the roof
+		ellBand("Screen360", hw * 0.78, hd * 0.78, 32, hh - 16, 12, 2, color, M.Neon)
+		local logo = P("StadiumSign", V(0.5, 16, 120), CF(-hw - 8, hh - 20, 0), BLACK)
+		sign(logo, Enum.NormalId.Left, "BERNABEO", color, nil, 6)
+		-- corner towers with the ramps
+		for _, c in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do
+			cylV("CornerTower", 120, 40, V(c[1] * (hw - 10), 60, c[2] * (hd - 10)), rgb(150, 150, 156), M.Concrete)
+			for k = 0, 9 do
+				P("Ramp", V(44, 1.4, 4), CF(c[1] * (hw - 10), 8 + k * 11, c[2] * (hd - 10)) * ANG(0, k * 0.6, 0.12), rgb(120, 120, 126), M.Concrete)
+			end
+		end
+		-- plazas full of fans, metro entrance, kiosks
+		mingle(-hw - 50, 0, 20, 140, 40, 0.5, color)
+		mingle(0, hd + 45, 150, 16, 30, 0.5, color)
+		mingle(0, -hd - 45, 150, 16, 30, 0.5, color)
+		for i = -4, 4 do
+			line(V(-hw - 14, 0, i * 30), V(-1, 0, 0), 26, 0.5, color)
+			staff(V(-hw - 10, 0.5, i * 30 + 4), "security")
+		end
+		local metro = P("MetroSign", V(1, 8, 8), CF(-262, 14, 120) * ANG(0, 0, PI / 4), rgb(220, 30, 40), M.Neon)
+		local _ = metro
+		P("MetroPole", V(0.6, 10, 0.6), CF(-262, 5, 120), rgb(60, 60, 66), M.Metal)
+		P("MetroStairs", V(14, 1, 26), CF(-252, 0.6, 140), rgb(40, 40, 44))
+		for i = 1, 20 do
+			walker(V(-270, 1, 600 - i * 26), V(-hw - 30, 1, rnd(-120, 120)), pick(SHIRTS))
+		end
+		ledScreen(CF(-hw - 30, 40, -120) * ANG(0, -PI / 2, 0), 50, 26, { sc.tonight, "WORLD TOUR", "MADRID", "BERNABEO STADIUM" }, BLACK:Lerp(color, 0.35))
+		P("ScreenPole", V(2, 40, 2), CF(-hw - 30, 20, -120), rgb(60, 60, 66), M.Metal)
+		searchlights({ { pos = V(-hw - 20, 0, 160), color = color }, { pos = V(hw + 20, 0, -160), color = WHITE, ph = 2 } })
+		for i = 0, 9 do
+			banner(V(-hw - 60, 0, -180 + i * 40), sc.tonight, color, -PI / 2)
+		end
+		-- Madrid blocks around, the business towers on the Castellana
+		blocks(-1500, -1600, -420, 1400, 100, 40, 90, { "tan", "white", "brick", "tan" }, {})
+		blocks(-200, 360, 1400, 1400, 100, 40, 90, { "tan", "white", "brick" }, { { -220, 300, 0, 600 } })
+		blocks(-200, -1500, 1400, -360, 100, 40, 90, { "tan", "white", "brick", "glass" }, {})
+		blocks(380, -320, 1400, 320, 100, 40, 80, { "tan", "white" }, {})
+		-- a white office tower with vertical ribs (south), four skyscrapers far north
+		building(-160, 820, 60, 50, 300, "white", { force = true, setback = false, blink = true })
+		for k = -3, 3 do
+			P("Rib", V(1.5, 300, 52), CF(-160 + k * 8, 150, 820), rgb(230, 230, 232), M.Concrete)
+		end
+		for i, h in ipairs({ 500, 470, 520, 440 }) do
+			local x, z = -420 + (i % 2) * 230, -1500 - i * 70
+			farTower(x, z, 60, 60, h, rgb(40, 50, 70))
+			if i == 1 then
+				P("TowerArch", V(70, 50, 8), CF(x, h + 20, z), rgb(200, 205, 214), M.Metal)
+			end
+		end
+		for _ = 1, 26 do
+			local a = rnd(0, 2 * PI)
+			local r = rnd(1700, 2300)
+			farTower(math.cos(a) * r, math.sin(a) * r, rnd(40, 80), rnd(40, 80), rnd(60, 200), pick({ rgb(60, 56, 50), rgb(60, 64, 76) }))
+		end
+	end,
+}
+
+------------------------------------------------------------------ 7) WEMBLEE STADIUM (London)
+-- Wembley: 90,000 seats, the arch is 133 m high and spans 315 m; fans walk up Wembley Way from the station.
+SCENES[7] = {
+	name = "Wemblee Stadium",
+	city = "London - Wembley Park",
+	tonight = "JUNO PARK",
+	color = rgb(200, 60, 255),
+	clock = 20.6,
+	haze = 1.7,
+	keys = {
+		{ t = 0, p = V(0, 40, -1060), l = V(0, 120, -300) },
+		{ t = 7, p = V(10, 28, -860), l = V(0, 120, -200) },
+		{ t = 14, p = V(-20, 22, -640), l = V(0, 110, -100) },
+		{ t = 20, p = V(30, 34, -470), l = V(0, 150, 0) },
+		{ t = 26, p = V(-130, 96, -390), l = V(0, 200, 0) },
+		{ t = 32, p = V(-380, 240, -120), l = V(0, 140, 0) },
+		{ t = 38, p = V(-300, 340, 260), l = V(0, 60, 0) },
+		{ t = 45, p = V(220, 300, 380), l = V(0, 80, -40) },
+	},
+	build = function(sc)
+		local color = sc.color
+		slab("Ground", -1700, -1600, 1700, 1500, 0, 2, rgb(44, 46, 50), M.Concrete)
+		local A, B, n = 300, 250, 44
+		-- the bowl: grey cladding, glazed concourse bands, roof ring
+		ellBand("Bowl", A, B, n, 50, 100, 14, rgb(170, 174, 182), M.Metal)
+		for _, y in ipairs({ 16, 40, 66 }) do
+			ellBand("Glazing", A + 7.5, B + 7.5, n, y, 7, 1, rgb(40, 50, 70), M.Glass)
+			ellBand("ConcourseLight", A + 8, B + 8, n, y - 2.5, 1.2, 0.8, BLACK:Lerp(WARM, 0.7), M.Neon)
+		end
+		ellRing((A + 160) / 2, (B + 130) / 2, 52, function(mid, dir, out, len)
+			local c = V(mid.X, 108, mid.Z)
+			P("Roof", V(132, 4, len + 3), CFrame.lookAt(c, c + dir) * ANG(0, 0, 0.06), rgb(214, 218, 224), M.Metal)
+		end)
+		ellBand("RoofEdgeLight", 160, 130, 44, 104, 2, 2, rgb(255, 240, 220), M.Neon)
+		bowlInside(160, 130, 80, rgb(200, 30, 40), color, 36)
+		-- THE ARCH: 133 m (266 studs) high, 315 m (630 studs) span, leaning north over the stadium
+		local seg = 40
+		local prev = nil
+		local lean = CFrame.Angles(math.rad(-22), 0, 0)
+		for i = 0, seg do
+			local u = i / seg
+			local x = -315 + u * 630
+			local h = 266 * (1 - (x / 315) ^ 2)
+			local p = (CF(0, 0, -60) * lean * CF(x, h, 0)).Position
+			if prev then
+				local a = tube("Arch", prev, p, 9, rgb(240, 242, 246))
+				local _ = a
+			end
+			if i > 2 and i < seg - 2 and i % 3 == 0 then
+				local q = V(p.X * 0.92, 108, math.clamp(p.Z, -B * 0.6, B * 0.6))
+				bar("ArchCable", p, q, 0.6, rgb(210, 210, 216))
+			end
+			prev = p
+		end
+		for _, x in ipairs({ -315, 315 }) do
+			P("ArchFoot", V(30, 10, 30), CF(x, 5, -60), rgb(150, 150, 156), M.Concrete)
+		end
+		local top = (CF(0, 0, -60) * lean * CF(0, 266, 0)).Position
+		blinker(top + V(0, 6, 0), 4)
+		-- the arch lit in the artist colour
+		P("ArchGlow", V(8, 8, 8), CF(top), color, M.Neon)
+		local logo = P("StadiumSign", V(150, 18, 1), CF(0, 84, -B - 16), BLACK)
+		sign(logo, Enum.NormalId.Front, "WEMBLEE STADIUM", WHITE, nil, 6)
+		-- WEMBLEE WAY: the long walk from the station, full of fans
+		local wz0, wz1 = -280, -1050
+		P("WembleeWay", V(80, 1, wz0 - wz1), CF(0, 0.5, (wz0 + wz1) / 2), rgb(120, 116, 110), M.Pavement)
+		P("Steps", V(160, 10, 40), CF(0, 5, -275), rgb(130, 126, 120), M.Concrete)
+		for i = 0, 20 do
+			local z = wz1 + i * 38
+			for _, x in ipairs({ -44, 44 }) do
+				streetLamp(x, z, (x < 0) and -PI / 2 or PI / 2, 20)
+			end
+			if i % 2 == 0 then
+				banner(V(-36, 0, z), sc.tonight, color, PI / 2)
+				banner(V(36, 0, z + 19), "WEMBLEE", rgb(30, 60, 160), -PI / 2)
+			end
+		end
+		for i = 0, 30 do
+			line(V(rnd(-30, 30), 0, wz1 + 20 + i * 24), V(0, 0, 1), 16, 1, color)
+		end
+		mingle(0, -560, 30, 200, 50, 1, color)
+		for i = 1, 30 do
+			walker(V(rnd(-30, 30), 1.2, wz1 + 20), V(rnd(-30, 30), 1.2, wz0 - 30), pick(SHIRTS))
+		end
+		for i = 0, 5 do
+			hotdogCart(V((i % 2 == 0) and -34 or 34, 1, -400 - i * 110), (i % 2 == 0) and PI / 2 or -PI / 2)
+		end
+		-- statue at the top of the steps
+		P("Plinth", V(10, 10, 10), CF(0, 15, -300), rgb(120, 116, 110), M.Granite)
+		P("Statue", V(5, 14, 3), CF(0, 27, -300), rgb(80, 70, 60), M.Metal)
+		ball("StatueHead", 3.2, V(0, 35.6, -300), rgb(80, 70, 60), M.Metal)
+		-- the station with the footbridge and a train
+		P("Station", V(220, 22, 40), CF(0, 11, -1100), rgb(100, 106, 120), M.Glass, 0, 0.12)
+		local st = P("StationSign", V(60, 8, 0.5), CF(0, 26, -1079.5), rgb(20, 40, 140))
+		sign(st, Enum.NormalId.Back, "WEMBLEE PARK", WHITE, nil, 8)
+		P("RailBed", V(3000, 1, 30), CF(0, 0.5, -1150), rgb(70, 66, 60), M.Slate)
+		lane(V(-1500, 1, -1144), V(1500, 1, -1144), 2, { "train" }, { rgb(200, 200, 210) }, 34)
+		lane(V(1500, 1, -1156), V(-1500, 1, -1156), 2, { "train" }, { rgb(200, 200, 210) }, 34)
+		-- arena next door, outlet, new flats along the way, red buses
+		P("Arena", V(180, 50, 120), CF(260, 25, -620), rgb(70, 74, 90), M.Glass, 0, 0.1)
+		local ar = P("ArenaSign", V(0.5, 12, 100), CF(169.5, 40, -620), BLACK)
+		sign(ar, Enum.NormalId.Left, "WEMBLEE ARENA", color, nil, 6)
+		P("Outlet", V(160, 30, 140), CF(-280, 15, -560), rgb(140, 120, 100), M.Brick)
+		blocks(-900, -1050, -160, -700, 90, 60, 160, { "brick", "glass", "white", "tan" }, {})
+		blocks(150, -1050, 900, -720, 90, 60, 160, { "brick", "glass", "white" }, {})
+		blocks(-1400, -500, -420, 900, 110, 30, 100, { "brick", "tan", "white" }, {})
+		blocks(420, -500, 1400, 900, 110, 30, 100, { "brick", "tan", "white", "glass" }, {})
+		blocks(-900, 400, 900, 1300, 110, 30, 80, { "brick", "tan", "white" }, { { -340, 300, 340, 400 } })
+		road(V(-1500, 0, -1210), V(1500, 0, -1210), 40, { "dd", "car", "cab" }, 5, nil, 24, 90)
+		road(V(-420, 0, -1200), V(-420, 0, 1200), 36, { "dd", "car", "cab" }, 4, nil, 22, 100)
+		searchlights({ { pos = V(-120, 0, -300), color = color }, { pos = V(120, 0, -300), color = WHITE, ph = 1.6 }, { pos = V(0, 0, -340), color = color, ph = 3.2 } })
+		ledScreen(CF(70, 34, -340), 44, 24, { sc.tonight, "TONIGHT", "WEMBLEE STADIUM", "LONDON" }, BLACK:Lerp(color, 0.4), Enum.NormalId.Back)
+		P("ScreenPole", V(2, 34, 2), CF(70, 17, -340), rgb(60, 60, 66), M.Metal)
+		for _ = 1, 24 do
+			local a = rnd(0, 2 * PI)
+			local r = rnd(1700, 2300)
+			farTower(math.cos(a) * r, math.sin(a) * r, rnd(40, 80), rnd(40, 80), rnd(60, 220), pick({ rgb(40, 50, 70), rgb(60, 64, 76) }))
+		end
+	end,
+}
+
 ------------------------------------------------------------------ control
 local conn = nil
 local effects = {}
@@ -1603,6 +2260,7 @@ end
 function MenuScene.start(onScene)
 	MenuScene.stop()
 	local index = 0
+	local bag = {}
 	local t, sceneT = 0, 0
 	local scene = nil
 	local duration = 40
@@ -1610,7 +2268,25 @@ function MenuScene.start(onScene)
 		if folder then
 			folder:Destroy()
 		end
-		index = index % #SCENES + 1
+		-- random order: every venue once per round, never the same one twice in a row
+		if #bag == 0 then
+			for i = 1, #SCENES do
+				table.insert(bag, i)
+			end
+			for i = #bag, 2, -1 do
+				local j = math.random(1, i)
+				bag[i], bag[j] = bag[j], bag[i]
+			end
+			if bag[#bag] == index and #bag > 1 then
+				bag[1], bag[#bag] = bag[#bag], bag[1]
+			end
+		end
+		index = table.remove(bag)
+		if MenuScene.forceOrder then
+			index = MenuScene.forceOrder[1]
+			table.remove(MenuScene.forceOrder, 1)
+		end
+		MenuScene.index = index
 		scene = SCENES[index]
 		setLighting(scene)
 		reset(index * 97)
@@ -1671,8 +2347,9 @@ function MenuScene.start(onScene)
 		for i, f in ipairs(crowd) do
 			if i % 2 == half then
 				local j = f.calm and (math.sin(t * 1.6 + f.ph) * 0.08) or (math.max(0, math.sin(t * 6 + f.ph)) * 0.6)
-				f.body.CFrame = CF(f.base + V(0, 1.4 + j, 0))
-				f.head.CFrame = CF(f.base + V(0, 3.45 + j, 0))
+				for k, part in ipairs(f.parts) do
+					part.CFrame = CF(f.base + V(0, f.offs[k] + j, 0))
+				end
 			end
 		end
 		-- searchlights sweep, aircraft lights blink, LED screens cycle

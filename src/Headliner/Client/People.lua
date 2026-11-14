@@ -141,8 +141,24 @@ function People.new(parent, outfit, scale, role, seed, look)
 	if self.role == "lead" then
 		self.prop = mk(model, "Mic", Vector3.new(0.25, 0.9, 0.25) * s, Color3.fromRGB(20, 20, 20), Enum.Material.Metal)
 	elseif self.role == "guitar" or self.role == "bass" then
-		local c = self.role == "guitar" and Color3.fromRGB(200, 40, 40) or Color3.fromRGB(240, 240, 240)
-		self.prop = mk(model, "Guitar", Vector3.new(2.6, 0.9, 0.25) * s, c)
+		-- rounded electric guitar / bass: body bouts (ellipsoids), pickguard, neck, headstock
+		local bass = self.role == "bass"
+		local c = bass and Color3.fromRGB(240, 240, 240) or Color3.fromRGB(200, 40, 40)
+		local function oval(name, size, color, material)
+			local p = mk(model, name, size * s, color, material or Enum.Material.Glass)
+			New("SpecialMesh", { MeshType = Enum.MeshType.Sphere, Parent = p })
+			return p
+		end
+		self.prop = oval("Guitar", Vector3.new(1.25, 1.05, 0.3), c)
+		local neckLen = bass and 2.4 or 1.9
+		self.propParts = {
+			{ oval("GuitarUpper", Vector3.new(0.95, 0.8, 0.3), c), CFrame.new(0, 0.62 * s, 0) },
+			{ oval("GuitarHorn", Vector3.new(0.3, 0.6, 0.28), c), CFrame.new(-0.32 * s, 0.95 * s, 0) * CFrame.Angles(0, 0, 0.25) },
+			{ oval("Pickguard", Vector3.new(0.6, 0.9, 0.04), Color3.fromRGB(20, 20, 22), Enum.Material.SmoothPlastic), CFrame.new(0.15 * s, 0.1 * s, 0.15 * s) },
+			{ mk(model, "Neck", Vector3.new(0.2, neckLen, 0.12) * s, Color3.fromRGB(90, 60, 36), Enum.Material.Wood), CFrame.new(0, (1 + neckLen / 2) * s, 0.04 * s) },
+			{ mk(model, "Headstock", Vector3.new(0.3, 0.5, 0.08) * s, Color3.fromRGB(30, 30, 32)), CFrame.new(0.04 * s, (1.25 + neckLen) * s, 0.02 * s) * CFrame.Angles(0, 0, -0.12) },
+			{ mk(model, "Pickup", Vector3.new(0.45, 0.12, 0.05) * s, Color3.fromRGB(230, 230, 235), Enum.Material.Metal), CFrame.new(0, -0.2 * s, 0.17 * s) },
+		}
 	end
 	self.pos = Vector3.new()
 	self.yaw = 0
@@ -176,8 +192,9 @@ function People.preview(parent, look, color, pos, size, bg)
 		LightColor = Color3.new(1, 1, 1),
 		LightDirection = Vector3.new(-0.6, -1, -0.8),
 	})
-	local fig = People.new(vp, color, 1, "lead", 3, look)
-	fig:update(Vector3.new(0, 0, 0), math.rad(-18), { t = 0.6, beat = 0.3, energy = 0.3, walking = false, move = "idle" })
+	-- a calm portrait: arms down, no microphone in front of the face
+	local fig = People.new(vp, color, 1, "dancer", 3, look)
+	fig:update(Vector3.new(0, 0, 0), math.rad(-18), { t = 0, beat = 0, energy = 0, walking = false, move = "idle" })
 	local cam = New("Camera", { FieldOfView = 30, Parent = vp })
 	cam.CFrame = CFrame.lookAt(Vector3.new(0, 4.6, 11.5), Vector3.new(0, 3.1, 0))
 	vp.CurrentCamera = cam
@@ -303,7 +320,13 @@ function People:update(pos, yaw, opts)
 				self.prop.CFrame = self.armR.CFrame * CFrame.new(0, -1.2 * s, 0)
 			end
 		else
-			self.prop.CFrame = hip * CFrame.new(0.2 * s, 0.6 * s, 0.75 * s) * CFrame.Angles(0, 0, math.rad(25))
+			-- the neck points up to the player's fretting hand
+			self.prop.CFrame = hip * CFrame.new(-0.15 * s, 0.55 * s, 0.75 * s) * CFrame.Angles(0, 0, math.rad(25) - math.pi / 2)
+		end
+		if self.propParts then
+			for _, pp in ipairs(self.propParts) do
+				pp[1].CFrame = self.prop.CFrame * pp[2]
+			end
 		end
 	end
 	self.pos = pos

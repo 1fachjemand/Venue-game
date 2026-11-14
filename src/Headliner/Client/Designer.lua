@@ -593,7 +593,7 @@ function Designer.open(app, designId)
 		UI.ClearChildren(cardRow)
 		local n = 0
 		for _, def in ipairs(StageItems.list) do
-			if def.cat == currentCat then
+			if def.cat == currentCat and not def.hidden then
 				n = n + 1
 				local isSel = placeDef == def and (mode == "place" or mode == "pending")
 				local b = UI.Button(cardRow, "", nil, UI.px(150, 148), { order = def.order, color = isSel and T.accent or T.panel3 }, function()
@@ -817,12 +817,15 @@ function Designer.open(app, designId)
 				end)
 			end
 		end
-		if def.id == "lift" or def.id == "piano" or def.id == "drums" or def.id == "djbooth" or def.id == "keys" then
-			local isLift = def.id == "lift"
-			nextOrder(section(isLift and "ARTIST COMES UP HERE IN SONG" or "ARTIST PLAYS THIS IN SONG"))
+		if GS.PLAY_ITEMS[def.id] then
+			local isLift = def.id == "lift" or def.id == "poplift"
+			local isTower = def.id == "towerlift"
+			nextOrder(section(isTower and "LIFTS THE ARTIST UP IN SONG" or (isLift and "ARTIST COMES UP HERE IN SONG" or "ARTIST PLAYS THIS IN SONG")))
 			local cur = rec.play
 			if isLift then
 				cur = cur or 1
+			elseif isTower and cur == nil then
+				cur = GS.songPlan(withPending()).songOf[rec]
 			end
 			stepper("Song", cur and tostring(cur) or "Off", function()
 				if not cur then
@@ -830,7 +833,7 @@ function Designer.open(app, designId)
 				end
 				local n = cur - 1
 				if n < 1 then
-					applyChange({ play = isLift and 1 or false })
+					applyChange({ play = (isLift or isTower) and 1 or false })
 				else
 					applyChange({ play = n })
 				end

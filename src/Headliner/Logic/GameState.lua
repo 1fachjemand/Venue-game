@@ -203,7 +203,9 @@ function GS.addDesignFromTemplate(state, preset, name)
 end
 
 -- Places where the artist performs a song: artist spots, lifts and instruments the artist plays.
-GS.PLAY_ITEMS = { lift = true, piano = true, keys = true, drums = true, djbooth = true }
+GS.PLAY_ITEMS = { lift = true, poplift = true, towerlift = true, piano = true, keys = true, drums = true, djbooth = true }
+-- lifts: the artist comes up out of the stage (lift, pop-up) or is lifted high into the air (tower)
+GS.LIFT_ITEMS = { lift = true, poplift = true, towerlift = true }
 
 -- The setlist of a design. Lifts and instruments keep the song number set in the builder,
 -- artist spots take the free song numbers in the order they were placed.
@@ -214,7 +216,7 @@ function GS.songPlan(design, extraSpot)
 	for _, it in ipairs(items) do
 		if GS.PLAY_ITEMS[it.t] then
 			local n = it.play
-			if it.t == "lift" and n == nil then
+			if (it.t == "lift" or it.t == "poplift") and n == nil then
 				n = 1
 			end
 			if type(n) == "number" and n >= 1 then
@@ -232,7 +234,8 @@ function GS.songPlan(design, extraSpot)
 		songOf[it] = n
 	end
 	for _, it in ipairs(items) do
-		if it.t == "spot" then
+		-- a tower lift without a fixed song takes the next free song like a spot
+		if it.t == "spot" or (it.t == "towerlift" and it.play == nil) then
 			addSpot(it)
 		end
 	end

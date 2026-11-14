@@ -102,6 +102,7 @@ Countries.list = {
 			{ id = "de_veltinz", name = "Veltinz Arena", city = "Gelsenkirchen", type = "Stadium", cap = 62271 }, -- Veltins-Arena
 			{ id = "de_allianz", name = "Allianz Arina", city = "Munich", type = "Stadium", cap = 75024 }, -- Allianz Arena
 			{ id = "de_idunno", name = "Signal Idunno Park", city = "Dortmund", type = "Stadium", cap = 81365 }, -- Signal Iduna Park
+			{ id = "de_bonkpark", name = "Deutsche Bonk Park", city = "Frankfurt", type = "Stadium", cap = 55000 }, -- Deutsche Bank Park (concerts 44,000-60,000)
 		},
 	},
 	{

@@ -1,4 +1,4 @@
--- Exports the 3 main-menu scenes (parts + 8 camera positions) as JSON for tools/render3d/view.html
+-- Exports the 7 main-menu scenes (parts + 8 camera positions) as JSON for tools/render3d/view.html
 math.randomseed(7)
 local RS = game:GetService("ReplicatedStorage")
 local root = MOCK.buildTree(RS, TREE)
@@ -8,6 +8,9 @@ rawset(main, "__path", MAIN_PATH)
 MOCK.runScript(main)
 MOCK.runTasks()
 local OUT = OUT_DIR .. "/"
+local MenuScene = require(root.Client.MenuScene)
+MenuScene.forceOrder = { 1, 2, 3, 4, 5, 6, 7, 1 }
+MenuScene.start()
 local function num(x) return string.format("%.2f", x) end
 local function cfs(c)
 	local r = c._r
@@ -38,7 +41,7 @@ local function export(k)
 	WRITEFILE(OUT .. "scene" .. k .. ".json", '{"parts":[' .. table.concat(items, ",") .. '],"cams":[' .. table.concat(cams, ",") .. ']}')
 	print("exported", k, #items)
 end
-for k = 1, 3 do
+for k = 1, 7 do
 	export(k)
 	-- finish this scene
 	while workspace.MenuScene:FindFirstChild("Ground") == nil or true do

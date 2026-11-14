@@ -177,7 +177,7 @@ local i = 0
 for _, cat in ipairs(StageItems.CATEGORIES) do
 	MOCK.clickExact(cat.name)
 	for _, def in ipairs(StageItems.list) do
-		if def.cat == cat.id then
+		if def.cat == cat.id and not def.hidden then
 			i = i + 1
 			MOCK.clickExact(def.name)
 			MOCK.mouse = Vector2.new(700 + (i % 12) * 45, 420 + math.floor(i / 12) * 6)
@@ -193,7 +193,9 @@ for _, cat in ipairs(StageItems.CATEGORIES) do
 	end
 end
 log("designer items", before, "->", #design.items, "money spent", 5000000 - app.state.money)
-assert(#design.items == before + #StageItems.list, "not every item was placed")
+local visible = 0
+for _, def in ipairs(StageItems.list) do if not def.hidden then visible = visible + 1 end end
+assert(#design.items == before + visible, "not every item was placed")
 -- cancel placing, select a deck and edit it
 key(Enum.KeyCode.F)
 local deck = nil
@@ -276,7 +278,7 @@ for k = 1, 5 do
 	MOCK.click("PLACE", 1)
 end
 log("songs in this design", GS.songCount(design))
-assert(GS.songCount(design) == 7, "lift = song 1, 6 spots = songs 2-7")
+assert(GS.songCount(design) == 8, "lift + pop-up = song 1, 6 spots + tower lift = songs 2-8")
 key(Enum.KeyCode.F)
 -- camera controls
 UIS.InputBegan:Fire(MOCK.input(Enum.UserInputType.MouseButton2), false)
@@ -313,12 +315,17 @@ local ns = 0
 for _ in pairs(songsSeen) do ns = ns + 1 end
 log("preview finished after frames", pf, "mode", app.mode, "songs shown", ns, "parts in live screens", liveParts)
 assert(app.mode == "designer", "did not return to designer")
-assert(ns == 7, "setlist should have 7 songs")
+assert(ns == 8, "setlist should have 8 songs")
 assert(liveParts > 200, "live screens should show a 3D picture (crowd)")
 local LiveShow = require(root.Client.LiveShow)
 local kinds = {}
 for _, w in ipairs(LiveShow.lastWalks) do kinds[#kinds + 1] = w.kind assert(w.kind ~= "hidden", "the artist must walk, not vanish") end
 log("walks", table.concat(kinds, ","))
+local towerWalk = false
+for _, w in ipairs(LiveShow.lastWalks) do if w.tower then towerWalk = true end end
+assert(towerWalk, "the tower lift must get its own song")
+local barriers = 0
+for _, d in ipairs(workspace:GetDescendants()) do if d.Name == "Barrier" then barriers = barriers + 1 end end
 -- back to the library: copy and delete
 MOCK.clickExact("◀  MY STAGES")
 local leftover = 0
@@ -334,8 +341,10 @@ MOCK.clickExact("Delete", #app.state.designs)
 MOCK.clickExact("Yes")
 log("designs after delete", #app.state.designs)
 -- buy every tour template and preview it
-for _, tpl in ipairs({ { "ARENA", "CENTER STAGE", "The Cube" }, { "ARENA", "END STAGE", "Portal Ring" }, { "STADIUM", "END STAGE", "Runway & Moon" } }) do
+for _, tpl in ipairs({ { "ARENA", "CENTER STAGE", "The Cube" }, { "ARENA", "END STAGE", "Portal Ring" }, { "STADIUM", "END STAGE", "Runway & Moon" }, { "STADIUM", "END STAGE", "Stadium Tour" } }) do
 	app.state.money = 5000000
+	while #app.state.designs >= 7 do GS.deleteDesign(app.state, app.state.designs[#app.state.designs].id) end
+	app:refreshCurrent()
 	if #app.state.designs >= 8 then GS.deleteDesign(app.state, app.state.designs[#app.state.designs].id) app:refreshCurrent() end
 	MOCK.clickExact("+  NEW STAGE")
 	MOCK.clickExact(tpl[1])
@@ -350,6 +359,11 @@ for _, tpl in ipairs({ { "ARENA", "CENTER STAGE", "The Cube" }, { "ARENA", "END 
 	local f = 0
 	while app.mode == "live" and f < 9000 do MOCK.step(1 / 30) f = f + 1 end
 	assert(app.mode == "designer", "template preview did not end")
+	if tpl[3] == "Stadium Tour" then
+		local tw = false
+		for _, w in ipairs(LiveShow.lastWalks) do if w.tower then tw = true end end
+		assert(tw, "stadium template: the tower lift gets a song")
+	end
 	MOCK.clickExact("DONE")
 end
 log("designs now", #app.state.designs)

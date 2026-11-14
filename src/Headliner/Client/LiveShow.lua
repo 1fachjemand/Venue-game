@@ -173,10 +173,11 @@ function LiveShow.run(app, opts)
 
 	-- find special items
 	local lift, booth, drums
+	local riseY
 	local pits, spots, liftAt = {}, {}, {}
 	for _, r in ipairs(items) do
 		Builder.hideMarker(r)
-		if r.kind == "lift" then
+		if GS.LIFT_ITEMS[r.kind] then
 			local n = (r.rec and plan.songOf[r.rec]) or 1
 			if not liftAt[n] then
 				liftAt[n] = r
@@ -187,6 +188,9 @@ function LiveShow.run(app, opts)
 			drums = r
 		elseif r.kind == "pit" then
 			table.insert(pits, { cf = r.cf, w = r.pitW, d = r.pitD })
+		elseif r.kind == "delaytower" or r.kind == "towerlift" then
+			-- nobody stands inside a tower in the crowd
+			table.insert(pits, { cf = r.cf, w = (r.kind == "delaytower") and 10 or 14, d = (r.kind == "delaytower") and 10 or 14, solid = true })
 		elseif r.kind == "spot" then
 			table.insert(spots, r)
 		end
@@ -222,16 +226,24 @@ function LiveShow.run(app, opts)
 	end
 	lift = liftAt[1] -- the entrance lift
 	local function liftTop(r)
-		return r.cf.Position + Vector3.new(0, 0.4, 0)
+		return r.cf.Position + Vector3.new(0, r.topY or 0.4, 0)
+	end
+	-- how long a lift needs to bring the artist up (the pop-up lift is a catapult)
+	local function liftDur(r)
+		return (r and r.kind == "poplift") and 1.1 or 3
 	end
 	local home = (lift and liftTop(lift)) or spotPos(1) or onSurface(deckCenter)
+	if lift and lift.kind == "towerlift" then
+		lift = nil -- the show starts on the tower; it rises during song 1
+	end
 	if ad.genre == "EDM" and ad.members == 1 and booth then
 		leadRole = "dj"
 		home = (booth.cf * CFrame.new(0, 0, -3.2)).Position
 		lift = nil -- a DJ stays at the booth
 	end
 	local start = lift and (lift.cf.Position + Vector3.new(0, 0.4, 0)) or home
-	local liftUp0 = segments[1].t1 - 3 -- the lift rises at the end of the intro
+	local upDur = liftDur(lift)
+	local liftUp0 = segments[1].t1 - upDur -- the lift rises at the end of the intro
 	-- one walk per song: to the spot that belongs to that song
 	-- props the artist plays (set in the designer): piano / drums / DJ booth at a spot number
 	local playProps = {}
@@ -358,7 +370,7 @@ function LiveShow.run(app, opts)
 		if seg.song then
 			-- the place that belongs to this song (a song without a place: the artist stays where they are)
 			local spotIdx = seg.song
-			local w = { seg.t0, nil, spot = spotIdx }
+			local w = { seg.t0, nil, spot = spotIdx, t1 = seg.t1 }
 			local play = playProps[spotIdx]
 			local lf = liftAt[spotIdx]
 			if play then
@@ -368,8 +380,11 @@ function LiveShow.run(app, opts)
 			else
 				w[2] = spotPos(spotIdx) or cur
 			end
-			if lf and not play and lf ~= lift then
-				w.kind, w.lift, w.dur = "lift", lf, 3 -- disappear, come up on this lift
+			if lf and lf.kind == "towerlift" then
+				w.tower = lf
+			end
+			if lf and not play and lf ~= lift and lf.kind ~= "towerlift" then
+				w.kind, w.lift, w.dur = "lift", lf, liftDur(lf) -- disappear, come up on this lift
 			elseif (w[2] - cur).Magnitude < 1 then
 				w.kind, w.dur = "stay", 0
 			else
@@ -419,14 +434,27 @@ function LiveShow.run(app, opts)
 		end
 		return math.sin(t * 0.5) * 0.4
 	end
+	-- height of the artist below/above the deck while a lift brings them up (t0 = start of the rise)
+	function riseY(r, t0, t)
+		local d = liftDur(r)
+		local u = math.clamp((t - t0) / d, 0, 1)
+		if r and r.kind == "poplift" then
+			-- shot up: through the hatch in 40 % of the time, then a jump and landing
+			if u < 0.4 then
+				return -LIFT_DEPTH + (LIFT_DEPTH + 7) * (u / 0.4)
+			end
+			local v = (u - 0.4) / 0.6
+			return 7 * (1 - v * v)
+		end
+		return (smooth(t0, t0 + d, t) - 1) * LIFT_DEPTH
+	end
 	-- returns position, yaw, walking, hidden
 	local function leadState(t)
 		if leadRole == "dj" then
 			return home, centerStage and idleYaw(t) or 0, false, false
 		end
-		if lift and t < liftUp0 + 3 then
-			local k = smooth(liftUp0, liftUp0 + 3, t)
-			return start + Vector3.new(0, (k - 1) * LIFT_DEPTH, 0), 0, false, t < liftUp0
+		if lift and t < liftUp0 + upDur then
+			return start + Vector3.new(0, riseY(lift, liftUp0, t), 0), 0, false, t < liftUp0
 		end
 		local pos = start
 		curWalk = nil
@@ -442,8 +470,7 @@ function LiveShow.run(app, opts)
 					if t < w[1] then
 						return pos, idleYaw(t), false, true
 					end
-					local k = smooth(w[1], w[1] + 3, t)
-					return to + Vector3.new(0, (k - 1) * LIFT_DEPTH, 0), 0, false, false
+					return to + Vector3.new(0, riseY(w.lift, w[1], t), 0), 0, false, false
 				elseif w.kind == "hidden" then
 					return to, 0, false, true
 				elseif w.kind == "walk" then
@@ -458,15 +485,30 @@ function LiveShow.run(app, opts)
 
 	-- lift platform height (0 = down, 1 = up) for each lift
 	local function liftValue(r, t)
-		if r == lift and t < liftUp0 + 3 then
-			return smooth(liftUp0, liftUp0 + 3, t)
+		local d = liftDur(r)
+		local up = (r.kind == "poplift") and 0.4 or 1 -- a pop-up lift is up after 40 % (then the artist flies)
+		if r == lift and t < liftUp0 + d then
+			return math.clamp((t - liftUp0) / (d * up), 0, 1)
 		end
 		for _, w in ipairs(walks) do
-			if w.lift == r and t >= w[1] - 1 and t < w[1] + 3 then
-				return smooth(w[1], w[1] + 3, t)
+			if w.lift == r and t >= w[1] - 1 and t < w[1] + d then
+				if r.kind == "poplift" then
+					return math.clamp((t - w[1]) / (d * up), 0, 1)
+				end
+				return smooth(w[1], w[1] + d, t)
 			end
 		end
 		return 1
+	end
+	-- tower lift height (0..1) during the song it belongs to
+	local function towerValue(r, t)
+		for _, w in ipairs(walks) do
+			if w.tower == r and t >= w[1] and t < (w.t1 or w[1]) then
+				local up0 = w[1] + (w.dur or 0) + 1
+				return smooth(up0, up0 + 5, t) * (1 - smooth(w.t1 - 5, w.t1 - 1, t))
+			end
+		end
+		return 0
 	end
 
 	-- UI overlay (compact, so you can see the show)
@@ -662,6 +704,9 @@ function LiveShow.run(app, opts)
 		end
 
 		local leadPos, leadYaw, walking, hidden = leadState(t)
+		if curWalk and curWalk.tower then
+			leadPos = leadPos + Vector3.new(0, Builder.TOWER_HEIGHT * towerValue(curWalk.tower, t), 0)
+		end
 		lead:setVisible(not hidden)
 		local energy = (seg.bpm > 0) and 1 or 0.4
 		-- what the artist does: changes every few seconds and depends on the song and genre
@@ -710,8 +755,10 @@ function LiveShow.run(app, opts)
 		ctx.artistPos = lead:headPosition()
 		ctx.liftT = 1
 		for _, r in ipairs(items) do
-			if r.kind == "lift" then
+			if r.kind == "lift" or r.kind == "poplift" then
 				r.liftT = liftValue(r, t)
+			elseif r.kind == "towerlift" then
+				r.towerT = towerValue(r, t)
 			end
 		end
 		local fin = (seg.kind == "finale") and seg or nil

@@ -23,18 +23,23 @@ StageItems.MAX_SPOTS = 12
 local H = { 1, 2, 4, 6, 8, 10, 14 }
 StageItems.list = {
 	-- Stage structure. "size" = resizable (w = width along x, d = depth along z); decks have selectable heights.
-	{ id = "deck", name = "Stage Deck", cat = "Stage", cost = 600, pts = 3, tags = {}, mount = "floor", deck = true, shape = "rect", size = { w = 16, d = 12, minW = 4, maxW = 90, minD = 4, maxD = 90 }, h = 6, heights = H, desc = "Rectangular platform. Resize, rotate and stack it to build any stage, runway or B-stage." },
+	{ id = "deck", name = "Stage Deck", cat = "Stage", cost = 600, pts = 3, tags = {}, mount = "floor", deck = true, shape = "rect", size = { w = 16, d = 12, minW = 4, maxW = 160, minD = 4, maxD = 120 }, h = 6, heights = H, desc = "Rectangular platform. Resize, rotate and stack it to build any stage, runway or B-stage." },
 	{ id = "deck_tri", name = "Triangle Deck", cat = "Stage", cost = 500, pts = 3, tags = { "intimate" }, mount = "floor", deck = true, shape = "tri", size = { w = 16, d = 16, minW = 4, maxW = 80, minD = 4, maxD = 80 }, h = 6, heights = H, desc = "Triangle platform (tip points forward). Great for triangle catwalks." },
 	{ id = "deck_corner", name = "Corner Deck", cat = "Stage", cost = 400, pts = 2, tags = {}, mount = "floor", deck = true, shape = "corner", size = { w = 12, d = 12, minW = 4, maxW = 60, minD = 4, maxD = 60 }, h = 6, heights = H, desc = "Right-angled triangle for diagonal corners and angled runways." },
-	{ id = "deck_round", name = "Round Deck", cat = "Stage", cost = 700, pts = 4, tags = { "spectacle" }, mount = "floor", deck = true, shape = "round", size = { w = 16, minW = 6, maxW = 70 }, h = 6, heights = H, desc = "Round platform: a B-stage or the heart of a center stage." },
+	{ id = "deck_round", name = "Round Deck", cat = "Stage", cost = 700, pts = 4, tags = { "spectacle" }, mount = "floor", deck = true, shape = "round", size = { w = 16, minW = 6, maxW = 100 }, h = 6, heights = H, desc = "Round platform: a B-stage or the heart of a center stage." },
 	{ id = "stairs", name = "Stairs", cat = "Stage", cost = 300, pts = 0, tags = {}, mount = "floor", deck = true, shape = "stairs", size = { w = 6, d = 8, minW = 3, maxW = 30, minD = 3, maxD = 30 }, h = 6, heights = { 2, 4, 6, 8, 10, 14 }, desc = "Steps up to a higher deck. The low end points to the front." },
-	{ id = "pit", name = "Pit Barrier", cat = "Stage", cost = 800, pts = 2, tags = { "intimate" }, mount = "floor", deck = false, size = { w = 20, d = 12, minW = 6, maxW = 80, minD = 6, maxD = 80 }, desc = "Fenced VIP pit on the floor. Fans fill the pit first." },
-	{ id = "truss_beam", name = "Truss Beam", cat = "Stage", cost = 300, pts = 1, tags = {}, mount = "rig", deck = false, size = { w = 24, minW = 8, maxW = 140 }, desc = "Horizontal truss in the rig. Lights snap onto it." },
+	-- old item, kept for saved stages only (crowd barriers are now part of every venue)
+	{ id = "pit", name = "Pit Barrier", cat = "Stage", hidden = true, cost = 800, pts = 2, tags = { "intimate" }, mount = "floor", deck = false, size = { w = 20, d = 12, minW = 6, maxW = 80, minD = 6, maxD = 80 }, desc = "Fenced VIP pit on the floor. Fans fill the pit first." },
+	{ id = "truss_beam", name = "Truss Beam", cat = "Stage", cost = 300, pts = 1, tags = {}, mount = "rig", deck = false, size = { w = 24, minW = 8, maxW = 240 }, desc = "Horizontal truss in the rig. Lights snap onto it." },
+	{ id = "stadiumroof", name = "Stadium Structure", cat = "Stage", cost = 25000, pts = 22, tags = { "spectacle" }, mount = "floor", deck = false, size = { w = 140, d = 64, minW = 60, maxW = 240, minD = 40, maxD = 95, dLabel = "Height" }, desc = "The giant scaffold of a stadium tour: two towers with PA hangs, a roof and covered wings. Place it over the stage." },
+	{ id = "delaytower", name = "Delay Tower", cat = "Stage", cost = 3000, pts = 4, tags = {}, mount = "floor", deck = false, desc = "Speaker and follow-spot tower in the crowd, so the back rows of a stadium hear the show too." },
 	{ id = "truss", name = "Truss Tower", cat = "Stage", cost = 400, pts = 1, tags = {}, mount = "floor", deck = false, desc = "Vertical truss tower." },
 	{ id = "speakers", name = "Speaker Stack", cat = "Stage", cost = 400, pts = 2, tags = {}, mount = "floor", deck = false, desc = "Subwoofers with a line array on top." },
 	-- Artist: where the artist performs and what they play
 	{ id = "spot", name = "Artist Spot", cat = "Artist", cost = 0, pts = 0, tags = {}, mount = "floor", deck = false, desc = "One spot = one song. The artist walks to spot 1 for the first song, spot 2 for the second, and so on. More spots = longer setlist (up to 12)." },
 	{ id = "lift", name = "Artist Lift", cat = "Artist", cost = 6000, pts = 12, tags = { "spectacle" }, mount = "floor", deck = false, desc = "The artist rises out of the stage. Choose the song it is used for." },
+	{ id = "poplift", name = "Pop-Up Lift", cat = "Artist", cost = 8500, pts = 14, tags = { "spectacle", "energy" }, mount = "floor", deck = false, desc = "Toaster lift: a trapdoor opens and the artist is shot up onto the stage in a burst of sparks and CO2. Choose the song." },
+	{ id = "towerlift", name = "Tower Lift", cat = "Artist", cost = 12000, pts = 16, tags = { "spectacle", "intimate" }, mount = "floor", deck = false, desc = "Round B-stage platform on a telescopic column. During its song it lifts the artist high above the crowd. Put it at the end of a runway or in the crowd." },
 	{ id = "scissor", name = "Scissor Lift", cat = "Artist", cost = 7500, pts = 12, tags = { "spectacle" }, mount = "floor", deck = false, desc = "Platform that rises high during the finale." },
 	{ id = "piano", name = "Grand Piano", cat = "Artist", cost = 1500, pts = 4, tags = { "intimate" }, mount = "floor", deck = false, desc = "Black grand piano. The artist can play it during one song." },
 	{ id = "keys", name = "Keyboard Rig", cat = "Artist", cost = 1100, pts = 3, tags = { "intimate", "band" }, mount = "floor", deck = false, desc = "Two keyboards on a stand, like a B-stage acoustic moment." },
@@ -54,7 +59,7 @@ StageItems.list = {
 	{ id = "strobe", name = "Strobe", cat = "Lights", cost = 450, pts = 3, tags = { "lights", "energy" }, mount = "rig", deck = false, desc = "Flashes on the beat." },
 	{ id = "blinder", name = "Audience Blinder", cat = "Lights", cost = 500, pts = 3, tags = { "lights", "energy" }, mount = "rig", deck = false, desc = "Warm flash towards the crowd on big moments." },
 	{ id = "followspot", name = "Follow Spot", cat = "Lights", cost = 1100, pts = 3, tags = { "lights", "intimate" }, mount = "floor", deck = false, desc = "Follows the artist everywhere." },
-	{ id = "kinetic", name = "Kinetic Light Bars", cat = "Lights", cost = 3200, pts = 9, tags = { "lights", "spectacle" }, mount = "rig", deck = false, size = { w = 24, minW = 8, maxW = 90 }, desc = "Glowing bars on motor winches that move up and down in waves." },
+	{ id = "kinetic", name = "Kinetic Light Bars", cat = "Lights", cost = 3200, pts = 9, tags = { "lights", "spectacle" }, mount = "rig", deck = false, size = { w = 24, minW = 8, maxW = 160 }, desc = "Glowing bars on motor winches that move up and down in waves." },
 	{ id = "discoball", name = "Disco Ball", cat = "Lights", cost = 700, pts = 3, tags = { "retro" }, mount = "rig", deck = false, desc = "Spinning mirror ball." },
 	{ id = "uplight", name = "Floor Uplight", cat = "Lights", cost = 120, pts = 1, tags = { "lights" }, mount = "floor", deck = false, desc = "Small light on the floor that washes walls and set pieces in colour." },
 	{ id = "ledbar", name = "LED Bar", cat = "Lights", cost = 300, pts = 2, tags = { "lights" }, mount = "floor", deck = false, size = { w = 8, minW = 2, maxW = 40 }, desc = "Pixel bar for stage edges and risers. Colours run along it." },
@@ -62,7 +67,7 @@ StageItems.list = {
 	{ id = "stringlights", name = "String Lights", cat = "Lights", cost = 400, pts = 2, tags = { "retro", "intimate" }, mount = "rig", deck = false, size = { w = 24, minW = 6, maxW = 80 }, desc = "Warm fairy lights hanging in a curve." },
 	{ id = "lanterns", name = "Paper Lanterns", cat = "Lights", cost = 350, pts = 2, tags = { "intimate", "retro" }, mount = "rig", deck = false, desc = "Three glowing lanterns." },
 	-- Screens
-	{ id = "led", name = "LED Wall", cat = "Screens", cost = 3000, pts = 8, tags = { "screens", "spectacle" }, mount = "floor", deck = false, size = { w = 16, d = 9, minW = 4, maxW = 96, minD = 3, maxD = 40, dLabel = "Height" }, desc = "Video wall. Shows song titles, text, images or a live camera." },
+	{ id = "led", name = "LED Wall", cat = "Screens", cost = 3000, pts = 8, tags = { "screens", "spectacle" }, mount = "floor", deck = false, size = { w = 16, d = 9, minW = 4, maxW = 200, minD = 3, maxD = 70, dLabel = "Height" }, desc = "Video wall. Shows song titles, text, images or a live camera." },
 	{ id = "led_side", name = "Side Screen", cat = "Screens", cost = 3500, pts = 8, tags = { "screens" }, mount = "floor", deck = false, desc = "Tall side screen, perfect for the live camera." },
 	{ id = "ledcube", name = "LED Cube", cat = "Screens", cost = 9000, pts = 16, tags = { "screens", "spectacle" }, mount = "rig", deck = false, desc = "Video cube over a center stage (like in-the-round arena shows). Lowers during the ballad." },
 	{ id = "ledtower", name = "LED Tower", cat = "Screens", cost = 6500, pts = 12, tags = { "screens", "spectacle" }, mount = "floor", deck = false, desc = "Tall tower with screens on top. Put 4 to 8 around a center stage." },
@@ -90,9 +95,9 @@ StageItems.list = {
 	{ id = "snow", name = "Snow Machine", cat = "FX", cost = 900, pts = 3, tags = { "intimate" }, mount = "rig", deck = false, desc = "Snowflakes fall during the ballad." },
 	{ id = "windfan", name = "Wind Machine", cat = "FX", cost = 350, pts = 1, tags = {}, mount = "floor", deck = false, desc = "Big fan for the windswept-hair moment." },
 	-- Set pieces (inspired by famous tour productions)
-	{ id = "curtain", name = "Kabuki Curtain", cat = "Set", cost = 2200, pts = 7, tags = { "spectacle" }, mount = "floor", deck = false, size = { w = 40, d = 24, minW = 10, maxW = 120, minD = 8, maxD = 60, dLabel = "Height" }, desc = "Hides the stage before the show and drops in one second when the first song starts." },
+	{ id = "curtain", name = "Kabuki Curtain", cat = "Set", cost = 2200, pts = 7, tags = { "spectacle" }, mount = "floor", deck = false, size = { w = 40, d = 24, minW = 10, maxW = 200, minD = 8, maxD = 80, dLabel = "Height" }, desc = "Hides the stage before the show and drops in one second when the first song starts." },
 	{ id = "moon", name = "Giant Moon", cat = "Set", cost = 4500, pts = 10, tags = { "spectacle", "intimate" }, mount = "floor", deck = false, size = { w = 18, minW = 8, maxW = 50 }, desc = "Glowing moon at the end of a runway." },
-	{ id = "skyline", name = "City Skyline", cat = "Set", cost = 5000, pts = 11, tags = { "spectacle", "retro" }, mount = "floor", deck = false, size = { w = 48, minW = 16, maxW = 140 }, desc = "A whole city as the backdrop. The windows flash with the music." },
+	{ id = "skyline", name = "City Skyline", cat = "Set", cost = 5000, pts = 11, tags = { "spectacle", "retro" }, mount = "floor", deck = false, size = { w = 48, minW = 16, maxW = 220 }, desc = "A whole city as the backdrop. The windows flash with the music." },
 	{ id = "statue", name = "Giant Statue", cat = "Set", cost = 6000, pts = 12, tags = { "spectacle" }, mount = "floor", deck = false, desc = "Chrome giant that slowly turns its head." },
 	{ id = "robotarm", name = "Robot Arm", cat = "Set", cost = 5500, pts = 11, tags = { "spectacle", "energy" }, mount = "floor", deck = false, desc = "Industrial robot arm with a light that dances with the show." },
 	{ id = "house", name = "Little House", cat = "Set", cost = 2800, pts = 7, tags = { "intimate", "retro" }, mount = "floor", deck = false, desc = "Cosy cabin set with glowing windows for an acoustic part." },
@@ -241,6 +246,23 @@ StageItems.PRESETS = {
 			{ { t = "sparks", x = -8, z = 24, r = 0 }, { t = "sparks", x = 8, z = 24, r = 0 }, { t = "sparks", x = -8, z = 80, r = 0 }, { t = "sparks", x = 8, z = 80, r = 0 } },
 			{ { t = "fireworks", x = -60, z = -40, r = 0 }, { t = "fireworks", x = 60, z = -40, r = 0 }, { t = "balls", x = 0, z = 6, r = 0 } },
 			{ { t = "speakers", x = -66, z = 0, r = 0 }, { t = "speakers", x = 66, z = 0, r = 0 } }
+		),
+	},
+	{
+		name = "Stadium Tour", class = "Stadium", layout = "end", shop = true,
+		desc = "A real stadium production: giant scaffold with PA towers, a 120-wide LED wall, a runway to a B-stage where a tower lift takes the artist up high, delay towers in the crowd.",
+		items = join(
+			{ { t = "deck", x = 0, z = -30, r = 0, w = 150, d = 44, h = 8 }, { t = "deck", x = 0, z = 40, r = 0, w = 12, d = 96, h = 8 }, { t = "deck_round", x = 0, z = 110, r = 0, w = 34, h = 8 } },
+			{ { t = "stadiumroof", x = 0, z = -36, r = 0, w = 170, d = 70 }, { t = "led", x = 0, z = -50, r = 0, w = 120, d = 46 }, { t = "led_side", x = 100, z = -20, r = 0 }, { t = "led_side", x = -100, z = -20, r = 0 } },
+			{ { t = "poplift", x = 0, z = -20, r = 0, play = 1 }, { t = "towerlift", x = 0, z = 110, r = 0 } },
+			{ { t = "spot", x = -50, z = -24, r = 0 }, { t = "spot", x = 50, z = -24, r = 0 }, { t = "spot", x = 0, z = 40, r = 0 }, { t = "spot", x = 0, z = 80, r = 0 }, { t = "spot", x = -30, z = -34, r = 0 } },
+			{ { t = "delaytower", x = -60, z = 150, r = 0 }, { t = "delaytower", x = 60, z = 150, r = 0 } },
+			{ { t = "truss_beam", x = 0, z = -16, r = 0, w = 150 } },
+			line("moving", 12, -70, 70, -16),
+			line("pyro", 8, -70, 70, -10),
+			{ { t = "co2", x = -22, z = -10, r = 0 }, { t = "co2", x = 22, z = -10, r = 0 }, { t = "confetti", x = -40, z = -12, r = 0 }, { t = "confetti", x = 40, z = -12, r = 0 } },
+			{ { t = "sparks", x = -7, z = 20, r = 0 }, { t = "sparks", x = 7, z = 20, r = 0 }, { t = "sparks", x = -7, z = 70, r = 0 }, { t = "sparks", x = 7, z = 70, r = 0 } },
+			{ { t = "fireworks", x = -80, z = -56, r = 0 }, { t = "fireworks", x = 80, z = -56, r = 0 } }
 		),
 	},
 }

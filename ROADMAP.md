@@ -29,6 +29,9 @@
 - [erledigt] Social-Media-Tab mit vielen Post-Arten
 - [erledigt] Individueller Look pro Artist/Band (Hörprobe später)
 - [erledigt] UI aufgeräumt (Navigationsleiste, Büro, Artist-Karten)
+- [erledigt] Realistische Hallen (Ränge, Vorhänge, Absperrgitter), echte Fußballstadien, große Stadionbühnen
+- [erledigt] Lifts mit Falltür, Pop-Up Lift, Tower Lift (Billie-Eilish-Style), realistischere Effekte und Instrumente
+- [erledigt] 4 neue Menü-Venues (Zürich, Paris, Madrid, Wembley), zufällige Reihenfolge, viel mehr Fan-Posts und Fotos
 - Büro mit Roblox-Charakter, der sich an den PC setzt (Label-Menü im PC)
 
 ## Später

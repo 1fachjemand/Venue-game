@@ -280,7 +280,8 @@ local function tube(m, a, b, d, color)
 	if len < 0.01 then
 		return nil
 	end
-	return part(m, "Tube", Vector3.new(d or 0.18, d or 0.18, len), CFrame.lookAt((a + b) / 2, b), color or METAL, Enum.Material.Metal)
+	-- a real cylinder (its axis is local X, turned to point from a to b)
+	return part(m, "Tube", Vector3.new(len, d or 0.18, d or 0.18), CFrame.lookAt((a + b) / 2, b) * CFrame.Angles(0, math.pi / 2, 0), color or METAL, Enum.Material.Metal, Enum.PartType.Cylinder)
 end
 
 -- box truss along local X (length L) centred on `c` (local CFrame), 2x2 cross-section, zigzag bracing
@@ -354,60 +355,159 @@ function B.speakers(m, r)
 	part(m, "Logo", Vector3.new(1.2, 0.25, 0.06), CFrame.new(0, 0.6, 1.62), r.color, Enum.Material.Neon)
 end
 
-function B.drums(m, r)
-	local red = Color3.fromRGB(150, 20, 34)
-	local chrome = Color3.fromRGB(200, 200, 210)
-	local gold = Color3.fromRGB(220, 180, 70)
-	part(m, "Riser", Vector3.new(9, 1, 8), CFrame.new(0, 0.5, 0), Color3.fromRGB(40, 40, 46))
-	part(m, "RiserEdge", Vector3.new(9.1, 0.15, 0.15), CFrame.new(0, 1, 4), r.color, Enum.Material.Neon)
-	local top = 1
-	-- bass drum (lying, facing the crowd) with a printed front head
-	cyl(m, "Kick", 1.8, 2.9, CFrame.new(0, top + 1.5, 1.2) * CFrame.Angles(math.pi / 2, 0, 0), red)
-	cyl(m, "KickHead", 0.08, 2.7, CFrame.new(0, top + 1.5, 2.12) * CFrame.Angles(math.pi / 2, 0, 0), Color3.fromRGB(235, 235, 240))
-	cyl(m, "KickLogo", 0.1, 1.2, CFrame.new(0, top + 1.5, 2.15) * CFrame.Angles(math.pi / 2, 0, 0), r.color, Enum.Material.Neon)
-	-- rack toms on the bass drum
-	for _, x in ipairs({ -0.7, 0.7 }) do
-		cyl(m, "RackTom", 0.9, 1.2, CFrame.new(x, top + 3.3, 1.0) * CFrame.Angles(math.rad(-20), 0, 0), red)
+-- drum shell with chrome hoops on both ends, lugs around it and a white head (axis = cf's up vector)
+local function drumShell(m, name, len, d, cf, shellColor, head)
+	local chrome = Color3.fromRGB(205, 205, 215)
+	cyl(m, name, len, d, cf, shellColor, Enum.Material.Glass)
+	for _, y in ipairs({ -len / 2, len / 2 }) do
+		cyl(m, "Hoop", 0.12, d + 0.14, cf * CFrame.new(0, y, 0), chrome, Enum.Material.Metal)
 	end
-	-- floor tom with legs
-	cyl(m, "FloorTom", 1.3, 1.7, CFrame.new(2.3, top + 1.7, 0.2), red)
-	for _, a in ipairs({ 0, 2.1, 4.2 }) do
-		tube(m, Vector3.new(2.3 + math.cos(a) * 0.9, top + 1.4, 0.2 + math.sin(a) * 0.9), Vector3.new(2.3 + math.cos(a) * 1.1, top, 0.2 + math.sin(a) * 1.1), 0.1, chrome)
+	cyl(m, "Head", 0.04, d - 0.05, cf * CFrame.new(0, len / 2 + 0.05, 0), head or Color3.fromRGB(238, 236, 228))
+	local n = (d > 2) and 10 or 6
+	for i = 0, n - 1 do
+		local a = i * math.pi * 2 / n
+		part(m, "Lug", Vector3.new(0.14, math.min(0.5, len * 0.45), 0.14), cf * CFrame.new(math.cos(a) * (d / 2 + 0.06), 0, math.sin(a) * (d / 2 + 0.06)), chrome, Enum.Material.Metal)
 	end
-	-- snare on a stand
-	tube(m, Vector3.new(-1.9, top, 0.4), Vector3.new(-1.9, top + 2, 0.4), 0.12, chrome)
-	cyl(m, "Snare", 0.6, 1.4, CFrame.new(-1.9, top + 2.3, 0.4), Color3.fromRGB(230, 230, 236))
-	-- hi-hat
-	tube(m, Vector3.new(-3.1, top, -0.2), Vector3.new(-3.1, top + 3.1, -0.2), 0.1, chrome)
-	cyl(m, "HiHat", 0.06, 1.4, CFrame.new(-3.1, top + 3.0, -0.2), gold, Enum.Material.Metal)
-	cyl(m, "HiHat", 0.06, 1.4, CFrame.new(-3.1, top + 3.15, -0.2), gold, Enum.Material.Metal)
-	-- crash and ride on boom stands
-	for _, c in ipairs({ { -2.6, 1.3, 4.2 }, { 3.0, 1.5, 3.9 } }) do
-		tube(m, Vector3.new(c[1], top, c[2] - 0.6), Vector3.new(c[1], top + c[3], c[2] - 0.6), 0.1, chrome)
-		cyl(m, "Cymbal", 0.06, 2.2, CFrame.new(c[1], top + c[3] + 0.1, c[2] - 0.3) * CFrame.Angles(math.rad(12), 0, 0), gold, Enum.Material.Metal)
-	end
-	-- throne
-	tube(m, Vector3.new(0, top, -1.8), Vector3.new(0, top + 1.6, -1.8), 0.15, chrome)
-	cyl(m, "Seat", 0.4, 1.4, CFrame.new(0, top + 1.8, -1.8), Color3.fromRGB(20, 20, 22), Enum.Material.Fabric)
+end
+-- cymbal: wide thin disc with a bell in the middle
+local function cymbal(m, d, cf)
+	local gold = Color3.fromRGB(214, 172, 66)
+	cyl(m, "Cymbal", 0.05, d, cf, gold, Enum.Material.Metal)
+	cyl(m, "CymbalInner", 0.07, d * 0.62, cf * CFrame.new(0, 0.03, 0), gold:Lerp(Color3.new(1, 1, 1), 0.15), Enum.Material.Metal)
+	part(m, "Bell", Vector3.new(d * 0.24, d * 0.1, d * 0.24), cf * CFrame.new(0, 0.07, 0), gold, Enum.Material.Metal, Enum.PartType.Ball)
 end
 
+function B.drums(m, r)
+	local shell = Color3.fromRGB(150, 20, 34)
+	local chrome = Color3.fromRGB(205, 205, 215)
+	part(m, "Riser", Vector3.new(9, 1, 8), CFrame.new(0, 0.5, 0), Color3.fromRGB(40, 40, 46))
+	part(m, "RiserSkirt", Vector3.new(9.05, 0.9, 8.05), CFrame.new(0, 0.45, 0), Color3.fromRGB(14, 14, 16), Enum.Material.Fabric)
+	part(m, "RiserEdge", Vector3.new(9.1, 0.15, 0.15), CFrame.new(0, 1, 4), r.color, Enum.Material.Neon)
+	part(m, "Carpet", Vector3.new(7, 0.06, 6), CFrame.new(0, 1.03, 0.2), Color3.fromRGB(70, 30, 30), Enum.Material.Fabric)
+	local top = 1
+	-- bass drum lying on its side, printed front head towards the crowd, spurs
+	drumShell(m, "Kick", 1.8, 2.9, CFrame.new(0, top + 1.5, 1.2) * CFrame.Angles(math.pi / 2, 0, 0), shell, Color3.fromRGB(240, 240, 244))
+	cyl(m, "KickLogo", 0.1, 1.3, CFrame.new(0, top + 1.5, 2.17) * CFrame.Angles(math.pi / 2, 0, 0), r.color, Enum.Material.Neon)
+	for _, sx in ipairs({ -1, 1 }) do
+		tube(m, Vector3.new(sx * 1.2, top + 0.7, 1.6), Vector3.new(sx * 1.8, top, 1.9), 0.1, chrome)
+	end
+	tube(m, Vector3.new(0, top + 0.1, -0.1), Vector3.new(0, top + 0.6, 0.15), 0.2, Color3.fromRGB(40, 40, 44)) -- pedal
+	-- rack toms on a mount
+	tube(m, Vector3.new(0, top + 2.95, 1.2), Vector3.new(0, top + 3.4, 1.0), 0.12, chrome)
+	for _, x in ipairs({ -0.75, 0.75 }) do
+		drumShell(m, "RackTom", 0.9, 1.25, CFrame.new(x, top + 3.45, 0.85) * CFrame.Angles(math.rad(-22), 0, x * -0.25), shell)
+	end
+	-- floor tom on three legs
+	drumShell(m, "FloorTom", 1.4, 1.75, CFrame.new(2.4, top + 1.8, 0.1), shell)
+	for _, a in ipairs({ 0.4, 2.5, 4.6 }) do
+		tube(m, Vector3.new(2.4 + math.cos(a) * 0.95, top + 1.5, 0.1 + math.sin(a) * 0.95), Vector3.new(2.4 + math.cos(a) * 1.2, top, 0.1 + math.sin(a) * 1.2), 0.08, chrome)
+	end
+	-- snare on a tripod stand
+	for _, a in ipairs({ 0, 2.1, 4.2 }) do
+		tube(m, Vector3.new(-1.9, top + 1.1, 0.4), Vector3.new(-1.9 + math.cos(a) * 0.7, top, 0.4 + math.sin(a) * 0.7), 0.08, chrome)
+	end
+	tube(m, Vector3.new(-1.9, top + 1.1, 0.4), Vector3.new(-1.9, top + 2.0, 0.4), 0.1, chrome)
+	drumShell(m, "Snare", 0.55, 1.45, CFrame.new(-1.9, top + 2.3, 0.4) * CFrame.Angles(0, 0, 0.08), Color3.fromRGB(215, 215, 222))
+	-- hi-hat: tripod, rod, two cymbals
+	for _, a in ipairs({ 0.5, 2.6, 4.7 }) do
+		tube(m, Vector3.new(-3.1, top + 1, -0.2), Vector3.new(-3.1 + math.cos(a) * 0.7, top, -0.2 + math.sin(a) * 0.7), 0.08, chrome)
+	end
+	tube(m, Vector3.new(-3.1, top + 1, -0.2), Vector3.new(-3.1, top + 3.2, -0.2), 0.1, chrome)
+	cymbal(m, 1.45, CFrame.new(-3.1, top + 3.0, -0.2))
+	cymbal(m, 1.45, CFrame.new(-3.1, top + 3.18, -0.2))
+	-- crash and ride on boom stands
+	for _, c in ipairs({ { -2.6, 1.3, 4.3, 0.25 }, { 3.0, 1.5, 4.0, -0.25 } }) do
+		for _, a in ipairs({ 0.3, 2.4, 4.5 }) do
+			tube(m, Vector3.new(c[1], top + 1.1, c[2] - 0.6), Vector3.new(c[1] + math.cos(a) * 0.8, top, c[2] - 0.6 + math.sin(a) * 0.8), 0.08, chrome)
+		end
+		tube(m, Vector3.new(c[1], top + 1.1, c[2] - 0.6), Vector3.new(c[1], top + c[3] - 0.6, c[2] - 0.6), 0.1, chrome)
+		tube(m, Vector3.new(c[1], top + c[3] - 0.6, c[2] - 0.6), Vector3.new(c[1] - c[4] * 2, top + c[3], c[2] - 0.3), 0.08, chrome)
+		cymbal(m, 2.3, CFrame.new(c[1] - c[4] * 2, top + c[3] + 0.1, c[2] - 0.3) * CFrame.Angles(math.rad(14), 0, c[4]))
+	end
+	-- throne
+	for _, a in ipairs({ 0, 2.1, 4.2 }) do
+		tube(m, Vector3.new(0, top + 0.9, -1.8), Vector3.new(math.cos(a) * 0.7, top, -1.8 + math.sin(a) * 0.7), 0.1, chrome)
+	end
+	tube(m, Vector3.new(0, top + 0.9, -1.8), Vector3.new(0, top + 1.6, -1.8), 0.15, chrome)
+	cyl(m, "Seat", 0.45, 1.5, CFrame.new(0, top + 1.8, -1.8), Color3.fromRGB(20, 20, 22), Enum.Material.Leather)
+end
+
+-- grand piano: straight bass side, curved treble side, open lid on a prop stick, keyboard towards +z (the player)
+local PIANO_OUTLINE = { { -2.5, 2.6 }, { -2.5, -4.2 }, { -2.1, -4.85 }, { -1.3, -4.95 }, { -0.4, -4.4 }, { 0.4, -3.2 }, { 1.0, -1.8 }, { 1.5, -0.6 }, { 2.1, 0.5 }, { 2.5, 1.2 }, { 2.5, 2.6 } }
+local function pianoRight(z)
+	local o = PIANO_OUTLINE
+	for i = 3, #o - 1 do
+		local a, b = o[i], o[i + 1]
+		if z >= a[2] and z <= b[2] then
+			return a[1] + (b[1] - a[1]) * (z - a[2]) / math.max(0.01, b[2] - a[2])
+		end
+	end
+	return 2.5
+end
 function B.piano(m, r)
 	local black = Color3.fromRGB(8, 8, 10)
-	-- curved grand piano body: keyboard case + tapering tail
-	part(m, "Case", Vector3.new(5.2, 1.3, 2.6), CFrame.new(0, 3.3, 2.0), black, Enum.Material.Glass)
-	part(m, "Body", Vector3.new(4.6, 1.3, 3), CFrame.new(-0.3, 3.3, -0.8), black, Enum.Material.Glass)
-	cyl(m, "Tail", 1.3, 3.6, CFrame.new(-0.8, 3.3, -2.3), black, Enum.Material.Glass)
-	part(m, "Lid", Vector3.new(4.8, 0.12, 5.6), CFrame.new(0.4, 5.1, -0.4) * CFrame.Angles(0, 0, math.rad(28)), black, Enum.Material.Glass)
-	tube(m, Vector3.new(1.9, 3.95, -0.4), Vector3.new(2.3, 5.1, -0.4), 0.1, Color3.fromRGB(30, 30, 30))
-	part(m, "WhiteKeys", Vector3.new(4.6, 0.25, 0.9), CFrame.new(0, 3.55, 3.55), Color3.new(1, 1, 1))
-	for i = 0, 8 do
-		part(m, "BlackKey", Vector3.new(0.2, 0.2, 0.5), CFrame.new(-2 + i * 0.5, 3.75, 3.35), black)
+	local y0, h = 2.7, 1.3
+	-- the rim follows the outline
+	local o = PIANO_OUTLINE
+	for i = 1, #o do
+		local a, b = o[i], o[i % #o + 1]
+		local dx, dz = b[1] - a[1], b[2] - a[2]
+		local len = math.sqrt(dx * dx + dz * dz)
+		if len > 0.05 then
+			part(m, "Rim", Vector3.new(len + 0.12, h, 0.18), CFrame.new((a[1] + b[1]) / 2, y0 + h / 2, (a[2] + b[2]) / 2) * CFrame.Angles(0, -math.atan2(dz, dx), 0), black, Enum.Material.Glass)
+		end
 	end
-	for _, p in ipairs({ { -2.2, 2.9 }, { 2.2, 2.9 }, { -0.8, -2.8 } }) do
-		part(m, "Leg", Vector3.new(0.5, 2.7, 0.5), CFrame.new(p[1], 1.35, p[2]), black, Enum.Material.Glass)
+	-- inside: golden frame and soundboard, filled in strips
+	for z = -4.6, 2.0, 0.6 do
+		local xr = pianoRight(z + 0.3)
+		local w = xr + 2.4
+		if w > 0.3 then
+			part(m, "Soundboard", Vector3.new(w, 0.1, 0.62), CFrame.new(-2.4 + w / 2, y0 + h - 0.35, z + 0.3), Color3.fromRGB(176, 136, 60), Enum.Material.Metal)
+			part(m, "Bottom", Vector3.new(w, 0.3, 0.62), CFrame.new(-2.4 + w / 2, y0 + 0.15, z + 0.3), black, Enum.Material.Glass)
+		end
 	end
-	part(m, "Bench", Vector3.new(2.6, 0.4, 1.1), CFrame.new(0, 1.9, 5.2), black, Enum.Material.Leather)
-	part(m, "BenchLegs", Vector3.new(2.4, 1.7, 0.9), CFrame.new(0, 0.85, 5.2), black)
+	for i = 0, 5 do
+		part(m, "Strings", Vector3.new(0.05, 0.05, 6), CFrame.new(-2.1 + i * 0.35, y0 + h - 0.25, -1.2) * CFrame.Angles(0, -0.05 * i, 0), Color3.fromRGB(200, 200, 205), Enum.Material.Metal)
+	end
+	-- lid: hinged on the straight side, propped open over the curved side
+	local hinge = CFrame.new(-2.5, y0 + h, 0) * CFrame.Angles(0, 0, math.rad(32))
+	for z = -4.6, 2.0, 0.6 do
+		local xr = pianoRight(z + 0.3)
+		local w = xr + 2.5
+		if w > 0.3 then
+			part(m, "Lid", Vector3.new(w, 0.1, 0.62), hinge * CFrame.new(w / 2, 0.05, z + 0.3), black, Enum.Material.Glass)
+		end
+	end
+	tube(m, Vector3.new(1.4, y0 + h, -0.8), (hinge * CFrame.new(3.6, 0, -0.8)).Position, 0.08, Color3.fromRGB(20, 20, 22))
+	-- keyboard: key bed, 52 white keys (as 13 groups) and black keys, cheek blocks, fallboard, music stand
+	part(m, "KeyBed", Vector3.new(4.9, 0.35, 1.2), CFrame.new(0, y0 + 0.6, 3.15), black, Enum.Material.Glass)
+	for i = 0, 12 do
+		part(m, "WhiteKeys", Vector3.new(0.33, 0.16, 0.95), CFrame.new(-2.1 + i * 0.35, y0 + 0.86, 3.25), Color3.fromRGB(248, 246, 240))
+	end
+	for i = 0, 12 do
+		if i % 7 ~= 2 and i % 7 ~= 6 and i < 12 then
+			part(m, "BlackKey", Vector3.new(0.17, 0.16, 0.55), CFrame.new(-1.925 + i * 0.35, y0 + 0.98, 3.0), black)
+		end
+	end
+	for _, x in ipairs({ -2.55, 2.55 }) do
+		part(m, "Cheek", Vector3.new(0.3, 0.75, 1.25), CFrame.new(x, y0 + 0.8, 3.15), black, Enum.Material.Glass)
+	end
+	part(m, "Fallboard", Vector3.new(4.9, 0.55, 0.12), CFrame.new(0, y0 + 1.15, 2.62), black, Enum.Material.Glass)
+	part(m, "MusicStand", Vector3.new(2.6, 1.1, 0.1), CFrame.new(0, y0 + 1.8, 2.3) * CFrame.Angles(math.rad(-14), 0, 0), black, Enum.Material.Glass)
+	-- three round legs with castors, pedal lyre
+	for _, p in ipairs({ { -2.1, 2.3 }, { 2.1, 2.3 }, { -1.3, -4.3 } }) do
+		cyl(m, "Leg", y0, 0.55, CFrame.new(p[1], y0 / 2, p[2]), black, Enum.Material.Glass)
+		cyl(m, "Castor", 0.25, 0.7, CFrame.new(p[1], 0.15, p[2]), Color3.fromRGB(190, 160, 80), Enum.Material.Metal)
+	end
+	part(m, "Lyre", Vector3.new(0.7, y0 - 0.4, 0.2), CFrame.new(0, (y0 - 0.4) / 2 + 0.3, 1.9), black, Enum.Material.Glass)
+	part(m, "Pedals", Vector3.new(0.9, 0.1, 0.4), CFrame.new(0, 0.35, 2.15), Color3.fromRGB(200, 170, 80), Enum.Material.Metal)
+	-- bench with a padded seat
+	part(m, "Bench", Vector3.new(2.6, 0.45, 1.1), CFrame.new(0, 1.95, 5.2), Color3.fromRGB(12, 12, 14), Enum.Material.Leather)
+	for _, x in ipairs({ -1.1, 1.1 }) do
+		for _, z in ipairs({ 4.8, 5.6 }) do
+			cyl(m, "BenchLeg", 1.75, 0.22, CFrame.new(x, 0.87, z), black, Enum.Material.Glass)
+		end
+	end
 end
 
 function B.djbooth(m, r)
@@ -591,10 +691,170 @@ function B.neonsign(m, r)
 	r.frame, r.label = surfaceText(r.panel, Enum.NormalId.Back, r.artistName or "HEADLINER", r.color, nil)
 end
 
+-- realistic particle textures that ship with Roblox
+local TEX_FIRE = "rbxasset://textures/particles/fire_main.dds"
+local TEX_SMOKE = "rbxasset://textures/particles/smoke_main.dds"
+local TEX_SPARK = "rbxasset://textures/particles/sparkles_main.dds"
+
+-- trapdoor in the deck: seam, black opening and two doors that fold down into the stage
+local function hatch(m, r, size)
+	local hs = size / 2
+	r.hatchSize = size
+	r.hole = part(m, "HatchHole", Vector3.new(size, 0.04, size), CFrame.new(0, 0.03, 0), Color3.fromRGB(4, 4, 6))
+	r.doors = {}
+	for _, sx in ipairs({ -1, 1 }) do
+		local d = part(m, "HatchDoor", Vector3.new(hs, 0.14, size), CFrame.new(sx * hs / 2, 0.08, 0), Color3.fromRGB(52, 52, 60), Enum.Material.DiamondPlate)
+		table.insert(r.doors, { part = d, side = sx })
+	end
+	r.ringParts = {}
+	for _, e in ipairs({ { 0, hs + 0.15, size + 0.6, 0.3 }, { 0, -hs - 0.15, size + 0.6, 0.3 }, { hs + 0.15, 0, 0.3, size }, { -hs - 0.15, 0, 0.3, size } }) do
+		table.insert(r.ringParts, part(m, "HatchLED", Vector3.new(e[3], 0.1, e[4]), CFrame.new(e[1], 0.06, e[2]), r.color, Enum.Material.Neon))
+	end
+end
+
+-- open = 0 closed .. 1 folded down under the deck
+local function setHatch(refs, open)
+	local hs = refs.hatchSize / 2
+	for _, d in ipairs(refs.doors) do
+		local hinge = refs.cf * CFrame.new(-d.side * 0 + d.side * hs, 0.08, 0)
+		d.part.CFrame = hinge * CFrame.Angles(0, 0, d.side * open * math.pi / 2) * CFrame.new(-d.side * hs / 2, 0, 0)
+		d.part.Transparency = (open > 0.97) and 1 or 0
+	end
+	refs.hole.Transparency = (open < 0.03) and 1 or 0
+end
+
 function B.lift(m, r)
+	hatch(m, r, 6)
 	r.platformLocal = CFrame.new(0, 0.2, 0)
-	r.platform = part(m, "Platform", Vector3.new(6, 0.4, 6), r.platformLocal, Color3.fromRGB(60, 60, 70), Enum.Material.DiamondPlate)
-	r.ring = part(m, "Ring", Vector3.new(6.6, 0.1, 6.6), CFrame.new(0, 0.05, 0), r.color, Enum.Material.Neon)
+	r.platform = part(m, "Platform", Vector3.new(5.9, 0.4, 5.9), r.platformLocal, Color3.fromRGB(60, 60, 70), Enum.Material.DiamondPlate)
+	r.ring = r.ringParts[1]
+end
+
+-- "toaster" lift: a small hatch that shoots the artist up in a burst of sparks and CO2
+function B.poplift(m, r)
+	hatch(m, r, 4.4)
+	r.platformLocal = CFrame.new(0, 0.2, 0)
+	r.platform = part(m, "Platform", Vector3.new(4.3, 0.4, 4.3), r.platformLocal, Color3.fromRGB(70, 70, 80), Enum.Material.DiamondPlate)
+	r.ring = r.ringParts[1]
+	r.burstParts = {}
+	for _, c in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do
+		local n = part(m, "PopNozzle", Vector3.new(0.5, 0.3, 0.5), CFrame.new(c[1] * 3, 0.15, c[2] * 3), DARK)
+		local sp = New("ParticleEmitter", {
+			Enabled = false,
+			Rate = 0,
+			Texture = TEX_SPARK,
+			Lifetime = NumberRange.new(0.8, 1.4),
+			Speed = NumberRange.new(30, 42),
+			SpreadAngle = Vector2.new(10, 10),
+			Size = NumberSequence.new(0.35, 0.05),
+			Squash = NumberSequence.new(1.6),
+			Orientation = Enum.ParticleOrientation.VelocityParallel,
+			Color = ColorSequence.new(Color3.fromRGB(255, 245, 200), Color3.fromRGB(255, 160, 40)),
+			LightEmission = 1,
+			Acceleration = Vector3.new(0, -45, 0),
+			EmissionDirection = Enum.NormalId.Top,
+			Parent = n,
+		})
+		local co = New("ParticleEmitter", {
+			Enabled = false,
+			Rate = 0,
+			Texture = TEX_SMOKE,
+			Lifetime = NumberRange.new(0.6, 1),
+			Speed = NumberRange.new(40, 55),
+			SpreadAngle = Vector2.new(5, 5),
+			Size = NumberSequence.new(1.2, 7),
+			Transparency = NumberSequence.new(0.15, 1),
+			Color = ColorSequence.new(Color3.fromRGB(240, 245, 255)),
+			Drag = 3,
+			EmissionDirection = Enum.NormalId.Top,
+			Parent = n,
+		})
+		table.insert(r.burstParts, { sp, co })
+	end
+end
+
+-- tower lift: a round platform on a telescopic column that lifts the artist high above the crowd
+Builder.TOWER_HEIGHT = 26
+function B.towerlift(m, r)
+	r.topY = 1.6
+	cyl(m, "Base", 0.6, 12, CFrame.new(0, 0.3, 0), DARK)
+	r.baseRing = cyl(m, "BaseLED", 0.2, 12.4, CFrame.new(0, 0.55, 0), r.color, Enum.Material.Neon)
+	r.tubes = {}
+	for i, d in ipairs({ 4.4, 3.5, 2.6 }) do
+		r.tubes[i] = cyl(m, "Tube", 0.4, d, CFrame.new(0, 0.6, 0), (i % 2 == 1) and METAL or Color3.fromRGB(150, 152, 160), Enum.Material.Metal)
+	end
+	r.top = cyl(m, "Platform", 1, 10, CFrame.new(0, 1.1, 0), Color3.fromRGB(40, 40, 48), Enum.Material.DiamondPlate)
+	r.topRing = cyl(m, "PlatformLED", 0.3, 10.4, CFrame.new(0, 1.45, 0), r.color, Enum.Material.Neon)
+	r.under = cyl(m, "UnderLight", 0.1, 6, CFrame.new(0, 0.55, 0), WHITE, Enum.Material.Neon)
+	r.rails = {}
+	for i = 0, 7 do
+		local a = i * math.pi / 4
+		r.rails[i + 1] = part(m, "Rail", Vector3.new(0.18, 2.6, 0.18), CFrame.new(math.cos(a) * 4.8, 2.9, math.sin(a) * 4.8), Color3.fromRGB(200, 205, 215), Enum.Material.Metal)
+	end
+	r.towerT = 0
+end
+
+-- stadium superstructure: two scaffold towers with PA hangs, a roof grid and mesh-covered wings
+function B.stadiumroof(m, r)
+	local w, h = dims(r, r.def)
+	local hw = w / 2
+	local depth = 34
+	local legs = { { -hw, -depth / 2 }, { -hw, depth / 2 }, { hw, -depth / 2 }, { hw, depth / 2 }, { -hw + 10, -depth / 2 }, { hw - 10, -depth / 2 } }
+	for _, l in ipairs(legs) do
+		part(m, "Leg", Vector3.new(2.4, h, 2.4), CFrame.new(l[1], h / 2, l[2]), METAL, Enum.Material.DiamondPlate)
+	end
+	-- lattice bracing on the towers
+	for _, sx in ipairs({ -1, 1 }) do
+		for y = 8, h - 6, 12 do
+			part(m, "Brace", Vector3.new(1, 1, depth), CFrame.new(sx * hw, y, 0), METAL, Enum.Material.Metal)
+			part(m, "Brace", Vector3.new(0.6, 0.6, math.sqrt(depth * depth + 144)), CFrame.new(sx * hw, y + 6, 0) * CFrame.Angles(math.atan2(12, depth), 0, 0), METAL, Enum.Material.Metal)
+		end
+		-- wings: mesh scrim on scaffolding next to the stage
+		local wing = part(m, "WingScrim", Vector3.new(26, h * 0.7, 0.4), CFrame.new(sx * (hw + 14), h * 0.35, -depth / 2 + 4), Color3.fromRGB(20, 20, 26), Enum.Material.Fabric)
+		wing.Transparency = 0.15
+		for k = 0, 2 do
+			part(m, "WingPole", Vector3.new(0.8, h * 0.7, 0.8), CFrame.new(sx * (hw + 2 + k * 12), h * 0.35, -depth / 2 + 4.8), METAL, Enum.Material.Metal)
+		end
+		-- PA line array (curved J) hanging from the roof front
+		for i = 0, 11 do
+			local ang = math.rad(math.max(0, i - 5) * 3)
+			part(m, "LineArray", Vector3.new(4.2, 1.4, 2.6), CFrame.new(sx * (hw - 7), h - 6 - i * 1.45, depth / 2 + 2 + math.max(0, i - 5) * 0.25) * CFrame.Angles(-ang, 0, 0), Color3.fromRGB(18, 18, 22), Enum.Material.Fabric)
+		end
+		for i = 0, 7 do
+			part(m, "SubArray", Vector3.new(3.6, 1.6, 2.4), CFrame.new(sx * (hw - 13), h - 6 - i * 1.65, depth / 2 + 2), Color3.fromRGB(14, 14, 18), Enum.Material.Fabric)
+		end
+	end
+	-- roof: front and back girders, cross trusses, a canopy skin
+	for _, z in ipairs({ -depth / 2, 0, depth / 2 }) do
+		part(m, "Girder", Vector3.new(w + 2.4, 4, 2.4), CFrame.new(0, h + 2, z), METAL, Enum.Material.DiamondPlate)
+	end
+	for x = -hw, hw, 12 do
+		part(m, "RoofTruss", Vector3.new(1.4, 1.4, depth), CFrame.new(x, h + 1, 0), METAL, Enum.Material.Metal)
+	end
+	part(m, "Canopy", Vector3.new(w + 4, 0.4, depth + 4), CFrame.new(0, h + 4.4, 0), Color3.fromRGB(26, 26, 32), Enum.Material.Fabric)
+	r.roofLED = part(m, "RoofLED", Vector3.new(w, 1.2, 0.3), CFrame.new(0, h + 2, depth / 2 + 1.35), r.color, Enum.Material.Neon)
+end
+
+-- delay tower in the crowd: scaffold with a speaker cluster and a follow-spot platform
+function B.delaytower(m, r)
+	local h = 34
+	for _, c in ipairs({ { -3, -3 }, { 3, -3 }, { -3, 3 }, { 3, 3 } }) do
+		part(m, "Leg", Vector3.new(0.7, h, 0.7), CFrame.new(c[1], h / 2, c[2]), METAL, Enum.Material.Metal)
+	end
+	for y = 4, h - 4, 7 do
+		part(m, "Ring", Vector3.new(6.7, 0.5, 0.5), CFrame.new(0, y, -3), METAL, Enum.Material.Metal)
+		part(m, "Ring", Vector3.new(6.7, 0.5, 0.5), CFrame.new(0, y, 3), METAL, Enum.Material.Metal)
+		part(m, "Ring", Vector3.new(0.5, 0.5, 6.7), CFrame.new(-3, y, 0), METAL, Enum.Material.Metal)
+		part(m, "Ring", Vector3.new(0.5, 0.5, 6.7), CFrame.new(3, y, 0), METAL, Enum.Material.Metal)
+	end
+	part(m, "Scrim", Vector3.new(7.2, 10, 7.2), CFrame.new(0, 5, 0), Color3.fromRGB(20, 20, 26), Enum.Material.Fabric).Transparency = 0.1
+	part(m, "Deck", Vector3.new(9, 0.6, 9), CFrame.new(0, h - 8, 0), Color3.fromRGB(40, 40, 46), Enum.Material.DiamondPlate)
+	r.spotHead = cyl(m, "FollowSpot", 3, 1.4, CFrame.new(0, h - 6.6, -2.5) * CFrame.Angles(math.pi / 2 - 0.25, 0, 0), DARK)
+	for i = 0, 5 do
+		part(m, "Delay", Vector3.new(3.8, 1.3, 2.4), CFrame.new(0, h - 1 - i * 1.35, -2.2) * CFrame.Angles(-math.rad(i * 2), 0, 0), Color3.fromRGB(18, 18, 22), Enum.Material.Fabric)
+	end
+	part(m, "Header", Vector3.new(7.4, 1, 7.4), CFrame.new(0, h + 0.5, 0), METAL, Enum.Material.DiamondPlate)
+	r.blink = part(m, "Aviation", Vector3.new(0.6, 0.6, 0.6), CFrame.new(0, h + 1.3, 0), Color3.fromRGB(255, 40, 40), Enum.Material.Neon, Enum.PartType.Ball)
 end
 
 function B.scissor(m, r)
@@ -604,39 +864,68 @@ function B.scissor(m, r)
 	r.edge = part(m, "Edge", Vector3.new(8.4, 0.2, 8.4), CFrame.new(0, 1.2, 0), r.color, Enum.Material.Neon)
 end
 
+-- flame projector: black box with a hazard stripe and a nozzle; a column of flame with a rolling top and black smoke
 function B.pyro(m, r)
-	part(m, "Box", Vector3.new(2.2, 1, 2.2), CFrame.new(0, 0.5, 0), DARK)
-	r.nozzle = part(m, "Nozzle", Vector3.new(1, 1, 1), CFrame.new(0, 1.5, 0), DARK)
+	part(m, "Box", Vector3.new(2.4, 1.3, 2.4), CFrame.new(0, 0.65, 0), Color3.fromRGB(22, 22, 26), Enum.Material.Metal)
+	part(m, "Stripe", Vector3.new(2.42, 0.25, 2.42), CFrame.new(0, 1.05, 0), Color3.fromRGB(240, 190, 20), Enum.Material.SmoothPlastic)
+	cyl(m, "NozzleTube", 0.9, 0.6, CFrame.new(0, 1.75, 0), METAL, Enum.Material.Metal)
+	r.nozzle = part(m, "Nozzle", Vector3.new(1, 1, 1), CFrame.new(0, 2.2, 0), DARK)
 	r.nozzle.Transparency = 1
-	r.fire = New("Fire", { Size = 14, Heat = 25, Color = Color3.fromRGB(255, 140, 30), SecondaryColor = Color3.fromRGB(255, 60, 0), Enabled = false, Parent = r.nozzle })
+	r.fire = New("Fire", { Size = 6, Heat = 20, Color = Color3.fromRGB(255, 140, 30), SecondaryColor = Color3.fromRGB(255, 60, 0), Enabled = false, Parent = r.nozzle })
 	r.emitter = New("ParticleEmitter", {
 		Enabled = false,
 		Rate = 0,
-		Lifetime = NumberRange.new(0.5, 0.9),
-		Speed = NumberRange.new(30, 45),
-		SpreadAngle = Vector2.new(8, 8),
-		Size = NumberSequence.new(3, 0.5),
-		Color = ColorSequence.new(Color3.fromRGB(255, 220, 80), Color3.fromRGB(255, 60, 0)),
+		Texture = TEX_FIRE,
+		Lifetime = NumberRange.new(0.55, 0.85),
+		Speed = NumberRange.new(38, 50),
+		SpreadAngle = Vector2.new(5, 5),
+		Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1.6), NumberSequenceKeypoint.new(0.45, 5), NumberSequenceKeypoint.new(1, 8) }),
+		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(0.7, 0.3), NumberSequenceKeypoint.new(1, 1) }),
+		Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 250, 200)), ColorSequenceKeypoint.new(0.35, Color3.fromRGB(255, 170, 40)), ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 40, 0)) }),
 		LightEmission = 1,
-		Acceleration = Vector3.new(0, -5, 0),
+		Drag = 2.2,
+		Rotation = NumberRange.new(0, 360),
+		RotSpeed = NumberRange.new(-120, 120),
+		Acceleration = Vector3.new(0, 8, 0),
+		Parent = r.nozzle,
+	})
+	r.smokeEmitter = New("ParticleEmitter", {
+		Enabled = false,
+		Rate = 0,
+		Texture = TEX_SMOKE,
+		Lifetime = NumberRange.new(1.4, 2.4),
+		Speed = NumberRange.new(26, 34),
+		SpreadAngle = Vector2.new(8, 8),
+		Size = NumberSequence.new(4, 12),
+		Transparency = NumberSequence.new(0.55, 1),
+		Color = ColorSequence.new(Color3.fromRGB(40, 36, 34)),
+		Drag = 1.5,
+		Rotation = NumberRange.new(0, 360),
 		Parent = r.nozzle,
 	})
 	r.light = New("PointLight", { Range = 60, Brightness = 0, Color = Color3.fromRGB(255, 150, 50), Shadows = false, Parent = r.nozzle })
 end
 
+-- cold spark machine: low black box with a grille; a fountain of thin sparks that fall back down
 function B.sparks(m, r)
-	cyl(m, "Base", 1, 1.6, CFrame.new(0, 0.5, 0), DARK)
-	r.nozzle = part(m, "Nozzle", Vector3.new(0.6, 0.6, 0.6), CFrame.new(0, 1.2, 0), DARK)
+	part(m, "Box", Vector3.new(2, 1.1, 2), CFrame.new(0, 0.55, 0), Color3.fromRGB(22, 22, 26), Enum.Material.Metal)
+	part(m, "Grille", Vector3.new(1.6, 0.06, 1.6), CFrame.new(0, 1.12, 0), Color3.fromRGB(60, 60, 66), Enum.Material.DiamondPlate)
+	part(m, "Status", Vector3.new(0.3, 0.12, 0.05), CFrame.new(0.6, 0.8, -1.01), Color3.fromRGB(40, 255, 90), Enum.Material.Neon)
+	r.nozzle = part(m, "Nozzle", Vector3.new(0.5, 0.3, 0.5), CFrame.new(0, 1.25, 0), DARK)
 	r.emitter = New("ParticleEmitter", {
 		Enabled = false,
-		Rate = 220,
-		Lifetime = NumberRange.new(1, 1.6),
-		Speed = NumberRange.new(25, 35),
-		SpreadAngle = Vector2.new(12, 12),
-		Size = NumberSequence.new(0.5, 0),
-		Color = ColorSequence.new(Color3.fromRGB(255, 240, 180), Color3.fromRGB(255, 170, 40)),
+		Rate = 420,
+		Texture = TEX_SPARK,
+		Lifetime = NumberRange.new(1.1, 1.7),
+		Speed = NumberRange.new(30, 40),
+		SpreadAngle = Vector2.new(7, 7),
+		Size = NumberSequence.new(0.32, 0.04),
+		Squash = NumberSequence.new(1.4),
+		Orientation = Enum.ParticleOrientation.VelocityParallel,
+		Color = ColorSequence.new(Color3.fromRGB(255, 245, 200), Color3.fromRGB(255, 150, 30)),
 		LightEmission = 1,
-		Acceleration = Vector3.new(0, -40, 0),
+		Acceleration = Vector3.new(0, -48, 0),
+		Drag = 0.3,
 		Parent = r.nozzle,
 	})
 end
@@ -667,20 +956,30 @@ function B.confetti(m, r)
 	})
 end
 
+-- CO2 cryo jet: gas bottle, stand and an angled nozzle head; a hissing white plume
 function B.co2(m, r)
-	part(m, "Base", Vector3.new(1.6, 1.4, 1.6), CFrame.new(0, 0.7, 0), Color3.fromRGB(200, 200, 210))
-	r.nozzle = part(m, "Nozzle", Vector3.new(0.6, 0.6, 0.6), CFrame.new(0, 1.6, 0), DARK)
-	r.smoke = New("Smoke", { Color = Color3.fromRGB(235, 240, 255), Opacity = 0.6, RiseVelocity = 25, Size = 3, Enabled = false, Parent = r.nozzle })
+	cyl(m, "Bottle", 4.2, 1.1, CFrame.new(-1.1, 2.1, 0.6), Color3.fromRGB(200, 200, 210), Enum.Material.Metal)
+	cyl(m, "Valve", 0.5, 0.5, CFrame.new(-1.1, 4.4, 0.6), METAL, Enum.Material.Metal)
+	part(m, "Foot", Vector3.new(1.8, 0.2, 1.8), CFrame.new(0.4, 0.1, 0), DARK)
+	part(m, "Pole", Vector3.new(0.3, 2.4, 0.3), CFrame.new(0.4, 1.3, 0), METAL, Enum.Material.Metal)
+	part(m, "Head", Vector3.new(0.8, 0.8, 1.6), CFrame.new(0.4, 2.7, 0) * CFrame.Angles(math.rad(-15), 0, 0), DARK)
+	part(m, "Hose", Vector3.new(0.2, 0.2, 2), CFrame.new(-0.4, 3.3, 0.4) * CFrame.Angles(0, math.rad(60), 0), Color3.fromRGB(20, 20, 24))
+	r.nozzle = part(m, "Nozzle", Vector3.new(0.5, 0.5, 0.5), CFrame.new(0.4, 3.1, 0), DARK)
+	r.nozzle.Transparency = 1
+	r.smoke = New("Smoke", { Color = Color3.fromRGB(235, 240, 255), Opacity = 0.35, RiseVelocity = 20, Size = 2, Enabled = false, Parent = r.nozzle })
 	r.emitter = New("ParticleEmitter", {
 		Enabled = false,
 		Rate = 0,
-		Lifetime = NumberRange.new(0.7, 1.1),
-		Speed = NumberRange.new(45, 60),
-		SpreadAngle = Vector2.new(6, 6),
-		Size = NumberSequence.new(2, 7),
-		Transparency = NumberSequence.new(0.2, 1),
-		Color = ColorSequence.new(Color3.fromRGB(240, 245, 255)),
-		Drag = 2,
+		Texture = TEX_SMOKE,
+		Lifetime = NumberRange.new(0.6, 1.0),
+		Speed = NumberRange.new(65, 85),
+		SpreadAngle = Vector2.new(4, 4),
+		Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.8), NumberSequenceKeypoint.new(0.3, 4), NumberSequenceKeypoint.new(1, 11) }),
+		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(0.6, 0.45), NumberSequenceKeypoint.new(1, 1) }),
+		Color = ColorSequence.new(Color3.fromRGB(245, 248, 255)),
+		Drag = 3.2,
+		Rotation = NumberRange.new(0, 360),
+		RotSpeed = NumberRange.new(-60, 60),
 		Parent = r.nozzle,
 	})
 end
@@ -931,14 +1230,31 @@ function B.streamers(m, r)
 		Parent = r.nozzle,
 	})
 end
+-- two-tier keyboard rig on an X stand: synth on top, stage piano below, with real keys and knobs
+local function keyboard(m, cf, w, body)
+	part(m, "KeyboardBody", Vector3.new(w, 0.4, 1.35), cf, body)
+	local n = math.floor(w / 0.27)
+	part(m, "WhiteKeys", Vector3.new(w - 0.5, 0.1, 0.65), cf * CFrame.new(0, 0.24, 0.32), Color3.fromRGB(246, 244, 238))
+	for i = 0, n - 3 do
+		if i % 7 ~= 2 and i % 7 ~= 6 then
+			part(m, "BlackKey", Vector3.new(0.12, 0.12, 0.38), cf * CFrame.new(-(w - 0.5) / 2 + 0.27 + i * 0.27, 0.32, 0.18), Color3.fromRGB(14, 14, 16))
+		end
+	end
+	for i = 0, 5 do
+		cyl(m, "Knob", 0.12, 0.16, cf * CFrame.new(-w / 2 + 0.5 + i * 0.3, 0.27, -0.4), Color3.fromRGB(200, 200, 205), Enum.Material.Metal)
+	end
+	part(m, "Display", Vector3.new(0.8, 0.04, 0.3), cf * CFrame.new(w / 2 - 0.9, 0.22, -0.4), Color3.fromRGB(80, 170, 255), Enum.Material.Neon)
+end
 function B.keys(m, r)
-	tube(m, Vector3.new(-1.6, 0, 0.4), Vector3.new(1.6, 3.4, 0.4), 0.18, METAL)
-	tube(m, Vector3.new(1.6, 0, 0.4), Vector3.new(-1.6, 3.4, 0.4), 0.18, METAL)
-	part(m, "KeysLow", Vector3.new(4.6, 0.35, 1.3), CFrame.new(0, 3.6, 0.4), Color3.fromRGB(20, 20, 22))
-	part(m, "KeysLowWhite", Vector3.new(4.3, 0.12, 0.6), CFrame.new(0, 3.82, 0.75), WHITE)
-	part(m, "KeysHigh", Vector3.new(4.6, 0.35, 1.2), CFrame.new(0, 4.6, -0.2) * CFrame.Angles(-0.35, 0, 0), Color3.fromRGB(150, 30, 30))
-	part(m, "KeysHighWhite", Vector3.new(4.3, 0.12, 0.5), CFrame.new(0, 4.8, 0.1) * CFrame.Angles(-0.35, 0, 0), WHITE)
-	r.neon = { part(m, "KeysLed", Vector3.new(0.6, 0.15, 0.1), CFrame.new(1.6, 3.65, 1.06), r.color, Enum.Material.Neon) }
+	tube(m, Vector3.new(-1.6, 0, 0.4), Vector3.new(1.6, 3.4, 0.4), 0.16, METAL)
+	tube(m, Vector3.new(1.6, 0, 0.4), Vector3.new(-1.6, 3.4, 0.4), 0.16, METAL)
+	for _, x in ipairs({ -1.9, 1.9 }) do
+		part(m, "Foot", Vector3.new(0.3, 0.15, 1.4), CFrame.new(x, 0.08, 0.4), METAL, Enum.Material.Metal)
+	end
+	tube(m, Vector3.new(0, 1.7, 0.4), Vector3.new(0, 4.4, -0.4), 0.14, METAL)
+	keyboard(m, CFrame.new(0, 3.6, 0.4), 4.8, Color3.fromRGB(26, 26, 30))
+	keyboard(m, CFrame.new(0, 4.6, -0.3) * CFrame.Angles(-0.3, 0, 0), 4.4, Color3.fromRGB(165, 28, 30))
+	r.neon = { part(m, "KeysLed", Vector3.new(0.6, 0.15, 0.1), CFrame.new(1.6, 3.65, 1.09), r.color, Enum.Material.Neon) }
 end
 function B.micstand(m, r)
 	cyl(m, "Foot", 0.2, 2, CFrame.new(0, 0.1, 0), DARK)
@@ -973,13 +1289,45 @@ local function stand(m, h)
 	part(m, "Foot", Vector3.new(2, 0.3, 1.2), CFrame.new(0, 0.15, 0), DARK)
 	part(m, "Pole", Vector3.new(0.3, h, 0.3), CFrame.new(0, h / 2, -0.3), METAL, Enum.Material.Metal)
 end
+-- electric guitar: two rounded bouts and a horn, pickups, bridge, knobs, neck with frets and a headstock (lying in the XY plane)
+local function guitar(m, cf, color)
+	local function oval(name, size, off, c, mat)
+		local p = part(m, name, size, cf * off, c, mat)
+		New("SpecialMesh", { MeshType = Enum.MeshType.Sphere, Parent = p })
+		return p
+	end
+	oval("GuitarLower", Vector3.new(2.2, 1.8, 0.45), CFrame.new(0, -0.55, 0), color, Enum.Material.Glass)
+	oval("GuitarUpper", Vector3.new(1.7, 1.45, 0.45), CFrame.new(0.05, 0.55, 0), color, Enum.Material.Glass)
+	oval("GuitarHorn", Vector3.new(0.5, 1.1, 0.42), CFrame.new(-0.55, 1.05, 0) * CFrame.Angles(0, 0, 0.25), color, Enum.Material.Glass)
+	oval("Pickguard", Vector3.new(1.1, 1.6, 0.06), CFrame.new(0.3, -0.1, 0.22), Color3.fromRGB(240, 240, 236))
+	for _, y in ipairs({ -0.45, 0.25 }) do
+		part(m, "Pickup", Vector3.new(0.7, 0.22, 0.08), cf * CFrame.new(0, y, 0.26), Color3.fromRGB(20, 20, 22))
+	end
+	part(m, "Bridge", Vector3.new(0.6, 0.18, 0.1), cf * CFrame.new(0, -0.95, 0.25), Color3.fromRGB(200, 200, 210), Enum.Material.Metal)
+	for i = 0, 2 do
+		cyl(m, "Knob", 0.12, 0.2, cf * CFrame.new(0.6 + i * 0.12, -0.9 - i * 0.2, 0.27) * CFrame.Angles(math.pi / 2, 0, 0), Color3.fromRGB(230, 220, 190))
+	end
+	part(m, "Neck", Vector3.new(0.32, 3, 0.18), cf * CFrame.new(0, 2.6, 0.06), Color3.fromRGB(150, 100, 55), Enum.Material.Wood)
+	part(m, "Fretboard", Vector3.new(0.3, 2.9, 0.04), cf * CFrame.new(0, 2.6, 0.17), Color3.fromRGB(50, 32, 24), Enum.Material.Wood)
+	for i = 0, 6 do
+		part(m, "Fret", Vector3.new(0.31, 0.03, 0.05), cf * CFrame.new(0, 1.3 + i * 0.4, 0.19), Color3.fromRGB(210, 210, 215), Enum.Material.Metal)
+	end
+	part(m, "Headstock", Vector3.new(0.45, 0.85, 0.12), cf * CFrame.new(0.08, 4.5, 0.04) * CFrame.Angles(0, 0, -0.12), Color3.fromRGB(150, 100, 55), Enum.Material.Wood)
+	for i = 0, 2 do
+		cyl(m, "Tuner", 0.18, 0.1, cf * CFrame.new(-0.22, 4.2 + i * 0.25, 0.04), Color3.fromRGB(200, 200, 210), Enum.Material.Metal)
+	end
+	part(m, "Strings", Vector3.new(0.18, 4.9, 0.02), cf * CFrame.new(0, 1.9, 0.2), Color3.fromRGB(220, 220, 225), Enum.Material.Metal).Transparency = 0.4
+end
+Builder.guitar = guitar
 function B.guitarstand(m, r)
-	tube(m, Vector3.new(-0.8, 0, 0.6), Vector3.new(0, 2.2, 0), 0.12, METAL)
-	tube(m, Vector3.new(0.8, 0, 0.6), Vector3.new(0, 2.2, 0), 0.12, METAL)
-	tube(m, Vector3.new(0, 0, -0.8), Vector3.new(0, 2.2, 0), 0.12, METAL)
-	part(m, "GuitarBody", Vector3.new(2.2, 2.6, 0.5), CFrame.new(0, 1.9, 0.2) * CFrame.Angles(-0.15, 0, 0), r.color)
-	part(m, "Pickguard", Vector3.new(0.9, 1.1, 0.1), CFrame.new(0.3, 1.7, 0.5) * CFrame.Angles(-0.15, 0, 0), Color3.fromRGB(20, 20, 20))
-	part(m, "Neck", Vector3.new(0.35, 3.2, 0.25), CFrame.new(0, 4.6, -0.2) * CFrame.Angles(-0.15, 0, 0), Color3.fromRGB(110, 70, 40), Enum.Material.Wood)
+	-- tripod stand with a padded cradle and a neck holder
+	for _, a in ipairs({ 0.6, 2.55, 4.5 }) do
+		tube(m, Vector3.new(0, 1.0, 0), Vector3.new(math.cos(a) * 1.1, 0.05, math.sin(a) * 1.1), 0.1, METAL)
+	end
+	tube(m, Vector3.new(0, 1.0, 0), Vector3.new(0, 4.6, -0.25), 0.1, METAL)
+	part(m, "Cradle", Vector3.new(1.8, 0.25, 0.6), CFrame.new(0, 1.15, 0.15), Color3.fromRGB(20, 20, 22), Enum.Material.Fabric)
+	part(m, "NeckYoke", Vector3.new(0.6, 0.2, 0.3), CFrame.new(0, 4.6, -0.25), Color3.fromRGB(20, 20, 22), Enum.Material.Fabric)
+	guitar(m, CFrame.new(0, 2.4, 0.05) * CFrame.Angles(-0.1, 0, 0), r.color)
 end
 function B.wedge(m, r)
 	New("WedgePart", { Name = "Wedge", Size = Vector3.new(3.4, 1.6, 2.4), CFrame = CFrame.new(0, 0.8, 0) * CFrame.Angles(0, math.pi, 0), Color = Color3.fromRGB(20, 20, 22), Material = Enum.Material.Fabric, Anchored = true, CanCollide = false, CanTouch = false, CastShadow = false, Parent = m })
@@ -1438,9 +1786,53 @@ function Builder.animate(refs, ctx)
 		if ctx.artistName and refs.label.Text ~= ctx.artistName then
 			refs.label.Text = ctx.artistName
 		end
-	elseif k == "lift" then
-		refs.platform.CFrame = refs.cf * refs.platformLocal * CFrame.new(0, ((refs.liftT or ctx.liftT) - 1) * 10, 0)
-		refs.ring.Color = c1
+	elseif k == "lift" or k == "poplift" then
+		local lt = refs.liftT or ctx.liftT
+		-- the doors fold away first, then the platform comes up through the opening
+		setHatch(refs, math.clamp(lt * 5, 0, 1))
+		refs.platform.CFrame = refs.cf * refs.platformLocal * CFrame.new(0, (lt - 1) * 10, 0)
+		refs.platform.Transparency = (lt < 0.02) and 1 or 0
+		if refs.ringColor ~= c1 then
+			refs.ringColor = c1
+			for _, p in ipairs(refs.ringParts) do
+				p.Color = c1
+			end
+		end
+		if k == "poplift" then
+			if lt >= 0.999 and not refs.fired and refs.armed then
+				refs.fired = true
+				for _, b in ipairs(refs.burstParts) do
+					b[1]:Emit(70)
+					b[2]:Emit(25)
+				end
+			elseif lt < 0.5 then
+				refs.armed = true
+				refs.fired = false
+			end
+		end
+	elseif k == "towerlift" then
+		local h = (refs.towerT or 0) * Builder.TOWER_HEIGHT
+		-- three telescopic sections share the height
+		for i, tube in ipairs(refs.tubes) do
+			-- section i (widest at the bottom) covers its third of the height
+			local y0 = 0.6 + h * (i - 1) / 3
+			local len = math.max(0.4, h / 3 + 0.6)
+			tube.Size = Vector3.new(len, tube.Size.Y, tube.Size.Z)
+			tube.CFrame = refs.cf * CFrame.new(0, y0 + len / 2, 0) * CFrame.Angles(0, 0, math.pi / 2)
+		end
+		refs.top.CFrame = refs.cf * CFrame.new(0, 1.1 + h, 0) * CFrame.Angles(0, 0, math.pi / 2)
+		refs.topRing.CFrame = refs.cf * CFrame.new(0, 1.45 + h, 0) * CFrame.Angles(0, 0, math.pi / 2)
+		refs.under.CFrame = refs.cf * CFrame.new(0, 0.55 + h, 0) * CFrame.Angles(0, 0, math.pi / 2)
+		for i, rail in ipairs(refs.rails) do
+			local a = (i - 1) * math.pi / 4
+			rail.CFrame = refs.cf * CFrame.new(math.cos(a) * 4.8, 2.9 + h, math.sin(a) * 4.8)
+		end
+		refs.topRing.Color = c1
+		refs.baseRing.Color = c2
+	elseif k == "stadiumroof" then
+		refs.roofLED.Color = c1:Lerp(c2, ctx.beat or 0)
+	elseif k == "delaytower" then
+		refs.blink.Transparency = (math.floor(t * 1.5) % 2 == 0) and 0 or 0.8
 	elseif k == "scissor" then
 		local h = ctx.scissorT * 16
 		refs.column.Size = Vector3.new(3, 0.6 + h, 3)
@@ -1451,7 +1843,8 @@ function Builder.animate(refs, ctx)
 	elseif k == "pyro" then
 		if hit.pyro then
 			refs.fire.Enabled = true
-			refs.emitter:Emit(45)
+			refs.emitter:Emit(55)
+			refs.smokeEmitter:Emit(10)
 			refs.light.Brightness = 2.5
 			refs.offAt = t + 0.9
 		elseif refs.offAt and t > refs.offAt then
@@ -1749,8 +2142,10 @@ function Builder.rest(refs)
 	end
 	if k == "curtain" then
 		Builder.animate(refs, { t = 0, c1 = refs.color, c2 = refs.color, hit = {}, curtainT = 0, beat = 0, beatCount = 0 })
-	elseif k == "lift" then
-		refs.platform.CFrame = refs.cf * refs.platformLocal
+	elseif k == "lift" or k == "poplift" or k == "towerlift" then
+		refs.liftT, refs.towerT = 1, 0
+		Builder.animate(refs, { t = 0, c1 = refs.color, c2 = refs.color, hit = {}, beat = 0, beatCount = 0, liftT = 1 })
+		refs.liftT = nil
 	elseif k == "inflatable" then
 		refs.inflate = 0
 		Builder.animate(refs, { t = 0, c1 = refs.color, c2 = refs.color, hit = {}, inflate = 0.25, beat = 0, beatCount = 0 })
