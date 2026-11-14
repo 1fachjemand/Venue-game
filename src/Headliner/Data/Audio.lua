@@ -4,20 +4,20 @@
 local Audio = {}
 
 Audio.IDS = {
-	menu = 0,
-	sfx = 0,
-	lila = 0,
-	juno = 0,
-	rusty = 0,
-	voltage = 0,
-	kai = 0,
-	neon = 0,
-	ironclad = 0,
-	velvet = 0,
-	luna = 0,
-	dusty = 0,
-	starlyte = 0,
-	nova = 0,
+	menu = 102733154930319,
+	sfx = 119428042172938,
+	lila = 81723638120772,
+	juno = 115464068768993,
+	rusty = 110510340663014,
+	voltage = 99620305358160,
+	kai = 107157349335044,
+	neon = 87721168005264,
+	ironclad = 101275480792637,
+	velvet = 123845710479345,
+	luna = 74225603281313,
+	dusty = 100901883872328,
+	starlyte = 125180697119017,
+	nova = 79935303723184,
 }
 
 return Audio
