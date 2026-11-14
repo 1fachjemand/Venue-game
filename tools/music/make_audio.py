@@ -148,108 +148,265 @@ def chord_notes(key, scale, deg, sevenths=False, octave=12):
     return [deg_midi(key + octave, scale, i) for i in idx]
 
 
-def render_song(style, seed, ballad=False, hit=False, length=SONG_LEN):
+# ------------------------------------------------------------------ variety: song types and per-artist alternatives
+# Extra drum feels used by the song types
+DRUMS.update({
+    "punk": {"K": "x...x...x...x...", "S": "....x.......x...", "H": "xxxxxxxxxxxxxxxx"},
+    "boombap": {"K": "x......x..x.....", "S": "....x.......x...", "H": "x.x.x.x.x.x.x.x.", "O": "......x........."},
+    "halftime": {"K": "x.........x.....", "S": "........x.......", "H": "x.x.x.x.x.x.x.x."},
+    "disco": {"K": "x...x...x...x...", "S": "....x.......x...", "O": "..x...x...x...x.", "H": "x.x.x.x.x.x.x.x."},
+    "latin2": {"K": "x..x..x.x..x..x.", "S": "....x.......x...", "T": "xxxxxxxxxxxxxxxx", "R": "..x...x...x...x."},
+    "doom": {"K": "x.......x.x.....", "S": "........x.......", "O": "x...x...x...x..."},
+    "light": {"K": "x.......x.......", "R": "....x.......x...", "T": "x.x.x.x.x.x.x.x."},
+})
+
+# what each artist uses for the different song types
+ALTS = {
+    "lila": dict(fast="pop2", groove="boombap", acoustic="light", chords=["strum", "piano", "pad", "rhodes"], leads=["whistle", "voice", "bell", "square"]),
+    "juno": dict(fast="disco", groove="halftime", acoustic="light", chords=["stab", "pad", "piano", "strum"], leads=["voice", "square", "pluck", "bell"]),
+    "rusty": dict(fast="punk", groove="indie", acoustic="light", chords=["power", "strum", "power", "piano"], leads=["leadgtr", "voice", "leadgtr", "square"]),
+    "voltage": dict(fast="disco", groove="halftime", acoustic="light", chords=["edm", "pad", "stab", "piano"], leads=["supersaw", "pluck", "square", "voice"]),
+    "kai": dict(fast="pop2", groove="boombap", acoustic="light", chords=["piano", "rhodes", "pad", "stab"], leads=["bell", "piano", "voice", "square"]),
+    "neon": dict(fast="punk", groove="pop2", acoustic="light", chords=["strum", "power", "pad", "piano"], leads=["leadgtr", "voice", "whistle", "bell"]),
+    "ironclad": dict(fast="metal", groove="doom", acoustic="light", chords=["power", "power", "strum", "piano"], leads=["leadgtr", "leadgtr", "voice", "square"]),
+    "velvet": dict(fast="pop2", groove="halftime", acoustic="light", chords=["rhodes", "piano", "pad", "strum"], leads=["voice", "rhodes", "square", "bell"]),
+    "luna": dict(fast="latin2", groove="halftime", acoustic="light", chords=["marimba", "strum", "pad", "stab"], leads=["voice", "pluck", "whistle", "square"]),
+    "dusty": dict(fast="punk", groove="indie", acoustic="light", chords=["strum", "piano", "power", "strum"], leads=["fiddle", "leadgtr", "voice", "whistle"]),
+    "starlyte": dict(fast="disco", groove="halftime", acoustic="light", chords=["edm", "pad", "piano", "stab"], leads=["voice", "square", "pluck", "bell"]),
+    "nova": dict(fast="disco", groove="halftime", acoustic="light", chords=["pad", "stab", "piano", "strum"], leads=["voice", "square", "pluck", "bell"]),
+}
+
+# song number in the setlist -> song type (4 = ballad, 8 = big hit)
+SONG_TYPES = {1: "opener", 2: "uptempo", 3: "groove", 4: "ballad", 5: "synth", 6: "dark", 7: "acoustic", 8: "hit", 9: "uptempo_dark", 10: "midtempo", 11: "groove_acoustic", 12: "anthem"}
+KEY_SHIFT = {1: 0, 2: 5, 3: -2, 4: 3, 5: 7, 6: -3, 7: 2, 8: 0, 9: 4, 10: -1, 11: 6, 12: 1}
+MINOR_OF = {"major": "minor", "mixo": "dorian", "dorian": "minor", "minor": "phryg", "phryg": "phryg"}
+MINOR_PROG = {"pop": "minor", "rock": "minor", "country": "minor", "rnb": "minor", "latin": "latin", "minor": "minor", "metal": "metal"}
+
+
+def song_style(aid, n):
+    """style of song n of an artist: the artist's sound changed by the song type"""
+    st = dict(STYLES[aid])
+    alt = ALTS[aid]
+    kind = SONG_TYPES.get(n, "anthem")
+    st["kind"] = kind
+    st["lead"] = alt["leads"][(n - 1) % len(alt["leads"])] if n not in (1, 8) else STYLES[aid]["lead"]
+    lo, hi = st["bpm"]
+    if "uptempo" in kind:
+        st["bpm"] = (int(lo * 1.12), int(hi * 1.15))
+        st["drums"] = alt["fast"]
+    if "groove" in kind:
+        st["bpm"] = (int(lo * 0.82), int(hi * 0.88))
+        st["drums"] = alt["groove"]
+        st["rhythm"] = "syncop" if st["rhythm"] != "syncop" else "latin"
+    if "acoustic" in kind:
+        st["drums"] = alt["acoustic"]
+        st["chords"] = "strum" if aid not in ("velvet", "kai") else "piano"
+        st["arp"] = None
+        st["edm"] = False
+        st["kick"] = "soft"
+    if kind in ("uptempo", "groove", "dark", "uptempo_dark"):
+        st["chords"] = alt["chords"][n % len(alt["chords"])]
+        if st["chords"] in ("stab", "edm") and "chord_inst" not in st:
+            st["chord_inst"] = "pluck"
+    if "dark" in kind:
+        st["scale"] = MINOR_OF.get(st["scale"], "minor")
+        st["prog"] = MINOR_PROG.get(st["prog"], "minor")
+    if kind == "synth":
+        st["chords"] = alt["chords"][2] if alt["chords"][2] != st["chords"] else alt["chords"][3]
+        st["arp"] = "pluck"
+    if kind == "midtempo":
+        st["bpm"] = (int(lo * 0.92), int(hi * 0.95))
+        st["chords"] = alt["chords"][1]
+        st["rhythm"] = "long"
+    if kind == "anthem":
+        st["chords"] = alt["chords"][3]
+        st["big"] = True
+    if kind == "hit":
+        st["big"] = True
+        st["arp"] = st.get("arp") or "pluck"
+    if kind == "opener":
+        st["intro"] = "drums"
+    k0 = (st["key"][0] + st["key"][1]) // 2 + KEY_SHIFT.get(n, 0)
+    while k0 > st["key"][1] + 2:
+        k0 -= 12
+    while k0 < st["key"][0] - 5:
+        k0 += 12
+    st["key"] = (k0, k0)
+    return st
+
+
+def plan_form(bars, kind, long=False):
+    """sections of a song: (name, bars). name: intro, verse, pre, chorus, break, outro"""
+    if long:
+        out, left = [("intro", 4)], bars - 4
+        cycle = [("verse", 8), ("pre", 4), ("chorus", 8), ("break", 4), ("verse", 8), ("chorus", 8), ("chorus", 8)]
+        i = 0
+        while left > 0:
+            name, b = cycle[i % len(cycle)]
+            b = min(b, left)
+            out.append((name, b))
+            left -= b
+            i += 1
+        return out
+    if kind == "hit":
+        intro = 0
+    elif kind == "ballad":
+        intro = 2
+    else:
+        intro = 1 if bars <= 10 else 2
+    rest = bars - intro
+    verse = max(2, int(rest * (0.45 if kind == "ballad" else 0.38)) // 2 * 2)
+    pre = 2 if rest - verse >= 8 and kind not in ("ballad", "hit") else 0
+    chorus = rest - verse - pre
+    form = []
+    if intro:
+        form.append(("intro", intro))
+    if kind == "hit":
+        form += [("chorus", 4), ("verse", verse), ("chorus", max(2, rest - 4 - verse))]
+    else:
+        form += [("verse", verse)] + ([("pre", pre)] if pre else []) + [("chorus", chorus)]
+    return form
+
+
+def render_song(style, seed, ballad=False, hit=False, length=SONG_LEN, long=False):
     r = np.random.default_rng(seed)
+    kind = style.get("kind", "hit" if hit else ("ballad" if ballad else "anthem"))
+    ballad = ballad or kind == "ballad"
+    hit = hit or kind == "hit"
     bpm = int(r.integers(64, 76)) if ballad else int(r.integers(style["bpm"][0], style["bpm"][1] + 1))
-    if hit:
-        bpm = min(style["bpm"][1] + 2, bpm + 3)
     beat = 60.0 / bpm
     step = beat / 4
     bar_s = beat * 4
-    bars = max(6, int((length - 1.2) / bar_s))
+    bars = max(6, int((length - 1.4) / bar_s))
     key = int(r.integers(style["key"][0], style["key"][1] + 1))
     scale = SCALES[style["scale"]]
     progs = PROGS[style["prog"]]
-    prog = progs[int(r.integers(len(progs)))]
+    i1 = int(r.integers(len(progs)))
+    prog_verse = progs[i1]
+    prog_chorus = progs[(i1 + 1 + int(r.integers(max(1, len(progs) - 1)))) % len(progs)]
+    if prog_chorus == prog_verse and len(progs) > 1:
+        prog_chorus = progs[(i1 + 1) % len(progs)]
     edm = style.get("edm") and not ballad
-    n = int((length + 2) * SR)
-    tracks = {k: np.zeros(n) for k in ("drums", "bass", "chords", "lead", "arp", "pad", "fx")}
     swing = style.get("swing", 0.0)
+    n = int((length + 3) * SR)
+    tracks = {k: np.zeros(n) for k in ("drums", "bass", "chords", "lead", "arp", "pad", "fx")}
+
+    form = plan_form(bars, kind, long)
+    # bar -> section info
+    sec_of = []
+    for name, b in form:
+        for k in range(b):
+            sec_of.append((name, k, b))
+    bars = len(sec_of)
+
+    def section(b):
+        return sec_of[min(b, bars - 1)][0]
+
+    def prog_at(b):
+        name, k, _ = sec_of[min(b, bars - 1)]
+        p = prog_chorus if name in ("chorus", "outro") else prog_verse
+        if name == "pre":
+            p = [prog_verse[3 % len(prog_verse)], prog_chorus[0], prog_verse[1 % len(prog_verse)], 4]
+        return p[k % len(p)]
+
+    ENERGY = {"intro": 0.35, "verse": 0.7, "pre": 0.85, "chorus": 1.0, "break": 0.45, "outro": 0.6}
 
     def stime(bar, st):
         sw = swing * step if st % 2 == 1 else 0
         return bar * bar_s + st * step + sw
 
-    intro = 2
-    build = 2 if edm else 0
-    chorus_from = intro + build + (0 if edm else max(2, (bars - intro) // 3))
     kit = {
         "K": S.kick(style["kick"]), "S": S.snare(style["snare"]), "C": S.clap(), "H": S.hat(False),
         "O": S.hat(True), "R": S.rim(), "T": S.shaker(),
     }
     pattern = DRUMS["ballad" if ballad else style["drums"]]
+    verse_pattern = DRUMS["light"] if style.get("chords") == "strum" and not edm else pattern
     for b in range(bars):
-        energy = 0.35 if b < intro else (0.75 if b < chorus_from else 1.0)
+        name = section(b)
+        energy = ENERGY[name]
         if ballad:
-            energy = 0.0 if b < bars // 2 else 0.6
-        if edm and intro <= b < intro + build:
-            # build-up: snare roll gets faster, no kick
-            k = b - intro
-            div = 4 if k == 0 else 2
+            energy = 0.0 if name in ("intro",) or (name == "verse" and sec_of[b][1] < sec_of[b][2] // 2) else 0.55
+        if edm and name == "pre":
+            div = 4 if sec_of[b][1] == 0 else 2
             for st in range(0, 16, div):
-                S.place(tracks["drums"], kit["S"], stime(b, st), 0.3 + 0.5 * (st / 16 + k) / 2)
+                S.place(tracks["drums"], kit["S"], stime(b, st), 0.3 + 0.5 * st / 16)
             continue
         if energy <= 0:
             continue
-        for inst, pat in pattern.items():
-            if b < intro and inst in ("S", "C") and not edm:
+        if name == "intro" and style.get("intro") != "drums" and not edm:
+            continue  # most songs start with the band, the opener with the drums
+        pat = verse_pattern if name == "verse" else pattern
+        if name == "break":
+            pat = {"K": pattern.get("K", "x...")[:16]}
+        for inst, p in pat.items():
+            if name == "verse" and inst in ("O",) and not style.get("heavy"):
                 continue
-            if inst == "K" and style.get("heavy") and b < chorus_from:
-                pat = "x.x.x.x.x.x.x.x."
-            for st, ch in enumerate(pat):
+            if inst == "K" and style.get("heavy") and name != "chorus" and style["drums"] == "metal":
+                p = "x.x.x.x.x.x.x.x."
+            for st, ch in enumerate(p):
                 if ch == "x":
                     g = energy * (0.9 if inst in ("K", "S", "C") else 0.55)
                     if inst == "H" and st % 4 != 0:
                         g *= 0.7
                     if style["snare"] == "brush" and inst == "S" and st not in (4, 12):
-                        g *= 0.22  # brushes: soft ghost notes, accents on 2 and 4
-                    g *= 0.9 + 0.2 * r.random()  # a human drummer never hits twice the same
+                        g *= 0.22
+                    g *= 0.9 + 0.2 * r.random()
                     S.place(tracks["drums"], kit[inst], stime(b, st), g)
-        if style.get("half") and r.random() < 0.4:
-            for st in (12, 13, 14, 15):  # trap hat roll
+        if style.get("half") and name == "chorus" and r.random() < 0.5:
+            for st in (12, 13, 14, 15):
                 S.place(tracks["drums"], kit["H"], stime(b, st) + step / 2, 0.35)
-        if b in (intro, chorus_from) or b == 0:
-            S.place(tracks["drums"], S.crash(), stime(b, 0), 0.6 * max(0.5, energy))
-        if b == chorus_from - 1 and not ballad and b > 0:
-            for st in (12, 13, 14, 15):  # fill into the chorus
-                S.place(tracks["drums"], kit["S"], stime(b, st), 0.5)
+        if sec_of[b][1] == 0 and name in ("chorus", "verse") and b > 0:
+            S.place(tracks["drums"], S.crash(), stime(b, 0), 0.55 * energy)
+        nxt = section(b + 1) if b + 1 < bars else None
+        if nxt and nxt != name and nxt in ("chorus", "verse") and not ballad:
+            for st in ((12, 13, 14, 15) if r.random() < 0.6 else (8, 10, 12, 13, 14, 15)):
+                S.place(tracks["drums"], kit["S"] if r.random() < 0.7 else S.tom(100 + 20 * (st % 3)), stime(b, st), 0.5)
     S.place(tracks["drums"], S.crash(), stime(bars, 0), 0.6)
 
     # bass
     bline = BASSLINES["ballad" if ballad else style["bline"]]
     for b in range(bars + 1):
-        if b < (1 if not edm else intro + build) and not ballad:
+        name = section(b) if b < bars else "outro"
+        if name == "intro" and not ballad:
             continue
-        deg = prog[min(b, bars - 1) % len(prog)]
+        if edm and name == "pre":
+            continue
+        deg = prog_at(min(b, bars - 1))
         root = deg_midi(key, scale, deg) - (12 if style["bass"] in ("808", "sub") else 0)
-        for (st, ln, iv) in (bline if b < bars else [(0, 16, 0)]):
+        line = bline if b < bars else [(0, 16, 0)]
+        if name == "break":
+            line = [(0, 16, 0)]
+        for (st, ln, iv) in line:
             f = S.midi_hz(root + iv)
-            if style["bass"] == "808":
-                x = S.bass(f, ln * step, "808")
-            else:
-                x = S.bass(f, ln * step * 0.92, style["bass"])
-            S.place(tracks["bass"], x, stime(b, st), 0.8)
+            x = S.bass(f, ln * step, "808") if style["bass"] == "808" else S.bass(f, ln * step * 0.92, style["bass"])
+            S.place(tracks["bass"], x, stime(b, st), 0.8 if name != "verse" else 0.7)
 
     # chords
     sev = style.get("sevenths", False)
     cstyle = style["chords"]
     if ballad:
-        cstyle = {"rhodes": "rhodes", "strum": "strum", "power": "piano"}.get(cstyle, "piano")
+        cstyle = {"rhodes": "rhodes", "strum": "strum", "power": "piano", "marimba": "strum"}.get(cstyle, "piano")
     for b in range(bars + 1):
-        deg = prog[min(b, bars - 1) % len(prog)]
+        name = section(b) if b < bars else "outro"
+        deg = prog_at(min(b, bars - 1))
         notes = chord_notes(key, scale, deg, sev or ballad)
         fs = [S.midi_hz(m) for m in notes]
         last = b == bars
-        energy = 0.6 if b < chorus_from else 1.0
-        if cstyle == "pad" or (edm and b < intro):
+        energy = ENERGY.get(name, 0.7)
+        if cstyle == "pad" or (edm and name in ("intro", "pre", "break")):
+            cut = 1400 if not (edm and name == "pre") else 600 + 1200 * (sec_of[min(b, bars - 1)][1] + 1) / max(1, sec_of[min(b, bars - 1)][2])
             for f in fs:
-                S.place(tracks["pad"], S.pad(f, bar_s * (2 if last else 1)), stime(b, 0), 0.5)
-            if cstyle == "pad" and b >= chorus_from:
+                S.place(tracks["pad"], S.pad(f, bar_s * (2 if last else 1), cutoff=cut), stime(b, 0), 0.5)
+            if cstyle == "pad" and name == "chorus":
                 for st in (0, 6, 10):
                     for f in fs:
                         S.place(tracks["chords"], S.pluck_synth(f * 2, step * 2), stime(b, st), 0.25)
+            if edm:
+                continue
         elif cstyle == "piano":
             hits = [0] if last else ([0, 8] if not ballad else [0, 4, 8, 12])
+            if name == "chorus" and not ballad:
+                hits = [0, 3, 6, 8, 11, 14]
             for st in hits:
                 if ballad and not last:
                     m = notes[(st // 4) % len(notes)]
@@ -258,24 +415,27 @@ def render_song(style, seed, ballad=False, hit=False, length=SONG_LEN):
                         S.place(tracks["chords"], S.piano(S.midi_hz(notes[0] - 12), bar_s), stime(b, 0), 0.6)
                 else:
                     for f in fs:
-                        S.place(tracks["chords"], S.piano(f, beat * (4 if last else 2)), stime(b, st), 0.45 * energy + 0.2)
+                        S.place(tracks["chords"], S.piano(f, beat * (4 if last else 1.5)), stime(b, st), 0.4 * energy + 0.2)
         elif cstyle == "rhodes":
-            for st in ([0] if last else [0, 10]):
+            for st in ([0] if last else ([0, 10] if name != "chorus" else [0, 6, 10, 14])):
                 for f in fs:
                     S.place(tracks["chords"], S.rhodes(f, beat * (4 if last else 2.2)), stime(b, st), 0.6)
         elif cstyle == "strum":
             gtr = [S.midi_hz(m - 12) for m in notes] + [S.midi_hz(notes[0])]
-            pat = [0] if last else ([0, 6, 8, 12, 14] if b >= chorus_from else [0, 8])
+            pat = [0] if last else ([0, 6, 8, 12, 14] if name == "chorus" else ([0, 8] if name in ("verse", "intro", "break") else [0, 4, 8, 12]))
             for st in pat:
                 S.place(tracks["chords"], S.clean_guitar(gtr if st % 4 == 0 else gtr[::-1], step * 4), stime(b, st), 0.7 * energy + 0.2)
         elif cstyle == "power":
             root = deg_midi(key, scale, deg) - (12 if style.get("heavy") else 0)
             pc = [S.midi_hz(root), S.midi_hz(root + 7), S.midi_hz(root + 12)]
-            if last:
-                S.place(tracks["chords"], S.dist_guitar(pc, bar_s * 1.5), stime(b, 0), 0.7)
+            if last or name == "break":
+                S.place(tracks["chords"], S.dist_guitar(pc, bar_s * (1.5 if last else 0.95)), stime(b, 0), 0.65)
                 continue
-            if b < intro:
+            if name == "intro":
                 S.place(tracks["chords"], S.dist_guitar(pc, bar_s * 0.9), stime(b, 0), 0.6)
+            elif name == "verse" and not style.get("heavy"):
+                for st in range(0, 16, 2):
+                    S.place(tracks["chords"], S.dist_guitar(pc[:2], step * 2, mute=True), stime(b, st), 0.45)
             else:
                 for st in range(0, 16, 1 if style.get("heavy") else 2):
                     mute = (st % 4 != 0) or style.get("heavy") and st % 8 != 0
@@ -283,7 +443,7 @@ def render_song(style, seed, ballad=False, hit=False, length=SONG_LEN):
         elif cstyle == "marimba":
             for st in range(0, 16, 2):
                 m = notes[(st // 2) % len(notes)]
-                S.place(tracks["chords"], S.marimba(S.midi_hz(m), step * 2), stime(b, st), 0.5)
+                S.place(tracks["chords"], S.marimba(S.midi_hz(m), step * 2), stime(b, st), 0.5 * energy + 0.1)
             S.place(tracks["pad"], S.pad(fs[0], bar_s, cutoff=900), stime(b, 0), 0.3)
         elif cstyle in ("stab", "edm"):
             inst = S.INSTRUMENTS.get(style.get("chord_inst", "pluck"), S.pluck_synth)
@@ -291,11 +451,7 @@ def render_song(style, seed, ballad=False, hit=False, length=SONG_LEN):
                 for f in fs:
                     S.place(tracks["chords"], inst(f, bar_s), stime(b, 0), 0.5)
                 continue
-            if edm and b < intro + build:
-                for f in fs:
-                    S.place(tracks["pad"], S.pad(f, bar_s, cutoff=600 + 900 * (b - intro + 1)), stime(b, 0), 0.5)
-                continue
-            hits = [0, 3, 6, 10, 12] if b >= chorus_from else [0, 6, 10]
+            hits = [0, 3, 6, 10, 12] if name == "chorus" else [0, 6, 10]
             for st in hits:
                 for f in fs:
                     S.place(tracks["chords"], inst(f, step * 2.5), stime(b, st), 0.42)
@@ -306,8 +462,10 @@ def render_song(style, seed, ballad=False, hit=False, length=SONG_LEN):
     # arpeggio layer in the chorus
     if style.get("arp") and not ballad:
         ainst = S.INSTRUMENTS[style["arp"]]
-        for b in range(chorus_from, bars):
-            deg = prog[b % len(prog)]
+        for b in range(bars):
+            if section(b) != "chorus":
+                continue
+            deg = prog_at(b)
             notes = chord_notes(key, scale, deg, False, 24)
             for st in range(0, 16, 2 if style["arp"] == "bell" else 1):
                 if style["arp"] == "bell" and st % 4 == 2 and r.random() < 0.5:
@@ -315,37 +473,44 @@ def render_song(style, seed, ballad=False, hit=False, length=SONG_LEN):
                 m = notes[(st if style["arp"] != "bell" else st // 2) % len(notes)]
                 S.place(tracks["arp"], ainst(S.midi_hz(m), step * 0.9), stime(b, st), 0.3)
 
-    # lead melody (voice-like in pop styles)
-    lead_name = "piano" if (ballad and style["lead"] in ("leadgtr", "supersaw")) else style["lead"]
+    # lead: own melody for verse and chorus (chorus higher and denser)
+    lead_name = "piano" if (ballad and style["lead"] in ("leadgtr", "supersaw", "square", "pluck")) else style["lead"]
     linst = S.INSTRUMENTS.get(lead_name, S.voice)
     bank = RHYTHMS["ballad" if ballad else style["rhythm"]]
     oct_ = 24 if lead_name not in ("bell", "whistle") else 36
-    mel = make_melody(r, scale, key, bars, prog, bank, step, oct_)
+    rv = np.random.default_rng(seed * 7 + 1)
+    rc = np.random.default_rng(seed * 7 + 2)
+    verse_bank = [bank[int(rv.integers(len(bank)))]]
+    chorus_bank = RHYTHMS["pop" if style["rhythm"] in ("long", "ballad") else style["rhythm"]]
+    mel_v = make_melody(rv, scale, key, bars, [prog_at(b) for b in range(bars)], verse_bank, step, oct_ - 5 if lead_name in ("voice", "fiddle", "leadgtr") else oct_)
+    mel_c = make_melody(rc, scale, key, bars, [prog_at(b) for b in range(bars)], chorus_bank, step, oct_)
     vowels = ["a", "o", "e", "a", "u"]
-    for i, (st, ln, m) in enumerate(mel):
-        b = int(st // bar_s)
-        if b < intro and not ballad:
-            continue
-        g = 0.55 if b >= chorus_from else 0.42
-        if lead_name == "voice":
-            x = S.voice(S.midi_hz(m), ln * 0.95, 1.0, vowels[i % len(vowels)])
-        else:
-            x = linst(S.midi_hz(m), ln * 0.95)
-        S.place(tracks["lead"], x, st + (swing * step if int(st / step) % 2 == 1 else 0), g)
-        if (style.get("big") or hit) and b >= chorus_from and lead_name == "voice":
-            # doubled an octave higher in big choruses
-            S.place(tracks["lead"], S.voice(S.midi_hz(m + 12), ln * 0.95, 1.0, "e"), st, g * 0.35)
+    for mel, sec_names, g0 in ((mel_v, ("verse", "pre"), 0.42), (mel_c, ("chorus", "outro"), 0.56)):
+        for i, (st, ln, m) in enumerate(mel):
+            b = int(st // bar_s)
+            if b >= bars or section(b) not in sec_names:
+                continue
+            if ballad and section(b) == "intro":
+                continue
+            if lead_name == "voice":
+                x = S.voice(S.midi_hz(m), ln * 0.95, 1.0, vowels[i % len(vowels)])
+            else:
+                x = linst(S.midi_hz(m), ln * 0.95)
+            S.place(tracks["lead"], x, st + (swing * step if int(st / step) % 2 == 1 else 0), g0)
+            if (style.get("big") or hit) and section(b) == "chorus" and lead_name == "voice":
+                S.place(tracks["lead"], S.voice(S.midi_hz(m + 12), ln * 0.95, 1.0, "e"), st, g0 * 0.35)
 
-    # EDM: riser in the build and side-chain ducking on the kick
     if edm:
-        t0 = intro * bar_s
-        dur = build * bar_s
-        nn = int(dur * SR)
-        rise = S.noise(nn) * np.linspace(0, 1, nn) ** 2
-        rise = S.bandpass(rise, 800, 9000)
-        S.place(tracks["fx"], rise, t0, 0.35)
+        for b in range(bars):
+            if section(b) == "pre" and sec_of[b][1] == 0:
+                dur = sec_of[b][2] * bar_s
+                nn = int(dur * SR)
+                rise = S.bandpass(S.noise(nn) * np.linspace(0, 1, nn) ** 2, 800, 9000)
+                S.place(tracks["fx"], rise, b * bar_s, 0.35)
         duck = np.ones(n)
-        for b in range(intro + build, bars):
+        for b in range(bars):
+            if section(b) not in ("chorus", "verse"):
+                continue
             for st in (0, 4, 8, 12):
                 i = int(stime(b, st) * SR)
                 k = min(int(beat * 0.6 * SR), n - i)
@@ -362,9 +527,9 @@ def render_song(style, seed, ballad=False, hit=False, length=SONG_LEN):
         mix += x * gains[k]
     wet = style["verb"] + (0.15 if ballad else 0)
     mix = S.reverb(mix, 2.2 if ballad else 1.5, wet)
-    out = mix[: int(length * SR)]
-    # fade the end so every song ends cleanly in its 30 s slot
-    fl = int(1.6 * SR)
+    total = length if not long else (bars * bar_s + 2.5)
+    out = mix[: int(total * SR)]
+    fl = int((1.6 if not long else 2.5) * SR)
     out[-fl:] *= np.linspace(1, 0, fl) ** 1.5
     out[: int(0.01 * SR)] *= np.linspace(0, 1, int(0.01 * SR))
     return S.master(out, 0.15 if not ballad else 0.12)
@@ -482,20 +647,14 @@ def write_ogg(path, x):
 
 
 def menu_music():
-    """title theme (stadium pop) + office theme (lo-fi), 80 s each"""
-    title = []
-    style = dict(STYLES["nova"])
-    style.update(bpm=(100, 100), key=(41, 41), verb=0.35)
-    for i in range(3):
-        title.append(render_song(style, 900 + i, length=27.0))
-    office = []
-    lofi = dict(STYLES["velvet"])
-    lofi.update(bpm=(80, 80), drums="hiphop", kick="soft", lead="rhodes", rhythm="long", verb=0.3)
-    for i in range(3):
-        office.append(render_song(lofi, 950 + i, length=27.0))
-    a = np.concatenate(title)
-    b = np.concatenate(office)
-    vinyl = S.highpass(S.noise(len(b)), 3000) * 0.01
+    """title theme (stadium pop, about 3.5 minutes) + office theme (lo-fi, about 2.5 minutes), one piece each"""
+    title = dict(STYLES["nova"])
+    title.update(bpm=(104, 104), key=(41, 41), verb=0.35, kind="anthem", big=True, arp="pluck", intro="drums")
+    office = dict(STYLES["velvet"])
+    office.update(bpm=(82, 82), drums="boombap", kick="soft", lead="rhodes", rhythm="long", verb=0.3, kind="midtempo", arp=None)
+    a = render_song(title, 901, length=210.0, long=True)
+    b = render_song(office, 951, length=150.0, long=True)
+    vinyl = (S.highpass(S.noise(len(b)), 3000) * 0.008).astype(np.float32)
     return a, (b + vinyl).astype(np.float32)
 
 
@@ -511,7 +670,7 @@ def main():
         songs = []
         for i in range(1, SONGS + 1):
             seed = (abs(hash(aid)) % 1000) * 0 + ARTISTS.index(aid) * 100 + i
-            x = render_song(STYLES[aid], seed, ballad=(i == BALLAD_INDEX), hit=(i == HIT_INDEX))
+            x = render_song(song_style(aid, i), seed)
             songs.append(np.pad(x, (0, int(SONG_LEN * SR) - len(x))))
         write_ogg(os.path.join(out_dir, aid + ".ogg"), np.concatenate(songs))
         print("wrote", aid, flush=True)
@@ -520,7 +679,7 @@ def main():
         write_ogg(os.path.join(out_dir, "menu.ogg"), np.concatenate([a, np.zeros(int(0.5 * SR), np.float32), b]))
         lua.append("AudioMap.MENU = { title = { 0, %.3f }, office = { %.3f, %.3f } }" % (len(a) / SR, len(a) / SR + 0.5, len(b) / SR))
         print("wrote menu", flush=True)
-    if not only or "sfx" in only:
+    if True:
         bank = sfx_bank()
         pos, parts, rows = 0.0, [], []
         for k in SFX_ORDER:
@@ -530,13 +689,14 @@ def main():
             gap = np.zeros(int(0.25 * SR), np.float32)
             parts.append(gap)
             pos += (len(x) + len(gap)) / SR
-        write_ogg(os.path.join(out_dir, "sfx.ogg"), np.concatenate(parts))
+        if not only or "sfx" in only:
+            write_ogg(os.path.join(out_dir, "sfx.ogg"), np.concatenate(parts))
         lua.append("AudioMap.SFX = {")
         lua.extend(rows)
         lua.append("}")
         print("wrote sfx", flush=True)
     lua.append("return AudioMap")
-    if not only:
+    if not only or "menu" in only:
         with open(os.path.join(ROOT, "src", "Headliner", "Data", "AudioMap.lua"), "w") as f:
             f.write("\n".join(lua) + "\n")
 

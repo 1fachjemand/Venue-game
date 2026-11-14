@@ -103,7 +103,8 @@ python3 tools/gen_worldmap.py <pfad>/countries-50m.json
 1. **Hauptmenü-Venues: neu gebaut (Stadtviertel + Kamerafahrt), Feedback des Users abwarten.** Mögliche nächste Schritte: Performance auf schwachen PCs prüfen (Manhattan ~12k Parts, Aufbau während der Schwarzblende), ggf. Detail an „Crowd detail“-Setting koppeln; weitere Venues; echte Meshes (OBJ/FBX) für noch feinere Fassaden.
 2. **Feedback des Users zum neuen Stage Builder, Social-Tab, Live-Screens und Looks abwarten** (großer Umbau, Nov 2026).
 3. **Büro mit Roblox-Charakter**, der sich an den PC setzt. Das Label-Menü läuft „im PC“.
-4. **Audio-IDs eintragen:** User lädt die 14 Dateien aus `audio/` hoch und schickt die IDs → in `Data/Audio.lua` eintragen, neu bauen. Danach Lautstärken/Mix im echten Spiel abhören und ggf. im Generator nachjustieren.
+4. **Neue Songs (Nov 2026, mehr Abwechslung):** 12 Artist-Dateien + `menu.ogg` neu erzeugt (Song-Typen pro Setlist-Nummer, Songform Strophe/Pre/Refrain, lange Menümusik 3:30 + Büro 2:30). User muss diese 13 Dateien neu hochladen (sfx.ogg bleibt). Dann neue IDs in `Data/Audio.lua` eintragen UND in `Data/AudioMap.lua` die auskommentierte neue MENU-Zeile aktivieren (bis dahin gilt die alte Zeile für die alte menu.ogg).
+5. **Audio-IDs eintragen:** User lädt die 14 Dateien aus `audio/` hoch und schickt die IDs → in `Data/Audio.lua` eintragen, neu bauen. Danach Lautstärken/Mix im echten Spiel abhören und ggf. im Generator nachjustieren.
 5. Balancing beobachten: User hat bisher alles ausverkauft (Clubs). Leere bei schwachem Verkauf funktioniert (Crowd = verkaufte Tickets), wurde aber noch nicht gesehen.
 
 ## 6. Bekannte Grenzen
