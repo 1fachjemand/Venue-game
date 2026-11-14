@@ -262,7 +262,7 @@ for k = 1, 5 do
 	MOCK.click("PLACE", 1)
 end
 log("songs in this design", GS.songCount(design))
-assert(GS.songCount(design) == 6, "6 spots = 6 songs")
+assert(GS.songCount(design) == 7, "lift = song 1, 6 spots = songs 2-7")
 key(Enum.KeyCode.F)
 -- camera controls
 UIS.InputBegan:Fire(MOCK.input(Enum.UserInputType.MouseButton2), false)
@@ -298,7 +298,7 @@ local ns = 0
 for _ in pairs(songsSeen) do ns = ns + 1 end
 log("preview finished after frames", pf, "mode", app.mode, "songs shown", ns, "parts in live screens", liveParts)
 assert(app.mode == "designer", "did not return to designer")
-assert(ns == 6, "setlist should have 6 songs")
+assert(ns == 7, "setlist should have 7 songs")
 assert(liveParts > 200, "live screens should show a 3D picture (crowd)")
 -- back to the library: copy and delete
 MOCK.clickExact("◀  MY STAGES")

@@ -6,6 +6,7 @@ local Config = require(Root.Config)
 local StageItems = require(Root.Data.StageItems)
 local UI = require(Root.Client.UI)
 local Builder = require(Root.Client.Builder)
+local GS = require(Root.Logic.GameState)
 
 local New = UI.New
 
@@ -58,6 +59,7 @@ function Stage3D.bounds()
 end
 
 function Stage3D.setDesign(design)
+	Stage3D.design = design
 	Stage3D.class = Config.STAGE_CLASS_BY_ID[(design and design.class) or "Arena"]
 	Stage3D.layout = (design and design.layout) or "end"
 end
@@ -215,29 +217,12 @@ function Stage3D.clearDesign()
 	Stage3D.items = {}
 end
 
--- Artist spots are numbered in the order they appear in the design
+-- Artist spots show their song number (lifts and instruments keep theirs, spots fill the free numbers)
 function Stage3D.numberSpots(design)
-	local n = 0
-	local recs = design and design.items
-	if recs then
-		for _, r in ipairs(Stage3D.items) do
-			r.spotIndex = nil
-		end
-		for _, rec in ipairs(recs) do
-			for _, r in ipairs(Stage3D.items) do
-				if r.rec == rec and r.kind == "spot" then
-					n = n + 1
-					r.spotIndex = n
-				end
-			end
-		end
-	else
-		for _, r in ipairs(Stage3D.items) do
-			if r.kind == "spot" then
-				n = n + 1
-				r.spotIndex = n
-			end
-		end
+	design = design or Stage3D.design
+	local plan = GS.songPlan(design)
+	for _, r in ipairs(Stage3D.items) do
+		r.spotIndex = r.rec and plan.songOf[r.rec] or nil
 	end
 	for _, r in ipairs(Stage3D.items) do
 		if r.kind == "spot" and r.label then

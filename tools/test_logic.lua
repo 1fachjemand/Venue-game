@@ -157,6 +157,14 @@ do
   local v = Countries.venueById.uk_o3
   check(Sim.travelCost(v, v, 30) == 0, "no travel between nights in the same venue")
   check(GS.songCount(st.designs[1]) == 4 and GS.songCount({ items = {} }) == 4, "song count")
+  -- keyboard in song 2: spots take songs 1, 3, 4 (the user's example)
+  local keys = { t = "keys", play = 2 }
+  local s1, s2, s3 = { t = "spot" }, { t = "spot" }, { t = "spot" }
+  local plan = GS.songPlan({ items = { s1, keys, s2, s3 } })
+  check(plan.songOf[s1] == 1 and plan.songOf[keys] == 2 and plan.songOf[s2] == 3 and plan.songOf[s3] == 4 and plan.count == 4, "spots skip the keyboard song")
+  local lift = { t = "lift" }
+  plan = GS.songPlan({ items = { lift, s1 } }, s2)
+  check(plan.songOf[lift] == 1 and plan.songOf[s1] == 2 and plan.songOf[s2] == 3 and plan.count == 3, "lift is song 1, a new spot gets the next free song")
   local cube
   for _, p in ipairs(SI.PRESETS) do if p.name == "The Cube" then cube = p end end
   st.money = 100

@@ -6,6 +6,7 @@ local Root = script:FindFirstAncestor("Headliner")
 local Artists = require(Root.Data.Artists)
 local Countries = require(Root.Data.Countries)
 local Util = require(Root.Logic.Util)
+local GS = require(Root.Logic.GameState)
 local UI = require(Root.Client.UI)
 local Builder = require(Root.Client.Builder)
 local Stage3D = require(Root.Client.Stage3D)
@@ -148,14 +149,9 @@ function LiveShow.run(app, opts)
 	local cityName = venue and venue.city or "Rehearsal"
 	local rng = Random.new(math.floor(os.clock() * 1000) % 100000)
 	local hasRoof = Venue.LOOKS[look] and Venue.LOOKS[look].roof ~= nil
-	-- one song per artist spot (no spots: 4 songs)
-	local spotCount = 0
-	for _, rec in ipairs((opts.design and opts.design.items) or {}) do
-		if rec.t == "spot" then
-			spotCount = spotCount + 1
-		end
-	end
-	local songCount = math.clamp((spotCount > 0) and spotCount or 4, 3, 12)
+	-- one song per performance place (artist spots, lifts, instruments), see GS.songPlan
+	local plan = GS.songPlan(opts.design)
+	local songCount = plan.count
 	local segments, showLength = buildTimeline(ad, rng, songCount, hasRoof)
 	local hits = {}
 	for _, seg in ipairs(segments) do
@@ -179,7 +175,7 @@ function LiveShow.run(app, opts)
 	for _, r in ipairs(items) do
 		Builder.hideMarker(r)
 		if r.kind == "lift" then
-			local n = (r.rec and r.rec.play) or 1
+			local n = (r.rec and plan.songOf[r.rec]) or 1
 			if not liftAt[n] then
 				liftAt[n] = r
 			end
@@ -211,8 +207,16 @@ function LiveShow.run(app, opts)
 
 	-- where the artist performs: spot 1 = opening, 2 = second song, 3 = ballad, 4 = finale
 	local leadRole = "lead"
+	-- spot that belongs to song i (nil: that song has no artist spot)
+	local spotBySong = {}
+	for _, r in ipairs(spots) do
+		local n = r.rec and plan.songOf[r.rec]
+		if n then
+			spotBySong[n] = r
+		end
+	end
 	local function spotPos(i)
-		return spots[i] and spots[i].cf.Position or nil
+		return spotBySong[i] and spotBySong[i].cf.Position or nil
 	end
 	lift = liftAt[1] -- the entrance lift
 	local function liftTop(r)
@@ -343,11 +347,8 @@ function LiveShow.run(app, opts)
 	local cur = start
 	for _, seg in ipairs(segments) do
 		if seg.song then
-			-- song number = spot number (fewer spots than songs: start again at spot 1)
+			-- the place that belongs to this song (a song without a place: the artist stays where they are)
 			local spotIdx = seg.song
-			if #spots > 0 and spotIdx > #spots then
-				spotIdx = (spotIdx - 1) % #spots + 1
-			end
 			local w = { seg.t0, nil, spot = spotIdx }
 			local play = playProps[spotIdx]
 			local lf = liftAt[spotIdx]
@@ -356,7 +357,7 @@ function LiveShow.run(app, opts)
 			elseif lf then
 				w[2] = liftTop(lf)
 			else
-				w[2] = spotPos(spotIdx) or home
+				w[2] = spotPos(spotIdx) or cur
 			end
 			if lf and not play and lf ~= lift then
 				w.kind, w.lift, w.dur = "lift", lf, 3 -- disappear, come up on this lift

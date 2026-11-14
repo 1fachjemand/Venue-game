@@ -148,7 +148,7 @@ StageItems.PRESETS = {
 		name = "Arena End Stage", class = "Arena", layout = "end",
 		items = join(
 			{ { t = "deck", x = 0, z = -8, r = 0, w = 64, d = 32, h = 6 }, { t = "deck", x = 0, z = 22, r = 0, w = 8, d = 28, h = 6 }, { t = "deck_round", x = 0, z = 42, r = 0, w = 18, h = 6 } },
-			{ { t = "spot", x = 0, z = -4, r = 0 }, { t = "spot", x = -20, z = -6, r = 0 }, { t = "spot", x = 20, z = -6, r = 0 }, { t = "spot", x = 0, z = 42, r = 0 }, { t = "spot", x = 0, z = -2, r = 0 } },
+			{ { t = "spot", x = -20, z = -6, r = 0 }, { t = "spot", x = 20, z = -6, r = 0 }, { t = "spot", x = 0, z = 42, r = 0 }, { t = "spot", x = 0, z = -2, r = 0 } },
 			{ { t = "lift", x = 0, z = -4, r = 0, play = 1 }, { t = "led", x = 0, z = -21, r = 0, w = 40, d = 18 } },
 			{ { t = "speakers", x = -38, z = 4, r = 0 }, { t = "speakers", x = 38, z = 4, r = 0 } },
 			{ { t = "truss_beam", x = 0, z = -10, r = 0, w = 70 }, { t = "truss_beam", x = 0, z = 4, r = 0, w = 70 } },
@@ -162,7 +162,7 @@ StageItems.PRESETS = {
 		name = "Center Stage", class = "Arena", layout = "center",
 		items = join(
 			{ { t = "deck_round", x = 0, z = 0, r = 0, w = 34, h = 6 } },
-			{ { t = "spot", x = 0, z = 0, r = 0 }, { t = "spot", x = 10, z = 0, r = 0 }, { t = "spot", x = 0, z = 10, r = 0 }, { t = "spot", x = -10, z = 0, r = 0 }, { t = "spot", x = 0, z = -10, r = 0 } },
+			{ { t = "spot", x = 10, z = 0, r = 0 }, { t = "spot", x = 0, z = 10, r = 0 }, { t = "spot", x = -10, z = 0, r = 0 }, { t = "spot", x = 0, z = -10, r = 0 } },
 			{ { t = "lift", x = 0, z = 0, r = 0, play = 1 }, { t = "led_floor", x = 0, z = 0, r = 0, w = 20, d = 20 } },
 			ring("moving", 8, 24),
 			ring("speakers", 4, 30),
@@ -174,7 +174,7 @@ StageItems.PRESETS = {
 		desc = "In the round: LED cube overhead, LED floor and 8 video towers around the crowd.",
 		items = join(
 			{ { t = "deck_round", x = 0, z = 0, r = 0, w = 40, h = 6, skin = "led" } },
-			{ { t = "spot", x = 0, z = 0, r = 0 }, { t = "spot", x = 12, z = 0, r = 0 }, { t = "spot", x = 0, z = 12, r = 0 }, { t = "spot", x = -12, z = 0, r = 0 }, { t = "spot", x = 0, z = -12, r = 0 }, { t = "spot", x = 0, z = 0, r = 0 } },
+			{ { t = "spot", x = 12, z = 0, r = 0 }, { t = "spot", x = 0, z = 12, r = 0 }, { t = "spot", x = -12, z = 0, r = 0 }, { t = "spot", x = 0, z = -12, r = 0 }, { t = "spot", x = 0, z = 0, r = 0 } },
 			{ { t = "lift", x = 0, z = 0, r = 0, play = 1 }, { t = "ledcube", x = 0, z = 0, r = 0 }, { t = "lowfog", x = 22, z = 0, r = 0 }, { t = "wristbands", x = 0, z = 56, r = 0 } },
 			ring("ledtower", 8, 54),
 			ring("moving", 8, 28),
@@ -202,7 +202,7 @@ StageItems.PRESETS = {
 		items = join(
 			{ { t = "deck", x = 0, z = -22, r = 0, w = 120, d = 36, h = 8 }, { t = "deck", x = 0, z = 50, r = 0, w = 10, d = 108, h = 8 }, { t = "deck_round", x = 0, z = 116, r = 0, w = 28, h = 8 } },
 			{ { t = "skyline", x = 0, z = -38, r = 0, w = 140 }, { t = "moon", x = 0, z = 140, r = 0, w = 26 }, { t = "statue", x = -72, z = -24, r = 0 }, { t = "arch", x = 0, z = 70, r = 0, w = 22 } },
-			{ { t = "spot", x = 0, z = -16, r = 0 }, { t = "spot", x = -36, z = -16, r = 0 }, { t = "spot", x = 36, z = -16, r = 0 }, { t = "spot", x = 0, z = 60, r = 0 }, { t = "spot", x = 0, z = 116, r = 0 }, { t = "spot", x = 0, z = 110, r = 0 }, { t = "spot", x = 0, z = -12, r = 0 } },
+			{ { t = "spot", x = -36, z = -16, r = 0 }, { t = "spot", x = 36, z = -16, r = 0 }, { t = "spot", x = 0, z = 60, r = 0 }, { t = "spot", x = 0, z = 116, r = 0 }, { t = "spot", x = 0, z = 110, r = 0 }, { t = "spot", x = 0, z = -12, r = 0 } },
 			{ { t = "lift", x = 0, z = -16, r = 0, play = 1 }, { t = "led_side", x = 70, z = -6, r = 0 }, { t = "led_side", x = -84, z = 0, r = 0 } },
 			{ { t = "truss_beam", x = 0, z = -14, r = 0, w = 120 } },
 			line("moving", 10, -54, 54, -14),

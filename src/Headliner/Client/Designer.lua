@@ -229,11 +229,15 @@ function Designer.open(app, designId)
 	end
 
 	local function clearPending()
+		local had = pending ~= nil
 		if pending then
 			pending.model:Destroy()
 			pending = nil
 		end
 		pendingHighlight.Enabled = false
+		if had then
+			Stage3D.numberSpots(self.design)
+		end
 	end
 
 	local function target()
@@ -317,6 +321,25 @@ function Designer.open(app, designId)
 		return out
 	end
 
+	-- the design as it would be with the pending piece (song numbers while placing)
+	local function withPending()
+		if not pending then
+			return self.design
+		end
+		local items = {}
+		for _, it in ipairs(self.design.items) do
+			table.insert(items, it)
+		end
+		table.insert(items, pending.rec)
+		return { items = items }
+	end
+	local function relabelSpots()
+		Stage3D.numberSpots(withPending())
+		if pending and pending.def.id == "spot" and pending.label then
+			pending.label.Text = tostring(GS.songPlan(withPending()).songOf[pending.rec] or "?")
+		end
+	end
+
 	------------------------------------------------------------ pending piece (put down, not bought yet)
 	local function floorY(rec, def)
 		if def.mount ~= "rig" then
@@ -335,9 +358,7 @@ function Designer.open(app, designId)
 		Builder.place(pending, Stage3D.itemCFrame(def, rec))
 		Builder.rest(pending)
 		pending.model.Parent = Stage3D.world
-		if def.id == "spot" and pending.label then
-			pending.label.Text = tostring(#spotRecs() + 1)
-		end
+		relabelSpots()
 		pendingHighlight.Adornee = pending.model
 		pendingHighlight.Enabled = true
 	end
@@ -447,6 +468,8 @@ function Designer.open(app, designId)
 			else
 				placePending()
 			end
+			relabelSpots()
+			refreshStats()
 			refreshInspector()
 			return
 		end
@@ -758,9 +781,12 @@ function Designer.open(app, designId)
 					idx = i
 				end
 			end
+			local plan = GS.songPlan(withPending())
+			local song = plan.songOf[rec]
 			nextOrder(section("SETLIST"))
-			local txt = (idx > 0) and ("Song " .. idx .. " of " .. #list .. (idx == 1 and "  (opener)" or (idx == #list and "  (big finale)" or ""))) or ("Will be song " .. (#list + 1))
+			local txt = song and ("Song " .. song .. " of " .. plan.count .. (song == 1 and "  (opener)" or (song == plan.count and "  (big finale)" or ""))) or "Song ?"
 			nextOrder(UI.Label(inspScroll, txt, nil, UI.px(296, 24), { textSize = 17, font = UI.FontBold, color = T.gold }))
+			nextOrder(UI.Label(inspScroll, "Lifts and instruments keep their song number, spots take the free ones.", nil, UI.px(296, 0), { textSize = 12, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
 			if idx > 0 then
 				local f = nextOrder(row(34))
 				local function swap(other)
@@ -804,7 +830,7 @@ function Designer.open(app, designId)
 					applyChange({ play = n })
 				end
 			end, function()
-				applyChange({ play = math.min(songs, (cur or 0) + 1) })
+				applyChange({ play = math.min(StageItems.MAX_SPOTS, (cur or 0) + 1) })
 			end)
 		end
 		if Builder.SCREEN_KINDS[def.id] then
@@ -1002,8 +1028,8 @@ function Designer.open(app, designId)
 			end
 		end
 		statsLbl.Text = string.format(
-			"Setlist: <b>%d songs</b> (one per artist spot)     Items <b>%d/%d</b>     Running cost <b>%s</b> per show     Show quality for %s:  %s",
-			GS.songCount(self.design),
+			"Setlist: <b>%d songs</b> (spots, lifts and instruments)     Items <b>%d/%d</b>     Running cost <b>%s</b> per show     Show quality for %s:  %s",
+			GS.songCount(withPending()),
 			st.count,
 			c.maxItems,
 			Util.money(st.cost),

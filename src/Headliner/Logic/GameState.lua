@@ -202,18 +202,56 @@ function GS.addDesignFromTemplate(state, preset, name)
 	return GS.addDesign(state, name or preset.name, Util.deepCopy(preset.items), preset.class, preset.layout)
 end
 
--- number of songs a design plays (= artist spots, at least 3, no spots = 4)
-function GS.songCount(design)
-	local n = 0
-	for _, it in ipairs((design and design.items) or {}) do
-		if it.t == "spot" then
-			n = n + 1
+-- Places where the artist performs a song: artist spots, lifts and instruments the artist plays.
+GS.PLAY_ITEMS = { lift = true, piano = true, keys = true, drums = true, djbooth = true }
+
+-- The setlist of a design. Lifts and instruments keep the song number set in the builder,
+-- artist spots take the free song numbers in the order they were placed.
+-- returns { count = songs, songOf = { [rec] = n }, place = { [n] = rec } }
+function GS.songPlan(design, extraSpot)
+	local items = (design and design.items) or {}
+	local place, songOf = {}, {}
+	for _, it in ipairs(items) do
+		if GS.PLAY_ITEMS[it.t] then
+			local n = it.play
+			if it.t == "lift" and n == nil then
+				n = 1
+			end
+			if type(n) == "number" and n >= 1 then
+				songOf[it] = n
+				place[n] = place[n] or it
+			end
 		end
 	end
-	if n == 0 then
-		return 4
+	local n = 1
+	local function addSpot(it)
+		while place[n] do
+			n = n + 1
+		end
+		place[n] = it
+		songOf[it] = n
 	end
-	return Util.clamp(n, 3, StageItems.MAX_SPOTS)
+	for _, it in ipairs(items) do
+		if it.t == "spot" then
+			addSpot(it)
+		end
+	end
+	if extraSpot then
+		addSpot(extraSpot)
+	end
+	local top = 0
+	for k in pairs(place) do
+		if k > top then
+			top = k
+		end
+	end
+	local count = (top == 0) and 4 or Util.clamp(top, 3, StageItems.MAX_SPOTS)
+	return { count = count, songOf = songOf, place = place }
+end
+
+-- number of songs a design plays (at least 3, nothing placed = 4)
+function GS.songCount(design)
+	return GS.songPlan(design).count
 end
 
 -- Show days of a route: another night in the same venue is the next day, a new venue `gap` days later
