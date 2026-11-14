@@ -252,8 +252,20 @@ local pl = nil
 for _, rec in ipairs(design.items) do if rec.t == "piano" then pl = rec.play end end
 log("piano plays in song", pl)
 for _, r in ipairs(Stage3D.items) do if r.kind == "piano" then Designer.current.select(r) break end end
+H.moveX.MouseEnter:Fire() -- the mouse was over an arrow when the item was deleted
 MOCK.clickExact("Delete (X)")
 log("after edit/copy/delete", #design.items, "money", app.state.money)
+-- clicking another item must still select it
+MOCK.mouse = Vector2.new(960, 540)
+steps(2)
+click3D()
+assert(Designer.current.target() ~= nil, "after deleting, other items must still be clickable")
+key(Enum.KeyCode.X)
+log("deleted a second item with X", #design.items)
+steps(2)
+click3D()
+assert(Designer.current.target() ~= nil, "still clickable after the second delete")
+key(Enum.KeyCode.F)
 -- more spots = longer setlist
 MOCK.clickExact("Artist")
 MOCK.clickExact("Artist Spot")

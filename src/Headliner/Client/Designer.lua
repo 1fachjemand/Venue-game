@@ -390,6 +390,8 @@ function Designer.open(app, designId)
 	end
 
 	local function select(refs)
+		drag = nil
+		overHandle = false
 		clearGhost()
 		clearPending()
 		selected = refs
@@ -1127,6 +1129,13 @@ function Designer.open(app, designId)
 		moveZ.Visible = show
 		rotH.Visible = show
 		sizeH.Visible = show and tgt.def.size ~= nil
+		if not show then
+			-- hidden handles never send MouseLeave: forget the hover, or every click would be ignored
+			overHandle = false
+			if drag and (not drag.refs or drag.refs.model.Parent == nil) then
+				drag = nil
+			end
+		end
 	end
 
 	local function livePlace()
@@ -1275,7 +1284,7 @@ function Designer.open(app, designId)
 			rotating = true
 			UserInputService.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
 		elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
-			if mouseOverUI() or overHandle or drag then
+			if mouseOverUI() or (overHandle and moveX.Visible) or drag then
 				return
 			end
 			if mode == "place" and placeDef then
