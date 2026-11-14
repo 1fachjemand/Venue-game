@@ -59,7 +59,8 @@ end
 
 ------------------------------------------------------------------ map (3D world map table, see Client/WorldMap3D)
 function MapScreen:buildMap()
-	local view = UI.New("Frame", { Parent = self.routeView, Position = UI.px(20, 72), Size = UI.px(1432, 600), BackgroundTransparency = 1, Name = "MapView" })
+	-- the map uses the whole left area; the venue list of a country slides over its lower part
+	local view = UI.New("Frame", { Parent = self.routeView, Position = UI.px(20, 72), Size = UI.px(1432, 928), BackgroundTransparency = 1, Name = "MapView" })
 	self.mapView = view
 	local bar = UI.Panel(view, UI.px(0, 0), UI.px(1432, 48), T.panel)
 	bar.BackgroundTransparency = 0.2
@@ -74,7 +75,7 @@ function MapScreen:buildMap()
 		x = x + w + 8
 	end
 	UI.Label(bar, "Drag = move   Wheel = zoom", UI.px(1190, 8), UI.px(226, 32), { textSize = 13, color = T.sub, alignX = Enum.TextXAlignment.Right })
-	local legendBox = UI.Panel(view, UI.px(0, 562), UI.px(1432, 38), T.panel)
+	local legendBox = UI.Panel(view, UI.px(0, 890), UI.px(1432, 38), T.panel)
 	legendBox.BackgroundTransparency = 0.2
 	self.legendBox = legendBox
 	self.legend = UI.Label(legendBox, "", UI.px(14, 0), UI.px(1404, 38), { textSize = 14, color = T.sub, rich = true })
@@ -133,8 +134,13 @@ function MapScreen:activateMap()
 			self:hoverCountry(cid)
 		end,
 		screenCenter = function()
+			-- centre of the part of the map that is not covered by the venue list
 			local a, sz = self.mapView.AbsolutePosition, self.mapView.AbsoluteSize
-			return a.X + sz.X / 2, a.Y + sz.Y / 2
+			local h = sz.Y
+			if self.countryPanel and self.countryPanel.Visible then
+				h = self.countryPanel.AbsolutePosition.Y - a.Y
+			end
+			return a.X + sz.X / 2, a.Y + h / 2
 		end,
 	})
 end
@@ -274,11 +280,16 @@ end
 function MapScreen:buildCountryPanel()
 	local panel = UI.Panel(self.routeView, UI.px(20, 684), UI.px(1432, 316))
 	self.countryPanel = panel
+	panel.Visible = false
+	UI.Button(panel, "✕", UI.px(1388, 6), UI.px(36, 32), { textSize = 16, color = T.panel3 }, function()
+		self.selected = nil
+		self:refreshCountry()
+	end)
 	self.countryTitle = UI.Label(panel, "", UI.px(20, 8), UI.px(560, 32), { textSize = 26, font = UI.FontBlack })
 	self.countryInfo = UI.Label(panel, "", UI.px(20, 40), UI.px(1392, 24), { textSize = 15, color = T.sub, rich = true })
 	-- venue type filter
 	self.venueFilter = "ALL"
-	self.filterBar = UI.New("Frame", { Parent = panel, Position = UI.px(700, 8), Size = UI.px(716, 32), BackgroundTransparency = 1 })
+	self.filterBar = UI.New("Frame", { Parent = panel, Position = UI.px(660, 8), Size = UI.px(716, 32), BackgroundTransparency = 1 })
 	UI.List(false, 6, Enum.HorizontalAlignment.Right).Parent = self.filterBar
 	self.venueList = UI.Scroll(panel, UI.px(12, 70), UI.px(1408, 238))
 	UI.List(true, 6).Parent = self.venueList
@@ -287,6 +298,9 @@ end
 function MapScreen:refreshCountry()
 	local c = self.selected and Countries.byId[self.selected]
 	UI.ClearChildren(self.venueList)
+	-- the venue list only covers the map while a country is open
+	self.countryPanel.Visible = c ~= nil
+	self.legendBox.Position = c and UI.px(0, 566) or UI.px(0, 890)
 	if not c then
 		self.countryTitle.Text = "Pick a country"
 		self.countryInfo.Text = "Click a pin on the map. Pin colours show how many fans " .. (self.draft.artistId and Artists.byId[self.draft.artistId].name or "your artist") .. " has there."

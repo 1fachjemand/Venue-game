@@ -203,7 +203,7 @@ function GS.addDesignFromTemplate(state, preset, name)
 end
 
 -- Places where the artist performs a song: artist spots, lifts and instruments the artist plays.
-GS.PLAY_ITEMS = { lift = true, poplift = true, towerlift = true, piano = true, keys = true, drums = true, djbooth = true }
+GS.PLAY_ITEMS = { lift = true, poplift = true, towerlift = true, piano = true, keys = true, drums = true, djbooth = true, acoustic = true, harp = true }
 -- lifts: the artist comes up out of the stage (lift, pop-up) or is lifted high into the air (tower)
 GS.LIFT_ITEMS = { lift = true, poplift = true, towerlift = true }
 

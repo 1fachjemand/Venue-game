@@ -169,6 +169,13 @@ function WM.paint()
 			col, lift = HOVER, true
 		else
 			col = WM.colorFn and WM.colorFn(cid) or Color3.fromRGB(0, 200, 255)
+			-- neighbours with the same colour get a slightly different shade, so borders stay visible
+			local h = 0
+			for i = 1, #cid do
+				h = h + string.byte(cid, i) * i
+			end
+			local k = (h % 5) / 4
+			col = col:Lerp((k > 0.5) and Color3.new(1, 1, 1) or Color3.new(0, 0, 0), math.abs(k - 0.5) * 0.28)
 		end
 		if c.color ~= col then
 			c.color = col

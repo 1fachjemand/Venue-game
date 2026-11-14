@@ -32,6 +32,8 @@
 - [erledigt] Realistische Hallen (Ränge, Vorhänge, Absperrgitter), echte Fußballstadien, große Stadionbühnen
 - [erledigt] Lifts mit Falltür, Pop-Up Lift, Tower Lift (Billie-Eilish-Style), realistischere Effekte und Instrumente
 - [erledigt] 4 neue Menü-Venues (Zürich, Paris, Madrid, Wembley), zufällige Reihenfolge, viel mehr Fan-Posts und Fotos
+- [erledigt] Menü-Venues mit echter Umgebung aus OpenStreetMap, Glas-Eingänge undurchsichtig, Weltkarte repariert und übersichtlicher
+- [erledigt] Stadt um die Hallen, Z-Fighting beseitigt, alle alten Modelle überarbeitet, 17 neue Teile
 - Büro mit Roblox-Charakter, der sich an den PC setzt (Label-Menü im PC)
 
 ## Später

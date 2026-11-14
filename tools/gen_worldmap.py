@@ -16,16 +16,33 @@ def ring(idx):
     for i in idx:
         a = arcs[i] if i >= 0 else arcs[~i][::-1]
         pts.extend(a if not pts else a[1:])
+    # rings that cross the date line (Fiji, Russia...) jump from +180 to -180: unwrap them to 0..360,
+    # otherwise the polygon spans the whole world and paints a stripe across the Pacific
+    if any(abs(pts[k][0] - pts[k - 1][0]) > 180 for k in range(1, len(pts))):
+        pts = [(x + 360 if x < 0 else x, y) for x, y in pts]
     return pts
+from shapely.geometry import box
+from shapely.affinity import translate
+def wrap(g):
+    # cut unwrapped shapes back into the -180..180 world
+    if g.is_empty or g.bounds[2] <= 180:
+        return g
+    a = g.intersection(box(-180, -90, 180, 90))
+    b = translate(g.intersection(box(180, -90, 540, 90)), -360)
+    return a.union(b)
 def geom(g):
     if g["type"] == "Polygon":
-        return Polygon(ring(g["arcs"][0]), [ring(r) for r in g["arcs"][1:]])
+        return wrap(Polygon(ring(g["arcs"][0]), [ring(r) for r in g["arcs"][1:]]).buffer(0))
     if g["type"] == "MultiPolygon":
         parts = []
         for p in g["arcs"]:
-            q = Polygon(ring(p[0]), [ring(r) for r in p[1:]]).buffer(0)
-            parts.extend(q.geoms if q.geom_type == "MultiPolygon" else [q])
-        return MultiPolygon([q for q in parts if not q.is_empty])
+            q = wrap(Polygon(ring(p[0]), [ring(r) for r in p[1:]]).buffer(0))
+            parts.extend(q.geoms if q.geom_type in ("MultiPolygon", "GeometryCollection") else [q])
+        parts2 = []
+        for q in parts:
+            if q.geom_type == "MultiPolygon": parts2.extend(q.geoms)
+            elif q.geom_type == "Polygon" and not q.is_empty: parts2.append(q)
+        return MultiPolygon(parts2)
     return None
 IDS = {"826": "uk", "372": "ie", "250": "fr", "528": "nl", "276": "de", "756": "ch", "380": "it", "724": "es", "752": "se",
        "840": "us", "124": "ca", "484": "mx", "076": "br", "032": "ar", "392": "jp", "410": "kr", "036": "au", "784": "ae", "710": "za", "056": "be", "040": "at", "616": "pl", "578": "no", "208": "dk", "620": "pt", "203": "cz", "152": "cl", "170": "co", "356": "in", "608": "ph", "702": "sg", "764": "th", "554": "nz"}

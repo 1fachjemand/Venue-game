@@ -61,7 +61,7 @@ for k, v in ipairs(list) do
 		CFrame.lookAt(Vector3.new(o * 0.15, sz.height * 0.9, sz.floorEnd + o * 0.25), Vector3.new(0, 8, sz.center and 0 or -10)), -- from the back stands
 		CFrame.lookAt(Vector3.new(-sz.halfW * 0.9, sz.height * 0.75, cz + 20), Vector3.new(sz.halfW * 0.3, 0, sz.center and 0 or -30)), -- from the side stands
 		CFrame.lookAt(Vector3.new(0, 30, sz.center and 70 or 60), Vector3.new(0, 10, sz.center and 0 or -40)), -- from the floor to the stage (or the drapes)
-		CFrame.lookAt(Vector3.new(0.1, o * 2.3, cz + 0.1), Vector3.new(0, 0, cz)), -- top-down
+		CFrame.lookAt(Vector3.new(o * 1.2, o * 1.4, cz + o * 1.6), Vector3.new(0, 0, cz)), -- outside view
 	}
 	local cs = {}
 	for _, c in ipairs(cams) do cs[#cs + 1] = cfs(c) end

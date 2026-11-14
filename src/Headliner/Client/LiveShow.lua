@@ -249,12 +249,16 @@ function LiveShow.run(app, opts)
 	local playProps = {}
 	for _, r in ipairs(items) do
 		local n = r.rec and r.rec.play
-		if n and (r.kind == "piano" or r.kind == "drums" or r.kind == "djbooth" or r.kind == "keys") then
+		if n and (r.kind == "piano" or r.kind == "drums" or r.kind == "djbooth" or r.kind == "keys" or r.kind == "acoustic" or r.kind == "harp") then
 			local seat, move, yaw
 			if r.kind == "piano" then
 				seat, move, yaw = (r.cf * CFrame.new(0, 0, 5.2)).Position, "piano", math.rad(r.rec.r or 0) + math.pi
 			elseif r.kind == "keys" then
 				seat, move, yaw = (r.cf * CFrame.new(0, 0, -2.4)).Position, "keys", math.rad(r.rec.r or 0)
+			elseif r.kind == "acoustic" then
+				seat, move, yaw = (r.cf * CFrame.new(0, 2, 0)).Position, "piano", math.rad(r.rec.r or 0)
+			elseif r.kind == "harp" then
+				seat, move, yaw = (r.cf * CFrame.new(0.2, 0, -2.4)).Position, "piano", math.rad(r.rec.r or 0)
 			elseif r.kind == "drums" then
 				seat, move, yaw = (r.cf * CFrame.new(0, 1, -1.8)).Position, "drumsolo", math.rad(r.rec.r or 0)
 			else

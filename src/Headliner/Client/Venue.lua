@@ -76,7 +76,7 @@ local function stands(folder, path, closed, center, o, slots, rankBase)
 			local yaw = math.atan2(dir.X, dir.Z)
 			for r = 0, o.rows - 1 do
 				local off = o.offset + r * o.depth
-				local top = o.base + (r + 1) * o.step
+				local top = o.base + (r + 1) * o.step + (s % 2) * 0.07
 				local L = len + off * (o.grow or 0.8)
 				local c = Vector3.new(mid.X, 0, mid.Z) + nrm * (off + o.depth / 2)
 				local col = (r % 2 == 0) and o.color or o.color:Lerp(Color3.new(0, 0, 0), 0.18)
@@ -129,7 +129,7 @@ local function band(folder, path, closed, center, offset, y, h, thick, color, ma
 			if (Vector3.new(mid.X, 0, mid.Z) - Vector3.new(center.X, 0, center.Z)):Dot(nrm) < 0 then
 				nrm = -nrm
 			end
-			local c = Vector3.new(mid.X, y, mid.Z) + nrm * offset
+			local c = Vector3.new(mid.X, y + (s % 2) * 0.06, mid.Z) + nrm * (offset + (s % 2) * 0.05)
 			local p = blk(folder, name or "Band", Vector3.new(len + offset * 0.8, h, thick), CFrame.new(c) * CFrame.Angles(0, math.atan2(dir.X, dir.Z) + math.pi / 2, 0), color, material)
 			p.CanCollide = false
 			table.insert(parts, p)
@@ -265,6 +265,83 @@ local function fan(folder, info, pos, yaw, shirt, raise)
 	return ph
 end
 
+------------------------------------------------------------------ the city around the venue
+-- streets, a plaza, parking and rows of buildings, so you never look at an empty baseplate
+local FACADES = { Color3.fromRGB(150, 146, 140), Color3.fromRGB(120, 80, 64), Color3.fromRGB(90, 96, 110), Color3.fromRGB(196, 190, 176), Color3.fromRGB(60, 66, 80), Color3.fromRGB(170, 160, 136) }
+local function city(folder, x0, x1, z0, z1, seed)
+	local rng = Random.new(seed or 11)
+	local function flat(name, cx, cz, w, d, top, color, mat)
+		local p = blk(folder, name, Vector3.new(w, 0.1, d), CFrame.new(cx, top - 0.05, cz), color, mat)
+		p.CanCollide = false
+		return p
+	end
+	local m = 34
+	flat("Plaza", (x0 + x1) / 2, (z0 + z1) / 2, x1 - x0 + m * 2, z1 - z0 + m * 2, 0.06, Color3.fromRGB(110, 110, 114), Enum.Material.Pavement)
+	-- ring road with lane markings
+	local r0x, r1x, r0z, r1z = x0 - m - 22, x1 + m + 22, z0 - m - 22, z1 + m + 22
+	flat("Road", (r0x + r1x) / 2, r0z, r1x - r0x + 44, 44, 0.08, Color3.fromRGB(34, 34, 38), Enum.Material.Asphalt)
+	flat("Road", (r0x + r1x) / 2, r1z, r1x - r0x + 44, 44, 0.08, Color3.fromRGB(34, 34, 38), Enum.Material.Asphalt)
+	flat("Road", r0x, (r0z + r1z) / 2, 44, r1z - r0z - 44, 0.081, Color3.fromRGB(34, 34, 38), Enum.Material.Asphalt)
+	flat("Road", r1x, (r0z + r1z) / 2, 44, r1z - r0z - 44, 0.081, Color3.fromRGB(34, 34, 38), Enum.Material.Asphalt)
+	for x = r0x, r1x, 30 do
+		flat("LaneDash", x, r0z, 10, 0.8, 0.11, Color3.fromRGB(220, 220, 220))
+		flat("LaneDash", x, r1z, 10, 0.8, 0.11, Color3.fromRGB(220, 220, 220))
+	end
+	for z = r0z + 30, r1z - 30, 30 do
+		flat("LaneDash", r0x, z, 0.8, 10, 0.11, Color3.fromRGB(220, 220, 220))
+		flat("LaneDash", r1x, z, 0.8, 10, 0.11, Color3.fromRGB(220, 220, 220))
+	end
+	-- street lamps along the inner side of the ring road
+	for x = r0x + 20, r1x - 20, 60 do
+		for _, z in ipairs({ r0z + 25, r1z - 25 }) do
+			blk(folder, "LampPole", Vector3.new(0.6, 16, 0.6), CFrame.new(x, 8, z), Color3.fromRGB(46, 48, 54), Enum.Material.Metal).CanCollide = false
+			blk(folder, "LampHead", Vector3.new(1.6, 0.6, 2.4), CFrame.new(x, 16, z), Color3.fromRGB(255, 214, 140), Enum.Material.Neon).CanCollide = false
+		end
+	end
+	-- buildings in two rows outside the ring road, a parking lot and a park here and there
+	local function building(cx, cz, w, d, h)
+		local col = FACADES[rng:NextInteger(1, #FACADES)]
+		blk(folder, "Building", Vector3.new(w, h, d), CFrame.new(cx, h / 2, cz), col, (rng:NextNumber() < 0.4) and Enum.Material.Glass or Enum.Material.Concrete).CanCollide = false
+		local y = 7
+		while y < h - 4 do
+			if rng:NextNumber() < 0.7 then
+				local lit = rng:NextNumber() < 0.45
+				blk(folder, "Windows", Vector3.new(w + 0.3, 2.4, d + 0.3), CFrame.new(cx, y, cz), lit and Color3.fromRGB(255, 214, 150):Lerp(Color3.new(0, 0, 0), rng:NextNumber() * 0.5) or Color3.fromRGB(40, 50, 66), lit and Enum.Material.Neon or Enum.Material.Glass).CanCollide = false
+			end
+			y = y + 7
+		end
+		blk(folder, "RoofTop", Vector3.new(w * 0.3, 4, d * 0.3), CFrame.new(cx + w * 0.2, h + 2, cz - d * 0.2), Color3.fromRGB(70, 72, 78), Enum.Material.Metal).CanCollide = false
+	end
+	local b0x, b1x, b0z, b1z = r0x - 40, r1x + 40, r0z - 40, r1z + 40
+	local function side(ax, az, bx, bz, nx, nz)
+		local len = math.sqrt((bx - ax) ^ 2 + (bz - az) ^ 2)
+		local dx, dz = (bx - ax) / len, (bz - az) / len
+		local t = 0
+		while t < len do
+			local w = rng:NextNumber() * 30 + 34
+			for depthRow = 0, 1 do
+				local k = rng:NextNumber()
+				local dist = 30 + depthRow * 80
+				local cx, cz = ax + dx * (t + w / 2) + nx * dist, az + dz * (t + w / 2) + nz * dist
+				if k < 0.82 then
+					local h = (depthRow == 0) and (rng:NextNumber() * 50 + 24) or (rng:NextNumber() * 120 + 40)
+					local bw, bd = (dx ~= 0) and w - 4 or 50, (dx ~= 0) and 50 or w - 4
+					building(cx, cz, bw, bd, h)
+				elseif depthRow == 0 then
+					local pw, pd = (dx ~= 0) and w - 4 or 50, (dx ~= 0) and 50 or w - 4
+					flat("Parking", cx, cz, pw, pd, 0.07, Color3.fromRGB(46, 46, 50), Enum.Material.Asphalt)
+				end
+			end
+			t = t + w
+		end
+	end
+	side(b0x, b0z, b1x, b0z, 0, -1)
+	side(b0x, b1z, b1x, b1z, 0, 1)
+	side(b0x, b0z, b0x, b1z, -1, 0)
+	side(b1x, b0z, b1x, b1z, 1, 0)
+end
+Venue.city = city
+
 ------------------------------------------------------------------ build
 -- look: key of LOOKS, fill: 0..1, merchColor: artist colour for some shirts
 -- opts: { layout = "end" | "center", empty = bool, noRoof = bool, standingColor = Color3, wristbands = bool }
@@ -326,16 +403,16 @@ function Venue.build(lookKey, fill, merchColor, opts)
 			blk(folder, "FOHBarrier", Vector3.new(0.35, 3.2, 11), CFrame.new(bx, 1.8, fz), Color3.fromRGB(150, 155, 165), Enum.Material.DiamondPlate)
 		end
 		for _, bz in ipairs({ -5.5, 5.5 }) do
-			blk(folder, "FOHBarrier", Vector3.new(14.4, 3.2, 0.35), CFrame.new(0, 1.8, fz + bz), Color3.fromRGB(150, 155, 165), Enum.Material.DiamondPlate)
+			blk(folder, "FOHBarrier", Vector3.new(14.4, 3.0, 0.35), CFrame.new(0, 1.7, fz + bz), Color3.fromRGB(150, 155, 165), Enum.Material.DiamondPlate)
 		end
-		for _, px in ipairs({ -6.8, 6.8 }) do
-			for _, pz in ipairs({ -4.3, 4.3 }) do
+		for _, px in ipairs({ -6.7, 6.7 }) do
+			for _, pz in ipairs({ -4.05, 4.05 }) do
 				blk(folder, "FOHPole", Vector3.new(0.4, 8, 0.4), CFrame.new(px, 4.8, fz + pz), METAL, Enum.Material.Metal)
 			end
 		end
 	end
 	local function blocked(x, z)
-		if foh and math.abs(x - foh.x) < foh.w / 2 + 1.5 and math.abs(z - foh.z) < foh.d / 2 + 1.5 then
+		if foh and math.abs(x - foh.x) < foh.w / 2 + 1 and math.abs(z - foh.z) < foh.d / 2 + 1 then
 			return true
 		end
 		for _, p in ipairs(opts.pits or {}) do
@@ -362,7 +439,8 @@ function Venue.build(lookKey, fill, merchColor, opts)
 			for x = -halfW + 2, halfW - 2, sp do
 				local px, pz = x + (math.random() - 0.5) * 1.2, z + (math.random() - 0.5) * 1.2
 				local nearBar = lookKey == "club" and px < -halfW + 9
-				if not nearBar and crowdOk(px, pz) then
+				local m = 2.6 -- body + barrier foot
+				if not nearBar and crowdOk(px, pz) and crowdOk(px + m, pz) and crowdOk(px - m, pz) and crowdOk(px, pz + m) and crowdOk(px, pz - m) then
 					local rank = center and (math.sqrt(px * px + pz * pz) / halfW) or ((pz - z0) / (z1 - z0))
 					table.insert(slots, { pos = Vector3.new(px, 0.2, pz), rank = rank + math.random() * 0.3 })
 				end
@@ -400,31 +478,49 @@ function Venue.build(lookKey, fill, merchColor, opts)
 		local uOut, uTop = stands(folder, path, true, ctr, upper, slotList, 1.1)
 		outer = halfW + uOut + 4
 		wallH = uTop + 8
+		if not big then
+			roofY = math.max(roofY, wallH + 18)
+			if not opts.noRoof then
+				wallH = roofY + 0.6
+			end
+		end
 		band(folder, path, true, ctr, uOut + 1, wallH / 2, wallH, 2, DARK, Enum.Material.Concrete, "OuterWall")
+		local sbz = nil
 		if big then
 			-- roof canopy all around with a row of floodlights
 			band(folder, path, true, ctr, uOut - 18, uTop + 14, 1.5, 44, Color3.fromRGB(200, 205, 215), Enum.Material.Metal, "Canopy")
 			band(folder, path, true, ctr, uOut - 38, uTop + 12.6, 1, 1, Color3.fromRGB(255, 250, 230), Enum.Material.Neon, "Floodlights")
+			-- video screens behind the last row of the end stand, under the roof, on a steel frame
+			local sz = z1 + 2 + uOut - 3
 			for _, x in ipairs({ -1, 1 }) do
-				local sc = blk(folder, "CornerScreen", Vector3.new(36, 20, 1), CFrame.new(x * (halfW - 10), uTop + 2, z1 + 30) * CFrame.Angles(0, x * 0.6, 0), Color3.fromRGB(20, 40, 90), Enum.Material.Neon)
-				sc.CanCollide = false
+				local cx = x * halfW * 0.5
+				blk(folder, "ScreenFrame", Vector3.new(40, 14, 1.6), CFrame.new(cx, uTop + 7.5, sz + 0.9), Color3.fromRGB(24, 24, 28), Enum.Material.Metal).CanCollide = false
+				blk(folder, "BigScreen", Vector3.new(38, 12, 0.4), CFrame.new(cx, uTop + 7.5, sz), Color3.fromRGB(30, 60, 140), Enum.Material.Neon).CanCollide = false
+				for _, lx in ipairs({ -16, 16 }) do
+					blk(folder, "ScreenLeg", Vector3.new(1, 8, 1), CFrame.new(cx + lx, uTop - 2, sz + 1), METAL, Enum.Material.Metal).CanCollide = false
+					blk(folder, "ScreenHanger", Vector3.new(0.5, 1.2, 0.5), CFrame.new(cx + lx, uTop + 14.1, sz + 1), METAL, Enum.Material.Metal).CanCollide = false
+				end
 			end
 			roofY = uTop + 16
 		else
 			-- roof, rig catwalks, centre-hung scoreboard
-			roofY = math.max(roofY, wallH + 18)
 			local roof = blk(folder, "Roof", Vector3.new(outer * 2, 2, (z1 + 2 - bz0) + uOut * 2 + 10), CFrame.new(0, roofY, bcz), Color3.fromRGB(14, 14, 20))
 			roof.CanCollide = false
 			if opts.noRoof then
 				roof:Destroy()
 			end
-			for k = -3, 3 do
-				blk(folder, "Catwalk", Vector3.new(outer * 2, 1.2, 2), CFrame.new(0, roofY - 6, cz + k * 30), METAL, Enum.Material.DiamondPlate).CanCollide = false
+			for k = (opts.noRoof and 1 or -3), (opts.noRoof and 0 or 3) do
+				blk(folder, "Catwalk", Vector3.new(outer * 2 - 3, 1.2, 2), CFrame.new(0, roofY - 6, cz + k * 30), METAL, Enum.Material.DiamondPlate).CanCollide = false
 			end
-			for k = -2, 2 do
-				blk(folder, "Catwalk", Vector3.new(2, 1.2, (z1 - z0) + 40), CFrame.new(k * 40, roofY - 6, cz), METAL, Enum.Material.DiamondPlate).CanCollide = false
+			for k = (opts.noRoof and 1 or -2), (opts.noRoof and 0 or 2) do
+				blk(folder, "Catwalk", Vector3.new(2, 1.2, (z1 - z0) + 37), CFrame.new(k * 40, roofY - 6.4, cz), METAL, Enum.Material.DiamondPlate).CanCollide = false
 			end
-			local sbz = center and (z1 - 30) or (z0 + (z1 - z0) * 0.55)
+			sbz = center and (z1 - 30) or (z0 + (z1 - z0) * 0.55)
+			if opts.noRoof then
+				sbz = nil
+			end
+		end
+		if sbz then
 			local sby = roofY - 20
 			blk(folder, "Scoreboard", Vector3.new(18, 10, 18), CFrame.new(0, sby, sbz), Color3.fromRGB(20, 20, 24)).CanCollide = false
 			for _, f in ipairs({ { 0, 9.1 }, { 0, -9.1 }, { 9.1, 0 }, { -9.1, 0 } }) do
@@ -438,41 +534,72 @@ function Venue.build(lookKey, fill, merchColor, opts)
 			local dh = big and (uTop + 6) or (roofY - 4)
 			blk(folder, "BackDrape", Vector3.new(halfW * 2 + 4, dh, 1), CFrame.new(0, dh / 2, zBack + 1), DRAPE, Enum.Material.Fabric).CanCollide = false
 			for _, x in ipairs({ -1, 1 }) do
-				blk(folder, "SideDrape", Vector3.new(1, dh, 2 - zBack), CFrame.new(x * (halfW + 1), dh / 2, (zBack + 2) / 2), DRAPE, Enum.Material.Fabric).CanCollide = false
-				blk(folder, "SideDrape", Vector3.new(outer - halfW, dh, 1), CFrame.new(x * (halfW + (outer - halfW) / 2), dh / 2, 2), DRAPE, Enum.Material.Fabric).CanCollide = false
+				blk(folder, "SideDrape", Vector3.new(1, dh - 0.3, 1.3 - zBack), CFrame.new(x * (halfW + 1), (dh - 0.3) / 2, (zBack + 1.3) / 2), DRAPE, Enum.Material.Fabric).CanCollide = false
+				blk(folder, "SideDrape", Vector3.new(outer - halfW, dh - 0.6, 1.2), CFrame.new(x * (halfW + (outer - halfW) / 2), (dh - 0.6) / 2, 2), DRAPE, Enum.Material.Fabric).CanCollide = false
 			end
-			blk(folder, "BackstageFloor", Vector3.new(halfW * 2, 0.2, 2 - zBack), CFrame.new(0, 0.04, (zBack + 2) / 2), Color3.fromRGB(20, 20, 24), Enum.Material.Concrete).CanCollide = false
+			blk(folder, "BackstageFloor", Vector3.new(halfW * 2 - 0.4, 0.2, 2 - zBack), CFrame.new(0, -0.03, (zBack + 2) / 2), Color3.fromRGB(20, 20, 24), Enum.Material.Concrete).CanCollide = false
 		end
 	elseif lookKey == "theatre" then
-		-- balconies (U shape) with gold lips, boxes at the sides, curtains framing the stage
-		local path = { Vector3.new(-halfW, 0, z1 - 40), Vector3.new(-halfW, 0, z1), Vector3.new(halfW, 0, z1), Vector3.new(halfW, 0, z1 - 40) }
-		local o1 = { rows = 5, depth = 5, step = 2.6, offset = 1, base = 0.4, color = seat }
-		local out1, top1 = stands(folder, path, false, ctr, o1, slotList, 0.7)
-		for i, lvl in ipairs({ 14, 26 }) do
-			local o = { rows = 4, depth = 5, step = 2.6, offset = -12 + i * 2, base = lvl, color = seat }
-			stands(folder, path, false, ctr, o, slotList, 0.9 + i * 0.2)
-			band(folder, path, false, ctr, -12 + i * 2, lvl - 0.5, 3, 1, Color3.fromRGB(120, 24, 32), Enum.Material.Fabric, "BalconyLip")
-			band(folder, path, false, ctr, -12.6 + i * 2, lvl + 1.1, 0.4, 1.2, Color3.fromRGB(210, 170, 70), Enum.Material.Metal, "BalconyGold")
+		-- stalls rake at the back, two separate balcony levels (U shape: back section + side arms),
+		-- boxes next to the stage, red and gold proscenium. Every row is its own block (no overlaps).
+		local red, gold = Color3.fromRGB(120, 24, 32), Color3.fromRGB(210, 170, 70)
+		local function row(x, z, w, d, yTop, h, alongX, rank)
+			local size = alongX and Vector3.new(w, h, d) or Vector3.new(d, h, w)
+			blk(folder, "Tier", size, CFrame.new(x, yTop - h / 2, z), (math.floor(yTop) % 2 == 0) and seat or seat:Lerp(Color3.new(0, 0, 0), 0.2), Enum.Material.Fabric).CanCollide = false
+			if slotList then
+				local k = -w / 2 + 2
+				while k < w / 2 - 2 do
+					local px = alongX and (x + k) or x
+					local pz = alongX and z or (z + k)
+					local face = alongX and Vector3.new(0, 0, -1) or Vector3.new((x > 0) and -1 or 1, 0, 0)
+					table.insert(slotList, { pos = Vector3.new(px, yTop, pz), rank = rank + math.random() * 0.3, face = face })
+					k = k + 3.3
+				end
+			end
 		end
+		-- rear stalls rake
+		for r = 0, 5 do
+			row(0, z1 + 2 + r * 4, halfW * 2, 4, 0.4 + (r + 1) * 1.6, 0.4 + (r + 1) * 1.6, true, 0.7)
+		end
+		local out1 = 26
+		for i, lvl in ipairs({ 15, 29 }) do
+			local front = z1 - 10 - i * 2 -- the higher circle hangs a bit less far forward
+			-- underside and front parapet with a gold rail
+			blk(folder, "Soffit", Vector3.new(halfW * 2, 1.6, z1 + out1 - front), CFrame.new(0, lvl - 0.8, (front + z1 + out1) / 2), Color3.fromRGB(70, 20, 26), Enum.Material.Fabric).CanCollide = false
+			blk(folder, "BalconyLip", Vector3.new(halfW * 2 - 16, 3.4, 1), CFrame.new(0, lvl + 1.2, front - 0.5), red, Enum.Material.Fabric).CanCollide = false
+			blk(folder, "BalconyGold", Vector3.new(halfW * 2 - 15.6, 0.4, 1.3), CFrame.new(0, lvl + 3.1, front - 0.5), gold, Enum.Material.Metal).CanCollide = false
+			for r = 0, 6 do
+				row(0, front + 2.5 + r * 4.4, halfW * 2 - 0.4, 4.4, lvl + (r + 1) * 1.8, 1.8 + ((r == 0) and 0 or 0.2), true, 0.85 + i * 0.2)
+			end
+			-- side arms along the walls
+			for _, sx in ipairs({ -1, 1 }) do
+				local zA, zB = 22, front
+				blk(folder, "Soffit", Vector3.new(8, 1.6, zB - zA), CFrame.new(sx * (halfW - 4), lvl - 0.8, (zA + zB) / 2), Color3.fromRGB(70, 20, 26), Enum.Material.Fabric).CanCollide = false
+				blk(folder, "BalconyLip", Vector3.new(1, 3.2, zB - zA - 1.4), CFrame.new(sx * (halfW - 8.5), lvl + 1.1, (zA + zB - 1.4) / 2), red, Enum.Material.Fabric).CanCollide = false
+				blk(folder, "BalconyGold", Vector3.new(1.2, 0.4, zB - zA - 1.4), CFrame.new(sx * (halfW - 8.5), lvl + 2.95, (zA + zB - 1.4) / 2), gold, Enum.Material.Metal).CanCollide = false
+				row(sx * (halfW - 6), (zA + zB) / 2, zB - zA - 2, 3.6, lvl + 1.8, 1.8, false, 1 + i * 0.2)
+				row(sx * (halfW - 2.4), (zA + zB) / 2, zB - zA - 2, 3.6, lvl + 3.6, 3.6, false, 1.1 + i * 0.2)
+				-- private box next to the stage on this level
+				blk(folder, "Box", Vector3.new(7, 1.2, 12), CFrame.new(sx * (halfW - 3.5), lvl - 0.6, 8), red, Enum.Material.Fabric).CanCollide = false
+				blk(folder, "BoxFront", Vector3.new(1, 3.2, 12), CFrame.new(sx * (halfW - 7.5), lvl + 1.6, 8), red, Enum.Material.Fabric).CanCollide = false
+				blk(folder, "BoxGold", Vector3.new(1.3, 0.4, 12.2), CFrame.new(sx * (halfW - 7.5), lvl + 3.4, 8), gold, Enum.Material.Metal).CanCollide = false
+				blk(folder, "BoxLight", Vector3.new(0.3, 2, 9), CFrame.new(sx * (halfW + 1.9), lvl + 6, 8), Color3.fromRGB(255, 210, 140), Enum.Material.Neon).CanCollide = false
+			end
+		end
+		local _ = out1
 		outer = halfW + out1 + 6
 		wallH = L.roof
 		for _, x in ipairs({ -1, 1 }) do
-			blk(folder, "Wall", Vector3.new(2, wallH, z1 - z0 + 100), CFrame.new(x * (halfW + 3), wallH / 2, cz - 30), Color3.fromRGB(90, 20, 28), Enum.Material.Fabric).CanCollide = false
-			for k = 0, 2 do
-				local y = 12 + k * 11
-				local bz = 10
-				blk(folder, "Box", Vector3.new(6, 1.5, 12), CFrame.new(x * (halfW - 1), y, bz), Color3.fromRGB(120, 24, 32), Enum.Material.Fabric).CanCollide = false
-				blk(folder, "BoxGold", Vector3.new(6.2, 0.4, 12.2), CFrame.new(x * (halfW - 1), y + 0.9, bz), Color3.fromRGB(210, 170, 70), Enum.Material.Metal).CanCollide = false
-				blk(folder, "BoxLight", Vector3.new(0.3, 2, 10), CFrame.new(x * (halfW + 1.5), y + 4, bz), Color3.fromRGB(255, 210, 140), Enum.Material.Neon).CanCollide = false
-			end
+			local wz0, wz1 = -90, z1 + out1 + 2
+			blk(folder, "Wall", Vector3.new(2, wallH, wz1 - wz0), CFrame.new(x * (halfW + 3), wallH / 2, (wz0 + wz1) / 2), Color3.fromRGB(90, 20, 28), Enum.Material.Fabric).CanCollide = false
 			blk(folder, "StageCurtain", Vector3.new(14, wallH - 6, 2), CFrame.new(x * (halfW - 6), (wallH - 6) / 2, -30), Color3.fromRGB(150, 18, 30), Enum.Material.Fabric).CanCollide = false
 		end
-		blk(folder, "Valance", Vector3.new(halfW * 2, 10, 2), CFrame.new(0, wallH - 10, -30), Color3.fromRGB(150, 18, 30), Enum.Material.Fabric).CanCollide = false
+		blk(folder, "Valance", Vector3.new(halfW * 2, 10, 2), CFrame.new(0, wallH - 10, -30.7), Color3.fromRGB(150, 18, 30), Enum.Material.Fabric).CanCollide = false
 		blk(folder, "ProsceniumGold", Vector3.new(halfW * 2, 1, 2.2), CFrame.new(0, wallH - 15.5, -30), Color3.fromRGB(210, 170, 70), Enum.Material.Metal).CanCollide = false
 		blk(folder, "Backdrop", Vector3.new(halfW * 2, wallH, 1), CFrame.new(0, wallH / 2, -46), DRAPE, Enum.Material.Fabric).CanCollide = false
-		blk(folder, "BackWall", Vector3.new(halfW * 2 + 6, wallH, 2), CFrame.new(0, wallH / 2, z1 + out1 + 4), Color3.fromRGB(70, 18, 24), Enum.Material.Fabric).CanCollide = false
+		blk(folder, "BackWall", Vector3.new(halfW * 2 + 4, wallH, 2), CFrame.new(0, wallH / 2, z1 + out1 + 1), Color3.fromRGB(70, 18, 24), Enum.Material.Fabric).CanCollide = false
 		if not opts.noRoof then
-			blk(folder, "Ceiling", Vector3.new(halfW * 2 + 8, 2, z1 - z0 + 110), CFrame.new(0, wallH, cz - 30), Color3.fromRGB(60, 30, 30)).CanCollide = false
+			blk(folder, "Ceiling", Vector3.new(halfW * 2 + 7.4, 2, z1 + out1 + 91), CFrame.new(0, wallH + 0.3, (z1 + out1 + 1.5 - 89.5) / 2), Color3.fromRGB(60, 30, 30)).CanCollide = false
 			for k = 0, 5 do
 				local a = k * math.pi / 3
 				local b = blk(folder, "Chandelier", Vector3.new(2, 2, 2), CFrame.new(math.cos(a) * 3, wallH - 9, cz + 10 + math.sin(a) * 3), Color3.fromRGB(255, 220, 150), Enum.Material.Neon)
@@ -487,7 +614,7 @@ function Venue.build(lookKey, fill, merchColor, opts)
 			blk(folder, "Wall", Vector3.new(2, wallH, z1 - z0 + 70), CFrame.new(x * (halfW + 2), wallH / 2, cz - 20), brick, Enum.Material.Brick).CanCollide = false
 			blk(folder, "WallSpeaker", Vector3.new(3, 4.5, 3), CFrame.new(x * (halfW - 2), 22, -6), Color3.fromRGB(16, 16, 18), Enum.Material.Fabric).CanCollide = false
 		end
-		blk(folder, "BackWall", Vector3.new(halfW * 2 + 4, wallH, 2), CFrame.new(0, wallH / 2, z1 + 2), brick, Enum.Material.Brick).CanCollide = false
+		blk(folder, "BackWall", Vector3.new(halfW * 2 + 2, wallH, 2), CFrame.new(0, wallH / 2, z1 + 2), brick, Enum.Material.Brick).CanCollide = false
 		blk(folder, "Backdrop", Vector3.new(halfW * 2, wallH, 1), CFrame.new(0, wallH / 2, z0 - 40), DRAPE, Enum.Material.Fabric).CanCollide = false
 		local neon = blk(folder, "ClubNeon", Vector3.new(30, 1, 0.3), CFrame.new(0, wallH - 8, z1 + 0.8), Color3.fromRGB(255, 60, 170), Enum.Material.Neon)
 		neon.CanCollide = false
@@ -500,7 +627,7 @@ function Venue.build(lookKey, fill, merchColor, opts)
 			blk(folder, "Bottle", Vector3.new(0.4, 1.2, 0.4), CFrame.new(-halfW + 1.8, 9.2, z0 + 21 + i * 2), Color3.fromRGB(60 + i * 15, 140, 90), Enum.Material.Glass).CanCollide = false
 		end
 		if not opts.noRoof then
-			blk(folder, "Ceiling", Vector3.new(halfW * 2 + 6, 2, z1 - z0 + 70), CFrame.new(0, wallH, cz - 20), Color3.fromRGB(18, 18, 22)).CanCollide = false
+			blk(folder, "Ceiling", Vector3.new(halfW * 2 + 5, 2, z1 - z0 + 68), CFrame.new(0, wallH + 0.3, cz - 20), Color3.fromRGB(18, 18, 22)).CanCollide = false
 		end
 		outer = halfW + 4
 	elseif lookKey == "amphi" then
@@ -522,7 +649,8 @@ function Venue.build(lookKey, fill, merchColor, opts)
 			for k = 0, n - 1 do
 				local a0 = math.pi * (k + 0.5) / n
 				local seg = math.pi * R / n + 0.6
-				local p = blk(folder, "Shell", Vector3.new(seg, 1.6, 9.4), CFrame.new(math.cos(a0) * R, math.sin(a0) * R * 0.75, z) * CFrame.Angles(0, 0, math.atan2(math.cos(a0) * 0.75, -math.sin(a0))), Color3.fromRGB(225 - j * 8, 225 - j * 8, 232 - j * 8), Enum.Material.Concrete)
+				local rr = R + (k % 2) * 0.12
+				local p = blk(folder, "Shell", Vector3.new(seg, 1.6 + (k % 2) * 0.1, 9.4 - (k % 2) * 0.2), CFrame.new(math.cos(a0) * rr, math.sin(a0) * rr * 0.75, z) * CFrame.Angles(0, 0, math.atan2(math.cos(a0) * 0.75, -math.sin(a0))), Color3.fromRGB(225 - j * 8, 225 - j * 8, 232 - j * 8), Enum.Material.Concrete)
 				p.CanCollide = false
 			end
 			blk(folder, "ShellLED", Vector3.new(0.6, 0.6, 0.6), CFrame.new(0, R * 0.75 - 1.4, z + 4.4), Color3.fromRGB(255, 220, 160), Enum.Material.Neon).CanCollide = false
@@ -538,6 +666,9 @@ function Venue.build(lookKey, fill, merchColor, opts)
 	end
 	info.slots = #slots
 	info.size = { halfW = halfW, floorEnd = z1, floorStart = z0, outer = outer, height = wallH, center = center }
+	-- outside: streets and buildings all around (footprint of the hall from its outer walls)
+	local backZ = center and (z0 - (outer - halfW)) or math.min(zBack - (outer - halfW) * 0.5, -90)
+	city(folder, -outer, outer, backZ, z1 + (outer - halfW) + 4, #lookKey * 7)
 
 	-- security in the photo pit
 	if not opts.empty then

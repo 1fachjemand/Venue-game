@@ -218,6 +218,8 @@ Social.ITEM_NAMES = {
 	lift = "rising lift", pyro = "pyro", fireworks = "fireworks", ledcube = "LED cube", moon = "giant moon", portal = "portal ring",
 	balls = "giant balloons", wristbands = "glowing wristbands", confetti = "confetti", kinetic = "flying light bars", statue = "giant statue",
 	robotarm = "robot arm", skyline = "city skyline", curtain = "curtain drop", laser = "laser show", scissor = "lift in the finale",
+	ferris = "Ferris wheel", rocket = "rocket launch", hand = "giant hand", swing = "swing moment", fountain = "fountain", lighthouse = "lighthouse beam",
+	vintagecar = "vintage car", throne = "throne", rainbow = "rainbow", strings = "string section", harp = "harp solo", choir = "choir", acoustic = "acoustic set",
 	poplift = "pop-up lift", towerlift = "tower lift", stadiumroof = "giant stage", sparks = "spark fountains", co2 = "CO2 blasts",
 	piano = "piano part", lowfog = "cloud floor", streamers = "streamer rain", house = "little house set",
 	bubbles = "bubbles", snow = "snow", candles = "candle-light part", sofa = "living-room set", stringlights = "fairy lights", tvstack = "TV wall",
