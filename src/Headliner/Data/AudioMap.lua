@@ -3,9 +3,7 @@ local AudioMap = {}
 AudioMap.SONG_LEN = 30
 AudioMap.BALLAD_INDEX = 4
 AudioMap.HIT_INDEX = 8
--- the new long menu.ogg (switch to this line when its new asset ID is in Data/Audio.lua):
--- AudioMap.MENU = { title = { 0, 210.192 }, office = { 210.692, 148.841 } }
-AudioMap.MENU = { title = { 0, 81.000 }, office = { 81.500, 81.000 } }
+AudioMap.MENU = { title = { 0, 210.192 }, office = { 210.692, 148.841 } }
 AudioMap.SFX = {
 	click = { 0.000, 0.062 },
 	hover = { 0.312, 0.050 },
