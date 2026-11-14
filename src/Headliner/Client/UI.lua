@@ -158,6 +158,9 @@ function UI.Button(parent, text, pos, size, opts, onClick)
 	btn.MouseEnter:Connect(function()
 		if not opts.disabled then
 			btn.BackgroundColor3 = shade(base, 1.25)
+			if UI.onHover then
+				UI.onHover()
+			end
 		end
 	end)
 	btn.MouseLeave:Connect(function()
@@ -168,6 +171,9 @@ function UI.Button(parent, text, pos, size, opts, onClick)
 	btn.MouseButton1Click:Connect(function()
 		if opts.disabled or not onClick then
 			return
+		end
+		if UI.onClick then
+			UI.onClick()
 		end
 		onClick(btn)
 	end)

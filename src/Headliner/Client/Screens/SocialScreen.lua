@@ -6,6 +6,7 @@ local Util = require(Root.Logic.Util)
 local GS = require(Root.Logic.GameState)
 local Social = require(Root.Logic.Social)
 local UI = require(Root.Client.UI)
+local People = require(Root.Client.People)
 
 local T = UI.Theme
 local BLACK = Color3.new(0, 0, 0)
@@ -16,6 +17,7 @@ local AVATARS = {
 	Color3.fromRGB(255, 105, 180), Color3.fromRGB(45, 212, 191), Color3.fromRGB(108, 99, 255), Color3.fromRGB(255, 193, 7),
 	Color3.fromRGB(255, 120, 60), Color3.fromRGB(46, 204, 113), Color3.fromRGB(0, 180, 255), Color3.fromRGB(200, 120, 255),
 }
+local SHIRT_COLORS = { Color3.fromRGB(230, 230, 235), Color3.fromRGB(30, 30, 36), Color3.fromRGB(200, 40, 60), Color3.fromRGB(40, 90, 200), Color3.fromRGB(250, 200, 50) }
 local MOOD_COLOR = { [1] = T.good, [0] = T.sub, [-1] = T.bad }
 
 function SocialScreen.new(app)
@@ -39,25 +41,80 @@ local function ago(state, day)
 	return d .. "d ago"
 end
 
--- a little "photo": stage, lights and a crowd in the artist's colour
-local function photo(parent, color, seed)
-	local f = UI.New("Frame", { Parent = parent, Size = UI.px(560, 200), BackgroundColor3 = Color3.fromRGB(10, 10, 20), BorderSizePixel = 0, ClipsDescendants = true, UI.Corner(10) })
-	UI.New("UIGradient", { Parent = f, Color = ColorSequence.new(color, Color3.fromRGB(10, 10, 24)), Rotation = 90 })
-	for i = 0, 5 do
-		local beam = UI.New("Frame", { Parent = f, AnchorPoint = Vector2.new(0.5, 0), Position = UI.px(60 + i * 88, -20), Size = UI.px(14, 260), BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.82, BorderSizePixel = 0, Rotation = ((i + seed) % 2 == 0) and 18 or -18 })
-		local _ = beam
+-- a concert photo as a small 3D scene: "stage" = view from the crowd, "selfie" = fans in front of the stage
+local SKY = Color3.fromRGB(8, 8, 18)
+local function mk(vp, size, cf, color, material, shape, tr)
+	local p = UI.New("Part", { Size = size, CFrame = cf, Color = color, Material = material or Enum.Material.SmoothPlastic, Transparency = tr or 0, Anchored = true, Parent = vp })
+	if shape then
+		p.Shape = shape
 	end
-	UI.New("Frame", { Parent = f, Position = UI.px(150, 110), Size = UI.px(260, 24), BackgroundColor3 = Color3.fromRGB(30, 30, 40), BorderSizePixel = 0 })
-	UI.New("Frame", { Parent = f, Position = UI.px(270, 78), Size = UI.px(16, 34), BackgroundColor3 = BLACK, BorderSizePixel = 0, UI.Corner(6) })
-	for i = 0, 34 do
-		local x = (i * 37 + seed * 13) % 560
-		local h = 20 + (i * 7 + seed) % 16
-		UI.New("Frame", { Parent = f, Position = UI.px(x, 200 - h), Size = UI.px(18, h + 4), BackgroundColor3 = BLACK, BorderSizePixel = 0, UI.Corner(9) })
-		if i % 4 == 0 then
-			UI.New("Frame", { Parent = f, Position = UI.px(x + 6, 200 - h - 16), Size = UI.px(6, 10), BackgroundColor3 = Color3.fromRGB(255, 255, 220), BorderSizePixel = 0 })
+	return p
+end
+local function photo(parent, ad, seed, kind)
+	local color = ad and UI.rgb(ad.color) or T.accent
+	local vp = UI.New("ViewportFrame", {
+		Parent = parent,
+		Size = UI.px(608, 250),
+		BackgroundColor3 = SKY,
+		BorderSizePixel = 0,
+		Ambient = Color3.fromRGB(110, 100, 140),
+		LightColor = color:Lerp(Color3.new(1, 1, 1), 0.5),
+		LightDirection = Vector3.new(0.2, -0.6, 1),
+		UI.Corner(10),
+	})
+	local rng = Random.new(seed)
+	-- stage: deck, LED wall in the artist colour, light beams, haze
+	mk(vp, Vector3.new(200, 1, 200), CFrame.new(0, -0.5, -20), Color3.fromRGB(12, 12, 18))
+	mk(vp, Vector3.new(44, 5, 16), CFrame.new(0, 2.5, -30), Color3.fromRGB(26, 26, 32))
+	mk(vp, Vector3.new(46, 22, 1), CFrame.new(0, 16, -38), color, Enum.Material.Neon, nil, 0.25)
+	mk(vp, Vector3.new(14, 8, 0.5), CFrame.new(0, 16, -37.3), Color3.new(1, 1, 1), Enum.Material.Neon, nil, 0.6)
+	for i = 0, 7 do
+		local x = -21 + i * 6
+		local c = (i % 2 == 0) and color or Color3.fromRGB(255, 240, 220)
+		mk(vp, Vector3.new(0.8, 60, 0.8), CFrame.new(x, 30, -32) * CFrame.Angles(rng:NextNumber(-0.4, 0.4), 0, rng:NextNumber(-0.5, 0.5)), c, Enum.Material.Neon, nil, 0.75)
+	end
+	mk(vp, Vector3.new(80, 6, 30), CFrame.new(0, 3, -20), color, Enum.Material.Neon, nil, 0.93) -- haze
+	if ad then
+		local star = People.new(vp, color, 1.4, "lead", seed, ad.look)
+		local moves = { "micout", "jump", "point", "wave", "dance" }
+		star:update(Vector3.new(rng:NextNumber(-6, 6), 5, -30), 0, { t = rng:NextNumber() * 10, beat = 0.5, energy = 1, walking = false, armsUp = rng:NextNumber() < 0.4 and 1 or 0, move = moves[rng:NextInteger(1, #moves)] })
+	end
+	local cam = UI.New("Camera", { FieldOfView = 42, Parent = vp })
+	vp.CurrentCamera = cam
+	if kind == "selfie" then
+		-- 2 to 4 fans close to the camera, arms around each other, phone glow
+		local n = rng:NextInteger(2, 4)
+		for i = 1, n do
+			local x = (i - (n + 1) / 2) * 2.6
+			local fanColor = (rng:NextNumber() < 0.5) and color or SHIRT_COLORS[rng:NextInteger(1, #SHIRT_COLORS)]
+			local f = People.new(vp, fanColor, 1, "crowd", seed * 7 + i)
+			f:update(Vector3.new(x, 0, 6 + rng:NextNumber() * 0.6), rng:NextNumber(-0.25, 0.25), { t = 1, beat = 0.2, energy = 0.2, walking = false, armsUp = (i == 1) and 1 or 0, move = (i == 1) and "wave" or "idle" })
 		end
+		-- the phone flash lights the faces
+		vp.LightDirection = Vector3.new(0.1, -0.4, -1)
+		vp.Ambient = Color3.fromRGB(150, 140, 170)
+		cam.CFrame = CFrame.lookAt(Vector3.new(0, 5.6, 15), Vector3.new(0, 4.6, 0))
+	else
+		-- crowd between the camera and the stage with raised arms and phones
+		for row = 0, 5 do
+			for col = 0, 13 do
+				local x = -26 + col * 4 + rng:NextNumber(-1, 1)
+				local z = 4 - row * 3.4 + rng:NextNumber(-0.6, 0.6)
+				local c = Color3.fromRGB(14, 14, 20):Lerp(color, rng:NextNumber() * 0.25)
+				mk(vp, Vector3.new(1.6, 2.8, 1), CFrame.new(x, 1.4, z), c)
+				mk(vp, Vector3.new(1.3, 1.3, 1.3), CFrame.new(x, 3.45, z), c, nil, Enum.PartType.Ball)
+				local r = rng:NextNumber()
+				if r < 0.3 then
+					mk(vp, Vector3.new(0.45, 2.2, 0.45), CFrame.new(x + 0.9, 4.6, z) * CFrame.Angles(0, 0, -0.3), c)
+					mk(vp, Vector3.new(0.5, 0.8, 0.12), CFrame.new(x + 1.3, 5.9, z), Color3.fromRGB(255, 255, 235), Enum.Material.Neon)
+				elseif r < 0.45 then
+					mk(vp, Vector3.new(0.3, 1.6, 0.3), CFrame.new(x - 0.8, 5.2, z) * CFrame.Angles(0, 0, 0.3), color, Enum.Material.Neon)
+				end
+			end
+		end
+		cam.CFrame = CFrame.lookAt(Vector3.new(rng:NextNumber(-8, 8), 6.5, 12), Vector3.new(0, 9, -30))
 	end
-	return f
+	return vp
 end
 
 function SocialScreen:post(list, p, order)
@@ -87,8 +144,10 @@ function SocialScreen:post(list, p, order)
 		TextXAlignment = Enum.TextXAlignment.Left,
 		LayoutOrder = 2,
 	})
-	if p.photo then
-		photo(card, ad and UI.rgb(ad.color) or T.accent, (p.likes or 1) % 7).LayoutOrder = 3
+	if p.photo and self.photos < 14 then
+		self.photos = self.photos + 1
+		local seed = (p.likes or 1) + (p.avatar or 1) * 31
+		photo(card, ad, seed, (seed % 2 == 0) and "selfie" or "stage").LayoutOrder = 3
 	end
 	local foot = UI.New("Frame", { Parent = card, Size = UI.px(608, 22), BackgroundTransparency = 1, LayoutOrder = 4 })
 	UI.Label(foot, "♥ " .. Util.short(p.likes or 0) .. "      ⟲ " .. Util.short(p.reposts or 0), UI.px(0, 0), UI.px(300, 22), { textSize = 15, color = T.sub })
@@ -129,6 +188,7 @@ function SocialScreen:refresh()
 	end
 
 	-- center: the feed
+	self.photos = 0
 	local list = UI.Scroll(body, UI.px(470, 20), UI.px(680, 970))
 	UI.List(true, 12).Parent = list
 	local n = 0

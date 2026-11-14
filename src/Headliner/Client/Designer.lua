@@ -13,6 +13,7 @@ local GS = require(Root.Logic.GameState)
 local UI = require(Root.Client.UI)
 local Builder = require(Root.Client.Builder)
 local Stage3D = require(Root.Client.Stage3D)
+local SoundFX = require(Root.Client.SoundFX)
 
 local T = UI.Theme
 local Designer = {}
@@ -427,6 +428,7 @@ function Designer.open(app, designId)
 			buildPending(rec)
 			return
 		end
+		SoundFX.sfx("place", 0.7)
 		local keep = Util.deepCopy(rec)
 		keep.x, keep.z, keep.y = nil, nil, nil
 		lastSettings[def.id] = keep
@@ -528,6 +530,7 @@ function Designer.open(app, designId)
 		local wasDeck = refs.def.deck
 		select(nil)
 		GS.sellItem(state, self.design, refs.rec)
+		SoundFX.sfx("delete", 0.6)
 		Stage3D.removeItem(refs)
 		Stage3D.numberSpots(self.design)
 		if wasDeck then
@@ -574,7 +577,7 @@ function Designer.open(app, designId)
 			LightDirection = Vector3.new(-1, -1, -0.6),
 			UI.Corner(6),
 		})
-		local refs = Builder.build(def, { color = itemOpts().color, artistName = "", rec = { t = def.id } })
+		local refs = Builder.build(def, { color = itemOpts().color, artistName = "", rec = { t = def.id }, preview = true })
 		Builder.rest(refs)
 		refs.model.Parent = vp
 		local cf, size = refs.model:GetBoundingBox()
@@ -1060,7 +1063,7 @@ function Designer.open(app, designId)
 		local key = def.id .. tostring(ok) .. tostring(rec.w) .. tostring(rec.d) .. tostring(rec.h) .. tostring(rec.skin)
 		if not ghost or ghostKey ~= key then
 			clearGhost()
-			ghost = Builder.build(def, { color = itemOpts().color, artistName = itemOpts().artistName, rec = rec })
+			ghost = Builder.build(def, { color = itemOpts().color, artistName = itemOpts().artistName, rec = rec, preview = true })
 			Builder.ghost(ghost, ok)
 			ghost.model.Parent = Stage3D.world
 			ghostKey = key

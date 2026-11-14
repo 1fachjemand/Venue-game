@@ -12,6 +12,7 @@ local Util = require(Root.Logic.Util)
 local GS = require(Root.Logic.GameState)
 local UI = require(Root.Client.UI)
 local Stage3D = require(Root.Client.Stage3D)
+local SoundFX = require(Root.Client.SoundFX)
 
 local T = UI.Theme
 local App = {}
@@ -129,6 +130,9 @@ function App.start()
 			return
 		end
 		acc = acc + dt
+		if self.setDayProgress then
+			self.setDayProgress(acc / secs)
+		end
 		if acc >= secs then
 			acc = 0
 			self:nextDay()
@@ -161,6 +165,7 @@ function App:beginGame(state, isNew)
 	self.toastFrame = UI.New("Frame", { Parent = self.canvas, Name = "Toasts", Position = UI.px(740, 80), Size = UI.px(440, 900), BackgroundTransparency = 1 })
 	UI.List(true, 8, Enum.HorizontalAlignment.Center).Parent = self.toastFrame
 	self:go("office")
+	SoundFX.menu("office")
 	if isNew then
 		self:save()
 		self:showWelcome()
@@ -188,7 +193,10 @@ function App:buildHud()
 		self:go("planner")
 	end)
 	self.moneyLbl = UI.Label(hud, "", UI.px(1262, 6), UI.px(210, 30), { textSize = 26, font = UI.FontBlack, alignX = Enum.TextXAlignment.Right, color = T.good })
-	self.dateLbl = UI.Label(hud, "", UI.px(1262, 36), UI.px(210, 22), { textSize = 16, alignX = Enum.TextXAlignment.Right, color = T.sub })
+	self.dateLbl = UI.Label(hud, "", UI.px(1262, 34), UI.px(210, 22), { textSize = 16, alignX = Enum.TextXAlignment.Right, color = T.sub })
+	-- how far the current day has run
+	local _, setDay = UI.Bar(hud, UI.px(1372, 56), UI.px(100, 4), 0, T.accent2)
+	self.setDayProgress = setDay
 	self.speedBtns = {}
 	for i, sp in ipairs(Config.SPEEDS) do
 		self.speedBtns[i] = UI.Button(hud, sp.label, UI.px(1486 + (i - 1) * 58, 10), UI.px(52, 44), { textSize = 18 }, function()
@@ -413,6 +421,11 @@ end
 ------------------------------------------------------------------ time
 function App:nextDay()
 	local ev = GS.advanceDay(self.state)
+	if #ev.soldOut > 0 then
+		SoundFX.sfx("soldout", 0.6)
+	elseif #ev.achievements > 0 then
+		SoundFX.sfx("notify", 0.6)
+	end
 	for _, so in ipairs(ev.soldOut) do
 		local s = so.tour.shows[so.idx]
 		local v = Countries.venueById[s.venueId]
@@ -443,6 +456,7 @@ function App:nextDay()
 		table.insert(self.liveQueue, l)
 	end
 	if ev.levelUp then
+		SoundFX.sfx("levelup", 0.8)
 		self:modal("LEVEL UP!", "Your label is now a <b>" .. ev.levelUp .. "</b>.\nNew artists are ready to talk to you in ARTISTS > TALENT SCOUT.", { { "Nice!", T.gold } }, 600)
 	end
 	for _, tour in ipairs(ev.completed) do
@@ -557,6 +571,7 @@ function App:showResult(tour, idx, r, onClose)
 		"Label profit: <b><font color='" .. (r.net >= 0 and "#2ecc71" or "#ff5252") .. "'>" .. Util.money(r.net) .. "</font></b>",
 		"New fans: <b>+" .. Util.number(r.fansGained) .. "</b>",
 	}, "\n")
+	SoundFX.sfx(r.net >= 0 and "cash" or "error", 0.7)
 	self:modal("SHOW REPORT", body, { { "Continue", T.accent, onClose } }, 760)
 end
 

@@ -22,9 +22,9 @@ Config.ARTIST_SHARE = 0.35
 -- Seconds per in-game day for each speed setting (1 = paused)
 Config.SPEEDS = {
 	{ label = "II", seconds = 0 },
-	{ label = ">", seconds = 1.5 },
-	{ label = ">>", seconds = 0.6 },
-	{ label = ">>>", seconds = 0.2 },
+	{ label = ">", seconds = 15 },
+	{ label = ">>", seconds = 4 },
+	{ label = ">>>", seconds = 1 },
 }
 
 -- Label levels: unlocked by total tickets sold. Bigger artists need a higher level.

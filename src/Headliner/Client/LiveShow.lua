@@ -13,6 +13,8 @@ local Stage3D = require(Root.Client.Stage3D)
 local People = require(Root.Client.People)
 local Venue = require(Root.Client.Venue)
 local LiveFeed = require(Root.Client.LiveFeed)
+local SoundFX = require(Root.Client.SoundFX)
+local AudioMap = require(Root.Data.AudioMap)
 
 local T = UI.Theme
 local LiveShow = {}
@@ -29,29 +31,28 @@ end
 -- Builds the running order of one show.
 -- returns segments = { {kind, title, t0, t1, bpm, c1, c2, intensity, sweep, spot, lasers, phones, hits = { {time, name} }} }
 local function buildTimeline(ad, rng, songCount, hasRoof)
-	local songs = {}
-	for i, s in ipairs(ad.setlist) do
-		songs[i] = s
+	-- song numbers refer to the artist's setlist (and to the audio file): 1 = opener, 4 = the ballad, 8 = the big hit
+	local BALLAD, HIT = AudioMap.BALLAD_INDEX or 4, AudioMap.HIT_INDEX or 8
+	local pool = {}
+	for i = 2, #ad.setlist do
+		if i ~= BALLAD and i ~= HIT then
+			table.insert(pool, i)
+		end
 	end
-	local closer = table.remove(songs, math.min(8, #songs)) -- the big hit is always last
-	local opener = table.remove(songs, 1)
-	for i = #songs, 2, -1 do
+	for i = #pool, 2, -1 do
 		local j = rng:NextInteger(1, i)
-		songs[i], songs[j] = songs[j], songs[i]
+		pool[i], pool[j] = pool[j], pool[i]
 	end
 	local middle = {}
-	for i = 1, math.max(1, songCount - 2) do
-		table.insert(middle, songs[(i - 1) % #songs + 1])
+	for i = 1, songCount - 3 do
+		table.insert(middle, pool[(i - 1) % #pool + 1])
 	end
-	local balladAt = rng:NextInteger(2, #middle + 1) -- position in the full set (2..n-1)
-	local order = { { title = opener, kind = "opener" } }
-	for _, title in ipairs(middle) do
-		table.insert(order, { title = title, kind = (rng:NextNumber() < 0.55) and "banger" or "mid" })
+	table.insert(middle, rng:NextInteger(math.max(1, #middle - 1), #middle + 1), BALLAD)
+	local order = { { title = ad.setlist[1], idx = 1, kind = "opener" } }
+	for _, n in ipairs(middle) do
+		table.insert(order, { title = ad.setlist[n], idx = n, kind = (n == BALLAD) and "ballad" or ((rng:NextNumber() < 0.55) and "banger" or "mid") })
 	end
-	if order[balladAt] then
-		order[balladAt].kind = "ballad"
-	end
-	table.insert(order, { title = closer, kind = "finale" })
+	table.insert(order, { title = ad.setlist[HIT], idx = HIT, kind = "finale" })
 
 	local base = Color3.fromRGB(ad.color[1], ad.color[2], ad.color[3])
 	local palette = {
@@ -75,7 +76,7 @@ local function buildTimeline(ad, rng, songCount, hasRoof)
 			add({ kind = "break", title = "Encore! Encore!", len = 4, bpm = 0, c1 = Color3.fromRGB(20, 20, 60), c2 = base, intensity = 0.15, sweep = 0.2 })
 		end
 		local kind = song.kind
-		local len = (kind == "ballad") and rng:NextInteger(17, 20) or rng:NextInteger(14, 17)
+		local len = (kind == "ballad") and rng:NextInteger(23, 26) or rng:NextInteger(20, 24)
 		local seg = {
 			kind = kind,
 			title = i .. ". " .. song.title,
@@ -89,6 +90,7 @@ local function buildTimeline(ad, rng, songCount, hasRoof)
 			lasers = (kind == "banger" or kind == "finale") and rng:NextNumber() < 0.8,
 			phones = kind == "ballad",
 			song = i,
+			songIndex = song.idx,
 			hits = {},
 		}
 		local s0 = t
@@ -261,7 +263,14 @@ function LiveShow.run(app, opts)
 		local key = i * 10000 + j
 		local h = navH[key]
 		if h == nil then
-			h = Stage3D.surfaceY(nx0 + (i + 0.5) * NAV, nz0 + (j + 0.5) * NAV)
+			-- a cell counts as stage if the centre or a point near it is on a deck (small gaps between decks are fine)
+			local cx, cz = nx0 + (i + 0.5) * NAV, nz0 + (j + 0.5) * NAV
+			h = Stage3D.surfaceY(cx, cz)
+			if h < 0.5 then
+				for _, o in ipairs({ { 0.8, 0 }, { -0.8, 0 }, { 0, 0.8 }, { 0, -0.8 } }) do
+					h = math.max(h, (Stage3D.surfaceY(cx + o[1], cz + o[2])))
+				end
+			end
 			navH[key] = h
 		end
 		return h
@@ -275,7 +284,7 @@ function LiveShow.run(app, opts)
 		if si == ti and sj == tj then
 			return { from, to }
 		end
-		if ncols * nrows > 20000 then
+		if ncols * nrows > 40000 then
 			return nil
 		end
 		local prev, queue, head = {}, { si * 10000 + sj }, 1
@@ -294,7 +303,7 @@ function LiveShow.run(app, opts)
 				local nk = ni * 10000 + nj
 				if ni >= 0 and nj >= 0 and ni < ncols and nj < nrows and not prev[nk] then
 					local nh = cellH(ni, nj)
-					local ok = nh > 0.5 and math.abs(nh - h) <= 2.6
+					local ok = nh > 0.5 and math.abs(nh - h) <= 4.2
 					if ok and d[1] ~= 0 and d[2] ~= 0 then
 						-- no cutting corners over gaps
 						ok = cellH(i + d[1], j) > 0.5 and cellH(i, j + d[2]) > 0.5
@@ -365,19 +374,26 @@ function LiveShow.run(app, opts)
 				w.kind, w.dur = "stay", 0
 			else
 				local path = (leadRole ~= "dj") and findPath(cur, w[2]) or nil
-				if path then
-					w.kind, w.path = "walk", path
-					w.len = pathLength(path)
-					w.dur = math.clamp(w.len / 9, 1, 8)
-				else
-					w.kind, w.dur = "hidden", 2.5 -- goes backstage and reappears
+				if not path then
+					-- no connected decks: walk straight over (never vanish in front of the fans)
+					path = { cur }
+					local steps = math.max(1, math.floor((w[2] - cur).Magnitude / 3))
+					for k = 1, steps - 1 do
+						local p = cur:Lerp(w[2], k / steps)
+						table.insert(path, Vector3.new(p.X, math.max(p.Y, (Stage3D.surfaceY(p.X, p.Z))), p.Z))
+					end
+					table.insert(path, w[2])
 				end
+				w.kind, w.path = "walk", path
+				w.len = pathLength(path)
+				w.dur = math.clamp(w.len / 9, 1, 9)
 			end
 			table.insert(walks, w)
 			cur = w[2]
 		end
 	end
 	local curWalk = nil
+	LiveShow.lastWalks = walks -- for the automated tests
 
 	local lead = People.new(Stage3D.peopleFolder, artistColor, 1.5, leadRole, 7, ad.look)
 	local band = {}
@@ -547,6 +563,13 @@ function LiveShow.run(app, opts)
 		feed:update(face, mode, ctx)
 	end
 
+	-- sound: crowd noise from the start, the music follows the running order
+	SoundFX.stopMusic(1.5)
+	SoundFX.crowd(0.2 + 0.5 * math.clamp(fill, 0, 1))
+	SoundFX.sfx("cheer", 0.3 + 0.5 * math.clamp(fill, 0, 1))
+	local soundSeg = 1
+	local SFX_HITS = { pyro = { "boom", 0.45 }, co2 = { "whoosh", 0.35 }, fireworks = { "firework", 0.6 }, confetti = { "whoosh", 0.25 } }
+
 	local done = false
 	local conn
 	local function finish()
@@ -554,6 +577,8 @@ function LiveShow.run(app, opts)
 			return
 		end
 		done = true
+		SoundFX.crowd(0)
+		SoundFX.menu("office")
 		conn:Disconnect()
 		keyConn:Disconnect()
 		for _, p in ipairs(performers) do
@@ -600,7 +625,25 @@ function LiveShow.run(app, opts)
 		end
 		while hits[hitIndex] and hits[hitIndex][1] <= t do
 			hit[hits[hitIndex][2]] = true
+			local fx = SFX_HITS[hits[hitIndex][2]]
+			if fx then
+				SoundFX.sfx(fx[1], fx[2])
+			end
 			hitIndex = hitIndex + 1
+		end
+		-- music: every song starts its part of the artist's audio file
+		if soundSeg ~= segIndex then
+			soundSeg = segIndex
+			if seg.songIndex then
+				SoundFX.song(ad.id, seg.songIndex, 1)
+				SoundFX.sfx("cheer", 0.25)
+			elseif seg.kind == "break" then
+				SoundFX.stopMusic(1)
+				SoundFX.sfx("scream", 0.6)
+			elseif seg.kind == "outro" then
+				SoundFX.stopMusic(2)
+				SoundFX.sfx("applause", 0.8)
+			end
 		end
 		local inSeg = t - seg.t0
 		local strobe = seg.strobeFrom ~= nil and inSeg >= seg.strobeFrom

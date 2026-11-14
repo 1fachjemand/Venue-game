@@ -8,6 +8,7 @@ local Sim = require(Root.Logic.Sim)
 local GS = require(Root.Logic.GameState)
 local UI = require(Root.Client.UI)
 local People = require(Root.Client.People)
+local SoundFX = require(Root.Client.SoundFX)
 
 local T = UI.Theme
 local ArtistsScreen = {}
@@ -65,7 +66,12 @@ function ArtistsScreen:card(ad, order)
 	end
 	UI.Label(card, "Biggest in " .. Regions.byId[best].name, UI.px(176, 198), UI.px(264, 22), { textSize = 15 })
 	UI.Label(card, "Tickets ~" .. Util.money(Sim.fairPrice(state, ad.id, "uk")), UI.px(176, 222), UI.px(264, 22), { textSize = 15, color = T.sub })
-	UI.Label(card, ad.bio, UI.px(18, 262), UI.px(416, 44), { textSize = 15, color = T.sub, wrap = true, alignY = Enum.TextYAlignment.Top })
+	UI.Label(card, ad.bio, UI.px(18, 262), UI.px(330, 44), { textSize = 15, color = T.sub, wrap = true, alignY = Enum.TextYAlignment.Top })
+	UI.Button(card, "▶ Listen", UI.px(354, 264), UI.px(80, 36), { textSize = 14 }, function()
+		if not SoundFX.preview(ad.id) then
+			app:toast("Music is not uploaded yet (see audio/README.md).", T.warn, 4)
+		end
+	end)
 
 	if a.signed then
 		local tour = GS.activeTour(state, ad.id)

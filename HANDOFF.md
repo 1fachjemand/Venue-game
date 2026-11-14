@@ -48,7 +48,14 @@ ROADMAP.md               offene Wünsche
 - **MY STAGES (Bibliothek, `Screens/StagesScreen.lua`):** Karten mit 3D-Vorschau, Songs/Items/Kosten, ON TOUR/STARTER, Edit/Copy/Delete. Dialog „New stage“: Größe, Typ, Start (leer, Basis-Deck oder Vorlage).
 - **Vorlagen aus echten Touren** (`StageItems.PRESETS`, `shop = true` kostet): The Cube (in-the-round, LED-Würfel, 8 LED-Türme, Armbänder – angelehnt an Billie Eilish HMHAS / Metallica M72), Portal Ring (Portal + Roboterarme – angelehnt an Beyoncé Renaissance), Runway & Moon (Skyline, Laufsteg, Mond, Statue – angelehnt an The Weeknd).
 - **Setlist = Anzahl Artist-Spots** (3–12, ohne Spots 4). Spot n = Song n, Reihenfolge im Inspector („Earlier/Later“). Lift/Piano/Keys/Drums/DJ „in Song n“. Screens: Inhalt für die ganze Show + Änderungen pro Song.
-- **Live-Kamera auf Screens** (`Client/LiveFeed.lua`): eigene 3D-Szene im ViewportFrame: Artist (Kopien der Figuren, Kamera kreist) oder Fans (Crowd mit Armen, Lightsticks, Handys, Kamera schwenkt).
+- **Live-Kamera auf Screens** (`Client/LiveFeed.lua`): eigene 3D-Szene im ViewportFrame: Artist (Kopien der Figuren, Kamera kreist) oder Fans (Crowd mit Armen, Lightsticks, Handys, Kamera schwenkt). **Wichtig:** Roblox zeichnet ViewportFrames nicht in SurfaceGuis im Workspace. Darum liegen die Screen-SurfaceGuis in der PlayerGui mit `Adornee` = Screen-Part (`Builder.surfaceText(..., adorn=true)`), werden über `Destroying`/`AncestryChanged` mit dem Part entfernt. Vorschaubilder (`preview = true`) nutzen normale SurfaceGuis.
+- **Setlist-Plan** (`GS.songPlan`): Lifts/Instrumente behalten ihre Songnummer, Artist-Spots nehmen die freien Nummern in Platzier-Reihenfolge. Song 1 = Opener, Song 4 der Setlist = Ballade, Song 8 = großer Hit (Finale).
+- **Laufen statt Teleportieren:** Wegfindung toleriert kleine Lücken und Stufen bis 4,2; ohne Weg läuft der Artist gerade hinüber (nie mehr „hidden“).
+- **Sound** (`Client/SoundFX.lua`, `Data/Audio.lua` = Asset-IDs, `Data/AudioMap.lua` = Zeitbereiche, generiert): Menü-/Büromusik, Klick-/Hover-Sounds an allen Buttons, Sold-out/Level-up/Kasse, in der Show Crowd-Loop, Jubel, Applaus, Pyro-/CO2-/Feuerwerk-Sounds und pro Song der passende 30-s-Ausschnitt aus der Artist-Datei (PlaybackRegion). „▶ Listen“ an Artist-Karten. Ohne IDs ist alles still.
+- **Musik-Generator** `tools/music/make_audio.py` (+ `synth.py`): eigene Synth-Instrumente (Drums, Bass, Piano, Rhodes, Gitarren per Karplus-Strong/Verzerrung, Supersaw, Pads, Formant-„Stimme“), Stil pro Artist (Tempo, Tonart, Akkordfolgen, Drum-Pattern, Instrumente). Ausgabe in `audio/` (14 .ogg). Upload-Anleitung: `audio/README.md`.
+- **Tageslänge:** Geschwindigkeiten 15 s / 4 s / 1 s pro Tag, Fortschrittsbalken unter dem Datum.
+- **Social-Fotos** sind kleine 3D-Szenen (Blick aus der Crowd oder Fan-Selfie vor der Bühne).
+- **Kleine Props / Decor:** Guitar Stand, Monitor Wedge, Percussion, Bar Stool, Chair, Floor Uplight, LED Bar, Light Pole, String Lights, Paper Lanterns, Retro TV Stack, Neon Heart/Star/Lightning, Bubble Machine, Snow Machine, Wind Machine, Sofa, Rug, Floor Lamp, Side Table, Candles, Potted Plant, Tree, Park Bench, Street Lamp, Road Cases, Balloon Arch, Logo Banner (Kategorie „Decor“).
 - **Stage Designer (alte Funktionen, weiterhin vorhanden):**
   - Größenklassen Club/Theatre/Arena/Stadium, End Stage oder Center Stage.
   - Freie Decks (Rechteck/Dreieck/Ecke/Rund/Treppe) mit Größe, Höhe, Drehung und Oberflächen (inkl. LED), Kantenlicht optional, „Set all decks“.
@@ -96,7 +103,7 @@ python3 tools/gen_worldmap.py <pfad>/countries-50m.json
 1. **Hauptmenü-Venues: neu gebaut (Stadtviertel + Kamerafahrt), Feedback des Users abwarten.** Mögliche nächste Schritte: Performance auf schwachen PCs prüfen (Manhattan ~12k Parts, Aufbau während der Schwarzblende), ggf. Detail an „Crowd detail“-Setting koppeln; weitere Venues; echte Meshes (OBJ/FBX) für noch feinere Fassaden.
 2. **Feedback des Users zum neuen Stage Builder, Social-Tab, Live-Screens und Looks abwarten** (großer Umbau, Nov 2026).
 3. **Büro mit Roblox-Charakter**, der sich an den PC setzt. Das Label-Menü läuft „im PC“.
-4. Später: **Musik** pro Artist (User will Songs erst, wenn die Basis steht), Hörprobe bei der Auswahl.
+4. **Audio-IDs eintragen:** User lädt die 14 Dateien aus `audio/` hoch und schickt die IDs → in `Data/Audio.lua` eintragen, neu bauen. Danach Lautstärken/Mix im echten Spiel abhören und ggf. im Generator nachjustieren.
 5. Balancing beobachten: User hat bisher alles ausverkauft (Clubs). Leere bei schwachem Verkauf funktioniert (Crowd = verkaufte Tickets), wurde aber noch nicht gesehen.
 
 ## 6. Bekannte Grenzen

@@ -14,6 +14,7 @@ StageItems.CATEGORIES = {
 	{ id = "Screens", name = "Screens" },
 	{ id = "FX", name = "Effects" },
 	{ id = "Set", name = "Set Pieces" },
+	{ id = "Decor", name = "Decor" },
 }
 
 -- Up to this many artist spots (= songs in the setlist)
@@ -41,6 +42,11 @@ StageItems.list = {
 	{ id = "djbooth", name = "DJ Booth", cat = "Artist", cost = 1500, pts = 4, tags = { "dj" }, mount = "floor", deck = false, desc = "DJ table with LED front." },
 	{ id = "micstand", name = "Mic Stand", cat = "Artist", cost = 150, pts = 1, tags = { "intimate" }, mount = "floor", deck = false, desc = "Classic microphone stand." },
 	{ id = "amps", name = "Amp Stack", cat = "Artist", cost = 500, pts = 2, tags = { "band", "retro" }, mount = "floor", deck = false, desc = "Wall of guitar amps." },
+	{ id = "guitarstand", name = "Guitar Stand", cat = "Artist", cost = 200, pts = 1, tags = { "band" }, mount = "floor", deck = false, desc = "Spare guitar on a stand." },
+	{ id = "wedge", name = "Monitor Wedge", cat = "Artist", cost = 150, pts = 1, tags = {}, mount = "floor", deck = false, desc = "Floor speaker so the artist hears the band." },
+	{ id = "congas", name = "Percussion", cat = "Artist", cost = 600, pts = 2, tags = { "band", "party" }, mount = "floor", deck = false, desc = "Congas and a cymbal for the percussionist." },
+	{ id = "stool", name = "Bar Stool", cat = "Artist", cost = 80, pts = 1, tags = { "intimate" }, mount = "floor", deck = false, desc = "High stool for an acoustic moment." },
+	{ id = "chair", name = "Chair", cat = "Artist", cost = 80, pts = 1, tags = { "intimate" }, mount = "floor", deck = false, desc = "Simple wooden chair." },
 	-- Lights
 	{ id = "par", name = "PAR Wash", cat = "Lights", cost = 150, pts = 2, tags = { "lights" }, mount = "rig", deck = false, desc = "Coloured wash light." },
 	{ id = "moving", name = "Moving Head", cat = "Lights", cost = 900, pts = 4, tags = { "lights" }, mount = "rig", deck = false, desc = "Sweeping beam light." },
@@ -50,6 +56,11 @@ StageItems.list = {
 	{ id = "followspot", name = "Follow Spot", cat = "Lights", cost = 1100, pts = 3, tags = { "lights", "intimate" }, mount = "floor", deck = false, desc = "Follows the artist everywhere." },
 	{ id = "kinetic", name = "Kinetic Light Bars", cat = "Lights", cost = 3200, pts = 9, tags = { "lights", "spectacle" }, mount = "rig", deck = false, size = { w = 24, minW = 8, maxW = 90 }, desc = "Glowing bars on motor winches that move up and down in waves." },
 	{ id = "discoball", name = "Disco Ball", cat = "Lights", cost = 700, pts = 3, tags = { "retro" }, mount = "rig", deck = false, desc = "Spinning mirror ball." },
+	{ id = "uplight", name = "Floor Uplight", cat = "Lights", cost = 120, pts = 1, tags = { "lights" }, mount = "floor", deck = false, desc = "Small light on the floor that washes walls and set pieces in colour." },
+	{ id = "ledbar", name = "LED Bar", cat = "Lights", cost = 300, pts = 2, tags = { "lights" }, mount = "floor", deck = false, size = { w = 8, minW = 2, maxW = 40 }, desc = "Pixel bar for stage edges and risers. Colours run along it." },
+	{ id = "lightpole", name = "Light Pole", cat = "Lights", cost = 250, pts = 2, tags = { "lights" }, mount = "floor", deck = false, desc = "Glowing vertical tube." },
+	{ id = "stringlights", name = "String Lights", cat = "Lights", cost = 400, pts = 2, tags = { "retro", "intimate" }, mount = "rig", deck = false, size = { w = 24, minW = 6, maxW = 80 }, desc = "Warm fairy lights hanging in a curve." },
+	{ id = "lanterns", name = "Paper Lanterns", cat = "Lights", cost = 350, pts = 2, tags = { "intimate", "retro" }, mount = "rig", deck = false, desc = "Three glowing lanterns." },
 	-- Screens
 	{ id = "led", name = "LED Wall", cat = "Screens", cost = 3000, pts = 8, tags = { "screens", "spectacle" }, mount = "floor", deck = false, size = { w = 16, d = 9, minW = 4, maxW = 96, minD = 3, maxD = 40, dLabel = "Height" }, desc = "Video wall. Shows song titles, text, images or a live camera." },
 	{ id = "led_side", name = "Side Screen", cat = "Screens", cost = 3500, pts = 8, tags = { "screens" }, mount = "floor", deck = false, desc = "Tall side screen, perfect for the live camera." },
@@ -59,6 +70,10 @@ StageItems.list = {
 	{ id = "led_floor", name = "LED Floor", cat = "Screens", cost = 4500, pts = 9, tags = { "screens" }, mount = "floor", deck = false, size = { w = 16, d = 16, minW = 4, maxW = 64, minD = 4, maxD = 64 }, desc = "Animated light-up floor. Put it on top of a deck." },
 	{ id = "portal", name = "Portal Ring", cat = "Screens", cost = 7000, pts = 13, tags = { "screens", "spectacle" }, mount = "floor", deck = false, size = { w = 24, minW = 10, maxW = 70 }, desc = "Giant glowing ring the artist can step through." },
 	{ id = "neonsign", name = "Neon Logo", cat = "Screens", cost = 1800, pts = 5, tags = { "retro" }, mount = "floor", deck = false, desc = "The artist's name in neon." },
+	{ id = "tvstack", name = "Retro TV Stack", cat = "Screens", cost = 1200, pts = 4, tags = { "retro", "screens" }, mount = "floor", deck = false, desc = "Pile of old TVs flashing with the beat." },
+	{ id = "neonheart", name = "Neon Heart", cat = "Screens", cost = 600, pts = 3, tags = { "retro" }, mount = "floor", deck = false, desc = "Glowing heart sign." },
+	{ id = "neonstar", name = "Neon Star", cat = "Screens", cost = 600, pts = 3, tags = { "retro" }, mount = "floor", deck = false, desc = "Glowing star sign." },
+	{ id = "neonbolt", name = "Neon Lightning", cat = "Screens", cost = 600, pts = 3, tags = { "retro", "energy" }, mount = "floor", deck = false, desc = "Glowing lightning bolt." },
 	-- Special effects
 	{ id = "pyro", name = "Flame Pyro", cat = "FX", cost = 2000, pts = 8, tags = { "pyro", "energy" }, mount = "floor", deck = false, desc = "Huge flame bursts." },
 	{ id = "sparks", name = "Spark Fountain", cat = "FX", cost = 1400, pts = 6, tags = { "pyro" }, mount = "floor", deck = false, desc = "Golden spark fountain." },
@@ -71,6 +86,9 @@ StageItems.list = {
 	{ id = "balls", name = "Giant Balloons", cat = "FX", cost = 2600, pts = 8, tags = { "party", "spectacle" }, mount = "floor", deck = false, desc = "Huge balloons fly into the crowd in the finale. Fans bounce them around." },
 	{ id = "wristbands", name = "LED Wristbands", cat = "FX", cost = 9000, pts = 14, tags = { "spectacle", "party" }, mount = "floor", deck = false, desc = "Every fan gets a glowing wristband that lights up with the music. Place the control desk anywhere." },
 	{ id = "fireworks", name = "Fireworks Rack", cat = "FX", cost = 7000, pts = 14, tags = { "pyro", "spectacle" }, mount = "floor", deck = false, desc = "Fireworks for the grand finale (open-air venues)." },
+	{ id = "bubbles", name = "Bubble Machine", cat = "FX", cost = 400, pts = 2, tags = { "party", "intimate" }, mount = "floor", deck = false, desc = "Soap bubbles float over the front rows in calm songs." },
+	{ id = "snow", name = "Snow Machine", cat = "FX", cost = 900, pts = 3, tags = { "intimate" }, mount = "rig", deck = false, desc = "Snowflakes fall during the ballad." },
+	{ id = "windfan", name = "Wind Machine", cat = "FX", cost = 350, pts = 1, tags = {}, mount = "floor", deck = false, desc = "Big fan for the windswept-hair moment." },
 	-- Set pieces (inspired by famous tour productions)
 	{ id = "curtain", name = "Kabuki Curtain", cat = "Set", cost = 2200, pts = 7, tags = { "spectacle" }, mount = "floor", deck = false, size = { w = 40, d = 24, minW = 10, maxW = 120, minD = 8, maxD = 60, dLabel = "Height" }, desc = "Hides the stage before the show and drops in one second when the first song starts." },
 	{ id = "moon", name = "Giant Moon", cat = "Set", cost = 4500, pts = 10, tags = { "spectacle", "intimate" }, mount = "floor", deck = false, size = { w = 18, minW = 8, maxW = 50 }, desc = "Glowing moon at the end of a runway." },
@@ -82,6 +100,19 @@ StageItems.list = {
 	{ id = "flowers", name = "Flower Garden", cat = "Set", cost = 900, pts = 3, tags = { "intimate" }, mount = "floor", deck = false, desc = "Colourful flower bed." },
 	{ id = "inflatable", name = "Giant Inflatable", cat = "Set", cost = 5000, pts = 10, tags = { "spectacle", "party" }, mount = "floor", deck = false, desc = "Giant inflatable that blows up during the show." },
 	{ id = "palm", name = "Neon Palm", cat = "Set", cost = 800, pts = 3, tags = { "party", "retro" }, mount = "floor", deck = false, desc = "Glowing palm tree." },
+	-- Decor: small things that make a stage feel like a place
+	{ id = "sofa", name = "Sofa", cat = "Decor", cost = 500, pts = 2, tags = { "intimate" }, mount = "floor", deck = false, desc = "Cosy sofa for a living-room set." },
+	{ id = "rug", name = "Rug", cat = "Decor", cost = 150, pts = 1, tags = { "intimate" }, mount = "floor", deck = false, desc = "Round rug in the artist's colour." },
+	{ id = "floorlamp", name = "Floor Lamp", cat = "Decor", cost = 150, pts = 1, tags = { "intimate", "retro" }, mount = "floor", deck = false, desc = "Standing lamp with a warm shade." },
+	{ id = "table", name = "Side Table", cat = "Decor", cost = 150, pts = 1, tags = { "intimate" }, mount = "floor", deck = false, desc = "Small table with a drink and a vase." },
+	{ id = "candles", name = "Candles", cat = "Decor", cost = 200, pts = 1, tags = { "intimate" }, mount = "floor", deck = false, desc = "Group of flickering candles." },
+	{ id = "plant", name = "Potted Plant", cat = "Decor", cost = 120, pts = 1, tags = { "intimate" }, mount = "floor", deck = false, desc = "Green plant in a pot." },
+	{ id = "tree", name = "Tree", cat = "Decor", cost = 400, pts = 2, tags = { "intimate" }, mount = "floor", deck = false, desc = "Small tree, nice with string lights." },
+	{ id = "bench", name = "Park Bench", cat = "Decor", cost = 200, pts = 1, tags = { "intimate" }, mount = "floor", deck = false, desc = "Wooden bench." },
+	{ id = "streetlamp", name = "Street Lamp", cat = "Decor", cost = 300, pts = 2, tags = { "retro" }, mount = "floor", deck = false, desc = "Old-style street lamp." },
+	{ id = "roadcase", name = "Road Cases", cat = "Decor", cost = 150, pts = 0, tags = { "band" }, mount = "floor", deck = false, desc = "Stacked flight cases, the rock'n'roll look." },
+	{ id = "balloonarch", name = "Balloon Arch", cat = "Decor", cost = 700, pts = 3, tags = { "party" }, mount = "floor", deck = false, size = { w = 16, minW = 8, maxW = 40 }, desc = "Arch of balloons." },
+	{ id = "banner", name = "Logo Banner", cat = "Decor", cost = 500, pts = 2, tags = {}, mount = "rig", deck = false, desc = "Hanging fabric banner with the artist's name." },
 }
 
 -- Genre bonus per tag (multiplies the item's points)

@@ -53,7 +53,7 @@ local function thumbnail(parent, design, pos, size)
 		local def = StageItems.byId[rec.t]
 		if def and THUMB_CATS[def.cat] and def.id ~= "spot" and n < 60 then
 			n = n + 1
-			local refs = Builder.build(def, { color = T.accent2, artistName = "", rec = rec })
+			local refs = Builder.build(def, { color = T.accent2, artistName = "", rec = rec, preview = true })
 			Builder.rest(refs)
 			local y = (rec.y or 0) + (rec.yo or 0)
 			if def.mount == "rig" then

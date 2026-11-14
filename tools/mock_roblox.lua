@@ -390,6 +390,8 @@ MOCK.newRaw = newInst
 
 function Methods.Destroy(self)
 	if rawget(self, "__destroyed") then return end
+	local ds = rawget(self, "__signals") and self.__signals.Destroying
+	if ds then ds:Fire() end
 	setParent(self, nil)
 	rawset(self, "__destroyed", true)
 	local kids = {}

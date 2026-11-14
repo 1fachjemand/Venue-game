@@ -8,6 +8,7 @@ local GS = require(Root.Logic.GameState)
 local UI = require(Root.Client.UI)
 local People = require(Root.Client.People)
 local MenuScene = require(Root.Client.MenuScene)
+local SoundFX = require(Root.Client.SoundFX)
 local Venue = require(Root.Client.Venue)
 
 local T = UI.Theme
@@ -19,6 +20,8 @@ local PANEL_W = 600
 function MainMenu.show(app, saved, onStart)
 	app.backdrop.Visible = false
 	app.settings = app.settings or { music = 80, effects = 80, crowd = "High" }
+	SoundFX.init(app.settings)
+	SoundFX.menu("title")
 	local root = UI.New("Frame", { Parent = app.canvas, Name = "MainMenu", Size = UI.px(1920, 1080), BackgroundTransparency = 1 })
 	-- left column with a soft fade into the 3D scene
 	local column = UI.New("Frame", {
@@ -109,6 +112,11 @@ function MainMenu.show(app, saved, onStart)
 				UI.Label(card, ad.genre .. (ad.members > 1 and ("  |  " .. ad.members .. "-piece band") or "  |  Solo"), UI.px(118, 44), UI.px(240, 22), { textSize = 15, color = UI.rgb(ad.color), font = UI.FontBold })
 				UI.Label(card, ad.bio, UI.px(118, 70), UI.px(230, 40), { textSize = 14, color = T.sub, wrap = true, alignY = Enum.TextYAlignment.Top })
 				UI.Label(card, Util.short(Util.totalFans(ad.fans)) .. " fans  |  skill " .. ad.skill, UI.px(118, 116), UI.px(240, 22), { textSize = 14, font = UI.FontBold })
+				UI.Button(card, "▶", UI.px(366, 104), UI.px(118, 34), { textSize = 16 }, function()
+					if not SoundFX.preview(ad.id) then
+						app:toast("Music is not uploaded yet.", T.warn, 3)
+					end
+				end)
 				UI.Button(card, "SIGN", UI.px(366, 50), UI.px(118, 50), { color = T.accent, textSize = 20 }, function()
 					MenuScene.stop()
 					root:Destroy()
@@ -131,17 +139,21 @@ function MainMenu.show(app, saved, onStart)
 			UI.Label(body, label, UI.px(64, y), UI.px(240, 30), { textSize = 18, font = UI.FontBold })
 			UI.Button(body, "-", UI.px(264, y), UI.px(40, 30), {}, function()
 				s[key] = math.max(0, s[key] - 10)
+				SoundFX.setVolumes(s.music, s.effects)
 				settingsPage()
 			end)
 			UI.Bar(body, UI.px(312, y + 11), UI.px(140, 8), s[key] / 100, T.accent2)
 			UI.Button(body, "+", UI.px(460, y), UI.px(40, 30), {}, function()
 				s[key] = math.min(100, s[key] + 10)
+				SoundFX.setVolumes(s.music, s.effects)
 				settingsPage()
 			end)
 		end
 		slider(360, "Music volume", "music")
 		slider(406, "Effects volume", "effects")
-		UI.Label(body, "Music arrives in a later update.", UI.px(64, 442), UI.px(440, 22), { textSize = 14, color = T.sub })
+		if not SoundFX.available() then
+			UI.Label(body, "Sound files are not uploaded yet (see audio/README.md).", UI.px(64, 442), UI.px(440, 22), { textSize = 14, color = T.sub })
+		end
 		UI.Label(body, "Crowd detail in shows", UI.px(64, 486), UI.px(440, 26), { textSize = 18, font = UI.FontBold })
 		for i, lvl in ipairs({ "Low", "Medium", "High" }) do
 			UI.Button(body, lvl, UI.px(64 + (i - 1) * 148, 518), UI.px(140, 44), { color = (s.crowd == lvl) and T.accent or T.panel3, textSize = 17 }, function()

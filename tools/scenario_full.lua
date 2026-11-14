@@ -2,6 +2,8 @@
 math.randomseed(7)
 local RS = game:GetService("ReplicatedStorage")
 local root = MOCK.buildTree(RS, TREE)
+-- pretend the audio files are uploaded so every sound path runs
+for k in pairs(require(root.Data.Audio).IDS) do require(root.Data.Audio).IDS[k] = 1000 end
 local main = MOCK.newRaw("LocalScript")
 main.__props.Name = "Main"
 rawset(main, "__path", MAIN_PATH)
@@ -290,7 +292,8 @@ while app.mode == "live" and pf < 9000 do
 	for _, t in ipairs(MOCK.texts("^%d+%. ")) do songsSeen[t] = true end
 	if pf % 30 == 0 then
 		local n = 0
-		for _, d in ipairs(workspace:GetDescendants()) do if d:IsA("ViewportFrame") and d.Visible then for _, c in ipairs(d:GetChildren()) do if c:IsA("BasePart") then n = n + 1 end end end end
+		-- screens live in the PlayerGui (Adornee = screen part), Roblox does not draw ViewportFrames in the Workspace
+		for _, d in ipairs(MOCK.playerGui:GetDescendants()) do if d:IsA("ViewportFrame") and d.Visible then for _, c in ipairs(d:GetChildren()) do if c:IsA("BasePart") then n = n + 1 end end end end
 		liveParts = math.max(liveParts, n)
 	end
 end
@@ -300,8 +303,16 @@ log("preview finished after frames", pf, "mode", app.mode, "songs shown", ns, "p
 assert(app.mode == "designer", "did not return to designer")
 assert(ns == 7, "setlist should have 7 songs")
 assert(liveParts > 200, "live screens should show a 3D picture (crowd)")
+local LiveShow = require(root.Client.LiveShow)
+local kinds = {}
+for _, w in ipairs(LiveShow.lastWalks) do kinds[#kinds + 1] = w.kind assert(w.kind ~= "hidden", "the artist must walk, not vanish") end
+log("walks", table.concat(kinds, ","))
 -- back to the library: copy and delete
 MOCK.clickExact("◀  MY STAGES")
+local leftover = 0
+for _, d in ipairs(MOCK.playerGui:GetChildren()) do if d:IsA("SurfaceGui") then leftover = leftover + 1 end end
+log("screen guis left in PlayerGui after closing the builder", leftover)
+assert(leftover == 0, "screen guis must be removed with their screens")
 assert(app.current == "stages" and app.mode == "menu", "library")
 local nd = #app.state.designs
 MOCK.clickExact("Copy", nd)
@@ -420,4 +431,5 @@ log("second session money", app2.state.money, "saveAvailable", app2.saveAvailabl
 app2:save()
 log("saves fired", #MOCK.saves)
 steps(30)
+log("sound plays", MOCK.calls and MOCK.calls.Play, "sounds in SoundService", #game:GetService("SoundService"):GetChildren())
 log("errors", #MOCK.errors)
