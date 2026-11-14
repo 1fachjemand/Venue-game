@@ -35,7 +35,11 @@ ROADMAP.md               offene Wünsche
 ```
 
 ## 3. Was das Spiel bisher kann
-- **Hauptmenü:** links Continue / New Game / Store (Platzhalter) / Settings (Lautstärke, Crowd-Detail) / Credits. Rechts kreist eine Kamera nachts um nachgebaute Venues (The O3, Madison Circle Garden, Lanxus Arena) mit Stadt, Fans und Bannern.
+- **Hauptmenü:** links Continue / New Game / Store (Platzhalter) / Settings (Lautstärke, Crowd-Detail) / Credits. Rechts läuft nachts eine **Kamerafahrt (~45 s pro Venue, Spline durch Keyframes, Überblendung)** durch drei detaillierte Stadtviertel (`MenuScene.lua`, Maßstab 1 Stud ≈ 0,5 m):
+  - **The O3** (London): Kuppel 365 m / ~50 m hoch mit Seilnetz, 12 gelbe geneigte Masten (~100 m) mit Abspannungen, „Up at the O3“-Steg, Glas-Eingang mit O-Logo, LED-Screens, Queues, Foodtrucks, Station + Busbahnhof, Black Cabs und rote Doppeldecker, Seilbahn über die Themse mit Gondeln, Boote, Canary Wharf (Pyramidenturm), Stahlwolken-Skulptur. Flug: zwischen Canary-Wharf-Türmen über die Themse, über das Dach, zum Eingang.
+  - **Madison Circle Garden** (New York): echtes Straßenraster (7th/8th Ave, 28th–42nd St, MSG zwischen 31st und 33rd), Trommel ~123 m mit 48 Finnen, Dachseilen und Lichtband, Glas-Pavillon mit Marquee und LED, Two-Penn-Turm, Farley-Gebäude mit Säulen, Empire-State-artiger Turm (Krone in Artist-Farbe). Straßen: Ampeln an Auslegern, Zebrastreifen, Busspur, Dampfschlote mit Rauch, U-Bahn-Eingänge, Baugerüste, Wassertürme, Läden mit Markisen, Blade-Billboards, Nadel-und-Knopf-Skulptur, fahrende Taxis/Busse (Einbahnrichtungen wie echt), Fußgänger. Flug: die 7th Ave hinunter, über die 33rd St, um die Trommel, zum Eingang.
+  - **Lanxus Arena** (Köln): Dom (Doppeltürme 157 m, Strebewerk, Fenster), Altstadthäuser mit Giebeln, Romanik-Turm, blaues Musical-Zelt, Eisenbahnbrücke (3 Bögen je Feld) mit fahrenden ICEs, Bahnhof Messe/Deutz, Glas-Hochhaus, Rheinboulevard-Treppe mit Leuten, Deutz mit Straßenbahnen, Arena mit Rundenden, Glasfassade und 76-m-Bogen mit Hängern, Vorplatz mit Fans, Kölsch-Stand. Flug: vom Dom über die Brücke, durch Deutz, zur Arena.
+  - Technik: Gebäude-Baukasten mit LOD nach Abstand zur Flugbahn, Höhen werden automatisch unter der Flugbahn gekappt (keine Kollision), Budgets für Lichter/SurfaceGuis, ~4k/12k/6k Parts. Suchscheinwerfer, blinkende Flugwarnlichter, wechselnde LED-Texte, Bloom.
 - **Neues Spiel:** Label benennen, einen von 3 Start-Artists wählen. **Büro** als Zentrale mit Kacheln, nächsten Shows und News.
 - **Fortschritt:** 5 Label-Level nach verkauften Tickets. Größere Artists erst ab höherem Level.
 - **Tourplanung (4 Schritte):** Artist, dann Route (3D-Weltkarte mit Länder-Hover, Venue-Filter Club/Theater/Arena/Stadion, Promoter-Schätzungen statt Garantien), dann ein Ticketpreis pro Tour und eine Bühnenproduktion **pro Hallengröße**, dann Bestätigen.
@@ -66,6 +70,7 @@ python3 tools/check.py api-dump.json                 # Syntax, undefinierte Vari
 python3 tools/gen_api_lua.py api-dump.json api_classes.lua
 python3 tools/run_mock.py api_classes.lua tools/scenario_full.lua   # spielt das ganze Spiel in einer Roblox-Attrappe durch
 python3 tools/screens.py api_classes.lua <ordner>    # rendert alle Menüs als HTML (danach mit Playwright screenshotten)
+# 3D-Vorschau der Hauptmenü-Kamerafahrten (three.js + Playwright), siehe tools/render3d/README.md
 # Weltkarte neu erzeugen: npm pack world-atlas@2.0.2 → countries-50m.json
 python3 tools/gen_worldmap.py <pfad>/countries-50m.json
 ```
@@ -77,10 +82,7 @@ python3 tools/gen_worldmap.py <pfad>/countries-50m.json
 - Vor dem Ausliefern immer: `check.py`, `test_logic.py`, `run_mock.py` (Ergebnis „OK – no runtime errors“), dann `build.py`.
 
 ## 5. Offenes Feedback und nächste Schritte (Priorität von oben)
-1. **Hauptmenü-Venues viel detaillierter.** Der User findet sie noch „lazy“. Gewünscht:
-   - Wirklich detaillierte Nachbauten mit Fassaden, Eingängen, Dachdetails, belebter Umgebung und Stadt.
-   - Mehrere Hallen und eine Kamerafahrt, die durch die Straßen/zwischen Gebäuden fliegt (z. B. Madison Circle Garden durch Manhattan).
-   - **Idee:** Detail-Modelle extern als Meshes erzeugen (z. B. OBJ/FBX per Python oder Blender, falls installierbar). Der User importiert sie mit dem Roblox-3D-Importer und gibt die Asset-IDs bzw. das Modell weiter. Alternativ deutlich mehr Parts mit Teil-Bausteinen.
+1. **Hauptmenü-Venues: neu gebaut (Stadtviertel + Kamerafahrt), Feedback des Users abwarten.** Mögliche nächste Schritte: Performance auf schwachen PCs prüfen (Manhattan ~12k Parts, Aufbau während der Schwarzblende), ggf. Detail an „Crowd detail“-Setting koppeln; weitere Venues; echte Meshes (OBJ/FBX) für noch feinere Fassaden.
 2. **Büro mit Roblox-Charakter**, der sich an den PC setzt. Das Label-Menü läuft „im PC“.
 3. **Social-Media-Feed** zu Touren (positive und negative Kommentare je nach Erfolg).
 4. **Eigener Look pro Artist/Band** (Outfits, Frisuren), Vorschau bei der Auswahl, später Hörprobe.

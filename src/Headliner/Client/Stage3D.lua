@@ -1,0 +1,300 @@
+-- The 3D world: ground, the build area of the current stage design, and the placed design items.
+-- There is no fixed stage: everything (decks, catwalks, center stages) is built from items.
+local Lighting = game:GetService("Lighting")
+local Root = script:FindFirstAncestor("Headliner")
+local Config = require(Root.Config)
+local StageItems = require(Root.Data.StageItems)
+local UI = require(Root.Client.UI)
+local Builder = require(Root.Client.Builder)
+
+local New = UI.New
+
+local Stage3D = {}
+Stage3D.items = {} -- list of refs currently placed
+Stage3D.class = Config.STAGE_CLASS_BY_ID.Arena
+Stage3D.layout = "end"
+
+local function block(parent, name, size, cf, color, material, queryable)
+	return New("Part", {
+		Name = name,
+		Size = size,
+		CFrame = cf,
+		Color = color,
+		Material = material or Enum.Material.SmoothPlastic,
+		Anchored = true,
+		CanCollide = true,
+		CanTouch = false,
+		CanQuery = queryable == true,
+		CastShadow = false,
+		TopSurface = Enum.SurfaceType.Smooth,
+		BottomSurface = Enum.SurfaceType.Smooth,
+		Parent = parent,
+	})
+end
+Stage3D.block = block
+
+function Stage3D.init()
+	local old = workspace:FindFirstChild("HeadlinerWorld")
+	if old then
+		old:Destroy()
+	end
+	local world = New("Folder", { Name = "HeadlinerWorld", Parent = workspace })
+	Stage3D.world = world
+	Stage3D.ground = block(world, "Ground", Vector3.new(2048, 2, 2048), CFrame.new(0, -1, 0), Color3.fromRGB(22, 22, 26), Enum.Material.Concrete, true)
+	Stage3D.grid = New("Folder", { Name = "Grid", Parent = world })
+	Stage3D.designFolder = New("Folder", { Name = "Design", Parent = world })
+	Stage3D.venueFolder = New("Folder", { Name = "Venue", Parent = world })
+	Stage3D.peopleFolder = New("Folder", { Name = "People", Parent = world })
+	Stage3D.setLighting("designer")
+end
+
+-- Build area of the current design: { minX, maxX, minZ, maxZ }
+function Stage3D.bounds()
+	local c = Stage3D.class
+	if Stage3D.layout == "center" then
+		return -c.center, c.center, -c.center, c.center
+	end
+	return c.minX, c.maxX, c.minZ, c.maxZ
+end
+
+function Stage3D.setDesign(design)
+	Stage3D.class = Config.STAGE_CLASS_BY_ID[(design and design.class) or "Arena"]
+	Stage3D.layout = (design and design.layout) or "end"
+end
+
+-- Grid + glowing outline of the build area (designer only)
+function Stage3D.showGrid(on)
+	Stage3D.grid:ClearAllChildren()
+	if not on then
+		return
+	end
+	local x0, x1, z0, z1 = Stage3D.bounds()
+	local step = (Stage3D.class.order >= 3) and 8 or 4
+	for x = x0, x1, step do
+		local p = block(Stage3D.grid, "GridX", Vector3.new(0.12, 0.05, z1 - z0), CFrame.new(x, 0.03, (z0 + z1) / 2), UI.Theme.accent2, Enum.Material.Neon)
+		p.Transparency = 0.6
+		p.CanCollide = false
+	end
+	for z = z0, z1, step do
+		local p = block(Stage3D.grid, "GridZ", Vector3.new(x1 - x0, 0.05, 0.12), CFrame.new((x0 + x1) / 2, 0.03, z), UI.Theme.accent2, Enum.Material.Neon)
+		p.Transparency = 0.6
+		p.CanCollide = false
+	end
+	local gold = UI.Theme.gold
+	block(Stage3D.grid, "Edge", Vector3.new(x1 - x0, 0.3, 0.5), CFrame.new((x0 + x1) / 2, 0.1, z0), gold, Enum.Material.Neon).CanCollide = false
+	block(Stage3D.grid, "Edge", Vector3.new(x1 - x0, 0.3, 0.5), CFrame.new((x0 + x1) / 2, 0.1, z1), gold, Enum.Material.Neon).CanCollide = false
+	block(Stage3D.grid, "Edge", Vector3.new(0.5, 0.3, z1 - z0), CFrame.new(x0, 0.1, (z0 + z1) / 2), gold, Enum.Material.Neon).CanCollide = false
+	block(Stage3D.grid, "Edge", Vector3.new(0.5, 0.3, z1 - z0), CFrame.new(x1, 0.1, (z0 + z1) / 2), gold, Enum.Material.Neon).CanCollide = false
+	if Stage3D.layout == "end" then
+		-- arrow on the floor showing where the audience is
+		local a = block(Stage3D.grid, "AudienceArrow", Vector3.new(6, 0.2, 14), CFrame.new(0, 0.1, z1 - 12), UI.Theme.accent, Enum.Material.Neon)
+		a.Transparency = 0.4
+		a.CanCollide = false
+	end
+end
+
+function Stage3D.setLighting(mode)
+	Lighting.GlobalShadows = false
+	Lighting.FogEnd = 100000
+	Lighting.ClockTime = (mode == "show") and 0 or 14
+	Stage3D.ground.Color = (mode == "show") and Color3.fromRGB(22, 22, 26) or Color3.fromRGB(78, 82, 92)
+	if mode == "show" then
+		Lighting.Brightness = 1.5
+		Lighting.Ambient = Color3.fromRGB(62, 60, 80)
+		Lighting.OutdoorAmbient = Color3.fromRGB(70, 70, 92)
+		Lighting.EnvironmentDiffuseScale = 0.35
+		Lighting.EnvironmentSpecularScale = 0.4
+	else
+		Lighting.Brightness = 3
+		Lighting.Ambient = Color3.fromRGB(165, 165, 175)
+		Lighting.OutdoorAmbient = Color3.fromRGB(160, 160, 170)
+		Lighting.EnvironmentDiffuseScale = 0.6
+		Lighting.EnvironmentSpecularScale = 0.5
+	end
+end
+
+------------------------------------------------------------------ surfaces & placement
+-- Parts you can stand on: the ground and every deck. `except` (refs) is left out (used while moving it).
+function Stage3D.surfaceParts(except)
+	local list = { Stage3D.ground }
+	for _, r in ipairs(Stage3D.items) do
+		if r ~= except and r.surfaces then
+			for _, p in ipairs(r.surfaces) do
+				table.insert(list, p)
+			end
+		end
+	end
+	return list
+end
+
+function Stage3D.raycast(origin, direction, except)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = Stage3D.surfaceParts(except)
+	return workspace:Raycast(origin, direction, params)
+end
+
+function Stage3D.surfaceY(x, z, except)
+	local hit = Stage3D.raycast(Vector3.new(x, 300, z), Vector3.new(0, -600, 0), except)
+	if hit then
+		return hit.Position.Y, hit.Instance
+	end
+	return 0, nil
+end
+
+function Stage3D.rigY()
+	return Stage3D.class.rigY
+end
+
+-- World CFrame of an item. Floor items stand at rec.y (or on the surface below), rig items hang in the rig.
+-- if (x, z) is close to a truss beam, move it onto the beam's centre line
+function Stage3D.snapToTruss(x, z)
+	for _, r in ipairs(Stage3D.items) do
+		if r.kind == "truss_beam" then
+			local lp = r.cf:PointToObjectSpace(Vector3.new(x, r.cf.Position.Y, z))
+			local half = ((r.rec and r.rec.w) or 24) / 2
+			if math.abs(lp.Z) < 3 and math.abs(lp.X) <= half + 1 then
+				local wp = r.cf * Vector3.new(math.clamp(lp.X, -half, half), 0, 0)
+				return wp.X, wp.Z, true
+			end
+		end
+	end
+	return x, z, false
+end
+
+function Stage3D.itemCFrame(def, rec, except)
+	local y
+	if def.mount == "rig" then
+		-- truss beams sit at rig height, lights hang just below them
+		y = Stage3D.rigY() - ((def.id == "truss_beam") and 0 or 2)
+	else
+		y = rec.y or Stage3D.surfaceY(rec.x, rec.z, except)
+	end
+	return CFrame.new(rec.x, y, rec.z) * CFrame.Angles(0, math.rad(rec.r or 0), 0)
+end
+
+function Stage3D.inBounds(x, z)
+	local x0, x1, z0, z1 = Stage3D.bounds()
+	return x >= x0 and x <= x1 and z >= z0 and z <= z1
+end
+
+-- opts: { color = Color3, artistName = string }
+function Stage3D.addItem(rec, opts)
+	local def = StageItems.byId[rec.t]
+	if not def then
+		return nil
+	end
+	local o = { color = opts and opts.color, artistName = opts and opts.artistName, rec = rec }
+	local refs = Builder.build(def, o)
+	Builder.place(refs, Stage3D.itemCFrame(def, rec))
+	refs.rec = rec
+	refs.model.Parent = Stage3D.designFolder
+	Builder.rest(refs)
+	table.insert(Stage3D.items, refs)
+	Stage3D.numberSpots()
+	return refs
+end
+
+function Stage3D.removeItem(refs)
+	for i, r in ipairs(Stage3D.items) do
+		if r == refs then
+			table.remove(Stage3D.items, i)
+			break
+		end
+	end
+	refs.model:Destroy()
+	Stage3D.numberSpots()
+end
+
+function Stage3D.clearDesign()
+	for _, r in ipairs(Stage3D.items) do
+		r.model:Destroy()
+	end
+	Stage3D.items = {}
+end
+
+-- Artist spots are numbered in the order they appear in the design
+function Stage3D.numberSpots(design)
+	local n = 0
+	local recs = design and design.items
+	if recs then
+		for _, r in ipairs(Stage3D.items) do
+			r.spotIndex = nil
+		end
+		for _, rec in ipairs(recs) do
+			for _, r in ipairs(Stage3D.items) do
+				if r.rec == rec and r.kind == "spot" then
+					n = n + 1
+					r.spotIndex = n
+				end
+			end
+		end
+	else
+		for _, r in ipairs(Stage3D.items) do
+			if r.kind == "spot" then
+				n = n + 1
+				r.spotIndex = n
+			end
+		end
+	end
+	for _, r in ipairs(Stage3D.items) do
+		if r.kind == "spot" and r.label then
+			r.label.Text = tostring(r.spotIndex or "?")
+		end
+	end
+end
+
+function Stage3D.renderDesign(design, opts)
+	Stage3D.clearDesign()
+	Stage3D.setDesign(design)
+	if not design then
+		return Stage3D.items
+	end
+	-- decks first (in their saved order) so other items can stand on them
+	for _, rec in ipairs(design.items) do
+		local def = StageItems.byId[rec.t]
+		if def and def.deck then
+			Stage3D.addItem(rec, opts)
+		end
+	end
+	for _, rec in ipairs(design.items) do
+		local def = StageItems.byId[rec.t]
+		if def and not def.deck then
+			Stage3D.addItem(rec, opts)
+		end
+	end
+	Stage3D.numberSpots(design)
+	return Stage3D.items
+end
+
+-- Finds the placed item a part belongs to
+function Stage3D.itemFromPart(p)
+	for _, r in ipairs(Stage3D.items) do
+		if p:IsDescendantOf(r.model) then
+			return r
+		end
+	end
+	return nil
+end
+
+-- Bounding box of all decks: centre position on top, size. Used by the show camera and the crowd.
+function Stage3D.deckBox()
+	local x0, x1, z0, z1, top = math.huge, -math.huge, math.huge, -math.huge, 0
+	for _, r in ipairs(Stage3D.items) do
+		if r.surfaces then
+			for _, p in ipairs(r.surfaces) do
+				local pos, sz = p.Position, p.Size
+				local ext = math.max(sz.X, sz.Y, sz.Z) / 2
+				x0, x1 = math.min(x0, pos.X - ext), math.max(x1, pos.X + ext)
+				z0, z1 = math.min(z0, pos.Z - ext), math.max(z1, pos.Z + ext)
+				top = math.max(top, pos.Y + math.min(sz.X, sz.Y, sz.Z) / 2)
+			end
+		end
+	end
+	if x0 == math.huge then
+		return Vector3.new(0, 0, 0), 20, 20, 0
+	end
+	return Vector3.new((x0 + x1) / 2, top, (z0 + z1) / 2), x1 - x0, z1 - z0, top
+end
+
+return Stage3D

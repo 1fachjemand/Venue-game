@@ -1,0 +1,61 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#000}</style></head><body>
+<script src="three.min.js"></script>
+<script>
+const q = new URLSearchParams(location.search);
+document.write('<script src="scene' + q.get('s') + '.js"><\/script>');
+</script>
+<script>
+const W = 1280, H = 720;
+const renderer = new THREE.WebGLRenderer({antialias: true, preserveDrawingBuffer: true});
+renderer.setSize(W, H); document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1d36);
+scene.fog = new THREE.Fog(0x2a2c4a, 600, 3800);
+scene.add(new THREE.HemisphereLight(0x8890c0, 0x30303a, 1.1));
+const moon = new THREE.DirectionalLight(0xaab4ff, 0.5); moon.position.set(-1, 2, 1); scene.add(moon);
+const box = new THREE.BoxGeometry(1,1,1);
+const cylG = new THREE.CylinderGeometry(0.5,0.5,1,20); cylG.rotateZ(Math.PI/2);
+const sph = new THREE.SphereGeometry(0.5, 24, 16);
+const wedge = new THREE.BufferGeometry();
+{ const v = [[-.5,-.5,-.5],[.5,-.5,-.5],[.5,-.5,.5],[-.5,-.5,.5],[-.5,.5,.5],[.5,.5,.5]];
+  const f = [[0,2,1],[0,3,2],[3,4,5],[3,5,2],[0,1,5],[0,5,4],[0,4,3],[1,2,5]];
+  const pos = []; f.forEach(t => t.forEach(i => pos.push(...v[i])));
+  wedge.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); wedge.computeVertexNormals(); }
+const groups = {};
+for (const p of SCENE.parts) {
+  if (p.t >= 0.99) continue;
+  const neon = p.m === 'Neon';
+  const geo = p.s === 'Cylinder' ? 'cyl' : (p.s === 'Ball' || p.s === 'Ellip') ? 'sph' : p.s === 'Wedge' ? 'wedge' : 'box';
+  const key = geo + '|' + (neon ? 'n' : 'l') + '|' + Math.round(p.t * 10) + '|' + (p.m === 'Glass' ? 'g' : '');
+  (groups[key] = groups[key] || []).push(p);
+}
+for (const key in groups) {
+  const [geo, kind, tr, gl] = key.split('|');
+  const list = groups[key];
+  const g = geo === 'cyl' ? cylG : geo === 'sph' ? sph : geo === 'wedge' ? wedge : box;
+  const opacity = 1 - (+tr) / 10;
+  const mat = kind === 'n' ? new THREE.MeshBasicMaterial({transparent: opacity < 1, opacity: opacity * (opacity < 1 ? 0.9 : 1)})
+                           : new THREE.MeshLambertMaterial({transparent: opacity < 1, opacity});
+  const im = new THREE.InstancedMesh(g, mat, list.length);
+  const m = new THREE.Matrix4(), c = new THREE.Color();
+  list.forEach((p, i) => {
+    let [sx, sy, sz] = p.z; const f = p.f;
+    if (p.s === 'Cylinder') { const d = Math.min(sy, sz); sy = d; sz = d; }
+    if (p.s === 'Ball') { const d = Math.min(sx, sy, sz); sx = sy = sz = d; }
+    m.set(f[3]*sx, f[4]*sy, f[5]*sz, f[0], f[6]*sx, f[7]*sy, f[8]*sz, f[1], f[9]*sx, f[10]*sy, f[11]*sz, f[2], 0,0,0,1);
+    im.setMatrixAt(i, m);
+    c.setRGB(p.c[0]/255, p.c[1]/255, p.c[2]/255, THREE.SRGBColorSpace);
+    if (kind === 'n') c.multiplyScalar(1.35);
+    im.setColorAt(i, c);
+  });
+  scene.add(im);
+}
+const cam = new THREE.PerspectiveCamera(62, W/H, 1, 9000);
+const f = SCENE.cams[+q.get('c')];
+const m = new THREE.Matrix4().set(f[3],f[4],f[5],f[0], f[6],f[7],f[8],f[1], f[9],f[10],f[11],f[2], 0,0,0,1);
+cam.position.set(f[0], f[1], f[2]); cam.quaternion.setFromRotationMatrix(m);
+renderer.render(scene, cam);
+// menu panel overlay (left 600/1920)
+const ov = document.createElement('div'); ov.style.cssText = 'position:absolute;left:0;top:0;width:400px;height:720px;background:rgba(10,12,24,.55)'; document.body.appendChild(ov);
+document.title = 'done';
+</script></body></html>
