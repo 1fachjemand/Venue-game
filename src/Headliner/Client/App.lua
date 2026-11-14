@@ -156,6 +156,8 @@ function App:beginGame(state, isNew)
 	self.screens.artists = require(Screens.ArtistsScreen).new(self)
 	self.screens.tours = require(Screens.ToursScreen).new(self)
 	self.screens.charts = require(Screens.ChartsScreen).new(self)
+	self.screens.stages = require(Screens.StagesScreen).new(self)
+	self.screens.social = require(Screens.SocialScreen).new(self)
 	self.toastFrame = UI.New("Frame", { Parent = self.canvas, Name = "Toasts", Position = UI.px(740, 80), Size = UI.px(440, 900), BackgroundTransparency = 1 })
 	UI.List(true, 8, Enum.HorizontalAlignment.Center).Parent = self.toastFrame
 	self:go("office")
@@ -172,13 +174,19 @@ function App:buildHud()
 	local hud = UI.New("Frame", { Parent = self.canvas, Name = "Hud", Size = UI.px(1920, 64), BackgroundColor3 = T.panel, BorderSizePixel = 0 })
 	UI.New("Frame", { Parent = hud, Position = UI.px(0, 63), Size = UI.px(1920, 2), BackgroundColor3 = T.accent, BorderSizePixel = 0 })
 	self.hud = hud
-	UI.Label(hud, "HEADLINER", UI.px(140, 6), UI.px(220, 32), { textSize = 28, font = UI.FontBlack, color = T.accent })
-	self.labelLbl = UI.Label(hud, self.state.labelName, UI.px(140, 36), UI.px(230, 22), { textSize = 15, color = T.sub })
+	UI.Label(hud, "HEADLINER", UI.px(24, 6), UI.px(220, 32), { textSize = 26, font = UI.FontBlack, color = T.accent })
+	self.labelLbl = UI.Label(hud, self.state.labelName, UI.px(24, 36), UI.px(250, 22), { textSize = 14, color = T.sub })
+	-- main navigation: always visible, the active tab is highlighted
 	self.tabs = {}
-	self.tabs.office = UI.Button(hud, "OFFICE", UI.px(390, 10), UI.px(160, 44), { textSize = 18 }, function()
-		self:go("office")
+	local TABS = { { "office", "OFFICE" }, { "artists", "ARTISTS" }, { "tours", "TOURS" }, { "stages", "STAGES" }, { "social", "SOCIAL" }, { "charts", "CHARTS" } }
+	for i, tab in ipairs(TABS) do
+		self.tabs[tab[1]] = UI.Button(hud, tab[2], UI.px(290 + (i - 1) * 126, 10), UI.px(120, 44), { textSize = 16 }, function()
+			self:go(tab[1])
+		end)
+	end
+	self.tabs.planner = UI.Button(hud, "+ PLAN A TOUR", UI.px(1050, 10), UI.px(196, 44), { textSize = 16, color = T.accent2, textColor = Color3.new(0, 0, 0) }, function()
+		self:go("planner")
 	end)
-	self.sectionLbl = UI.Label(hud, "", UI.px(570, 10), UI.px(640, 44), { textSize = 24, font = UI.FontBlack })
 	self.moneyLbl = UI.Label(hud, "", UI.px(1262, 6), UI.px(210, 30), { textSize = 26, font = UI.FontBlack, alignX = Enum.TextXAlignment.Right, color = T.good })
 	self.dateLbl = UI.Label(hud, "", UI.px(1262, 36), UI.px(210, 22), { textSize = 16, alignX = Enum.TextXAlignment.Right, color = T.sub })
 	self.speedBtns = {}
@@ -205,9 +213,14 @@ function App:refreshHud()
 		b.BackgroundColor3 = (i == self.speed) and T.accent2 or T.panel3
 		b.TextColor3 = (i == self.speed) and Color3.new(0, 0, 0) or T.text
 	end
-	self.tabs.office.BackgroundColor3 = (self.current == "office") and T.accent or T.panel3
-	local names = { office = "", planner = ">  PLAN A TOUR", artists = ">  ARTISTS", tours = ">  TOURS", charts = ">  CHARTS" }
-	self.sectionLbl.Text = names[self.current] or ""
+	for key, b in pairs(self.tabs) do
+		if key == "planner" then
+			b.BackgroundColor3 = (self.current == "planner") and T.accent or T.accent2
+			b.TextColor3 = (self.current == "planner") and T.text or Color3.new(0, 0, 0)
+		else
+			b.BackgroundColor3 = (self.current == key) and T.accent or T.panel3
+		end
+	end
 	local lvl, def = GS.level(st)
 	self.labelLbl.Text = st.labelName .. "  |  Level " .. lvl
 	local _ = def
@@ -386,15 +399,15 @@ function App:confirm(title, body, onYes)
 end
 
 function App:showWelcome()
-	self:modal("Welcome to your office!", table.concat({
-		"This is <b>" .. UI.esc(self.state.labelName) .. "</b>. Everything starts here in the <b>OFFICE</b>.",
+	self:modal("Welcome to " .. UI.esc(self.state.labelName) .. "!", table.concat({
+		"Your goal: sell out venues and climb the tour charts.",
 		"",
-		"<b>1. PLAN A TOUR</b> - pick your artist, choose venues on the world map, set one ticket price and a stage.",
-		"<b>2. TOURS</b> - watch the real pre-sale. The promoter's estimates can be wrong!",
-		"<b>3. STAGE DESIGNER</b> - buy equipment and build your own show.",
+		"<b>1.  + PLAN A TOUR</b>   pick venues on the world map and a ticket price.",
+		"<b>2.  TOURS</b>   watch ticket sales and the shows.",
+		"<b>3.  STAGES</b>   build your own stage show.",
 		"",
-		"Sell tickets to level up your label and unlock bigger artists. Start small: clubs first!",
-	}, "\n"), { { "Let's go!", T.accent } }, 820)
+		"Start small: clubs first!",
+	}, "\n"), { { "Let's go!", T.accent } }, 720)
 end
 
 ------------------------------------------------------------------ time

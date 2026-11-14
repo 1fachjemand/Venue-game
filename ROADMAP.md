@@ -20,9 +20,16 @@
 - [erledigt] Hauptmenü links (New Game, Continue, Store, Settings mit Lautstärke)
 - [erledigt] Rechts: langsam kreisende Kamera um nachgebaute ikonische Venues (MSG, O2, Lanxess) mit Stadt, Bannern, Fans
 - [erledigt] Venues richtig detailliert + Kamerafahrt durch die Straßen (London, Manhattan, Köln) – Feedback abwarten
+- [erledigt] Stage Builder im Theme-Park-Tycoon-Stil (Katalog unten, Gizmo, ✓/✕), Bühnen-Bibliothek „My Stages“
+- [erledigt] Viele neue Props + Vorlagen nach echten Touren (Billie Eilish, Metallica, Beyoncé, The Weeknd)
+- [erledigt] Beliebig viele Artist-Spots, Setlist passt sich an (3–12 Songs)
+- [erledigt] Live-Kamera auf Screens (Artist / Fans mit Kameraschwenk)
+- [erledigt] Venues mehrere Nächte buchen
+- [erledigt] Disco-Kugel höher, Weltkarte im Konzert ausgeblendet
+- [erledigt] Social-Media-Tab mit vielen Post-Arten
+- [erledigt] Individueller Look pro Artist/Band (Hörprobe später)
+- [erledigt] UI aufgeräumt (Navigationsleiste, Büro, Artist-Karten)
 - Büro mit Roblox-Charakter, der sich an den PC setzt (Label-Menü im PC)
-- Social-Media-Feed zu Touren (positive/negative Kommentare je nach Erfolg)
-- Individueller Look pro Artist/Band + Hörprobe bei der Auswahl
 
 ## Später
 - Musik (eigene Songs pro Artist), Setlist-Editor

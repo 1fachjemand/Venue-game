@@ -38,7 +38,7 @@ assert(app.current == "office", "not in office")
 log("label", app.state.labelName, "money", app.state.money)
 
 -- 2) plan a tour (wizard)
-MOCK.clickExact("PLAN A TOUR")
+MOCK.clickExact("+ PLAN A TOUR")
 local map = app.screens.planner
 assert(map.step == 1, "planner should start at step 1")
 MOCK.clickExact("SELECT")
@@ -77,7 +77,7 @@ MOCK.clickExact("-10")
 MOCK.click("Watch the opening night")
 MOCK.click("Watch the opening night")
 log("price", map.draft.price, "quality texts", #MOCK.texts("%%$"))
-MOCK.clickExact("OPEN STAGE DESIGNER")
+MOCK.clickExact("EDIT THIS STAGE")
 assert(app.mode == "designer", "designer did not open")
 MOCK.clickExact("DONE")
 assert(app.current == "planner" and app.mode == "menu", "did not return to planner")
@@ -149,24 +149,24 @@ MOCK.click("^SIGN FOR %$250,000")
 MOCK.clickExact("Yes")
 log("kai signed", app.state.artists.kai.signed, "money", app.state.money)
 MOCK.clickExact("YOUR ROSTER")
-MOCK.click("^PLAN A TOUR", 1)
+MOCK.click("^%+ PLAN A TOUR", 2)
 assert(app.current == "planner")
 
--- 6) stage designer: place every item type
-MOCK.clickExact("OFFICE")
-MOCK.clickExact("STAGE DESIGNER")
-local moneyBefore = app.state.money
-assert(app.mode == "designer", "designer not open")
+-- 6) stage builder: place every item type the new way (card -> click into the world -> tick)
+MOCK.clickExact("STAGES")
+assert(app.current == "stages", "stages screen")
 local Designer = require(root.Client.Designer)
+local Stage3D = require(root.Client.Stage3D)
 local UIS = game:GetService("UserInputService")
 local function click3D() UIS.InputBegan:Fire(MOCK.input(Enum.UserInputType.MouseButton1), false) MOCK.runTasks() end
 local function key(k) UIS.InputBegan:Fire(MOCK.input(Enum.UserInputType.Keyboard, { KeyCode = k }), false) MOCK.runTasks() end
--- new center-stage arena design via the dialog
 app.state.money = 5000000
-MOCK.clickExact("+ New")
+MOCK.clickExact("+  NEW STAGE")
 MOCK.clickExact("ARENA")
 MOCK.clickExact("CENTER STAGE")
-MOCK.clickExact("CREATE")
+MOCK.clickExact("Empty stage")
+MOCK.clickExact("CREATE & BUILD")
+assert(app.mode == "designer", "designer not open")
 local design = Designer.current.design
 log("new design", design.name, design.class, design.layout, "items", #design.items)
 assert(design.layout == "center" and design.class == "Arena", "dialog settings")
@@ -178,84 +178,92 @@ for _, cat in ipairs(StageItems.CATEGORIES) do
 		if def.cat == cat.id then
 			i = i + 1
 			MOCK.clickExact(def.name)
-			MOCK.mouse = Vector2.new(700 + (i % 12) * 45, 520 + math.floor(i / 12) * 6)
-			if def.size then MOCK.clickExact("+", 2) end -- make it bigger before placing
+			MOCK.mouse = Vector2.new(700 + (i % 12) * 45, 420 + math.floor(i / 12) * 6)
+			if def.size then MOCK.clickExact("+", 1) end -- bigger before placing
 			key(Enum.KeyCode.E)
 			steps(2)
 			click3D()
+			assert(Designer.current.target() ~= nil, "nothing pending after the click: " .. def.id)
+			steps(1)
+			MOCK.click("PLACE", 1)
 			steps(1)
 		end
 	end
 end
 log("designer items", before, "->", #design.items, "money spent", 5000000 - app.state.money)
 assert(#design.items == before + #StageItems.list, "not every item was placed")
--- select an item and edit it
+-- cancel placing, select a deck and edit it
 key(Enum.KeyCode.F)
-MOCK.mouse = Vector2.new(960, 540)
-steps(2)
-click3D()
-local sel = Designer.current and true
-log("props title", MOCK.texts("^SELECTED$")[1] or "none")
-MOCK.clickExact("+", 1) -- rotation
-MOCK.clickExact("+", 2) -- width
-local hBtn = MOCK.buttons("^10$")
-if #hBtn > 0 then MOCK.clickExact("10") end
-MOCK.clickExact("MOVE (G)")
-MOCK.mouse = Vector2.new(1000, 560)
-steps(3)
-click3D()
-MOCK.clickExact("COPY (C)")
-steps(2)
-click3D()
-key(Enum.KeyCode.Q)
-key(Enum.KeyCode.R)
-for _, r in ipairs(require(root.Client.Stage3D).items) do
-	if r.def.deck then Designer.current.select(r) break end
-end
+local deck = nil
+for _, r in ipairs(Stage3D.items) do if r.def.deck then deck = r break end end
+Designer.current.select(deck)
+log("inspector title", MOCK.texts("^SELECTED$")[1] or "none")
+MOCK.clickExact("+", 1) -- diameter
+MOCK.clickExact("10")
 MOCK.clickExact("LED screen")
 MOCK.click("Edge lights")
-MOCK.clickExact("SET ALL DECKS")
+MOCK.clickExact("Use on all decks")
 local led = 0
 for _, rec in ipairs(design.items) do if rec.skin == "led" then led = led + 1 end end
 log("decks with LED surface", led)
--- drag arrows: move, resize and rotate the selected deck
-local hs = {}
-for _, d in ipairs(app.gui:GetDescendants()) do if d:IsA("Handles") or d:IsA("ArcHandles") then table.insert(hs, d) end end
-log("drag handles", #hs)
-local selRec = nil
-for _, r in ipairs(require(root.Client.Stage3D).items) do if r.def.deck then Designer.current.select(r) selRec = r.rec break end end
+-- gizmo: red arrow moves, green arrow lifts, gold cube resizes, orange ring turns
+for _, r in ipairs(Stage3D.items) do if r.def.deck then Designer.current.select(r) deck = r break end end
 steps(2)
+local H = Designer.current.handles
+local selRec = deck.rec
 local x0 = selRec.x
-hs[1].MouseButton1Down:Fire(Enum.NormalId.Right)
-hs[1].MouseDrag:Fire(Enum.NormalId.Right, 6.4)
-hs[1].MouseButton1Up:Fire(Enum.NormalId.Right)
+H.moveX.MouseButton1Down:Fire(Enum.NormalId.Right)
+H.moveX.MouseDrag:Fire(Enum.NormalId.Right, 6.4)
+H.moveX.MouseButton1Up:Fire(Enum.NormalId.Right)
 log("moved deck x", x0, "->", selRec.x)
-MOCK.clickExact("SIZE")
+for _, r in ipairs(Stage3D.items) do if r.rec == selRec then Designer.current.select(r) end end
+H.moveY.MouseButton1Down:Fire(Enum.NormalId.Top)
+H.moveY.MouseDrag:Fire(Enum.NormalId.Top, 4)
+H.moveY.MouseButton1Up:Fire(Enum.NormalId.Top)
+log("lifted deck yo", selRec.yo)
+for _, r in ipairs(Stage3D.items) do if r.rec == selRec then Designer.current.select(r) end end
 local w0 = selRec.w
-hs[2].MouseButton1Down:Fire(Enum.NormalId.Right)
-hs[2].MouseDrag:Fire(Enum.NormalId.Right, 4)
-hs[2].MouseButton1Up:Fire(Enum.NormalId.Right)
+H.size.MouseButton1Down:Fire(Enum.NormalId.Right)
+H.size.MouseDrag:Fire(Enum.NormalId.Right, 4)
+H.size.MouseButton1Up:Fire(Enum.NormalId.Right)
 log("resized deck w", w0, "->", selRec.w)
-MOCK.clickExact("ROTATE")
-hs[3].MouseButton1Down:Fire(Enum.Axis.Y)
-hs[3].MouseDrag:Fire(Enum.Axis.Y, 0.8, 0)
-hs[3].MouseButton1Up:Fire(Enum.Axis.Y)
+for _, r in ipairs(Stage3D.items) do if r.rec == selRec then Designer.current.select(r) end end
+H.rotate.MouseButton1Down:Fire(Enum.Axis.Y)
+H.rotate.MouseDrag:Fire(Enum.Axis.Y, 0.8, 0)
+H.rotate.MouseButton1Up:Fire(Enum.Axis.Y)
 log("rotated deck r", selRec.r)
--- screen editor + piano interaction
-for _, r in ipairs(require(root.Client.Stage3D).items) do
-	if r.kind == "led" then Designer.current.select(r) break end
-end
+-- copy (new piece next to it, bought with the tick)
+for _, r in ipairs(Stage3D.items) do if r.rec == selRec then Designer.current.select(r) end end
+local n0 = #design.items
+MOCK.clickExact("Copy (C)")
+MOCK.click("PLACE", 1)
+log("copy placed", n0, "->", #design.items)
+-- screens: live camera, per-song change; instruments: song number
+for _, r in ipairs(Stage3D.items) do if r.kind == "led" then Designer.current.select(r) break end end
 MOCK.clickExact("Live: artist")
-for _, r in ipairs(require(root.Client.Stage3D).items) do
-	if r.kind == "piano" then Designer.current.select(r) break end
-end
-MOCK.clickExact("3")
-local sc, pl = nil, nil
-for _, rec in ipairs(design.items) do if rec.t == "led" then sc = rec.screen end if rec.t == "piano" then pl = rec.play end end
-log("screen mode", sc, "piano plays at spot", pl)
-for _, rec in ipairs(design.items) do if rec.t == "led" and rec.scr then log("screen scr default", rec.scr.default and rec.scr.default.m) end end
-MOCK.clickExact("DELETE (X)")
+MOCK.clickExact("+", 3) -- "For": song 1 (after width and height)
+MOCK.clickExact("Live: fans")
+for _, r in ipairs(Stage3D.items) do if r.kind == "led" then log("screen config", r.rec.scr.default.m, r.rec.scr["1"] and r.rec.scr["1"].m) break end end
+for _, r in ipairs(Stage3D.items) do if r.kind == "piano" then Designer.current.select(r) break end end
+MOCK.clickExact("+", 1)
+local pl = nil
+for _, rec in ipairs(design.items) do if rec.t == "piano" then pl = rec.play end end
+log("piano plays in song", pl)
+for _, r in ipairs(Stage3D.items) do if r.kind == "piano" then Designer.current.select(r) break end end
+MOCK.clickExact("Delete (X)")
 log("after edit/copy/delete", #design.items, "money", app.state.money)
+-- more spots = longer setlist
+MOCK.clickExact("Artist")
+MOCK.clickExact("Artist Spot")
+for k = 1, 5 do
+	MOCK.mouse = Vector2.new(900 + k * 10, 500)
+	steps(2)
+	click3D()
+	MOCK.click("PLACE", 1)
+end
+log("songs in this design", GS.songCount(design))
+assert(GS.songCount(design) == 6, "6 spots = 6 songs")
+key(Enum.KeyCode.F)
 -- camera controls
 UIS.InputBegan:Fire(MOCK.input(Enum.UserInputType.MouseButton2), false)
 UIS.InputChanged:Fire(MOCK.input(Enum.UserInputType.MouseMovement, { Delta = Vector3.new(30, 10, 0) }), false)
@@ -265,39 +273,69 @@ key(Enum.KeyCode.T)
 MOCK.keys = { [Enum.KeyCode.W] = true, [Enum.KeyCode.D] = true }
 steps(10)
 MOCK.keys = {}
-MOCK.clickExact("Copy")
-log("designs", #app.state.designs)
-MOCK.clickExact("Delete")
-MOCK.clickExact("Yes")
-log("designs after delete", #app.state.designs)
--- go to the center design and preview it
-for _ = 1, 8 do
-	if Designer.current.design.layout == "center" and #Designer.current.design.items > 20 then break end
-	MOCK.click("^>$", 1)
-end
-log("previewing", Designer.current.design.name, Designer.current.design.layout)
-MOCK.click("^As:")
-MOCK.clickExact("PREVIEW SHOW")
+MOCK.clickExact("?")
+-- preview this design (every item type, 6 songs) at 4x speed
+MOCK.click("^Artist:")
+MOCK.clickExact("▶  PREVIEW SHOW")
 assert(app.mode == "live", "preview did not start")
+MOCK.click("^Speed")
+MOCK.click("^Speed")
 local crowdN = 0
 for _, d in ipairs(workspace:GetDescendants()) do if d.Name == "Fan" then crowdN = crowdN + 1 end end
 log("center-stage crowd", crowdN)
-local pf = 0
-while app.mode == "live" and pf < 8000 do MOCK.step(1 / 30) pf = pf + 1 end
-log("preview finished after frames", pf, "mode", app.mode)
+local pf, songsSeen, liveParts = 0, {}, 0
+while app.mode == "live" and pf < 9000 do
+	MOCK.step(1 / 30)
+	pf = pf + 1
+	for _, t in ipairs(MOCK.texts("^%d+%. ")) do songsSeen[t] = true end
+	if pf % 30 == 0 then
+		local n = 0
+		for _, d in ipairs(workspace:GetDescendants()) do if d:IsA("ViewportFrame") and d.Visible then for _, c in ipairs(d:GetChildren()) do if c:IsA("BasePart") then n = n + 1 end end end end
+		liveParts = math.max(liveParts, n)
+	end
+end
+local ns = 0
+for _ in pairs(songsSeen) do ns = ns + 1 end
+log("preview finished after frames", pf, "mode", app.mode, "songs shown", ns, "parts in live screens", liveParts)
 assert(app.mode == "designer", "did not return to designer")
-MOCK.clickExact("Clear")
+assert(ns == 6, "setlist should have 6 songs")
+assert(liveParts > 200, "live screens should show a 3D picture (crowd)")
+-- back to the library: copy and delete
+MOCK.clickExact("◀  MY STAGES")
+assert(app.current == "stages" and app.mode == "menu", "library")
+local nd = #app.state.designs
+MOCK.clickExact("Copy", nd)
 MOCK.clickExact("Yes")
-log("after clear: designs", #app.state.designs, "items", #Designer.current.design.items)
-MOCK.clickExact("Restore")
+log("designs after copy", nd, "->", #app.state.designs)
+MOCK.clickExact("Delete", #app.state.designs)
 MOCK.clickExact("Yes")
-log("after restore items", #Designer.current.design.items)
-assert(#MOCK.buttons("^Delete$") == 0, "templates must not be deletable")
-MOCK.clickExact("DONE")
+log("designs after delete", #app.state.designs)
+-- buy every tour template and preview it
+for _, tpl in ipairs({ { "ARENA", "CENTER STAGE", "The Cube" }, { "ARENA", "END STAGE", "Portal Ring" }, { "STADIUM", "END STAGE", "Runway & Moon" } }) do
+	app.state.money = 5000000
+	if #app.state.designs >= 8 then GS.deleteDesign(app.state, app.state.designs[#app.state.designs].id) app:refreshCurrent() end
+	MOCK.clickExact("+  NEW STAGE")
+	MOCK.clickExact(tpl[1])
+	MOCK.clickExact(tpl[2])
+	MOCK.clickExact("Template: " .. tpl[3])
+	MOCK.clickExact("CREATE & BUILD")
+	assert(app.mode == "designer" and Designer.current.design.name == tpl[3], "template " .. tpl[3])
+	log("template", tpl[3], "items", #Designer.current.design.items, "songs", GS.songCount(Designer.current.design), "cost", 5000000 - app.state.money)
+	MOCK.clickExact("▶  PREVIEW SHOW")
+	MOCK.click("^Speed")
+	MOCK.click("^Speed")
+	local f = 0
+	while app.mode == "live" and f < 9000 do MOCK.step(1 / 30) f = f + 1 end
+	assert(app.mode == "designer", "template preview did not end")
+	MOCK.clickExact("DONE")
+end
+log("designs now", #app.state.designs)
 
 -- 7) other screens
 MOCK.clickExact("TOURS")
 MOCK.clickExact("OFFICE")
+MOCK.clickExact("SOCIAL")
+log("social posts", #app.state.social, "first:", app.state.social[1] and app.state.social[1].text)
 MOCK.clickExact("CHARTS")
 MOCK.clickExact("OFFICE")
 MOCK.clickExact("NEXT DAY")

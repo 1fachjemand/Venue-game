@@ -461,8 +461,8 @@ function B.followspot(m, r)
 end
 
 function B.discoball(m, r)
-	part(m, "String", Vector3.new(0.15, 4, 0.15), CFrame.new(0, -2, 0), METAL)
-	r.ball = part(m, "Ball", Vector3.new(3.5, 3.5, 3.5), CFrame.new(0, -5.5, 0), Color3.fromRGB(220, 220, 230), Enum.Material.Foil, Enum.PartType.Ball)
+	part(m, "String", Vector3.new(0.15, 1.6, 0.15), CFrame.new(0, -0.8, 0), METAL)
+	r.ball = part(m, "Ball", Vector3.new(3.5, 3.5, 3.5), CFrame.new(0, -3.3, 0), Color3.fromRGB(220, 220, 230), Enum.Material.Foil, Enum.PartType.Ball)
 	r.ball.Reflectance = 0.6
 	r.emitter = New("ParticleEmitter", {
 		Enabled = false,
@@ -476,51 +476,82 @@ function B.discoball(m, r)
 	})
 end
 
+-- one video surface: a part with a SurfaceGui (colour gradient + text, an image layer and a live camera layer)
+local function screenFace(m, r, size, cf, face)
+	local panel = part(m, "Screen", size, cf, Color3.fromRGB(8, 8, 10))
+	local frame, label, grad = surfaceText(panel, face or Enum.NormalId.Back, r.artistName or "HEADLINER", WHITE, r.color)
+	label.ZIndex = 2
+	local f = { panel = panel, frame = frame, label = label, grad = grad }
+	f.image = New("ImageLabel", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ScaleType = Enum.ScaleType.Fit, Visible = false, ZIndex = 3, Parent = frame })
+	f.live = New("ViewportFrame", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = Color3.fromRGB(4, 4, 8),
+		Ambient = Color3.fromRGB(150, 150, 170),
+		LightColor = Color3.new(1, 1, 1),
+		LightDirection = Vector3.new(0.3, -1, -0.6),
+		Visible = false,
+		ZIndex = 4,
+		Parent = frame,
+	})
+	f.liveCam = New("Camera", { FieldOfView = 40, Parent = f.live })
+	f.live.CurrentCamera = f.liveCam
+	r.faces = r.faces or {}
+	table.insert(r.faces, f)
+	if not r.panel then
+		-- first face also under the old names (designer preview text)
+		r.panel, r.frame, r.label, r.grad, r.image, r.live = panel, frame, label, grad, f.image, f.live
+	end
+	return f
+end
 local function screen(m, r, w, h, legs)
 	local y = 1 + h / 2
 	if legs then
 		part(m, "LegL", Vector3.new(0.6, 1, 0.6), CFrame.new(-w / 2 + 1, 0.5, 0), METAL)
 		part(m, "LegR", Vector3.new(0.6, 1, 0.6), CFrame.new(w / 2 - 1, 0.5, 0), METAL)
 	end
-	r.panel = part(m, "Screen", Vector3.new(w, h, 0.6), CFrame.new(0, y, 0), Color3.fromRGB(8, 8, 10))
-	r.frame, r.label, r.grad = surfaceText(r.panel, Enum.NormalId.Back, r.artistName or "HEADLINER", WHITE, r.color)
-	-- optional content layers: an image (decal id) and a live camera (ViewportFrame)
-	r.image = New("ImageLabel", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ScaleType = Enum.ScaleType.Fit, Visible = false, Parent = r.frame })
-	r.live = New("ViewportFrame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), Ambient = Color3.fromRGB(200, 200, 210), LightColor = Color3.new(1, 1, 1), Visible = false, Parent = r.frame })
-	r.liveCam = New("Camera", { FieldOfView = 35, Parent = r.live })
-	r.live.CurrentCamera = r.liveCam
-	local rec = r.rec or {}
-	if rec.screen == "image" and rec.screenImage then
-		r.image.Image = "rbxassetid://" .. tostring(rec.screenImage)
-	end
+	screenFace(m, r, Vector3.new(w, h, 0.6), CFrame.new(0, y, 0))
+	part(m, "ScreenBack", Vector3.new(w + 0.4, h + 0.4, 0.3), CFrame.new(0, y, -0.4), Color3.fromRGB(20, 20, 24), Enum.Material.Metal)
 end
-
--- copies of real parts inside a screen's ViewportFrame ("live camera")
-local function liveFeed(refs, sources, camCF)
-	if not refs.liveCopies then
-		refs.liveCopies = {}
-		for _, src in ipairs(sources) do
-			local c = src:Clone()
-			c.Parent = refs.live
-			table.insert(refs.liveCopies, { src = src, copy = c })
-		end
-	end
-	for _, pair in ipairs(refs.liveCopies) do
-		pair.copy.CFrame = pair.src.CFrame
-		pair.copy.Transparency = pair.src.Transparency
-	end
-	refs.liveCam.CFrame = camCF
-end
-
 function B.led(m, r)
 	local w, d = dims(r, r.def)
 	screen(m, r, w, d, true)
 end
-
 function B.led_side(m, r)
 	screen(m, r, 10, 18, true)
 end
-
+function B.ledpillar(m, r)
+	local w, h = dims(r, r.def)
+	part(m, "Foot", Vector3.new(w + 1, 0.5, 2), CFrame.new(0, 0.25, 0), DARK)
+	screenFace(m, r, Vector3.new(w, h, 1), CFrame.new(0, h / 2 + 0.5, 0))
+end
+-- hanging video cube: 4 screens, lowers a bit during the ballad
+function B.ledcube(m, r)
+	r.cubeParts = {}
+	local cy = -15
+	local function add(p)
+		table.insert(r.cubeParts, { p, p.CFrame })
+		return p
+	end
+	part(m, "Cable", Vector3.new(0.25, 10, 0.25), CFrame.new(0, -5, 0), METAL, Enum.Material.Metal)
+	add(part(m, "CubeFrame", Vector3.new(14, 9, 14), CFrame.new(0, cy, 0), Color3.fromRGB(16, 16, 20)))
+	for i = 0, 3 do
+		add(screenFace(m, r, Vector3.new(13, 8, 0.3), CFrame.new(0, cy, 0) * CFrame.Angles(0, i * math.pi / 2, 0) * CFrame.new(0, 0, 7.05)).panel)
+	end
+	add(part(m, "CubeGlowTop", Vector3.new(14.2, 0.3, 14.2), CFrame.new(0, cy + 4.6, 0), r.color, Enum.Material.Neon))
+	add(part(m, "CubeGlowBottom", Vector3.new(14.2, 0.3, 14.2), CFrame.new(0, cy - 4.6, 0), r.color, Enum.Material.Neon))
+	r.cubeLift = 0
+end
+-- tall video tower (like the towers around an in-the-round stadium stage)
+function B.ledtower(m, r)
+	part(m, "Base", Vector3.new(7, 1, 7), CFrame.new(0, 0.5, 0), DARK)
+	cyl(m, "Column", 44, 3.6, CFrame.new(0, 23, 0), METAL, Enum.Material.Metal)
+	for i = 0, 2 do
+		local a = i * math.pi * 2 / 3
+		screenFace(m, r, Vector3.new(11, 9, 0.4), CFrame.new(0, 47, 0) * CFrame.Angles(0, a, 0) * CFrame.new(0, 0, 3.4))
+	end
+	r.neon = { cyl(m, "TopRing", 0.6, 12, CFrame.new(0, 52, 0), r.color, Enum.Material.Neon), cyl(m, "LowRing", 0.6, 12, CFrame.new(0, 42, 0), r.color, Enum.Material.Neon) }
+	part(m, "PA", Vector3.new(4, 7, 3), CFrame.new(0, 36, 2.4), Color3.fromRGB(18, 18, 20), Enum.Material.Fabric)
+end
 function B.led_floor(m, r)
 	local w, d = dims(r, r.def)
 	local nx, nz = math.clamp(math.floor(w / 4 + 0.5), 1, 10), math.clamp(math.floor(d / 4 + 0.5), 1, 10)
@@ -699,6 +730,217 @@ function B.palm(m, r)
 	end
 end
 
+-- glowing ring the artist can walk through (in the XY plane, facing the audience)
+function B.portal(m, r)
+	local w = dims(r, r.def)
+	local R = w / 2
+	local n = math.clamp(math.floor(w * 1.1), 16, 48)
+	r.ring = {}
+	for i = 0, n - 1 do
+		local a = i * math.pi * 2 / n
+		local seg = 2 * math.pi * R / n + 0.2
+		local p = part(m, "RingSeg", Vector3.new(seg, 2.4, 2.4), CFrame.new(math.cos(a) * R, R + 2 + math.sin(a) * R, 0) * CFrame.Angles(0, 0, a + math.pi / 2), r.color, Enum.Material.Neon)
+		table.insert(r.ring, p)
+		part(m, "RingBack", Vector3.new(seg, 3.4, 1.2), CFrame.new(math.cos(a) * (R + 0.5), R + 2 + math.sin(a) * (R + 0.5), -1.6) * CFrame.Angles(0, 0, a + math.pi / 2), Color3.fromRGB(20, 20, 24), Enum.Material.Metal)
+	end
+	part(m, "FootL", Vector3.new(4, 2, 4), CFrame.new(-R * 0.55, 1, -1), DARK)
+	part(m, "FootR", Vector3.new(4, 2, 4), CFrame.new(R * 0.55, 1, -1), DARK)
+end
+function B.kinetic(m, r)
+	local w = dims(r, r.def)
+	local n = math.clamp(math.floor(w / 3.5), 2, 26)
+	r.bars = {}
+	for i = 0, n - 1 do
+		local x = -w / 2 + (i + 0.5) * w / n
+		part(m, "Winch", Vector3.new(1, 0.8, 1), CFrame.new(x, -0.4, -3), DARK)
+		part(m, "Winch", Vector3.new(1, 0.8, 1), CFrame.new(x, -0.4, 3), DARK)
+		local bar = part(m, "KineticBar", Vector3.new(0.6, 0.6, 7), CFrame.new(x, -8, 0), r.color, Enum.Material.Neon)
+		local wa = part(m, "Wire", Vector3.new(0.08, 8, 0.08), CFrame.new(x, -4, -3), METAL)
+		local wb = part(m, "Wire", Vector3.new(0.08, 8, 0.08), CFrame.new(x, -4, 3), METAL)
+		table.insert(r.bars, { bar = bar, wa = wa, wb = wb, x = x, i = i })
+	end
+end
+function B.moon(m, r)
+	local d = dims(r, r.def)
+	local cy = d / 2 + 5
+	part(m, "Pole", Vector3.new(1.2, cy, 1.2), CFrame.new(0, cy / 2, -d * 0.2), METAL, Enum.Material.Metal)
+	r.moon = part(m, "Moon", Vector3.new(d, d, d), CFrame.new(0, cy, 0), Color3.fromRGB(238, 228, 200), Enum.Material.SmoothPlastic, Enum.PartType.Ball)
+	for i = 1, 9 do
+		local a, b = i * 2.3, i * 1.1
+		local dir = Vector3.new(math.cos(a) * math.cos(b), math.sin(b) * 0.8, math.abs(math.sin(a)) + 0.3).Unit
+		part(m, "Crater", Vector3.new(d * 0.16, d * 0.16, d * 0.16), CFrame.new(Vector3.new(0, cy, 0) + dir * d * 0.44), Color3.fromRGB(200, 190, 165), Enum.Material.Slate, Enum.PartType.Ball)
+	end
+	r.halo = part(m, "Halo", Vector3.new(d * 1.18, d * 1.18, d * 1.18), CFrame.new(0, cy, 0), Color3.fromRGB(255, 230, 170), Enum.Material.Neon, Enum.PartType.Ball)
+	r.halo.Transparency = 0.86
+	r.light = New("PointLight", { Range = d * 2.5, Brightness = 1.2, Color = Color3.fromRGB(255, 230, 180), Shadows = false, Parent = r.moon })
+end
+function B.skyline(m, r)
+	local w = dims(r, r.def)
+	r.windows = {}
+	local x = -w / 2
+	local i = 0
+	while x < w / 2 - 3 do
+		i = i + 1
+		local bw = 4 + (i * 37 % 5)
+		bw = math.min(bw, w / 2 - x)
+		local bh = 12 + (i * 53 % 23)
+		part(m, "Building", Vector3.new(bw - 0.3, bh, 4), CFrame.new(x + bw / 2, bh / 2, 0), Color3.fromRGB(26, 26, 32))
+		for k = 1, math.floor(bh / 5) do
+			local win = part(m, "Window", Vector3.new(bw - 1.4, 1, 0.2), CFrame.new(x + bw / 2, k * 5 - 1.5, 2.05), WARM, Enum.Material.Neon)
+			win.Transparency = ((i + k) % 3 == 0) and 0.9 or 0.2
+			table.insert(r.windows, win)
+		end
+		if i % 4 == 0 then
+			part(m, "Antenna", Vector3.new(0.3, 6, 0.3), CFrame.new(x + bw / 2, bh + 3, 0), METAL)
+			part(m, "RedLight", Vector3.new(0.6, 0.6, 0.6), CFrame.new(x + bw / 2, bh + 6.2, 0), Color3.fromRGB(255, 40, 40), Enum.Material.Neon)
+		end
+		x = x + bw
+	end
+end
+function B.statue(m, r)
+	local chrome = Color3.fromRGB(200, 204, 214)
+	local function c(name, size, cf)
+		local p = part(m, name, size, cf, chrome, Enum.Material.Foil)
+		p.Reflectance = 0.35
+		return p
+	end
+	c("Plinth", Vector3.new(10, 3, 10), CFrame.new(0, 1.5, 0))
+	c("LegL", Vector3.new(3.4, 12, 3.4), CFrame.new(-2.2, 9, 0))
+	c("LegR", Vector3.new(3.4, 12, 3.4), CFrame.new(2.2, 9, 0))
+	c("Body", Vector3.new(9, 11, 5), CFrame.new(0, 20.5, 0))
+	c("ArmL", Vector3.new(3, 11, 3), CFrame.new(-6.2, 20, 0) * CFrame.Angles(0, 0, -0.12))
+	c("ArmR", Vector3.new(3, 11, 3), CFrame.new(6.2, 20, 0) * CFrame.Angles(0, 0, 0.12))
+	r.headLocal = CFrame.new(0, 29.5, 0)
+	r.head = c("Head", Vector3.new(6, 6, 6), r.headLocal)
+	r.visor = part(m, "Visor", Vector3.new(4.6, 1, 0.3), r.headLocal * CFrame.new(0, 0.4, 3.05), r.color, Enum.Material.Neon)
+end
+function B.robotarm(m, r)
+	local yellow = Color3.fromRGB(240, 170, 20)
+	cyl(m, "Base", 2, 7, CFrame.new(0, 1, 0), DARK)
+	r.turret = cyl(m, "Turret", 2.5, 5, CFrame.new(0, 3.2, 0), yellow, Enum.Material.Metal)
+	r.lower = part(m, "Lower", Vector3.new(2.2, 14, 2.2), CFrame.new(0, 11, 0), yellow, Enum.Material.Metal)
+	r.upper = part(m, "Upper", Vector3.new(1.8, 12, 1.8), CFrame.new(0, 24, 0), yellow, Enum.Material.Metal)
+	r.tool = part(m, "Tool", Vector3.new(2.6, 2.6, 2.6), CFrame.new(0, 31, 0), Color3.fromRGB(30, 30, 34))
+	r.lamp = part(m, "Lamp", Vector3.new(1.6, 0.3, 1.6), CFrame.new(0, 32.4, 0), r.color, Enum.Material.Neon)
+	r.beam = beam(r.tool, Vector3.new(0, 1.4, 0), Vector3.new(0, 90, 0), 1, 9, r.color, 0.45)
+end
+function B.house(m, r)
+	local wood = Color3.fromRGB(150, 110, 80)
+	part(m, "Porch", Vector3.new(16, 1, 14), CFrame.new(0, 0.5, 1), Color3.fromRGB(110, 80, 56), Enum.Material.WoodPlanks)
+	part(m, "Walls", Vector3.new(14, 10, 10), CFrame.new(0, 6, 0), wood, Enum.Material.WoodPlanks)
+	local roofCF = CFrame.new(0, 11, 0)
+	New("WedgePart", { Name = "Roof", Size = Vector3.new(15, 5, 6), CFrame = roofCF * CFrame.new(0, 2.5, 3) * CFrame.Angles(0, math.pi, 0), Color = Color3.fromRGB(70, 50, 40), Material = Enum.Material.Slate, Anchored = true, CanCollide = false, CanTouch = false, CastShadow = false, Parent = m })
+	New("WedgePart", { Name = "Roof", Size = Vector3.new(15, 5, 6), CFrame = roofCF * CFrame.new(0, 2.5, -3), Color = Color3.fromRGB(70, 50, 40), Material = Enum.Material.Slate, Anchored = true, CanCollide = false, CanTouch = false, CastShadow = false, Parent = m })
+	part(m, "Chimney", Vector3.new(1.6, 5, 1.6), CFrame.new(4, 14, -1), Color3.fromRGB(120, 60, 50), Enum.Material.Brick)
+	part(m, "Door", Vector3.new(2.6, 5.5, 0.2), CFrame.new(0, 3.75, 5.05), Color3.fromRGB(70, 40, 30), Enum.Material.Wood)
+	r.windows = {}
+	for _, x in ipairs({ -4.5, 4.5 }) do
+		table.insert(r.windows, part(m, "Window", Vector3.new(3, 3, 0.2), CFrame.new(x, 6.5, 5.05), WARM, Enum.Material.Neon))
+	end
+	table.insert(r.windows, part(m, "AtticWindow", Vector3.new(2, 2, 0.2), CFrame.new(0, 13, 4.6), WARM, Enum.Material.Neon))
+	part(m, "Lantern", Vector3.new(0.8, 1.2, 0.8), CFrame.new(2.2, 6.2, 5.4), WARM, Enum.Material.Neon)
+end
+function B.arch(m, r)
+	local w = dims(r, r.def)
+	local R = w / 2
+	local n = math.clamp(math.floor(w * 0.9), 10, 40)
+	r.ring = {}
+	for i = 0, n do
+		local a = i * math.pi / n
+		local seg = math.pi * R / n + 0.2
+		table.insert(r.ring, part(m, "ArchSeg", Vector3.new(seg, 1.2, 1.2), CFrame.new(math.cos(a) * R, math.sin(a) * R, 0) * CFrame.Angles(0, 0, a + math.pi / 2), r.color, Enum.Material.Neon))
+	end
+end
+function B.flowers(m, r)
+	part(m, "Bed", Vector3.new(10, 1, 6), CFrame.new(0, 0.5, 0), Color3.fromRGB(40, 90, 40), Enum.Material.Grass)
+	local cols = { Color3.fromRGB(255, 90, 140), Color3.fromRGB(255, 220, 80), Color3.fromRGB(255, 255, 255), Color3.fromRGB(190, 120, 255), Color3.fromRGB(255, 130, 60) }
+	for i = 0, 27 do
+		local x, z = -4.3 + (i % 7) * 1.45, -2.2 + math.floor(i / 7) * 1.45
+		local d = 1 + (i * 7 % 5) * 0.15
+		part(m, "Bloom", Vector3.new(d, d, d), CFrame.new(x, 1.4 + (i * 3 % 4) * 0.25, z), cols[i % #cols + 1], Enum.Material.SmoothPlastic, Enum.PartType.Ball)
+	end
+end
+function B.curtain(m, r)
+	local w, h = dims(r, r.def)
+	part(m, "Track", Vector3.new(w + 2, 1, 1), CFrame.new(0, h + 1.5, 0), DARK, Enum.Material.Metal)
+	r.drapeHome = CFrame.new(0, h / 2 + 1, 0)
+	r.drape = part(m, "Drape", Vector3.new(w, h, 0.5), r.drapeHome, Color3.fromRGB(160, 20, 30), Enum.Material.Fabric)
+	r.drapeLabel = select(2, surfaceText(r.drape, Enum.NormalId.Back, r.artistName or "", Color3.fromRGB(255, 230, 200), nil))
+end
+function B.balls(m, r)
+	part(m, "Box", Vector3.new(5, 3, 4), CFrame.new(0, 1.5, 0), DARK)
+	part(m, "Net", Vector3.new(5.2, 0.2, 4.2), CFrame.new(0, 3.1, 0), r.color, Enum.Material.Neon)
+	r.balloons = {}
+end
+function B.wristbands(m, r)
+	part(m, "Desk", Vector3.new(5, 3, 3), CFrame.new(0, 1.5, 0), DARK)
+	r.neon = { part(m, "DeskScreen", Vector3.new(4, 1.6, 0.2), CFrame.new(0, 3.6, 0) * CFrame.Angles(-0.3, 0, 0), r.color, Enum.Material.Neon) }
+	part(m, "Antenna", Vector3.new(0.2, 4, 0.2), CFrame.new(2, 5, -1), METAL)
+end
+function B.lowfog(m, r)
+	part(m, "Box", Vector3.new(3, 2, 3.5), CFrame.new(0, 1, 0), Color3.fromRGB(200, 200, 210))
+	r.nozzle = part(m, "Nozzle", Vector3.new(1, 1, 1), CFrame.new(0, 1, 2), DARK)
+	r.emitter = New("ParticleEmitter", {
+		Enabled = false,
+		Rate = 14,
+		Lifetime = NumberRange.new(6, 9),
+		Speed = NumberRange.new(5, 9),
+		SpreadAngle = Vector2.new(70, 4),
+		Size = NumberSequence.new(6, 16),
+		Transparency = NumberSequence.new(0.55, 1),
+		Color = ColorSequence.new(Color3.fromRGB(235, 240, 255)),
+		Acceleration = Vector3.new(0, -0.6, 0),
+		Drag = 0.4,
+		EmissionDirection = Enum.NormalId.Back,
+		Parent = r.nozzle,
+	})
+end
+function B.streamers(m, r)
+	part(m, "Base", Vector3.new(2, 1, 2), CFrame.new(0, 0.5, 0), DARK)
+	r.nozzle = cyl(m, "Tube", 3, 1.4, CFrame.new(0, 2.5, 0), Color3.fromRGB(220, 200, 120), Enum.Material.Metal)
+	r.emitter = New("ParticleEmitter", {
+		Enabled = false,
+		Rate = 0,
+		Lifetime = NumberRange.new(6, 9),
+		Speed = NumberRange.new(70, 90),
+		SpreadAngle = Vector2.new(25, 25),
+		Size = NumberSequence.new(0.9, 0.7),
+		Color = ColorSequence.new(Color3.fromRGB(255, 220, 120), Color3.fromRGB(230, 230, 240)),
+		Drag = 1.3,
+		Acceleration = Vector3.new(0, -6, 0),
+		RotSpeed = NumberRange.new(-180, 180),
+		LightEmission = 0.6,
+		EmissionDirection = Enum.NormalId.Right,
+		Parent = r.nozzle,
+	})
+end
+function B.keys(m, r)
+	tube(m, Vector3.new(-1.6, 0, 0.4), Vector3.new(1.6, 3.4, 0.4), 0.18, METAL)
+	tube(m, Vector3.new(1.6, 0, 0.4), Vector3.new(-1.6, 3.4, 0.4), 0.18, METAL)
+	part(m, "KeysLow", Vector3.new(4.6, 0.35, 1.3), CFrame.new(0, 3.6, 0.4), Color3.fromRGB(20, 20, 22))
+	part(m, "KeysLowWhite", Vector3.new(4.3, 0.12, 0.6), CFrame.new(0, 3.82, 0.75), WHITE)
+	part(m, "KeysHigh", Vector3.new(4.6, 0.35, 1.2), CFrame.new(0, 4.6, -0.2) * CFrame.Angles(-0.35, 0, 0), Color3.fromRGB(150, 30, 30))
+	part(m, "KeysHighWhite", Vector3.new(4.3, 0.12, 0.5), CFrame.new(0, 4.8, 0.1) * CFrame.Angles(-0.35, 0, 0), WHITE)
+	r.neon = { part(m, "KeysLed", Vector3.new(0.6, 0.15, 0.1), CFrame.new(1.6, 3.65, 1.06), r.color, Enum.Material.Neon) }
+end
+function B.micstand(m, r)
+	cyl(m, "Foot", 0.2, 2, CFrame.new(0, 0.1, 0), DARK)
+	tube(m, Vector3.new(0, 0, 0), Vector3.new(0, 5.4, 0.2), 0.16, METAL)
+	tube(m, Vector3.new(0, 5.4, 0.2), Vector3.new(0, 6.2, 1.4), 0.12, METAL)
+	part(m, "Mic", Vector3.new(0.35, 0.35, 0.9), CFrame.new(0, 6.3, 1.7) * CFrame.Angles(-0.5, 0, 0), Color3.fromRGB(30, 30, 32), Enum.Material.Metal)
+end
+function B.amps(m, r)
+	for i = 0, 1 do
+		for k = 0, 1 do
+			local cf = CFrame.new(-2.1 + i * 4.2, 1.6 + k * 3.2, 0)
+			part(m, "Cab", Vector3.new(4, 3.1, 2.4), cf, Color3.fromRGB(18, 18, 20), Enum.Material.Leather)
+			part(m, "Grille", Vector3.new(3.4, 2.5, 0.08), cf * CFrame.new(0, 0, 1.22), Color3.fromRGB(70, 60, 50), Enum.Material.Fabric)
+		end
+	end
+	part(m, "Head", Vector3.new(8.2, 1.6, 2.2), CFrame.new(0, 7.2, 0), Color3.fromRGB(18, 18, 20), Enum.Material.Leather)
+	r.neon = { part(m, "AmpLogo", Vector3.new(2, 0.5, 0.1), CFrame.new(-2.6, 7.2, 1.12), r.color, Enum.Material.Neon) }
+end
+
 ------------------------------------------------------------------ public API
 -- opts: { color = Color3, artistName = string }
 function Builder.build(def, opts)
@@ -828,13 +1070,9 @@ function Builder.animate(refs, ctx)
 		refs.target.CFrame = CFrame.new(ctx.artistPos)
 		refs.beam.Enabled = true
 	elseif k == "discoball" then
-		refs.ball.CFrame = refs.cf * CFrame.new(0, -5.5, 0) * CFrame.Angles(0, t * 1.5, 0)
+		refs.ball.CFrame = refs.cf * CFrame.new(0, -3.3, 0) * CFrame.Angles(0, t * 1.5, 0)
 		refs.emitter.Enabled = ctx.seg == 3 or ctx.seg == 4
-	elseif k == "led" or k == "led_side" then
-		refs.frame.BackgroundColor3 = c1:Lerp(c2, 0.5 + 0.5 * math.sin(t * 1.3))
-		if refs.grad then
-			refs.grad.Rotation = (t * 40) % 360
-		end
+	elseif Builder.SCREEN_KINDS[k] then
 		-- what is on the screen (set in the stage designer)
 		local cfg = Builder.screenConfig(refs, ctx.spotIndex)
 		local mode = cfg.m
@@ -846,20 +1084,37 @@ function Builder.animate(refs, ctx)
 		elseif mode == "text" then
 			txt = cfg.text or ""
 		end
-		if refs.label.Text ~= txt then
-			refs.label.Text = txt
-		end
-		refs.image.Visible = mode == "image"
-		if mode == "image" and cfg.img then
-			local img = "rbxassetid://" .. tostring(cfg.img)
-			if refs.image.Image ~= img then
-				refs.image.Image = img
+		local bg = c1:Lerp(c2, 0.5 + 0.5 * math.sin(t * 1.3))
+		local live = (mode == "liveArtist" or mode == "liveCrowd") and ctx.liveFeed or nil
+		for fi, f in ipairs(refs.faces or {}) do
+			f.frame.BackgroundColor3 = bg
+			if f.grad then
+				f.grad.Rotation = (t * 40) % 360
+			end
+			if f.label.Text ~= txt then
+				f.label.Text = txt
+			end
+			f.image.Visible = mode == "image"
+			if mode == "image" and cfg.img then
+				local img = "rbxassetid://" .. tostring(cfg.img)
+				if f.image.Image ~= img then
+					f.image.Image = img
+				end
+			end
+			f.live.Visible = live ~= nil
+			if live then
+				live(f, mode, refs, fi)
 			end
 		end
-		local live = (mode == "liveArtist" and ctx.livePerformer) or (mode == "liveCrowd" and ctx.liveCrowd) or nil
-		refs.live.Visible = live ~= nil
-		if live then
-			liveFeed(refs, live.parts, live.cam)
+		if k == "ledcube" and refs.cubeParts then
+			local target = (ctx.seg == 3) and 1 or 0
+			refs.cubeLift = refs.cubeLift + (target - refs.cubeLift) * math.min(1, (ctx.dt or 0.03) * 1.5)
+			local off = CFrame.new(0, -refs.cubeLift * 5, 0) * CFrame.Angles(0, t * 0.15, 0)
+			for _, cp in ipairs(refs.cubeParts) do
+				cp[1].CFrame = refs.cf * off * cp[2]
+			end
+		elseif k == "ledtower" then
+			setNeon(refs, c1)
 		end
 	elseif k == "led_floor" then
 		if refs.lastBeat ~= ctx.beatCount then
@@ -959,6 +1214,110 @@ function Builder.animate(refs, ctx)
 			refs.eyeL.CFrame = refs.cf * CFrame.new(-d * 0.18, 0.5 + d * 0.62, d * 0.44)
 			refs.eyeR.CFrame = refs.cf * CFrame.new(d * 0.18, 0.5 + d * 0.62, d * 0.44)
 		end
+	elseif k == "portal" or k == "arch" then
+		local n = #refs.ring
+		local head = math.floor(t * 12) % n
+		if refs.lastHead ~= head then
+			refs.lastHead = head
+			for i, p in ipairs(refs.ring) do
+				local d = (i - head) % n
+				p.Color = (d < n * 0.25) and c2 or c1
+			end
+		end
+	elseif k == "kinetic" then
+		local amp = 2 + 5 * (ctx.intensity or 0.5)
+		for _, b in ipairs(refs.bars) do
+			local drop = 7 + (math.sin(t * 0.9 * (ctx.sweep or 1) + b.i * 0.45) + 1) * amp
+			b.bar.CFrame = refs.cf * CFrame.new(b.x, -drop, 0)
+			b.wa.Size = Vector3.new(0.08, drop, 0.08)
+			b.wb.Size = Vector3.new(0.08, drop, 0.08)
+			b.wa.CFrame = refs.cf * CFrame.new(b.x, -drop / 2, -3)
+			b.wb.CFrame = refs.cf * CFrame.new(b.x, -drop / 2, 3)
+			b.bar.Color = (b.i % 2 == 0) and c1 or c2
+		end
+	elseif k == "moon" then
+		refs.moon.CFrame = refs.moon.CFrame * CFrame.Angles(0, (ctx.dt or 0.03) * 0.1, 0)
+		refs.halo.Color = Color3.fromRGB(255, 230, 170):Lerp(c1, 0.4)
+		refs.halo.Transparency = (ctx.seg == 3) and 0.7 or 0.86
+	elseif k == "skyline" or k == "house" then
+		if refs.lastBeat ~= ctx.beatCount and ctx.beatCount % 2 == 0 then
+			refs.lastBeat = ctx.beatCount
+			for i, wnd in ipairs(refs.windows) do
+				local on = ((i * 7 + ctx.beatCount) % 5) ~= 0
+				wnd.Transparency = on and 0.15 or 0.85
+				wnd.Color = (k == "house" or ctx.seg == 3) and WARM or (((i + ctx.beatCount) % 3 == 0) and c1 or WARM)
+			end
+		end
+	elseif k == "statue" then
+		refs.head.CFrame = refs.cf * refs.headLocal * CFrame.Angles(0, math.sin(t * 0.25 + refs.phase) * 0.6, 0)
+		refs.visor.CFrame = refs.head.CFrame * CFrame.new(0, 0.4, 3.05)
+		refs.visor.Color = c1
+	elseif k == "robotarm" then
+		local sp = ctx.sweep or 1
+		local yaw = math.sin(t * 0.5 * sp + refs.phase) * 1.2
+		local sh = -0.25 + math.sin(t * 0.7 * sp + refs.phase) * 0.35
+		local el = 0.5 + math.sin(t * 0.9 * sp + refs.phase * 2) * 0.45
+		local turret = refs.cf * CFrame.new(0, 3.2, 0) * CFrame.Angles(0, yaw, 0)
+		local shoulder = turret * CFrame.Angles(sh, 0, 0)
+		refs.turret.CFrame = turret * CFrame.Angles(0, 0, math.pi / 2)
+		refs.lower.CFrame = shoulder * CFrame.new(0, 7.8, 0)
+		local elbow = shoulder * CFrame.new(0, 14.8, 0) * CFrame.Angles(el, 0, 0)
+		refs.upper.CFrame = elbow * CFrame.new(0, 6, 0)
+		refs.tool.CFrame = elbow * CFrame.new(0, 13, 0)
+		refs.lamp.CFrame = elbow * CFrame.new(0, 14.4, 0)
+		refs.lamp.Color = c1
+		refs.beam.Color = ColorSequence.new(c1)
+		refs.beam.Enabled = (ctx.intensity or 0) > 0.3
+	elseif k == "curtain" then
+		local dropT = ctx.curtainT or 0
+		if dropT <= 0 then
+			refs.drape.CFrame = refs.cf * refs.drapeHome
+			refs.drape.Transparency = 0
+		else
+			local h = refs.drape.Size.Y
+			refs.drape.CFrame = refs.cf * refs.drapeHome * CFrame.new(0, -h * math.min(1, dropT * dropT * 2), 0)
+			refs.drape.Transparency = math.min(1, dropT * 1.2)
+		end
+		if refs.drapeLabel then
+			refs.drapeLabel.TextTransparency = refs.drape.Transparency
+		end
+	elseif k == "balls" then
+		if hit.balls then
+			local fwd = refs.cf.LookVector * -1
+			for i = 1, 5 do
+				local ball = part(refs.model, "Balloon", Vector3.new(8, 8, 8), refs.cf * CFrame.new(0, 5, 0), (i % 2 == 0) and c1 or c2, Enum.Material.SmoothPlastic, Enum.PartType.Ball)
+				local side = Vector3.new(fwd.Z, 0, -fwd.X) * ((i - 3) * 6)
+				table.insert(refs.balloons, { p = ball, v = fwd * (18 + i * 4) + side + Vector3.new(0, 30 + i * 3, 0), age = 0 })
+			end
+		end
+		local dt = ctx.dt or 0.03
+		for i = #refs.balloons, 1, -1 do
+			local b = refs.balloons[i]
+			b.age = b.age + dt
+			b.v = b.v + Vector3.new(0, -22 * dt, 0)
+			local pos = b.p.Position + b.v * dt
+			if pos.Y < 10 and b.v.Y < 0 then
+				-- the crowd punches it back up
+				b.v = Vector3.new(b.v.X * 0.6 + (math.random() - 0.5) * 12, 22 + math.random() * 10, b.v.Z * 0.6 + (math.random() - 0.5) * 12)
+				pos = Vector3.new(pos.X, 10, pos.Z)
+			end
+			b.p.CFrame = CFrame.new(pos)
+			if b.age > 16 then
+				b.p:Destroy()
+				table.remove(refs.balloons, i)
+			end
+		end
+	elseif k == "lowfog" then
+		refs.emitter.Enabled = ctx.fog == true
+	elseif k == "streamers" then
+		if hit.confetti or hit.streamers then
+			refs.emitter:Emit(90)
+		end
+	elseif k == "keys" or k == "amps" or k == "wristbands" then
+		if refs.lastC ~= c1 then
+			refs.lastC = c1
+			setNeon(refs, c1)
+		end
 	elseif (k == "deck" or k == "deck_tri" or k == "deck_corner" or k == "deck_round" or k == "stairs") and refs.ledParts then
 		-- LED video floor: colours run across the stage on the beat
 		if refs.lastBeat ~= ctx.beatCount then
@@ -987,11 +1346,12 @@ function Builder.hideMarker(refs)
 end
 
 -- What a screen shows at a spot (falls back to the default, then to the old single setting)
+Builder.SCREEN_KINDS = { led = true, led_side = true, ledcube = true, ledtower = true, ledpillar = true }
 local SCREEN_NAMES = { song = "SONG TITLE", artist = "ARTIST NAME", text = "TEXT", image = "IMAGE", liveArtist = "LIVE CAM: ARTIST", liveCrowd = "LIVE CAM: CROWD" }
 Builder.SCREEN_NAMES = SCREEN_NAMES
 function Builder.screenConfig(refs, spot)
 	local rec = refs.rec or {}
-	local base = (refs.kind == "led_side") and "artist" or "song"
+	local base = (refs.kind == "led_side" or refs.kind == "ledtower" or refs.kind == "ledpillar") and "artist" or "song"
 	if rec.scr then
 		return rec.scr[tostring(spot or 0)] or rec.scr.default or { m = base }
 	end
@@ -1004,7 +1364,7 @@ end
 -- Resets an item to its resting look (used after a show and in the designer)
 function Builder.rest(refs)
 	local k = refs.kind
-	if (k == "led" or k == "led_side") and refs.label then
+	if Builder.SCREEN_KINDS[k] and refs.label then
 		-- designer preview: say what the screen will show
 		local cfg = Builder.screenConfig(refs, nil)
 		local rec = refs.rec or {}
@@ -1015,13 +1375,18 @@ function Builder.rest(refs)
 			end
 		end
 		local txt = (cfg.m == "text" and (cfg.text or "")) or SCREEN_NAMES[cfg.m] or ""
-		refs.label.Text = txt .. ((extra > 0) and ("  (+" .. extra .. " spot" .. (extra > 1 and "s" or "") .. ")") or "")
-		refs.image.Visible = cfg.m == "image" and cfg.img ~= nil
-		if cfg.img then
-			refs.image.Image = "rbxassetid://" .. tostring(cfg.img)
+		for _, f in ipairs(refs.faces or {}) do
+			f.label.Text = txt .. ((extra > 0) and ("  (+" .. extra .. " song" .. (extra > 1 and "s" or "") .. ")") or "")
+			f.image.Visible = cfg.m == "image" and cfg.img ~= nil
+			if cfg.img then
+				f.image.Image = "rbxassetid://" .. tostring(cfg.img)
+			end
+			f.live.Visible = false
 		end
 	end
-	if k == "lift" then
+	if k == "curtain" then
+		Builder.animate(refs, { t = 0, c1 = refs.color, c2 = refs.color, hit = {}, curtainT = 0, beat = 0, beatCount = 0 })
+	elseif k == "lift" then
 		refs.platform.CFrame = refs.cf * refs.platformLocal
 	elseif k == "inflatable" then
 		refs.inflate = 0

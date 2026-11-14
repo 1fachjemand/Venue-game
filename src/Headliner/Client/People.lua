@@ -44,27 +44,100 @@ local function mk(parent, name, size, color, material, shape)
 	return p
 end
 
--- role: "lead" (mic), "guitar", "bass", "drums", "dancer", "dj"
-function People.new(parent, outfit, scale, role, seed)
+local function c3(t, fallback)
+	if type(t) == "table" then
+		return Color3.fromRGB(t[1], t[2], t[3])
+	end
+	return fallback
+end
+
+-- role: "lead" (mic), "guitar", "bass", "drums", "dancer", "dj", "crowd"
+-- look (optional): { skin = 1..5, hair = "short"|"long"|"bun"|"pony"|"pigtails"|"afro"|"buzz"|"messy"|"mohawk",
+--   hairColor, top, pants, shoes, jacket = {r,g,b}, acc = "sunglasses"|"cap"|"cowboy"|"headphones"|"bandana"|"beanie"|"chain"|"earrings"|"sparkle" }
+function People.new(parent, outfit, scale, role, seed, look)
 	local self = setmetatable({}, People)
 	local s = scale or 1.4
 	self.s = s
 	self.role = role or "lead"
 	local rng = Random.new(seed or 1)
-	local skin = SKINS[rng:NextInteger(1, #SKINS)]
-	local hair = HAIR[rng:NextInteger(1, #HAIR)]
-	local pants = Color3.fromRGB(25, 25, 32)
+	look = look or {}
+	local skin = (look.skin and SKINS[look.skin]) or SKINS[rng:NextInteger(1, #SKINS)]
+	local hair = c3(look.hairColor, HAIR[rng:NextInteger(1, #HAIR)])
+	local pants = c3(look.pants, Color3.fromRGB(25, 25, 32))
+	local top = c3(look.top, outfit)
 	local model = New("Model", { Name = "Performer", Parent = parent })
 	self.model = model
 	self.legL = mk(model, "LegL", Vector3.new(0.9, 2, 0.9) * s, pants)
 	self.legR = mk(model, "LegR", Vector3.new(0.9, 2, 0.9) * s, pants)
-	self.torso = mk(model, "Torso", Vector3.new(2, 2, 1) * s, outfit)
-	self.armL = mk(model, "ArmL", Vector3.new(0.85, 2, 0.85) * s, outfit)
-	self.armR = mk(model, "ArmR", Vector3.new(0.85, 2, 0.85) * s, outfit)
+	self.torso = mk(model, "Torso", Vector3.new(2, 2, 1) * s, top)
+	self.armL = mk(model, "ArmL", Vector3.new(0.85, 2, 0.85) * s, look.jacket and c3(look.jacket) or top)
+	self.armR = mk(model, "ArmR", Vector3.new(0.85, 2, 0.85) * s, look.jacket and c3(look.jacket) or top)
 	self.head = mk(model, "Head", Vector3.new(1.2, 1.2, 1.2) * s, skin)
-	self.hair = mk(model, "Hair", Vector3.new(1.3, 0.45, 1.3) * s, hair)
 	self.eyeL = mk(model, "EyeL", Vector3.new(0.18, 0.22, 0.05) * s, Color3.new(0, 0, 0))
 	self.eyeR = mk(model, "EyeR", Vector3.new(0.18, 0.22, 0.05) * s, Color3.new(0, 0, 0))
+	-- extras follow the head ("head") or the upper body ("torso"): { part, attach, offset }
+	self.extras = {}
+	local function extra(name, size, attach, off, color, material, shape)
+		local p = mk(model, name, size * s, color, material, shape)
+		table.insert(self.extras, { p, attach, CFrame.new(off.Position * s) * (off - off.Position) })
+		return p
+	end
+	local style = look.hair or ((rng:NextNumber() < 0.5) and "short" or "messy")
+	if style ~= "buzz" and style ~= "afro" and style ~= "mohawk" then
+		extra("Hair", Vector3.new(1.3, 0.45, 1.3), "head", CFrame.new(0, 0.7, -0.05), hair)
+	end
+	if style == "buzz" then
+		extra("Hair", Vector3.new(1.24, 0.2, 1.24), "head", CFrame.new(0, 0.55, -0.02), hair)
+	elseif style == "long" then
+		extra("HairBack", Vector3.new(1.3, 1.7, 0.4), "head", CFrame.new(0, -0.15, -0.55), hair)
+	elseif style == "bun" then
+		extra("HairBun", Vector3.new(0.7, 0.7, 0.7), "head", CFrame.new(0, 1.05, -0.35), hair, nil, Enum.PartType.Ball)
+	elseif style == "pony" then
+		extra("HairTail", Vector3.new(0.45, 1.5, 0.45), "head", CFrame.new(0, 0.1, -0.8) * CFrame.Angles(0.35, 0, 0), hair)
+	elseif style == "pigtails" then
+		extra("HairTail", Vector3.new(0.4, 1.2, 0.4), "head", CFrame.new(-0.75, 0, -0.2) * CFrame.Angles(0, 0, -0.3), hair)
+		extra("HairTail", Vector3.new(0.4, 1.2, 0.4), "head", CFrame.new(0.75, 0, -0.2) * CFrame.Angles(0, 0, 0.3), hair)
+	elseif style == "afro" then
+		extra("Afro", Vector3.new(1.9, 1.9, 1.9), "head", CFrame.new(0, 0.55, -0.15), hair, nil, Enum.PartType.Ball)
+	elseif style == "messy" then
+		extra("HairFringe", Vector3.new(1.32, 0.35, 0.3), "head", CFrame.new(0, 0.42, 0.55) * CFrame.Angles(-0.4, 0, 0), hair)
+	elseif style == "mohawk" then
+		extra("Mohawk", Vector3.new(0.3, 0.7, 1.3), "head", CFrame.new(0, 0.85, 0), hair)
+	end
+	local acc = look.acc or "none"
+	if acc == "sunglasses" then
+		extra("Shades", Vector3.new(1.0, 0.24, 0.08), "head", CFrame.new(0, 0.1, 0.62), Color3.fromRGB(10, 10, 12), Enum.Material.Glass)
+	elseif acc == "cap" then
+		extra("Cap", Vector3.new(1.32, 0.35, 1.32), "head", CFrame.new(0, 0.72, 0), top)
+		extra("CapBrim", Vector3.new(1.2, 0.1, 0.7), "head", CFrame.new(0, 0.58, 0.85), top)
+	elseif acc == "cowboy" then
+		extra("HatBrim", Vector3.new(2.2, 0.1, 2.2), "head", CFrame.new(0, 0.62, 0), Color3.fromRGB(150, 110, 70), nil)
+		extra("HatCrown", Vector3.new(1.25, 0.7, 1.25), "head", CFrame.new(0, 0.98, 0), Color3.fromRGB(150, 110, 70))
+	elseif acc == "headphones" then
+		extra("Phones", Vector3.new(1.45, 0.18, 0.25), "head", CFrame.new(0, 0.72, 0), Color3.fromRGB(20, 20, 22))
+		extra("PhoneL", Vector3.new(0.25, 0.6, 0.6), "head", CFrame.new(-0.68, 0.05, 0), Color3.fromRGB(0, 230, 255), Enum.Material.Neon)
+		extra("PhoneR", Vector3.new(0.25, 0.6, 0.6), "head", CFrame.new(0.68, 0.05, 0), Color3.fromRGB(0, 230, 255), Enum.Material.Neon)
+	elseif acc == "bandana" then
+		extra("Bandana", Vector3.new(1.28, 0.22, 1.28), "head", CFrame.new(0, 0.38, 0), Color3.fromRGB(200, 30, 40), Enum.Material.Fabric)
+	elseif acc == "beanie" then
+		extra("Beanie", Vector3.new(1.35, 0.6, 1.35), "head", CFrame.new(0, 0.72, 0), Color3.fromRGB(200, 120, 60), Enum.Material.Fabric)
+	elseif acc == "chain" then
+		extra("Chain", Vector3.new(1.3, 0.12, 0.1), "torso", CFrame.new(0, 0.55, 0.53), Color3.fromRGB(255, 205, 60), Enum.Material.Metal)
+		extra("Pendant", Vector3.new(0.35, 0.35, 0.1), "torso", CFrame.new(0, 0.3, 0.55), Color3.fromRGB(255, 205, 60), Enum.Material.Neon)
+	elseif acc == "earrings" then
+		extra("Earring", Vector3.new(0.18, 0.3, 0.18), "head", CFrame.new(-0.64, -0.25, 0), Color3.fromRGB(255, 215, 90), Enum.Material.Metal)
+		extra("Earring", Vector3.new(0.18, 0.3, 0.18), "head", CFrame.new(0.64, -0.25, 0), Color3.fromRGB(255, 215, 90), Enum.Material.Metal)
+	elseif acc == "sparkle" then
+		extra("Sparkles", Vector3.new(2.05, 0.6, 1.06), "torso", CFrame.new(0, -0.2, 0), Color3.fromRGB(255, 235, 250), Enum.Material.Neon)
+	end
+	if look.jacket then
+		extra("JacketL", Vector3.new(0.6, 2.02, 1.06), "torso", CFrame.new(-0.72, 0, 0), c3(look.jacket))
+		extra("JacketR", Vector3.new(0.6, 2.02, 1.06), "torso", CFrame.new(0.72, 0, 0), c3(look.jacket))
+	end
+	if look.shoes then
+		self.shoeL = mk(model, "ShoeL", Vector3.new(0.95, 0.35, 1.1) * s, c3(look.shoes))
+		self.shoeR = mk(model, "ShoeR", Vector3.new(0.95, 0.35, 1.1) * s, c3(look.shoes))
+	end
 	if self.role == "lead" then
 		self.prop = mk(model, "Mic", Vector3.new(0.25, 0.9, 0.25) * s, Color3.fromRGB(20, 20, 20), Enum.Material.Metal)
 	elseif self.role == "guitar" or self.role == "bass" then
@@ -74,6 +147,41 @@ function People.new(parent, outfit, scale, role, seed)
 	self.pos = Vector3.new()
 	self.yaw = 0
 	return self
+end
+
+-- A random look for a band member / dancer of an artist
+function People.bandLook(ad, i, styles)
+	local st = styles[ad.genre] or styles.default
+	local rng = Random.new(i * 31 + #ad.id)
+	local function pickT(list)
+		return list[rng:NextInteger(1, #list)]
+	end
+	local top = pickT(st.tops)
+	if st.matchArtist and i % 2 == 0 then
+		top = ad.color
+	end
+	return { skin = rng:NextInteger(1, #SKINS), hair = pickT(st.hair), hairColor = pickT({ { 20, 20, 20 }, { 90, 60, 30 }, { 200, 170, 110 }, ad.color }), top = top, pants = pickT(st.pants), acc = pickT(st.acc), shoes = { 20, 20, 22 } }
+end
+
+-- Shows a still figure inside a ViewportFrame (artist cards). Returns the ViewportFrame.
+function People.preview(parent, look, color, pos, size, bg)
+	local vp = New("ViewportFrame", {
+		Parent = parent,
+		Position = pos,
+		Size = size,
+		BackgroundColor3 = bg or Color3.fromRGB(26, 30, 44),
+		BackgroundTransparency = bg and 0 or 1,
+		BorderSizePixel = 0,
+		Ambient = Color3.fromRGB(190, 190, 205),
+		LightColor = Color3.new(1, 1, 1),
+		LightDirection = Vector3.new(-0.6, -1, -0.8),
+	})
+	local fig = People.new(vp, color, 1, "lead", 3, look)
+	fig:update(Vector3.new(0, 0, 0), math.rad(-18), { t = 0.6, beat = 0.3, energy = 0.3, walking = false, move = "idle" })
+	local cam = New("Camera", { FieldOfView = 30, Parent = vp })
+	cam.CFrame = CFrame.lookAt(Vector3.new(0, 4.6, 11.5), Vector3.new(0, 3.1, 0))
+	vp.CurrentCamera = cam
+	return vp, fig
 end
 
 -- opts: t, beat (0..1), energy (0..1), walking (bool), armsUp (0..1),
@@ -118,14 +226,21 @@ function People:update(pos, yaw, opts)
 	end
 	self.legL.CFrame = root * CFrame.new(-0.5 * s, 2 * s, 0) * CFrame.Angles(legLA, 0, 0) * CFrame.new(0, -1 * s, 0)
 	self.legR.CFrame = root * CFrame.new(0.5 * s, 2 * s, 0) * CFrame.Angles(legRA, 0, 0) * CFrame.new(0, -1 * s, 0)
+	if self.shoeL then
+		self.shoeL.CFrame = self.legL.CFrame * CFrame.new(0, -0.85 * s, 0.1 * s)
+		self.shoeR.CFrame = self.legR.CFrame * CFrame.new(0, -0.85 * s, 0.1 * s)
+	end
 	-- upper body bends at the hips
 	local hip = root * CFrame.new(0, 2 * s, 0) * CFrame.Angles(lean, 0, sway)
 	self.torso.CFrame = hip * CFrame.new(0, 1 * s, 0)
 	local headCF = hip * CFrame.new(0, 2.6 * s, 0) * CFrame.Angles(headPitch, 0, 0)
 	self.head.CFrame = headCF
-	self.hair.CFrame = headCF * CFrame.new(0, 0.7 * s, -0.05 * s)
 	self.eyeL.CFrame = headCF * CFrame.new(-0.25 * s, 0.1 * s, 0.61 * s)
 	self.eyeR.CFrame = headCF * CFrame.new(0.25 * s, 0.1 * s, 0.61 * s)
+	local torsoCF = hip * CFrame.new(0, 1 * s, 0)
+	for _, e in ipairs(self.extras) do
+		e[1].CFrame = ((e[2] == "head") and headCF or torsoCF) * e[3]
+	end
 
 	-- arms: rotation forward/back (x) and sideways (z)
 	local up = opts.armsUp or 0
@@ -147,7 +262,7 @@ function People:update(pos, yaw, opts)
 	elseif move == "bow" then
 		lx, lz = 0.3, -0.1
 		rx, rz = 0.3, 0.1
-	elseif move == "piano" then
+	elseif move == "piano" or move == "keys" then
 		lx, lz = -1.35 + math.sin(t * 7) * 0.08, 0.15
 		rx, rz = -1.35 + math.sin(t * 7 + 2) * 0.08, -0.15
 	elseif move == "drumsolo" then
@@ -155,7 +270,7 @@ function People:update(pos, yaw, opts)
 		rx, rz = -0.9 + math.sin(t * 16) * 0.5, 0
 	end
 	local micAtMouth = false
-	if self.role == "lead" and (move == "piano" or move == "drumsolo") then
+	if self.role == "lead" and (move == "piano" or move == "drumsolo" or move == "keys") then
 		-- hands are busy: the mic hangs from a stand at the mouth
 		micAtMouth = true
 	elseif self.role == "lead" then

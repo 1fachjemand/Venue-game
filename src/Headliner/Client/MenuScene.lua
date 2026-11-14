@@ -37,14 +37,14 @@ local CARC = { rgb(30, 30, 34), rgb(200, 200, 205), rgb(120, 20, 26), rgb(30, 50
 
 ------------------------------------------------------------------ build state
 local folder, rng, count
-local movers, blinkers, crowd, walkers, screens, beams
+local movers, blinkers, crowd, walkers, screens, beams, built
 local lightsLeft, guisLeft
 local samples = {}
 
 local function reset(seed)
 	rng = Random.new(seed)
 	count = 0
-	movers, blinkers, crowd, walkers, screens, beams = {}, {}, {}, {}, {}, {}
+	movers, blinkers, crowd, walkers, screens, beams, built = {}, {}, {}, {}, {}, {}, {}
 	lightsLeft, guisLeft = 36, 28
 	samples = {}
 end
@@ -429,6 +429,9 @@ local function building(x, z, w, d, h, style, o)
 	if o.blink and h > 100 then
 		blinker(V(x, h + 2, z))
 	end
+	if not o.yaw then
+		table.insert(built, { x0 = x - w / 2, x1 = x + w / 2, z0 = z - d / 2, z1 = z + d / 2, h = h })
+	end
 	return h
 end
 
@@ -497,42 +500,12 @@ local function steamStack(x, z)
 end
 
 -- figures: a simple fan (body + head) that bounces
-local function fan(pos, shirt, yaw, holdSign)
+local function fan(pos, shirt, yaw, holdSign, calm)
 	local body = P("Fan", V(1.6, 2.8, 1), CF(pos + V(0, 1.4, 0)), shirt)
 	local head = ball("FanHead", 1.3, pos + V(0, 3.45, 0), pick(SKINS))
-	table.insert(crowd, { body = body, head = head, base = ORIGIN + pos, ph = rng:NextNumber() * 6.28 })
+	table.insert(crowd, { body = body, head = head, base = ORIGIN + pos, ph = rng:NextNumber() * 6.28, calm = calm })
 	if holdSign then
 		P("FanSign", V(2.4, 1.4, 0.15), CF(pos + V(0, 5.4, 0)) * ANG(0, yaw or 0, 0), holdSign, M.Neon)
-	end
-end
-
-local function fanBlock(center, rows, cols, spacing, artistColor, yaw)
-	local base = CF(center) * ANG(0, yaw or 0, 0)
-	for i = 0, rows - 1 do
-		for j = 0, cols - 1 do
-			local pos = base * V((j - cols / 2) * spacing + rnd(-0.6, 0.6), 0, i * spacing + rnd(-0.6, 0.6))
-			local shirt = rng:NextNumber() < 0.35 and artistColor or pick(SHIRTS)
-			fan(pos, shirt, yaw, rng:NextNumber() < 0.1 and artistColor or nil)
-		end
-	end
-end
-
--- a queue that snakes between barriers
-local function queue(start, dir, len, artistColor)
-	local side = V(dir.Z, 0, -dir.X)
-	local n = math.floor(len / 2.6)
-	for i = 0, n do
-		local p = start + dir * (i * 2.6) + side * rnd(-1.2, 1.2)
-		fan(p, rng:NextNumber() < 0.4 and artistColor or pick(SHIRTS), 0, rng:NextNumber() < 0.06 and artistColor or nil)
-	end
-	for _, s in ipairs({ -1, 1 }) do
-		local a = start + side * (s * 3)
-		bar("Barrier", a + V(0, 2, 0), a + dir * len + V(0, 2, 0), 0.4, rgb(180, 182, 190))
-		local k = 0
-		while k <= len do
-			P("BarrierPost", V(0.4, 2.2, 0.4), CF(a + dir * k + V(0, 1.1, 0)), rgb(180, 182, 190), M.Metal)
-			k = k + 12
-		end
 	end
 end
 
@@ -540,6 +513,78 @@ local function walker(a, b, shirt, seed)
 	local fig = People.new(folder, shirt or pick(SHIRTS), 0.9, "crowd", seed or rng:NextInteger(1, 9999))
 	count = count + 10
 	table.insert(walkers, { fig = fig, a = a, b = b, len = (b - a).Magnitude, speed = rnd(5, 8), ph = rng:NextNumber() * 2 })
+end
+
+-- groups of 2-6 people standing together and chatting
+local function mingle(cx, cz, rx, rz, groups, y, color)
+	for _ = 1, groups do
+		local gx, gz = cx + rnd(-rx, rx), cz + rnd(-rz, rz)
+		local n = rng:NextInteger(2, 6)
+		local r = 1.3 + n * 0.3
+		for k = 1, n do
+			local a = k / n * 2 * PI + rnd(-0.25, 0.25)
+			local pos = V(gx + math.cos(a) * r, y, gz + math.sin(a) * r)
+			local shirt = (rng:NextNumber() < 0.35) and color or pick(SHIRTS)
+			fan(pos, shirt, math.atan2(gx - pos.X, gz - pos.Z), (rng:NextNumber() < 0.07) and color or nil, true)
+		end
+	end
+end
+
+-- a natural queue (no fences), slightly wavy
+local function line(start, dir, len, y, color)
+	local side = V(dir.Z, 0, -dir.X)
+	local n = math.floor(len / 2.4)
+	for i = 0, n do
+		local p = start + dir * (i * 2.4 + rnd(-0.4, 0.4)) + side * (math.sin(i * 0.7) * 1.5 + rnd(-0.6, 0.6))
+		fan(V(p.X, y, p.Z), (rng:NextNumber() < 0.35) and color or pick(SHIRTS), 0, (rng:NextNumber() < 0.05) and color or nil, true)
+	end
+end
+
+-- security in yellow vests and photographers with flashes
+local function staff(pos, kind)
+	fan(pos, (kind == "security") and rgb(255, 214, 0) or rgb(30, 30, 34), 0, nil, true)
+	if kind == "photo" then
+		local flash = P("Flash", V(0.6, 0.4, 0.4), CF(pos + V(0.6, 3.6, 0.5)), WHITE, M.Neon)
+		table.insert(blinkers, { part = flash, ph = rng:NextNumber() * 6, flash = true })
+	end
+end
+
+local function hotdogCart(pos, yaw)
+	local cf = CF(pos) * ANG(0, yaw, 0)
+	P("Cart", V(6, 3.5, 3), cf * CF(0, 2.6, 0), rgb(220, 220, 225), M.Metal)
+	P("CartWheels", V(5.4, 1.2, 3.2), cf * CF(0, 0.6, 0), rgb(30, 30, 30))
+	P("Umbrella", V(8, 0.4, 8), cf * CF(0, 8, 0), rgb(220, 60, 40), M.Fabric)
+	P("UmbrellaPole", V(0.3, 4, 0.3), cf * CF(0, 6, 0), WHITE, M.Metal)
+	P("CartGlow", V(5, 0.6, 0.2), cf * CF(0, 3.6, 1.6), WARM, M.Neon)
+	fan((cf * CF(0, 0, -2.6)).Position, rgb(230, 230, 235), yaw, nil, true)
+	fan((cf * CF(1.5, 0, 3.4)).Position, pick(SHIRTS), yaw + PI, nil, true)
+	fan((cf * CF(-1.5, 0, 3.8)).Position, pick(SHIRTS), yaw + PI, nil, true)
+end
+
+-- billboard mounted flat on the avenue side of a building (never sticks through other buildings)
+local function facadeBillboard(west, zWant, text, bg)
+	local best, bestD = nil, 1e9
+	for _, b in ipairs(built) do
+		local onAve = west and (b.x1 > 262 and b.x1 < 274) or ((not west) and b.x0 > 346 and b.x0 < 360)
+		if onAve and b.h >= 90 and (b.z1 - b.z0) >= 30 then
+			local zc = math.clamp(zWant, b.z0 + 15, b.z1 - 15)
+			local d = math.abs(zc - zWant)
+			if d < bestD then
+				best, bestD = b, d
+			end
+		end
+	end
+	if not best or bestD > 220 then
+		return
+	end
+	local wdt = math.min(40, (best.z1 - best.z0) - 6)
+	local zc = math.clamp(zWant, best.z0 + wdt / 2 + 2, best.z1 - wdt / 2 - 2)
+	local y = math.min(best.h - 18, 64)
+	local x = west and (best.x1 + 1.1) or (best.x0 - 1.1)
+	P("BillboardFrame", V(0.5, 28, wdt + 1.4), CF(x + (west and -0.4 or 0.4), y, zc), rgb(30, 30, 34), M.Metal)
+	local bb = P("Billboard", V(0.6, 26, wdt), CF(x, y, zc), BLACK)
+	sign(bb, west and Enum.NormalId.Right or Enum.NormalId.Left, text, WHITE, bg, 10)
+	P("BillboardLamp", V(1.2, 0.5, wdt * 0.8), CF(x + (west and 1.2 or -1.2), y - 14, zc), WARM, M.Neon)
 end
 
 local function banner(pos, text, color, yaw)
@@ -741,11 +786,22 @@ SCENES[1] = {
 		end
 		-- peninsula square: plaza, fans, queues, food stalls
 		P("Plaza", V(460, 0.5, 220), CF(0, 0.25, ez + 190), rgb(86, 86, 92), M.Pavement)
-		for i = -3, 3 do
-			queue(V(i * 18, 0.5, ez + 180), V(0, 0, -1), 70, color)
+		for i = -2, 2 do
+			line(V(i * 26, 0.5, ez + 170), V(0, 0, -1), 64, 0.5, color)
 		end
-		fanBlock(V(-150, 0.5, ez + 140), 6, 16, 3.2, color, PI)
-		fanBlock(V(150, 0.5, ez + 140), 6, 16, 3.2, color, PI)
+		mingle(0, ez + 200, 210, 90, 70, 0.5, color)
+		mingle(120, 590, 140, 30, 18, 0.5, color)
+		mingle(-380, 300, 60, 160, 10, 0.6, color)
+		for i = -4, 4 do
+			staff(V(i * 16, 0.5, ez + 98), "security")
+		end
+		for i = 1, 4 do
+			staff(V(rnd(-120, 120), 0.5, ez + rnd(140, 260)), "photo")
+		end
+		for i = 1, 12 do
+			local z0 = rnd(-300, 400)
+			walker(V(-534, 0.6, z0), V(-534, 0.6, z0 + rnd(80, 160)))
+		end
 		for i, a in ipairs({ "NOVA RAY", "STARLYTE", "IRONCLAD", "LUNA SOL", "KAI RIVERS" }) do
 			banner(V(-200 + i * 66, 0.5, ez + 250), a, ({ color, rgb(150, 90, 255), rgb(120, 120, 130), rgb(255, 120, 60), rgb(255, 190, 40) })[i], 0)
 		end
@@ -757,9 +813,9 @@ SCENES[1] = {
 		for i = -5, 5 do
 			streetLamp(i * 40, ez + 330, 0, 16)
 		end
-		for i = 1, 14 do
-			local x0 = rnd(-200, 200)
-			walker(V(x0, 0.5, ez + 320), V(x0 + rnd(-60, 60), 0.5, ez + 150))
+		for i = 1, 22 do
+			local x0 = rnd(-220, 220)
+			walker(V(x0, 0.5, ez + 330), V(x0 + rnd(-60, 60), 0.5, ez + 130))
 		end
 		searchlights({
 			{ pos = V(-90, 1, ez + 120), color = rgb(255, 160, 220), ph = 0 },
@@ -905,8 +961,8 @@ SCENES[2] = {
 		{ t = 23, p = V(200, 82, -172), l = V(-40, 50, 0) },
 		{ t = 29, p = V(-40, 150, -168), l = V(-40, 40, 10) },
 		{ t = 35, p = V(-286, 140, 120), l = V(-40, 40, 0) },
-		{ t = 41, p = V(70, 128, 236), l = V(-40, 46, 0) },
-		{ t = 47, p = V(328, 40, 236), l = V(150, 34, 60) },
+		{ t = 41, p = V(60, 122, 160), l = V(-40, 46, 0) },
+		{ t = 47, p = V(326, 40, 200), l = V(150, 34, 60) },
 	},
 	build = function(sc)
 		local color = sc.color
@@ -1027,14 +1083,12 @@ SCENES[2] = {
 		ball("NeedleEye", 1.6, nb + V(-2, 40, -1), rgb(200, 200, 210), M.Metal)
 		-- billboards with label artists
 		local ads = {
-			{ 275.4, -1250, "VELVET\nJUNE\nNEW\nALBUM", rgb(170, 40, 90) }, { 344.6, -900, "KAI\nRIVERS\nWORLD\nTOUR", rgb(30, 90, 200) },
-			{ 275.4, -640, "LUNA\nSOL", rgb(230, 110, 30) }, { 344.6, -420, "NEON\nHARBOR\nLIVE", rgb(20, 150, 130) },
+			{ 275.4, -1250, "VELVET JUNE - NEW ALBUM", rgb(170, 40, 90) }, { 344.6, -900, "KAI RIVERS - WORLD TOUR", rgb(30, 90, 200) },
+			{ 275.4, -640, "LUNA SOL - SOLD OUT", rgb(230, 110, 30) }, { 344.6, -420, "NEON HARBOR LIVE", rgb(20, 150, 130) },
+			{ 344.6, -1180, "DJ VOLTAGE - 1000 VOLTS", rgb(0, 150, 200) }, { 275.4, -980, "IRONCLAD - FORGED IN FIRE", rgb(90, 90, 100) },
 		}
 		for _, a in ipairs(ads) do
-			local x = (a[1] > 310) and 346 or 274
-			local bb = P("Billboard", V(16, 34, 0.6), CF(x, 46, a[2]), BLACK)
-			P("BillboardFrame", V(17, 35, 0.5), CF(x, 46, a[2] + 0.5), rgb(30, 30, 34), M.Metal)
-			sign(bb, Enum.NormalId.Front, a[3], WHITE, a[4], 14)
+			facadeBillboard(a[1] < 310, a[2], a[3]:gsub("\n", " "), a[4])
 		end
 
 		-- MADISON CIRCLE GARDEN: drum ~123 m (246 studs), 48 roof cables, ~46 m high
@@ -1081,9 +1135,30 @@ SCENES[2] = {
 		ledScreen(CF(262, 26, 128) * ANG(0, PI / 2, 0), 40, 24, { "STARLYTE\nTONIGHT", "SOLD OUT", "DREAMWAVE\nWORLD TOUR" }, rgb(110, 60, 220), Enum.NormalId.Back)
 		P("LEDPost", V(2, 14, 2), CF(262, 7, 128), rgb(40, 40, 46), M.Metal)
 		for k = 0, 2 do
-			queue(V(266 - k * 12, 0.8, 30), V(-1, 0, 0), 70, color)
+			line(V(268, 0.8, 24 + k * 14), V(-1, 0, 0), 76, 0.8, color)
 		end
-		fanBlock(V(215, 0.8, 100), 5, 10, 3.2, color, -PI / 2)
+		mingle(222, 100, 40, 36, 24, 0.8, color)
+		mingle(220, -160, 40, 8, 6, 0.6, color)
+		mingle(275, 60, 4, 110, 12, 0.6, color)
+		mingle(345, 60, 4, 110, 10, 0.6, color)
+		mingle(0, superZ1 + 6, 140, 4, 10, 0.6, color)
+		for k = 0, 5 do
+			staff(V(184, 0.8, 18 + k * 20), "security")
+		end
+		staff(V(300, 0.2, 130), "photo")
+		staff(V(255, 0.8, 140), "photo")
+		hotdogCart(V(276, 0.6, -60), PI / 2)
+		hotdogCart(V(344, 0.6, 150), -PI / 2)
+		hotdogCart(V(276, 0.6, -760), PI / 2)
+		-- people along the whole avenue
+		for z = -1400, 300, 60 do
+			if rng:NextNumber() < 0.6 then
+				mingle(274 + rnd(-2, 2), z, 1, 10, 1, 0.6, color)
+			end
+			if rng:NextNumber() < 0.6 then
+				mingle(346 + rnd(-2, 2), z + 30, 1, 10, 1, 0.6, color)
+			end
+		end
 		P("MerchTent", V(16, 8, 16), CF(200, 4.8, 135), rgb(240, 240, 240), M.Fabric)
 		gable(CF(200, 8.8, 135), 16, 16, 4, color, M.Fabric)
 		for k = 0, 4 do
@@ -1092,9 +1167,9 @@ SCENES[2] = {
 		-- glass entrance to the station below
 		P("StationEntrance", V(30, 14, 18), CF(262, 7.8, -150 + 10), rgb(80, 110, 140), M.Glass, 0.3)
 		P("StationGlow", V(28, 0.6, 16), CF(262, 14.8, -140), rgb(220, 230, 255), M.Neon)
-		for i = 1, 8 do
-			walker(V(275, 0.6, -500 + i * 60), V(275, 0.6, -500 + i * 60 + rnd(60, 140)))
-			walker(V(345, 0.6, -700 + i * 80), V(345, 0.6, -700 + i * 80 + rnd(60, 140)))
+		for i = 1, 14 do
+			walker(V(275 + rnd(-2, 2), 0.6, -1400 + i * 100), V(275, 0.6, -1400 + i * 100 + rnd(60, 140)))
+			walker(V(345 + rnd(-2, 2), 0.6, -1450 + i * 100), V(345, 0.6, -1450 + i * 100 + rnd(60, 140)))
 		end
 		for i = 1, 6 do
 			walker(V(100 + i * 25, 0.8, superZ0 + 6), V(-150 + i * 20, 0.8, superZ0 + 6))
@@ -1458,11 +1533,18 @@ SCENES[3] = {
 		-- offices behind the arena
 		building(0, -230, 420, 70, 64, "glass", { setback = false, lod = 1 })
 		-- plaza life: queues, crowd, food trucks, beer stand, banners
-		for i = -3, 3 do
-			queue(V(i * 14, 0.6, 180), V(0, 0, -1), 64, color)
+		for i = -2, 2 do
+			line(V(i * 20, 0.65, 170), V(0, 0, -1), 56, 0.65, rgb(40, 40, 44))
 		end
-		fanBlock(V(-140, 0.6, 160), 5, 14, 3.2, rgb(40, 40, 44), PI)
-		fanBlock(V(140, 0.6, 160), 5, 14, 3.2, rgb(40, 40, 44), PI)
+		mingle(0, 220, 190, 70, 66, 0.65, rgb(40, 40, 44))
+		mingle(220, 245, 14, 10, 4, 0.65, rgb(40, 40, 44))
+		mingle(-330, 168, 120, 3, 8, 0.5, rgb(40, 40, 44))
+		for i = -4, 4 do
+			staff(V(i * 14, 0.6, 104), "security")
+		end
+		for i = 1, 3 do
+			staff(V(rnd(-150, 150), 0.65, rnd(150, 290)), "photo")
+		end
 		for k = 0, 3 do
 			local x = -180 + k * 120
 			P("FoodTruck", V(22, 9, 10), CF(x, 4.8, 270), pick({ rgb(240, 240, 240), rgb(230, 170, 40), rgb(40, 40, 46) }))
@@ -1477,9 +1559,13 @@ SCENES[3] = {
 		for i = -5, 5 do
 			streetLamp(i * 40, 315, 0, 16)
 		end
-		for i = 1, 14 do
+		for i = 1, 22 do
 			local x0 = rnd(-220, 220)
-			walker(V(x0, 0.6, 320), V(x0 + rnd(-50, 50), 0.6, 150))
+			walker(V(x0, 0.6, 330), V(x0 + rnd(-50, 50), 0.6, 140))
+		end
+		for i = 1, 8 do
+			local x0 = rnd(-700, -300)
+			walker(V(x0, 0.6, 158), V(x0 + rnd(80, 160), 0.6, 158))
 		end
 		searchlights({
 			{ pos = V(-120, 1, 120), color = color, ph = 0 },
@@ -1584,7 +1670,7 @@ function MenuScene.start(onScene)
 		local half = math.floor(t * 4) % 2
 		for i, f in ipairs(crowd) do
 			if i % 2 == half then
-				local j = math.max(0, math.sin(t * 6 + f.ph)) * 0.6
+				local j = f.calm and (math.sin(t * 1.6 + f.ph) * 0.08) or (math.max(0, math.sin(t * 6 + f.ph)) * 0.6)
 				f.body.CFrame = CF(f.base + V(0, 1.4 + j, 0))
 				f.head.CFrame = CF(f.base + V(0, 3.45 + j, 0))
 			end
@@ -1595,7 +1681,11 @@ function MenuScene.start(onScene)
 			b.part.CFrame = OCF * CF(b.pos) * ANG(0, a, 0) * ANG(math.pi / 2 - b.tilt + math.sin(t * 0.4 + b.ph) * 0.15, 0, 0) * CF(0, 0, -350)
 		end
 		for _, b in ipairs(blinkers) do
-			b.part.Transparency = (math.sin(t * 2.6 + b.ph) > 0.55) and 0 or 0.85
+			if b.flash then
+				b.part.Transparency = (math.sin(t * 1.9 + b.ph) > 0.96) and 0 or 1
+			else
+				b.part.Transparency = (math.sin(t * 2.6 + b.ph) > 0.55) and 0 or 0.85
+			end
 		end
 		for _, s in ipairs(screens) do
 			local i = math.floor(t / 3.5) % #s.texts + 1

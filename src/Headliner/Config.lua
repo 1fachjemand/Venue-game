@@ -53,7 +53,7 @@ Config.MAX_DESIGNS = 8
 -- end stage: build area x minX..maxX, z minZ..maxZ (audience towards +z)
 -- center stage: square build area -center..center (audience all around)
 Config.STAGE_CLASSES = {
-	{ id = "Club", order = 1, minX = -24, maxX = 24, minZ = -22, maxZ = 14, center = 22, rigY = 20, maxItems = 40, desc = "Clubs (up to ~600 fans)" },
+	{ id = "Club", order = 1, minX = -24, maxX = 24, minZ = -22, maxZ = 14, center = 22, rigY = 27, maxItems = 40, desc = "Clubs (up to ~600 fans)" },
 	{ id = "Theatre", order = 2, minX = -36, maxX = 36, minZ = -28, maxZ = 34, center = 34, rigY = 28, maxItems = 80, desc = "Theatres & halls (up to ~8,000)" },
 	{ id = "Arena", order = 3, minX = -60, maxX = 60, minZ = -34, maxZ = 100, center = 62, rigY = 38, maxItems = 170, desc = "Arenas & amphitheatres" },
 	{ id = "Stadium", order = 4, minX = -100, maxX = 100, minZ = -44, maxZ = 170, center = 104, rigY = 52, maxItems = 260, desc = "Stadiums only" },

@@ -142,6 +142,13 @@ CF.__index = function(c, k)
 			return v3(r[1] * d.X + r[4] * d.Y + r[7] * d.Z, r[2] * d.X + r[5] * d.Y + r[8] * d.Z, r[3] * d.X + r[6] * d.Y + r[9] * d.Z)
 		end
 	elseif k == "Lerp" then return function(a, b, t) assert(isCF(b), "CFrame:Lerp expects CFrame") return cf(a._p:Lerp(b._p, t), t < 0.5 and a._r or b._r) end
+	elseif k == "Inverse" then
+		return function(self)
+			local r = self._r
+			local rt = { r[1], r[4], r[7], r[2], r[5], r[8], r[3], r[6], r[9] }
+			local p = mv(rt, self._p)
+			return cf(v3(-p.X, -p.Y, -p.Z), rt)
+		end
 	end
 	error("CFrame has no member " .. tostring(k), 2)
 end
@@ -425,7 +432,18 @@ function Methods.GetPropertyChangedSignal(self, prop)
 	return s
 end
 function Methods.GetBoundingBox(self) return CFrame.new(), v3(4, 4, 4) end
-function Methods.PivotTo(self, c) assert(isCF(c), "PivotTo expects CFrame") end
+function Methods.PivotTo(self, c)
+	assert(isCF(c), "PivotTo expects CFrame")
+	-- moves every part of the model like Roblox does (pivot = PrimaryPart)
+	local pp = rawget(self, "__props") and self.__props.PrimaryPart
+	local old = pp and pp.CFrame or CFrame.new()
+	local delta = c * old:Inverse()
+	for _, d in ipairs(Methods.GetDescendants(self)) do
+		if d:IsA("BasePart") then
+			d.CFrame = delta * d.CFrame
+		end
+	end
+end
 function Methods.Emit(self, n) assert(type(n) == "number", "Emit expects number") end
 function Methods.ClearAllChildren(self) for _, c in ipairs(Methods.GetChildren(self)) do Methods.Destroy(c) end end
 function Methods.SetCoreGuiEnabled(self, t, on) assert(typeof(t) == "EnumItem") end

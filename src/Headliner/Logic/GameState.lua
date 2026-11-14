@@ -8,6 +8,7 @@ local Achievements = require(Root.Data.Achievements)
 local Rivals = require(Root.Data.Rivals)
 local Util = require(Root.Logic.Util)
 local Sim = require(Root.Logic.Sim)
+local Social = require(Root.Logic.Social)
 
 local GS = {}
 
@@ -49,6 +50,7 @@ function GS.new(labelName, starterId)
 		nextId = 1,
 		achievements = {},
 		log = {},
+		social = {},
 		levelSeen = 1,
 		stats = {
 			shows = 0,
@@ -69,7 +71,9 @@ function GS.new(labelName, starterId)
 	local starter = Artists.byId[starterId or ""] or Artists.byId.lila
 	state.artists[starter.id].signed = true
 	for _, p in ipairs(StageItems.PRESETS) do
-		GS.addDesign(state, p.name, Util.deepCopy(p.items), p.class, p.layout).template = p.name
+		if not p.shop then
+			GS.addDesign(state, p.name, Util.deepCopy(p.items), p.class, p.layout).template = p.name
+		end
 	end
 	GS.log(state, state.labelName .. " opens its doors with " .. starter.name .. " on the roster.")
 	return state
@@ -174,6 +178,7 @@ function GS.sign(state, artistId)
 	state.money = state.money - ad.signCost
 	a.signed = true
 	GS.log(state, "Signed " .. ad.name .. " for " .. Util.money(ad.signCost) .. "!")
+	Social.add(state, "sign", { artistId = ad.id }, 2)
 	return true, ad.name .. " joined your label!"
 end
 
@@ -182,6 +187,48 @@ function GS.addDesign(state, name, items, class, layout)
 	local d = { id = GS.newId(state, "d"), name = name, items = items or {}, class = class or "Arena", layout = layout or "end" }
 	table.insert(state.designs, d)
 	return d
+end
+
+-- A new design built from a template (pays for the equipment). Returns design or nil, message
+function GS.addDesignFromTemplate(state, preset, name)
+	local cost = GS.designValue({ items = preset.items })
+	if state.money < cost then
+		return nil, "This template needs equipment worth " .. Util.money(cost) .. "."
+	end
+	if #state.designs >= Config.MAX_DESIGNS then
+		return nil, "You can have up to " .. Config.MAX_DESIGNS .. " stages. Delete one first."
+	end
+	state.money = state.money - cost
+	return GS.addDesign(state, name or preset.name, Util.deepCopy(preset.items), preset.class, preset.layout)
+end
+
+-- number of songs a design plays (= artist spots, at least 3, no spots = 4)
+function GS.songCount(design)
+	local n = 0
+	for _, it in ipairs((design and design.items) or {}) do
+		if it.t == "spot" then
+			n = n + 1
+		end
+	end
+	if n == 0 then
+		return 4
+	end
+	return Util.clamp(n, 3, StageItems.MAX_SPOTS)
+end
+
+-- Show days of a route: another night in the same venue is the next day, a new venue `gap` days later
+function GS.scheduleDays(startDay, shows, gap)
+	local days = {}
+	for i, s in ipairs(shows) do
+		if i == 1 then
+			days[i] = startDay
+		elseif shows[i - 1].venueId == s.venueId then
+			days[i] = days[i - 1] + 1
+		else
+			days[i] = days[i - 1] + gap
+		end
+	end
+	return days
 end
 
 -- Buying / selling stage equipment
@@ -368,6 +415,7 @@ function GS.createTour(state, draft)
 		ratingSum = 0,
 	}
 	local prev = nil
+	local days = GS.scheduleDays(state.day + firstIn, draft.shows, gap)
 	for i, s in ipairs(draft.shows) do
 		local v = Countries.venueById[s.venueId]
 		table.insert(tour.shows, {
@@ -375,7 +423,7 @@ function GS.createTour(state, draft)
 			countryId = v.countryId,
 			cap = v.cap,
 			price = math.max(5, math.floor(draft.price or s.price or 30)),
-			day = state.day + firstIn + (i - 1) * gap,
+			day = days[i],
 			sold = 0,
 			noise = 1 - Config.DEMAND_NOISE + math.random() * 2 * Config.DEMAND_NOISE,
 			travel = Sim.travelCost(prev, v, #(GS.getDesign(state, designs[GS.venueClass(v)]) or design).items),
@@ -387,6 +435,7 @@ function GS.createTour(state, draft)
 	table.insert(state.tours, 1, tour)
 	Sim.updateTourSales(state, tour)
 	GS.log(state, ad.name .. " announced \"" .. tour.name .. "\" (" .. #tour.shows .. " shows).")
+	Social.onAnnounce(state, tour, Sim.ticketBase(state, ad.id))
 	return true, tour
 end
 
@@ -455,6 +504,7 @@ function GS.cancelTour(state, tourId)
 	local a = state.artists[tour.artistId]
 	a.hype = Util.clamp(a.hype - 8, 0, 100)
 	GS.log(state, "Cancelled \"" .. tour.name .. "\". Fans are disappointed (hype -8).")
+	Social.add(state, "cancel", { artistId = tour.artistId, tour = tour }, 3)
 	return true, "Tour cancelled. Tickets refunded."
 end
 
@@ -517,6 +567,7 @@ function GS.applyShow(state, tour, idx, r)
 		st.bestShowText = ad.name .. " @ " .. v.name
 	end
 
+	Social.onShow(state, tour, idx, r, GS.showDesign(state, tour, idx))
 	local completed = tour.played >= #tour.shows
 	if completed then
 		tour.status = "done"
@@ -560,6 +611,14 @@ function GS.advanceDay(state, rnd)
 	for _, tour in ipairs(active) do
 		for _, idx in ipairs(Sim.updateTourSales(state, tour)) do
 			table.insert(ev.soldOut, { tour = tour, idx = idx })
+			Social.onSoldOut(state, tour, idx)
+		end
+		-- a week before a show with weak sales the fans start to talk about it
+		for idx, s in ipairs(tour.shows) do
+			if not s.done and not s.lowPosted and s.day - state.day <= 7 and s.sold < s.cap * 0.5 then
+				s.lowPosted = true
+				Social.onLowSales(state, tour, idx)
+			end
 		end
 		for idx, s in ipairs(tour.shows) do
 			if not s.done and s.day <= state.day then
@@ -582,6 +641,7 @@ function GS.advanceDay(state, rnd)
 	for _, id in ipairs(GS.checkAchievements(state)) do
 		table.insert(ev.achievements, id)
 	end
+	Social.daily(state)
 	ev.levelUp = GS.checkLevelUp(state)
 	return ev
 end

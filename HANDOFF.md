@@ -44,7 +44,12 @@ ROADMAP.md               offene Wünsche
 - **Fortschritt:** 5 Label-Level nach verkauften Tickets. Größere Artists erst ab höherem Level.
 - **Tourplanung (4 Schritte):** Artist, dann Route (3D-Weltkarte mit Länder-Hover, Venue-Filter Club/Theater/Arena/Stadion, Promoter-Schätzungen statt Garantien), dann ein Ticketpreis pro Tour und eine Bühnenproduktion **pro Hallengröße**, dann Bestätigen.
 - **Simulation:** Nachfrage pro Land (Fans, Hype, Genre-Vorlieben, Preis), versteckte ±25 % Abweichung, Vorverkauf über Zeit, Marketing, Kosten (Miete, Produktion 8 % des Equipmentwerts, Reisen, 35 % Artist-Anteil), Bewertungen, Fanwachstum, Achievements, Charts.
-- **Stage Designer:**
+- **Stage Builder (neu, Stil wie Theme Park Tycoon 2):** Katalog unten (Kategorien Stage / Artist / Lights / Screens / Effects / Set Pieces, Karten mit 3D-Bild + Preis), Werkzeugleiste darüber (Grid, Dreh-Raster 15/45/90°, Drehen, Kopieren, Löschen, ✕, ✓ PLACE). Ablauf: Karte wählen → in die Welt klicken → Teil steht „noch nicht gekauft“ (grün) → mit Gizmo ausrichten (rot X, blau Z, grün Höhe = `rec.yo`, oranger Ring drehen, goldene Würfel Größe) → ✓ kauft. Inspector rechts nur bei Auswahl. Preis am Mauszeiger. „?“ zeigt die Steuerung.
+- **MY STAGES (Bibliothek, `Screens/StagesScreen.lua`):** Karten mit 3D-Vorschau, Songs/Items/Kosten, ON TOUR/STARTER, Edit/Copy/Delete. Dialog „New stage“: Größe, Typ, Start (leer, Basis-Deck oder Vorlage).
+- **Vorlagen aus echten Touren** (`StageItems.PRESETS`, `shop = true` kostet): The Cube (in-the-round, LED-Würfel, 8 LED-Türme, Armbänder – angelehnt an Billie Eilish HMHAS / Metallica M72), Portal Ring (Portal + Roboterarme – angelehnt an Beyoncé Renaissance), Runway & Moon (Skyline, Laufsteg, Mond, Statue – angelehnt an The Weeknd).
+- **Setlist = Anzahl Artist-Spots** (3–12, ohne Spots 4). Spot n = Song n, Reihenfolge im Inspector („Earlier/Later“). Lift/Piano/Keys/Drums/DJ „in Song n“. Screens: Inhalt für die ganze Show + Änderungen pro Song.
+- **Live-Kamera auf Screens** (`Client/LiveFeed.lua`): eigene 3D-Szene im ViewportFrame: Artist (Kopien der Figuren, Kamera kreist) oder Fans (Crowd mit Armen, Lightsticks, Handys, Kamera schwenkt).
+- **Stage Designer (alte Funktionen, weiterhin vorhanden):**
   - Größenklassen Club/Theatre/Arena/Stadium, End Stage oder Center Stage.
   - Freie Decks (Rechteck/Dreieck/Ecke/Rund/Treppe) mit Größe, Höhe, Drehung und Oberflächen (inkl. LED), Kantenlicht optional, „Set all decks“.
   - Roblox-Handles zum Verschieben/Skalieren/Drehen, Grid 1/2/4/8, Kopieren parallel daneben.
@@ -52,7 +57,12 @@ ROADMAP.md               offene Wünsche
   - Screen-Editor pro Spot: Songtitel, Artist, Text, Bild-ID, Live-Kamera Artist oder Crowd. „Set all screens“.
   - Artist-Spots 1–4, Lift als eigener Spot, „Artist spielt“ Piano/Drums/DJ-Pult.
   - Leere Venue-Kulisse, Equipment kaufen und für 70 % verkaufen, Vorlagen geschützt (Clear/Restore).
-- **Live-Show (~80–90 s, Speed 1x/2x/4x, Skip):**
+- **Neue Props:** Kinetic Light Bars, LED Cube, LED Tower, LED Pillar, Portal Ring, Streamer, Low Fog, Giant Balloons (fliegen in die Crowd), LED Wristbands (Crowd leuchtet in Wellen), Kabuki Curtain (fällt zum ersten Song), Giant Moon, City Skyline, Giant Statue, Robot Arm, Little House, Light Arch, Flower Garden, Keyboard Rig, Mic Stand, Amp Stack.
+- **Mehrere Nächte pro Venue:** in der Route „- 2 nights +“; Nächte am selben Ort sind aufeinanderfolgende Tage, keine Reisekosten (`GS.scheduleDays`).
+- **SOCIAL-Tab** (`Data/Social.lua`, `Logic/Social.lua`, `Screens/SocialScreen.lua`): Fan-Posts zu Ankündigung, Preisen, Sold-outs, schwachem Verkauf, Shows (je nach Sternen), Fotos, Fanprojekten, Setlist, Outfits, Bühnenmomenten, Merch, Absagen. Fan-Stimmung pro Artist, Trending-Hashtags.
+- **Eigene Looks pro Artist** (`Artists.look`, Band-Stile pro Genre), 3D-Figur in Artist-Karten, Starter-Auswahl, Planer und Büro.
+- **UI aufgeräumt:** feste Navigationsleiste oben (Office, Artists, Tours, Stages, Social, Charts, + Plan a Tour), Büro mit „Next show“ statt Kachel-Wand, Artist-Karten ohne Regionsbalken.
+- **Live-Show (Länge je nach Songs, Speed 1x/2x/4x, Skip):**
   - Jede Show hat einen anderen Ablauf (4 Songs aus 8, Ballade mit Handylichtern an wechselnder Stelle, Zugabe-Pause, Effekte).
   - Wegfindung über Decks/Treppen, Lift-Auftritte, viele Animationen.
   - Venue-Typen Club/Theater/Arena/Amphi/Stadion mit Details (FOH-Zelt, Bar, Videowürfel, Flutlicht).
@@ -69,8 +79,9 @@ V=$(curl -sS https://setup.rbxcdn.com/versionQTStudio); curl -sS -o api-dump.jso
 python3 tools/check.py api-dump.json                 # Syntax, undefinierte Variablen, Klassen/Properties/Enums/Methoden
 python3 tools/gen_api_lua.py api-dump.json api_classes.lua
 python3 tools/run_mock.py api_classes.lua tools/scenario_full.lua   # spielt das ganze Spiel in einer Roblox-Attrappe durch
-python3 tools/screens.py api_classes.lua <ordner>    # rendert alle Menüs als HTML (danach mit Playwright screenshotten)
-# 3D-Vorschau der Hauptmenü-Kamerafahrten (three.js + Playwright), siehe tools/render3d/README.md
+python3 tools/screens.py api_classes.lua <ordner>    # rendert alle Menüs als HTML + PNG (nutzt Node-Playwright, tools/shoot_html.js)
+# 3D-Vorschau der Hauptmenü-Kamerafahrten und der Bühnen-Vorlagen (three.js + Playwright), siehe tools/render3d/README.md
+# Hinweis: Die Attrappe (mock_roblox.lua) bewegt bei Model:PivotTo jetzt alle Teile wie Roblox.
 # Weltkarte neu erzeugen: npm pack world-atlas@2.0.2 → countries-50m.json
 python3 tools/gen_worldmap.py <pfad>/countries-50m.json
 ```
@@ -83,11 +94,10 @@ python3 tools/gen_worldmap.py <pfad>/countries-50m.json
 
 ## 5. Offenes Feedback und nächste Schritte (Priorität von oben)
 1. **Hauptmenü-Venues: neu gebaut (Stadtviertel + Kamerafahrt), Feedback des Users abwarten.** Mögliche nächste Schritte: Performance auf schwachen PCs prüfen (Manhattan ~12k Parts, Aufbau während der Schwarzblende), ggf. Detail an „Crowd detail“-Setting koppeln; weitere Venues; echte Meshes (OBJ/FBX) für noch feinere Fassaden.
-2. **Büro mit Roblox-Charakter**, der sich an den PC setzt. Das Label-Menü läuft „im PC“.
-3. **Social-Media-Feed** zu Touren (positive und negative Kommentare je nach Erfolg).
-4. **Eigener Look pro Artist/Band** (Outfits, Frisuren), Vorschau bei der Auswahl, später Hörprobe.
-5. Später: **Musik** pro Artist, **Setlist-Editor**.
-6. Den Lift-, Screen- und Wegfindungs-Fix (zuletzt gebaut) mit dem User verifizieren.
+2. **Feedback des Users zum neuen Stage Builder, Social-Tab, Live-Screens und Looks abwarten** (großer Umbau, Nov 2026).
+3. **Büro mit Roblox-Charakter**, der sich an den PC setzt. Das Label-Menü läuft „im PC“.
+4. Später: **Musik** pro Artist (User will Songs erst, wenn die Basis steht), Hörprobe bei der Auswahl.
+5. Balancing beobachten: User hat bisher alles ausverkauft (Clubs). Leere bei schwachem Verkauf funktioniert (Crowd = verkaufte Tickets), wurde aber noch nicht gesehen.
 
 ## 6. Bekannte Grenzen
 - Speichern geht nur, wenn der Place veröffentlicht ist (DataStore).

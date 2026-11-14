@@ -170,6 +170,8 @@ function Stage3D.itemCFrame(def, rec, except)
 	else
 		y = rec.y or Stage3D.surfaceY(rec.x, rec.z, except)
 	end
+	-- extra height set with the green (Y) arrow
+	y = y + (rec.yo or 0)
 	return CFrame.new(rec.x, y, rec.z) * CFrame.Angles(0, math.rad(rec.r or 0), 0)
 end
 

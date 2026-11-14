@@ -257,6 +257,9 @@ function Sim.venueRent(venue)
 end
 
 function Sim.travelCost(prevVenue, venue, itemCount)
+	if prevVenue and prevVenue.id == venue.id then
+		return 0 -- another night in the same venue: the stage stays up
+	end
 	local km = 0
 	if prevVenue then
 		if prevVenue.countryId == venue.countryId then

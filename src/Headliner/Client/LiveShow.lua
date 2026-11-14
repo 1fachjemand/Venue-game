@@ -11,6 +11,7 @@ local Builder = require(Root.Client.Builder)
 local Stage3D = require(Root.Client.Stage3D)
 local People = require(Root.Client.People)
 local Venue = require(Root.Client.Venue)
+local LiveFeed = require(Root.Client.LiveFeed)
 
 local T = UI.Theme
 local LiveShow = {}
@@ -31,15 +32,15 @@ local function buildTimeline(ad, rng, songCount, hasRoof)
 	for i, s in ipairs(ad.setlist) do
 		songs[i] = s
 	end
+	local closer = table.remove(songs, math.min(8, #songs)) -- the big hit is always last
 	local opener = table.remove(songs, 1)
-	local closer = table.remove(songs, #songs) -- the big hit is always last
 	for i = #songs, 2, -1 do
 		local j = rng:NextInteger(1, i)
 		songs[i], songs[j] = songs[j], songs[i]
 	end
 	local middle = {}
 	for i = 1, math.max(1, songCount - 2) do
-		table.insert(middle, songs[i])
+		table.insert(middle, songs[(i - 1) % #songs + 1])
 	end
 	local balladAt = rng:NextInteger(2, #middle + 1) -- position in the full set (2..n-1)
 	local order = { { title = opener, kind = "opener" } }
@@ -66,14 +67,14 @@ local function buildTimeline(ad, rng, songCount, hasRoof)
 		table.insert(segments, seg)
 		return seg
 	end
-	add({ kind = "intro", title = "The lights go down...", len = 5, bpm = 0, c1 = Color3.fromRGB(40, 60, 255), c2 = Color3.fromRGB(140, 60, 255), intensity = 0.4, sweep = 0.3 })
+	add({ kind = "intro", title = "The lights go down...", fog = true, len = 5, bpm = 0, c1 = Color3.fromRGB(40, 60, 255), c2 = Color3.fromRGB(140, 60, 255), intensity = 0.4, sweep = 0.3 })
 	local bpm0 = GENRE_BPM[ad.genre] or 120
 	for i, song in ipairs(order) do
 		if song.kind == "finale" then
 			add({ kind = "break", title = "Encore! Encore!", len = 4, bpm = 0, c1 = Color3.fromRGB(20, 20, 60), c2 = base, intensity = 0.15, sweep = 0.2 })
 		end
 		local kind = song.kind
-		local len = (kind == "ballad") and rng:NextInteger(17, 20) or rng:NextInteger(14, 18)
+		local len = (kind == "ballad") and rng:NextInteger(17, 20) or rng:NextInteger(14, 17)
 		local seg = {
 			kind = kind,
 			title = i .. ". " .. song.title,
@@ -111,6 +112,7 @@ local function buildTimeline(ad, rng, songCount, hasRoof)
 			end
 		elseif kind == "ballad" then
 			hit(len - 1, "sparks")
+			seg.fog = true
 		elseif kind == "finale" then
 			hit(0.2, "pyro")
 			hit(0.2, "co2")
@@ -119,6 +121,7 @@ local function buildTimeline(ad, rng, songCount, hasRoof)
 				hit(k, (k % 8 == 6) and "pyro" or "co2")
 			end
 			hit(len * 0.45, "confetti")
+			hit(len * 0.3, "balls")
 			hit(len - 1.5, "confetti")
 			if not hasRoof then
 				hit(len * 0.6, "fireworks")
@@ -145,7 +148,15 @@ function LiveShow.run(app, opts)
 	local cityName = venue and venue.city or "Rehearsal"
 	local rng = Random.new(math.floor(os.clock() * 1000) % 100000)
 	local hasRoof = Venue.LOOKS[look] and Venue.LOOKS[look].roof ~= nil
-	local segments, showLength = buildTimeline(ad, rng, opts.preview and 3 or 4, hasRoof)
+	-- one song per artist spot (no spots: 4 songs)
+	local spotCount = 0
+	for _, rec in ipairs((opts.design and opts.design.items) or {}) do
+		if rec.t == "spot" then
+			spotCount = spotCount + 1
+		end
+	end
+	local songCount = math.clamp((spotCount > 0) and spotCount or 4, 3, 12)
+	local segments, showLength = buildTimeline(ad, rng, songCount, hasRoof)
 	local hits = {}
 	for _, seg in ipairs(segments) do
 		for _, h in ipairs(seg.hits) do
@@ -185,7 +196,13 @@ function LiveShow.run(app, opts)
 	table.sort(spots, function(a, b)
 		return (a.spotIndex or 0) < (b.spotIndex or 0)
 	end)
-	local crowd = Venue.build(look, fill, artistColor, { layout = centerStage and "center" or "end", pits = pits })
+	local wristbands = false
+	for _, r in ipairs(items) do
+		if r.kind == "wristbands" then
+			wristbands = true
+		end
+	end
+	local crowd = Venue.build(look, fill, artistColor, { layout = centerStage and "center" or "end", pits = pits, wristbands = wristbands })
 	local deckCenter = Stage3D.deckBox()
 
 	local function onSurface(p)
@@ -214,10 +231,12 @@ function LiveShow.run(app, opts)
 	local playProps = {}
 	for _, r in ipairs(items) do
 		local n = r.rec and r.rec.play
-		if n and (r.kind == "piano" or r.kind == "drums" or r.kind == "djbooth") then
+		if n and (r.kind == "piano" or r.kind == "drums" or r.kind == "djbooth" or r.kind == "keys") then
 			local seat, move, yaw
 			if r.kind == "piano" then
 				seat, move, yaw = (r.cf * CFrame.new(0, 0, 5.2)).Position, "piano", math.rad(r.rec.r or 0) + math.pi
+			elseif r.kind == "keys" then
+				seat, move, yaw = (r.cf * CFrame.new(0, 0, -2.4)).Position, "keys", math.rad(r.rec.r or 0)
 			elseif r.kind == "drums" then
 				seat, move, yaw = (r.cf * CFrame.new(0, 1, -1.8)).Position, "drumsolo", math.rad(r.rec.r or 0)
 			else
@@ -324,15 +343,10 @@ function LiveShow.run(app, opts)
 	local cur = start
 	for _, seg in ipairs(segments) do
 		if seg.song then
-			local spotIdx = 1
-			if seg.kind == "ballad" then
-				spotIdx = 3
-			elseif seg.kind == "finale" then
-				spotIdx = 4
-			elseif seg.song == 2 then
-				spotIdx = 2
-			elseif seg.song > 2 then
-				spotIdx = ((seg.song - 1) % 2) + 1
+			-- song number = spot number (fewer spots than songs: start again at spot 1)
+			local spotIdx = seg.song
+			if #spots > 0 and spotIdx > #spots then
+				spotIdx = (spotIdx - 1) % #spots + 1
 			end
 			local w = { seg.t0, nil, spot = spotIdx }
 			local play = playProps[spotIdx]
@@ -342,7 +356,7 @@ function LiveShow.run(app, opts)
 			elseif lf then
 				w[2] = liftTop(lf)
 			else
-				w[2] = spotPos(spotIdx) or (spotIdx == 3 and spotPos(2)) or home
+				w[2] = spotPos(spotIdx) or home
 			end
 			if lf and not play and lf ~= lift then
 				w.kind, w.lift, w.dur = "lift", lf, 3 -- disappear, come up on this lift
@@ -364,17 +378,17 @@ function LiveShow.run(app, opts)
 	end
 	local curWalk = nil
 
-	local lead = People.new(Stage3D.peopleFolder, artistColor, 1.5, leadRole, 7)
+	local lead = People.new(Stage3D.peopleFolder, artistColor, 1.5, leadRole, 7, ad.look)
 	local band = {}
 	if ad.members >= 4 and ad.genre ~= "K-Pop" then
 		local drumPos = drums and (drums.cf * CFrame.new(0, 1, -1.6)).Position or onSurface(home + Vector3.new(0, 0, -10))
-		table.insert(band, { p = People.new(Stage3D.peopleFolder, Color3.fromRGB(30, 30, 36), 1.4, "guitar", 11), pos = onSurface(home + Vector3.new(-14, 0, -4)) })
-		table.insert(band, { p = People.new(Stage3D.peopleFolder, Color3.fromRGB(30, 30, 36), 1.4, "bass", 12), pos = onSurface(home + Vector3.new(14, 0, -4)) })
-		table.insert(band, { p = People.new(Stage3D.peopleFolder, Color3.fromRGB(30, 30, 36), 1.4, "drums", 13), pos = drumPos })
+		table.insert(band, { p = People.new(Stage3D.peopleFolder, Color3.fromRGB(30, 30, 36), 1.4, "guitar", 11, People.bandLook(ad, 1, Artists.BAND_STYLE)), pos = onSurface(home + Vector3.new(-14, 0, -4)) })
+		table.insert(band, { p = People.new(Stage3D.peopleFolder, Color3.fromRGB(30, 30, 36), 1.4, "bass", 12, People.bandLook(ad, 2, Artists.BAND_STYLE)), pos = onSurface(home + Vector3.new(14, 0, -4)) })
+		table.insert(band, { p = People.new(Stage3D.peopleFolder, Color3.fromRGB(30, 30, 36), 1.4, "drums", 13, People.bandLook(ad, 3, Artists.BAND_STYLE)), pos = drumPos })
 	elseif ad.members >= 2 then
 		local offs = { Vector3.new(-7, 0, -3), Vector3.new(7, 0, -3), Vector3.new(-14, 0, -5), Vector3.new(14, 0, -5) }
 		for i = 1, math.min(4, ad.members - 1) do
-			table.insert(band, { p = People.new(Stage3D.peopleFolder, artistColor:Lerp(Color3.new(1, 1, 1), 0.35), 1.45, "dancer", 20 + i), follow = offs[i] })
+			table.insert(band, { p = People.new(Stage3D.peopleFolder, artistColor:Lerp(Color3.new(1, 1, 1), 0.35), 1.45, "dancer", 20 + i, People.bandLook(ad, 10 + i, Artists.BAND_STYLE)), follow = offs[i] })
 		end
 	end
 	local performers = { lead }
@@ -525,23 +539,11 @@ function LiveShow.run(app, opts)
 		end
 	end
 	local autoOrder = { 2, 3, 5, 4, 6, 3, 2, 5 }
-	local livePerformerParts = {}
-	for _, p in ipairs(lead.model:GetChildren()) do
-		if p:IsA("BasePart") then
-			table.insert(livePerformerParts, p)
-		end
-	end
-	local liveCrowdParts = {}
-	local crowdCenter = Vector3.new(0, 0, size.floorEnd * 0.4)
-	for i = 1, math.min(80, #crowd.parts) do
-		table.insert(liveCrowdParts, crowd.parts[i])
-	end
-	if #liveCrowdParts > 0 then
-		local sum = Vector3.new()
-		for _, p in ipairs(liveCrowdParts) do
-			sum = sum + p.Position
-		end
-		crowdCenter = sum / #liveCrowdParts
+	local feed = LiveFeed.new({ performers = performers, color = artistColor })
+	local leadNow, yawNow = home, 0
+	ctx.liveFeed = function(face, mode)
+		ctx.leadPos, ctx.leadYaw = leadNow, yawNow
+		feed:update(face, mode, ctx)
 	end
 
 	local done = false
@@ -678,11 +680,11 @@ function LiveShow.run(app, opts)
 		end
 		ctx.screenText = screenText
 		ctx.spotIndex = curWalk and curWalk.spot or 1
-		-- live camera feeds for screens set to "Live: artist" / "Live: crowd"
-		local head = lead:headPosition()
-		local fwd = Vector3.new(math.sin(leadYaw), 0, math.cos(leadYaw))
-		ctx.livePerformer = { parts = livePerformerParts, cam = CFrame.lookAt(head + fwd * 9 + Vector3.new(0, 0.5, 0), head - Vector3.new(0, 1.2, 0)) }
-		ctx.liveCrowd = { parts = liveCrowdParts, cam = CFrame.lookAt(deckCenter + Vector3.new(0, 14, 0), crowdCenter) }
+		ctx.dt = dt
+		ctx.fog = seg.fog == true
+		ctx.phones = seg.phones == true
+		ctx.curtainT = math.max(0, t - segments[1].t1)
+		leadNow, yawNow = leadPos, leadYaw
 		for _, r in ipairs(items) do
 			Builder.animate(r, ctx)
 		end
@@ -702,7 +704,9 @@ function LiveShow.run(app, opts)
 		elseif seg.bpm > 0 then
 			segMult = 1
 		end
-		Venue.animate(crowd, t, crowdEnergy * segMult, speed, seg.phones == true)
+		ctx.crowdEnergy = crowdEnergy * segMult
+		ctx.crowdSpeed = speed
+		Venue.animate(crowd, t, crowdEnergy * segMult, speed, seg.phones == true, seg.c1, seg.c2, beatCount)
 
 		if songLbl.Text ~= seg.title then
 			songLbl.Text = seg.title

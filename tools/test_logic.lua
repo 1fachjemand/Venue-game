@@ -147,4 +147,44 @@ do
   GS.changeItem(st, rec, { w = 16 })
   check(st.money == m - 1800 + 1260, "shrink refund " .. st.money)
 end
+-- multi-night residencies, templates, setlist length, fan posts
+do
+  local st = GS.new("Y", "juno")
+  local SI = require(ROOT.Data.StageItems)
+  check(#st.designs == 3, "only free starter stages")
+  local days = GS.scheduleDays(10, { { venueId = "uk_o3" }, { venueId = "uk_o3" }, { venueId = "uk_o3" }, { venueId = "fr_neon" } }, 3)
+  check(days[1] == 10 and days[2] == 11 and days[3] == 12 and days[4] == 15, "residency days " .. table.concat(days, ","))
+  local v = Countries.venueById.uk_o3
+  check(Sim.travelCost(v, v, 30) == 0, "no travel between nights in the same venue")
+  check(GS.songCount(st.designs[1]) == 4 and GS.songCount({ items = {} }) == 4, "song count")
+  local cube
+  for _, p in ipairs(SI.PRESETS) do if p.name == "The Cube" then cube = p end end
+  st.money = 100
+  check(GS.addDesignFromTemplate(st, cube) == nil, "template needs money")
+  st.money = 5000000
+  local d = GS.addDesignFromTemplate(st, cube)
+  check(d and #d.items == #cube.items and st.money < 5000000, "template bought")
+  for _, it in ipairs(d.items) do check(SI.byId[it.t] ~= nil, "template item exists: " .. it.t) end
+  for _, p in ipairs(SI.PRESETS) do
+    local c = require(ROOT.Config).STAGE_CLASS_BY_ID[p.class]
+    for _, it in ipairs(p.items) do
+      local inside = (p.layout == "center") and (math.abs(it.x) <= c.center and math.abs(it.z) <= c.center) or (it.x >= c.minX and it.x <= c.maxX and it.z >= c.minZ and it.z <= c.maxZ)
+      check(inside, p.name .. ": " .. it.t .. " outside the build area")
+    end
+  end
+  local ok, t = GS.createTour(st, { artistId = "juno", designs = { Arena = d.id, Club = st.designs[1].id, Theatre = st.designs[1].id }, firstIn = 20, gap = 2, price = 300, shows = { { venueId = "uk_o3" }, { venueId = "uk_o3" } } })
+  check(ok and t.shows[2].day == t.shows[1].day + 1 and t.shows[2].travel == 0, "two nights at the O3")
+  check(#st.social >= 3, "fans post about the announcement")
+  local neg = 0
+  for _, p in ipairs(st.social) do if p.kind == "price_high" then neg = neg + 1 end end
+  check(neg >= 1, "expensive tickets get criticism")
+  for _ = 1, 40 do GS.advanceDay(st) end
+  local kinds = {}
+  for _, p in ipairs(st.social) do kinds[p.kind] = true check(not p.text:find("{"), "placeholder left: " .. p.text) end
+  local list = {}
+  for k in pairs(kinds) do list[#list + 1] = k end
+  table.sort(list)
+  print("social kinds", table.concat(list, ","), "posts", #st.social)
+  check(kinds.show_great or kinds.show_ok or kinds.show_bad, "posts after the shows")
+end
 print("FAILS", fails)

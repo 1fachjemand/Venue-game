@@ -246,6 +246,9 @@ end
 
 -- opts = { isOverUI = fn() -> bool, onClick = fn(cid), onHover = fn(cid), screenCenter = fn() -> x, y }
 function WM.activate(opts)
+	if WM.folder then
+		WM.folder.Parent = workspace
+	end
 	WM.build()
 	WM.opts = opts
 	if WM.active then
@@ -365,6 +368,10 @@ function WM.activate(opts)
 end
 
 function WM.deactivate()
+	-- the map table is far away, but in concerts the camera could still see it: take it out of the world
+	if WM.folder then
+		WM.folder.Parent = nil
+	end
 	if not WM.active then
 		return
 	end

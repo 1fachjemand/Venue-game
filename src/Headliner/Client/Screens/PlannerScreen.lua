@@ -9,6 +9,7 @@ local Util = require(Root.Logic.Util)
 local Sim = require(Root.Logic.Sim)
 local GS = require(Root.Logic.GameState)
 local UI = require(Root.Client.UI)
+local People = require(Root.Client.People)
 
 local T = UI.Theme
 local MapScreen = {}
@@ -361,38 +362,79 @@ function MapScreen:refreshCountry()
 	end
 end
 
+-- consecutive shows in the same venue = one residency with several nights
+function MapScreen:routeGroups()
+	local groups = {}
+	for i, s in ipairs(self.draft.shows) do
+		local g = groups[#groups]
+		if g and g.venueId == s.venueId then
+			g.n = g.n + 1
+			g.last = i
+		else
+			table.insert(groups, { venueId = s.venueId, first = i, last = i, n = 1 })
+		end
+	end
+	return groups
+end
+
+function MapScreen:showDays()
+	return GS.scheduleDays(self.app.state.day + self.draft.firstIn, self.draft.shows, self.draft.gap)
+end
+
 function MapScreen:refreshRoutePanel()
 	local p = self.routePanel
 	UI.ClearChildren(p)
-	local state, draft = self.app.state, self.draft
+	local draft = self.draft
 	UI.Label(p, "YOUR ROUTE", UI.px(20, 12), UI.px(300, 32), { textSize = 24, font = UI.FontBlack, color = T.accent })
 	UI.Label(p, #draft.shows .. " show" .. (#draft.shows == 1 and "" or "s"), UI.px(250, 12), UI.px(164, 32), { textSize = 16, color = T.sub, alignX = Enum.TextXAlignment.Right })
 	local list = UI.Scroll(p, UI.px(10, 52), UI.px(414, 776))
 	UI.List(true, 6).Parent = list
 	if #draft.shows == 0 then
-		UI.Label(list, "Click a country on the map, then press + ADD on a venue. Shows are played in this order.", nil, UI.px(396, 90), { textSize = 15, color = T.sub, wrap = true })
+		UI.Label(list, "Click a country on the map, then + ADD a venue. Add the same venue again for more nights.", nil, UI.px(396, 90), { textSize = 15, color = T.sub, wrap = true })
 	end
-	for i, s in ipairs(draft.shows) do
-		local v = Countries.venueById[s.venueId]
-		local row = UI.New("Frame", { Parent = list, Size = UI.px(396, 58), BackgroundColor3 = T.panel2, BorderSizePixel = 0, LayoutOrder = i, UI.Corner(8) })
-		local _, dateShort = Util.date(state.day + draft.firstIn + (i - 1) * draft.gap, Config.START_YEAR)
-		UI.Label(row, i .. ".  " .. v.name, UI.px(10, 4), UI.px(278, 24), { textSize = 17, font = UI.FontBold })
-		UI.Label(row, dateShort .. "  |  " .. v.city .. "  |  " .. Util.number(v.cap) .. " seats", UI.px(10, 30), UI.px(278, 20), { textSize = 13, color = T.sub })
+	local groups = self:routeGroups()
+	local days = self:showDays()
+	local function rebuild(order)
+		local shows = {}
+		for _, g in ipairs(order) do
+			for i = g.first, g.last do
+				table.insert(shows, draft.shows[i])
+			end
+		end
+		draft.shows = shows
+		self:refresh()
+	end
+	for gi, g in ipairs(groups) do
+		local v = Countries.venueById[g.venueId]
+		local row = UI.New("Frame", { Parent = list, Size = UI.px(396, 92), BackgroundColor3 = T.panel2, BorderSizePixel = 0, LayoutOrder = gi, UI.Corner(8) })
+		local _, d1 = Util.date(days[g.first], Config.START_YEAR)
+		local _, d2 = Util.date(days[g.last], Config.START_YEAR)
+		UI.Label(row, gi .. ".  " .. v.name, UI.px(10, 4), UI.px(278, 24), { textSize = 17, font = UI.FontBold })
+		UI.Label(row, (g.n > 1 and (d1 .. " - " .. d2) or d1) .. "  |  " .. v.city .. "  |  " .. Util.number(v.cap), UI.px(10, 28), UI.px(290, 20), { textSize = 13, color = T.sub })
+		UI.Button(row, "-", UI.px(10, 54), UI.px(32, 30), { textSize = 16 }, function()
+			table.remove(draft.shows, g.last)
+			self:refresh()
+		end)
+		UI.Label(row, g.n .. (g.n == 1 and " night" or " nights"), UI.px(46, 54), UI.px(90, 30), { textSize = 15, font = UI.FontBold, alignX = Enum.TextXAlignment.Center, color = g.n > 1 and T.gold or T.text })
+		UI.Button(row, "+", UI.px(140, 54), UI.px(32, 30), { textSize = 16, disabled = #draft.shows >= Config.MAX_SHOWS_PER_TOUR }, function()
+			table.insert(draft.shows, g.last + 1, { venueId = g.venueId, price = draft.price })
+			self:refresh()
+		end)
 		UI.Button(row, "^", UI.px(292, 14), UI.px(30, 30), { textSize = 14 }, function()
-			if i > 1 then
-				draft.shows[i], draft.shows[i - 1] = draft.shows[i - 1], draft.shows[i]
-				self:refresh()
+			if gi > 1 then
+				groups[gi], groups[gi - 1] = groups[gi - 1], groups[gi]
+				rebuild(groups)
 			end
 		end)
 		UI.Button(row, "v", UI.px(326, 14), UI.px(30, 30), { textSize = 14 }, function()
-			if i < #draft.shows then
-				draft.shows[i], draft.shows[i + 1] = draft.shows[i + 1], draft.shows[i]
-				self:refresh()
+			if gi < #groups then
+				groups[gi], groups[gi + 1] = groups[gi + 1], groups[gi]
+				rebuild(groups)
 			end
 		end)
 		UI.Button(row, "X", UI.px(360, 14), UI.px(30, 30), { textSize = 14, color = UI.shade(T.bad, 0.7) }, function()
-			table.remove(draft.shows, i)
-			self:refresh()
+			table.remove(groups, gi)
+			rebuild(groups)
 		end)
 	end
 	UI.Button(p, "< Back", UI.px(16, 848), UI.px(110, 60), {}, function()
@@ -438,8 +480,9 @@ function MapScreen:buildArtistStep(body)
 		local sel = self.draft.artistId == ad.id
 		local card = UI.New("Frame", { Parent = grid, BackgroundColor3 = sel and UI.shade(T.accent, 0.45) or T.panel, BorderSizePixel = 0, LayoutOrder = i, UI.Corner(12), UI.Stroke(sel and T.accent or T.stroke, sel and 3 or 1, 0) })
 		UI.New("Frame", { Parent = card, Size = UI.px(440, 10), BackgroundColor3 = UI.rgb(ad.color), BorderSizePixel = 0, UI.Corner(12) })
-		UI.Label(card, ad.name, UI.px(20, 22), UI.px(400, 36), { textSize = 28, font = UI.FontBlack })
-		UI.Label(card, ad.genre .. "  |  " .. Util.tier(Util.totalFans(a.fans)), UI.px(20, 60), UI.px(400, 22), { textSize = 16, color = T.sub })
+		People.preview(card, ad.look, UI.rgb(ad.color), UI.px(300, 16), UI.px(130, 200))
+		UI.Label(card, ad.name, UI.px(20, 22), UI.px(280, 36), { textSize = 28, font = UI.FontBlack })
+		UI.Label(card, ad.genre .. "  |  " .. Util.tier(Util.totalFans(a.fans)), UI.px(20, 60), UI.px(280, 22), { textSize = 16, color = T.sub })
 		local lines = {
 			"Fans: <b>" .. Util.short(Util.totalFans(a.fans)) .. "</b>   Hype: <b>" .. math.floor(a.hype) .. "</b>   Skill: <b>" .. ad.skill .. "</b>",
 			"Strongest in: <b>" .. (function()
@@ -453,7 +496,7 @@ function MapScreen:buildArtistStep(body)
 			end)() .. "</b>",
 			"Suggested ticket price: <b>~" .. Util.money(Util.round(Sim.ticketBase(state, ad.id))) .. "</b>",
 		}
-		UI.Label(card, table.concat(lines, "\n"), UI.px(20, 96), UI.px(400, 110), { textSize = 16, rich = true, wrap = true, alignY = Enum.TextYAlignment.Top })
+		UI.Label(card, table.concat(lines, "\n"), UI.px(20, 96), UI.px(280, 130), { textSize = 16, rich = true, wrap = true, alignY = Enum.TextYAlignment.Top })
 		if tour then
 			UI.Label(card, "On tour: " .. tour.name, UI.px(20, 236), UI.px(400, 44), { textSize = 16, color = T.warn, font = UI.FontBold })
 		else
@@ -510,7 +553,7 @@ function MapScreen:buildTicketStep(body)
 	stepper(28, 304, "FIRST SHOW IN (longer = more pre-sale time)", draft.firstIn, Config.MIN_LEAD_DAYS, Config.MAX_LEAD_DAYS, function(v)
 		draft.firstIn = v
 	end)
-	stepper(470, 304, "DAYS BETWEEN SHOWS", draft.gap, 1, Config.MAX_GAP_DAYS, function(v)
+	stepper(470, 304, "DAYS BETWEEN CITIES", draft.gap, 1, Config.MAX_GAP_DAYS, function(v)
 		draft.gap = v
 	end)
 	UI.Button(left, (draft.watchFirst and "[X]" or "[  ]") .. "  Watch the opening night live in 3D", UI.px(28, 410), UI.px(844, 48), { color = T.panel2, textSize = 17 }, function()
@@ -531,7 +574,7 @@ function MapScreen:buildTicketStep(body)
 	UI.Button(left, "NEXT: CONFIRM >", UI.px(560, 846), UI.px(312, 60), { color = T.accent, textSize = 18 }, function()
 		for _, need in ipairs(self:classesNeeded()) do
 			if not self:designForClass(need.class) then
-				self.app:toast("You have no stage design that fits your " .. string.lower(need.class) .. " venues. Build a " .. need.class .. " design in the Stage Designer.", T.bad, 8)
+				self.app:toast("You have no stage design that fits your " .. string.lower(need.class) .. " venues. Build a " .. need.class .. " stage in STAGES.", T.bad, 8)
 				return
 			end
 		end
@@ -541,7 +584,7 @@ function MapScreen:buildTicketStep(body)
 	-- one stage production per venue size
 	local right = UI.Panel(body, UI.px(940, 72), UI.px(960, 928))
 	UI.Label(right, "STAGE PRODUCTIONS", UI.px(28, 20), UI.px(600, 34), { textSize = 26, font = UI.FontBlack, color = T.accent })
-	UI.Label(right, "Real tours bring a different production for small and big venues. Pick a design for every venue size on your route. A design never fits into a smaller venue class than its own.", UI.px(28, 58), UI.px(900, 48), { textSize = 15, color = T.sub, wrap = true })
+	UI.Label(right, "Pick one stage for every venue size on your route.", UI.px(28, 58), UI.px(900, 48), { textSize = 16, color = T.sub, wrap = true })
 	local list = UI.Scroll(right, UI.px(20, 112), UI.px(920, 716))
 	UI.List(true, 8).Parent = list
 	local order = 0
@@ -561,9 +604,7 @@ function MapScreen:buildTicketStep(body)
 			local warn = add(UI.New("Frame", { Size = UI.px(900, 70), BackgroundColor3 = UI.shade(T.bad, 0.35), BorderSizePixel = 0, UI.Corner(8) }))
 			UI.Label(warn, "No design fits these venues! Your designs are too big. Build a " .. need.class .. " stage.", UI.px(16, 0), UI.px(560, 70), { textSize = 16, wrap = true, font = UI.FontBold })
 			UI.Button(warn, "BUILD " .. string.upper(need.class) .. " STAGE", UI.px(600, 14), UI.px(284, 42), { color = T.accent, textSize = 15 }, function()
-				self.app.returnScreen = "planner"
-				self.app.newDesignClass = need.class
-				self.app:openDesigner(nil)
+				self.app:go("stages", { newClass = need.class, back = "planner" })
 			end)
 		end
 		for _, d in ipairs(fits) do
@@ -583,16 +624,20 @@ function MapScreen:buildTicketStep(body)
 				self:refresh()
 			end))
 			UI.Label(b, (sel and "> " or "") .. d.name, UI.px(16, 6), UI.px(560, 28), { textSize = 19, font = UI.FontBold })
-			UI.Label(b, d.class .. " " .. (d.layout == "center" and "center stage" or "end stage") .. "  |  " .. st.count .. " items  |  " .. Util.money(st.cost) .. " per show", UI.px(16, 36), UI.px(600, 20), { textSize = 14, color = T.sub })
+			UI.Label(b, d.class .. " " .. (d.layout == "center" and "center stage" or "end stage") .. "  |  " .. GS.songCount(d) .. " songs  |  " .. Util.money(st.cost) .. " per show", UI.px(16, 36), UI.px(600, 20), { textSize = 14, color = T.sub })
 			local col = q >= 80 and T.good or (q >= 55 and T.warn or T.bad)
 			UI.Label(b, "quality " .. math.floor(q + 0.5) .. "%", UI.px(640, 0), UI.px(244, 64), { textSize = 22, font = UI.FontBlack, color = col, alignX = Enum.TextXAlignment.Right })
 		end
 	end
-	UI.Button(right, "OPEN STAGE DESIGNER", UI.px(28, 846), UI.px(904, 60), { color = T.accent2, textColor = Color3.new(0, 0, 0), textSize = 18 }, function()
+	UI.Button(right, "EDIT THIS STAGE", UI.px(28, 846), UI.px(444, 60), { color = T.accent2, textColor = Color3.new(0, 0, 0), textSize = 18 }, function()
 		local d = self:design()
 		self.app.lastDesignId = d and d.id
 		self.app.returnScreen = "planner"
 		self.app:openDesigner(d and d.id)
+	end)
+	UI.Button(right, "+ NEW STAGE", UI.px(488, 846), UI.px(444, 60), { textSize = 18 }, function()
+		local need = self:classesNeeded()[1]
+		self.app:go("stages", { newClass = need and need.class or "Club", back = "planner" })
 	end)
 end
 
@@ -633,11 +678,12 @@ function MapScreen:buildConfirmStep(body)
 	end
 	local list = UI.Scroll(panel, UI.px(16, 140), UI.px(1848, 560))
 	UI.List(true, 4).Parent = list
+	local days = self:showDays()
 	for i, s in ipairs(draft.shows) do
 		local v = Countries.venueById[s.venueId]
 		local r = est.rows[i]
 		local row = UI.New("Frame", { Parent = list, Size = UI.px(1828, 44), BackgroundColor3 = (i % 2 == 0) and T.panel2 or T.panel3, BorderSizePixel = 0, LayoutOrder = i, UI.Corner(6) })
-		local _, dateShort = Util.date(state.day + draft.firstIn + (i - 1) * draft.gap, Config.START_YEAR)
+		local _, dateShort = Util.date(days[i], Config.START_YEAR)
 		UI.Label(row, tostring(i), UI.px(12, 0), UI.px(40, 44), { textSize = 16, font = UI.FontBold })
 		UI.Label(row, dateShort, UI.px(54, 0), UI.px(120, 44), { textSize = 16 })
 		UI.Label(row, v.name .. ", " .. v.city, UI.px(184, 0), UI.px(640, 44), { textSize = 16, font = UI.FontBold })

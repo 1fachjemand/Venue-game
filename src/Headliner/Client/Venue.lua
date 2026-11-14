@@ -41,7 +41,7 @@ function Venue.build(lookKey, fill, merchColor, opts)
 	local center = opts.layout == "center"
 	local L = LOOKS[lookKey] or LOOKS.arena
 	local folder = New("Folder", { Name = "VenueBuild", Parent = Stage3D.venueFolder })
-	local info = { folder = folder, look = L, parts = {}, base = {}, phase = {}, phones = {}, slots = 0 }
+	local info = { folder = folder, look = L, parts = {}, base = {}, phase = {}, phones = {}, bands = {}, slots = 0 }
 	local halfW, z0, z1
 	if center then
 		halfW = math.max(L.w, L.d) / 2
@@ -269,6 +269,26 @@ function Venue.build(lookKey, fill, merchColor, opts)
 		table.insert(info.parts, head)
 		table.insert(info.base, head.CFrame)
 		table.insert(info.phase, ph)
+		if opts.wristbands and math.random() < 0.75 then
+			-- glowing LED wristband on a raised hand
+			local band = New("Part", {
+				Name = "Wristband",
+				Size = Vector3.new(0.5, 0.5, 0.5),
+				Color = merchColor or Color3.new(1, 1, 1),
+				Material = Enum.Material.Neon,
+				Anchored = true,
+				CanCollide = false,
+				CanTouch = false,
+				CanQuery = false,
+				CastShadow = false,
+				CFrame = CFrame.new(pos + Vector3.new(-0.7, 4.6, 0.2)),
+				Parent = folder,
+			})
+			table.insert(info.parts, band)
+			table.insert(info.base, band.CFrame)
+			table.insert(info.phase, ph)
+			table.insert(info.bands, { part = band, x = pos.X, z = pos.Z })
+		end
 		if math.random() < 0.3 then
 			local phone = New("Part", {
 				Name = "Phone",
@@ -293,7 +313,7 @@ function Venue.build(lookKey, fill, merchColor, opts)
 end
 
 -- energy: jump height factor, speed: jumps per second-ish
-function Venue.animate(info, t, energy, speed, phonesOn)
+function Venue.animate(info, t, energy, speed, phonesOn, c1, c2, beatCount)
 	local parts, base, phase, cfs = info.parts, info.base, info.phase, info.cfs
 	for i = 1, #parts do
 		local j = math.sin(t * speed + phase[i])
@@ -304,6 +324,15 @@ function Venue.animate(info, t, energy, speed, phonesOn)
 	end
 	if #parts > 0 then
 		workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged)
+	end
+	-- LED wristbands: colour waves run through the crowd on the beat
+	if #info.bands > 0 and c1 and info.lastBeat ~= beatCount then
+		info.lastBeat = beatCount
+		local b = beatCount or 0
+		for _, w in ipairs(info.bands) do
+			local wave = math.floor((w.z * 0.08 + w.x * 0.03) + b) % 3
+			w.part.Color = (wave == 0) and c1 or ((wave == 1) and c2 or Color3.new(1, 1, 1))
+		end
 	end
 	if info.phonesOn ~= phonesOn then
 		info.phonesOn = phonesOn
