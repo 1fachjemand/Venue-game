@@ -78,7 +78,10 @@ local function onCharacter(char)
 	World.setZoom()
 	World.freeze(World.frozen)
 	World.resetCamera()
-	h.Seated:Connect(function()
+	h.Seated:Connect(function(active)
+		if not active then
+			World.endMeeting()
+		end
 		World.refresh()
 	end)
 end
@@ -390,19 +393,19 @@ end
 ------------------------------------------------------------------ stations
 local OPEN = {
 	laptop = function(app)
-		app:go("office")
+		app:openStation("laptop", "office")
 	end,
 	maptable = function(app)
-		app:go("planner")
+		app:openStation("maptable", "planner")
 	end,
-	meeting = function(app)
-		app:go("artists")
+	meeting = function()
+		World.startMeeting()
 	end,
 	stagehall = function(app)
-		app:go("stages")
+		app:openStation("stagehall", "stages")
 	end,
 	charts = function(app)
-		app:go("charts")
+		app:openStation("charts", "charts")
 	end,
 }
 World.OPEN = OPEN
@@ -420,9 +423,135 @@ function World.trigger(id)
 	if not (app.state.visited or {})[id] then
 		app:act("visit", { station = id })
 	end
+	if World.override == id then
+		World.override = nil
+	end
 	if OPEN[id] then
 		OPEN[id](app)
 	end
+end
+
+-- send the player to a station (from a button somewhere else): the arrow points there
+function World.guide(id)
+	World.override = id
+	World.refresh()
+end
+
+------------------------------------------------------------------ the meeting: sit down, the board shows your artists and new talent
+local BOARD_W, BOARD_H = 1600, 710
+local function boardCard(parent, ad, state, signed, y, x)
+	local app = World.app
+	local a = state.artists[ad.id]
+	local total = Util.totalFans(a.fans)
+	local card = New("Frame", { Parent = parent, Position = UI.px(x, y), Size = UI.px(372, 270), BackgroundColor3 = T.panel2, BorderSizePixel = 0, UI.Corner(14) })
+	New("Frame", { Parent = card, Size = UI.px(372, 8), BackgroundColor3 = UI.rgb(ad.color), BorderSizePixel = 0, UI.Corner(14) })
+	People.preview(card, ad.look, UI.rgb(ad.color), UI.px(10, 16), UI.px(110, 170), Color3.fromRGB(32, 36, 54))
+	UI.Label(card, ad.name, UI.px(130, 16), UI.px(236, 32), { textSize = 26, font = UI.FontBlack })
+	UI.Label(card, ad.genre .. (ad.members > 1 and ("  ·  " .. ad.members .. " members") or "  ·  solo"), UI.px(130, 50), UI.px(236, 22), { textSize = 16, color = UI.rgb(ad.color), font = UI.FontBold })
+	local function stat(yy, label, frac, txt, col)
+		UI.Label(card, label, UI.px(130, yy), UI.px(60, 22), { textSize = 14, color = T.sub, font = UI.FontBold })
+		UI.Bar(card, UI.px(190, yy + 7), UI.px(110, 9), math.clamp(frac, 0, 1), col)
+		UI.Label(card, txt, UI.px(304, yy), UI.px(60, 22), { textSize = 15, font = UI.FontBold, alignX = Enum.TextXAlignment.Right })
+	end
+	stat(82, "FANS", math.log10(1 + total / 10000) / 4, Util.short(total), T.good)
+	stat(110, "SKILL", ad.skill / 100, tostring(ad.skill), T.accent2)
+	stat(138, "HYPE", a.hype / 100, tostring(math.floor(a.hype)), T.accent)
+	if signed then
+		local tour = GS.activeTour(state, ad.id)
+		UI.Label(card, tour and ("ON TOUR: " .. tour.name) or "Ready for a tour", UI.px(130, 168), UI.px(236, 22), { textSize = 15, color = tour and T.gold or T.good, font = UI.FontBold })
+		UI.Label(card, ad.bio, UI.px(14, 196), UI.px(346, 66), { textSize = 15, color = T.sub, wrap = true, alignY = Enum.TextYAlignment.Top })
+	else
+		local lvl = GS.level(state)
+		local locked = ad.level > lvl
+		local afford = state.money >= ad.signCost
+		UI.Label(card, "Costs " .. Util.money(ad.signCost), UI.px(130, 168), UI.px(236, 22), { textSize = 16, color = T.gold, font = UI.FontBold })
+		local txt = locked and ("LOCKED · needs level " .. ad.level) or (afford and "SIGN" or "NOT ENOUGH MONEY")
+		UI.Button(card, txt, UI.px(14, 204), UI.px(344, 52), { color = (not locked and afford) and T.good or T.panel3, disabled = locked or not afford, textSize = 18 }, function()
+			app:confirm("Sign " .. ad.name .. "?", "Signing costs <b>" .. Util.money(ad.signCost) .. "</b>. Then you can book their tours at the world map table.", function()
+				local ok, msg, data = app:act("sign", { artistId = ad.id })
+				app:toast(msg or "", ok and T.good or T.bad)
+				for _, id in ipairs((data and data.achievements) or {}) do
+					local Achievements = require(Root.Data.Achievements)
+					app:toast("<b>Achievement unlocked:</b> " .. Achievements.byId[id].name, T.accent, 8)
+				end
+				World.drawBoard()
+				app:refreshHud()
+			end)
+		end)
+	end
+end
+
+function World.drawBoard()
+	local g = World.boardGui
+	if not g then
+		return
+	end
+	g:ClearAllChildren()
+	local state = World.app.state
+	local bg = New("Frame", { Parent = g, Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(16, 18, 30), BorderSizePixel = 0 })
+	UI.Label(bg, "MEETING  ·  " .. string.upper(state.labelName), UI.px(30, 14), UI.px(1000, 44), { textSize = 34, font = UI.FontBlack, color = T.text })
+	UI.Label(bg, "Stand up (SPACE) to end the meeting", UI.px(1040, 22), UI.px(530, 30), { textSize = 18, color = T.sub, alignX = Enum.TextXAlignment.Right })
+	local cols = { { "YOUR ROSTER", GS.signedArtists(state), true, 30 }, { "AVAILABLE TALENT", GS.unsignedArtists(state), false, 818 } }
+	for _, c in ipairs(cols) do
+		UI.Label(bg, c[1] .. "  (" .. #c[2] .. ")", UI.px(c[4], 70), UI.px(700, 30), { textSize = 22, font = UI.FontBlack, color = c[3] and T.accent2 or T.gold })
+		local sc = UI.Scroll(bg, UI.px(c[4] - 6, 106), UI.px(770, 590))
+		sc.AutomaticCanvasSize = Enum.AutomaticSize.Y
+		local holder = New("Frame", { Parent = sc, Size = UI.px(760, math.ceil(#c[2] / 2) * 284), BackgroundTransparency = 1 })
+		for k, ad in ipairs(c[2]) do
+			boardCard(holder, ad, state, c[3], math.floor((k - 1) / 2) * 284, ((k - 1) % 2) * 384)
+		end
+		if #c[2] == 0 then
+			UI.Label(sc, c[3] and "Nobody yet." or "You signed everyone. What a label!", UI.px(10, 10), UI.px(700, 40), { textSize = 20, color = T.sub })
+		end
+	end
+end
+
+function World.startMeeting()
+	local app = World.app
+	if World.meeting or not World.inMeetingSeat() then
+		return
+	end
+	local board = World.root and World.root:FindFirstChild("Board", true)
+	if not board then
+		return
+	end
+	World.meeting = true
+	app.mode = "meeting"
+	pcall(function()
+		ProximityPromptService.Enabled = false
+	end)
+	-- the board shows its own screen (buttons work because it lives in the PlayerGui)
+	World.boardGui = New("SurfaceGui", { Name = "MeetingBoard", Parent = Players.LocalPlayer:WaitForChild("PlayerGui"), Adornee = board, Face = Enum.NormalId.Back, SizingMode = Enum.SurfaceGuiSizingMode.FixedSize, CanvasSize = Vector2.new(BOARD_W, BOARD_H), LightInfluence = 0, ResetOnSpawn = false })
+	World.drawBoard()
+	-- look at the board from the table
+	local cam = workspace.CurrentCamera
+	cam.CameraType = Enum.CameraType.Scriptable
+	cam.CFrame = CFrame.lookAt(board.Position + Vector3.new(0, -0.4, 30), board.Position + Vector3.new(0, -0.6, 0))
+	cam.FieldOfView = 50
+	app:refreshHud()
+	if not (app.state.visited or {}).meeting then
+		app:act("visit", { station = "meeting" })
+	end
+end
+
+function World.endMeeting()
+	if not World.meeting then
+		return
+	end
+	World.meeting = false
+	if World.boardGui then
+		World.boardGui:Destroy()
+		World.boardGui = nil
+	end
+	local app = World.app
+	app.mode = "world"
+	pcall(function()
+		ProximityPromptService.Enabled = true
+	end)
+	World.resetCamera()
+	World.refresh()
+	app:refreshHud()
+	app:processLiveQueue()
 end
 
 -- is the player sitting on a meeting room chair?
@@ -476,7 +605,7 @@ function World.refresh()
 			end
 		end
 	end
-	World.target = GS.objective(state).target
+	World.target = World.override or GS.objective(state).target
 	refreshChartsWall(un.charts)
 	refreshPins()
 	World.refreshPosters()

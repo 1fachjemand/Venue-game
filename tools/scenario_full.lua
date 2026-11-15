@@ -218,29 +218,49 @@ MOCK.prompt("charts")
 assert(app.current == "charts")
 MOCK.clickExact("✕  CLOSE")
 
--- 5) meeting room: sit down, then the meeting starts; Kai is locked until level 2
+-- 5) meeting room: sit down, start the meeting, the board shows roster + talent; Kai is locked until level 2
 local seat = workspace.StarlightRecords:FindFirstChild("MeetingSeat1", true)
 MOCK.sit(seat)
 steps(2)
 assert(W.prompts.meeting.Enabled, "meeting prompt while sitting")
 MOCK.prompt("meeting")
-assert(app.current == "artists")
-MOCK.clickExact("TALENT SCOUT")
-log("locked buttons", #MOCK.buttons("^LOCKED"))
-MOCK.clickExact("✕  CLOSE")
+assert(app.mode == "meeting" and W.boardGui, "meeting started, board shows")
+log("board: roster", #MOCK.texts("^YOUR ROSTER"), "locked", #MOCK.buttons("^LOCKED"))
+assert(#MOCK.buttons("^LOCKED") > 0, "bigger artists locked at level 1")
+MOCK.sit(nil)
+steps(2)
+assert(app.mode == "world" and not W.boardGui, "standing up ends the meeting")
+assert(not W.prompts.meeting.Enabled, "standing up hides the meeting prompt")
 cheat(function(s) s.stats.tickets = 30000 s.money = 1000000 end)
 nextDay()
 clearModals()
+MOCK.sit(seat)
+steps(2)
 MOCK.prompt("meeting")
-MOCK.clickExact("TALENT SCOUT")
-MOCK.click("^SIGN FOR %$250,000")
+local kaiBtn = nil
+for _, b in ipairs(MOCK.buttons("^SIGN$")) do kaiBtn = kaiBtn or b end
+assert(kaiBtn, "a SIGN button on the board")
+-- sign the second SIGN card (Kai) by name
+local signed = false
+for _, card in ipairs(W.boardGui:GetDescendants()) do
+	if card:IsA("TextLabel") and card.Text == "Kai Rivers" then
+		for _, b in ipairs(card.Parent:GetDescendants()) do
+			if b:IsA("TextButton") and b.Text == "SIGN" then b.MouseButton1Click:Fire() MOCK.runTasks() signed = true end
+		end
+	end
+end
+assert(signed, "Kai's SIGN button")
 MOCK.clickExact("Yes")
 log("kai signed", app.state.artists.kai.signed, SRV().artists.kai.signed, "money", app.state.money)
 assert(SRV().artists.kai.signed, "signing did not reach the server")
-MOCK.clickExact("✕  CLOSE")
 MOCK.sit(nil)
 steps(2)
-assert(not W.prompts.meeting.Enabled, "standing up hides the meeting prompt")
+-- a link to another room: the arrow points there
+MOCK.prompt("laptop")
+MOCK.click("^FIND TALENT")
+log("guide after FIND TALENT:", W.target)
+MOCK.prompt("laptop")
+MOCK.clickExact("✕  CLOSE")
 
 -- 6) stage builder: place every item type the new way (card -> click into the world -> tick)
 MOCK.prompt("stagehall")
@@ -464,9 +484,13 @@ log("designs now", #app.state.designs)
 MOCK.clickExact("✕  CLOSE")
 assert(app.mode == "world")
 app:openPhone()
-assert(app.current == "social")
+assert(app.mode == "phone" and app.phone.frame.Visible, "phone open")
+MOCK.clickExact("FAN MOOD")
+MOCK.clickExact("TRENDING")
+MOCK.clickExact("FEED")
 log("social posts", #app.state.social, "first:", app.state.social[1] and app.state.social[1].text)
-MOCK.clickExact("✕  CLOSE")
+MOCK.clickExact("✕")
+assert(app.mode == "world", "phone closed")
 
 -- 8) superstar stadium tour (needs level 4), watched live with skip
 cheat(function(s) s.money = 60000000 s.stats.tickets = 2000000 end)

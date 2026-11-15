@@ -196,6 +196,7 @@ function App:beginGame(isNew)
 	self.screens.charts = require(Screens.ChartsScreen).new(self)
 	self.screens.stages = require(Screens.StagesScreen).new(self)
 	self.screens.social = require(Screens.SocialScreen).new(self)
+	self.phone = require(Screens.PhoneScreen).new(self)
 	self.toastFrame = UI.New("Frame", { Parent = self.canvas, Name = "Toasts", Position = UI.px(740, 80), Size = UI.px(440, 900), BackgroundTransparency = 1, ZIndex = 60 })
 	UI.List(true, 8, Enum.HorizontalAlignment.Center).Parent = self.toastFrame
 	self.mode = "world"
@@ -390,9 +391,14 @@ function App:refreshHud()
 		self.barDate.Text = dateTxt
 	end
 	local walking = self.mode == "world"
-	self.hud.Visible = walking
+	self.hud.Visible = walking or self.mode == "phone"
 	self.objectiveFrame.Visible = walking
 	self.phoneButton.Visible = walking
+	if not self.meetingHint then
+		self.meetingHint = UI.Label(self.canvas, "MEETING  ·  click SIGN on the board  ·  press SPACE to stand up", UI.px(0, 1020), UI.px(1920, 40), { textSize = 22, font = UI.FontBold, alignX = Enum.TextXAlignment.Center })
+		self.meetingHint.TextStrokeTransparency = 0.4
+	end
+	self.meetingHint.Visible = self.mode == "meeting"
 	if self.sandboxPanel then
 		self.sandboxPanel.Visible = walking
 	end
@@ -431,8 +437,45 @@ function App:buildScreenBar()
 	end)
 end
 
--- opens a screen (as a full-screen page, the character waits in the building)
+-- which pages a station shows; any other page is a different place in the building
+local STATION_PAGES = {
+	laptop = { office = true, tours = true },
+	maptable = { planner = true, tours = true, office = true },
+	stagehall = { stages = true },
+	charts = { charts = true },
+}
+local PAGE_STATION = { office = "laptop", tours = "laptop", planner = "maptable", artists = "meeting", stages = "stagehall", charts = "charts" }
+local STATION_NAME = { laptop = "LAPTOP", maptable = "WORLD MAP table", meeting = "MEETING ROOM (sit down)", stagehall = "STAGE HALL", charts = "CHARTS screen" }
+
+function App:openStation(station, page, args)
+	self.station = station
+	self:showPage(page, args)
+end
+
+-- a page of another station: walk there (the arrow shows the way)
 function App:go(name, args)
+	if name == "social" then
+		self:closeScreen()
+		self:openPhone()
+		return
+	end
+	local here = self.station and STATION_PAGES[self.station]
+	if here and here[name] then
+		self:showPage(name, args)
+		return
+	end
+	local target = PAGE_STATION[name]
+	if self.mode == "menu" then
+		self:closeScreen()
+	end
+	if target and self.world then
+		self.world.guide(target)
+		self:toast("Walk to the <b>" .. STATION_NAME[target] .. "</b>, follow the arrow.", T.accent2)
+	end
+end
+
+-- opens a page (full screen, the character waits in the building)
+function App:showPage(name, args)
 	if not self.screens[name] then
 		return
 	end
@@ -473,6 +516,7 @@ function App:closeScreen()
 	end
 	require(Root.Client.WorldMap3D).deactivate()
 	self.current = nil
+	self.station = nil
 	self.backdrop.Visible = false
 	self.content.Visible = false
 	self.screenBar.Visible = false
@@ -487,15 +531,41 @@ function App:closeScreen()
 	self:processLiveQueue()
 end
 
+-- the phone: SOCIAL on a smartphone, over the building (the character waits)
 function App:openPhone()
+	if self.mode ~= "world" or self.modalOpen then
+		return
+	end
 	self.seenPosts = #(self.state.social or {})
-	self:go("social")
+	self.mode = "phone"
+	if self.world then
+		self.world.freeze(true)
+	end
+	self.phone:show()
+	self:refreshHud()
+end
+
+function App:closePhone()
+	if self.mode ~= "phone" then
+		return
+	end
+	self.phone:hide()
+	self.mode = "world"
+	if self.world then
+		self.world.freeze(false)
+		self.world.refresh()
+	end
+	self:refreshHud()
+	self:processLiveQueue()
 end
 
 function App:refreshCurrent()
 	local scr = self.current and self.screens[self.current]
 	if scr and scr.frame.Visible then
 		scr:refresh()
+	end
+	if self.mode == "phone" then
+		self.phone:refresh()
 	end
 	if self.world and self.mode == "world" then
 		self.world.refresh()
@@ -688,7 +758,7 @@ end
 
 ------------------------------------------------------------------ time
 function App:nextDay()
-	if self.modalOpen or #self.liveQueue > 0 or (self.mode ~= "world" and self.mode ~= "menu") then
+	if self.modalOpen or #self.liveQueue > 0 or (self.mode ~= "world" and self.mode ~= "menu" and self.mode ~= "phone") then
 		return
 	end
 	local ok, msg, ev = self:act("nextDay")
