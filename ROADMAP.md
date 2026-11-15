@@ -36,7 +36,11 @@
 - [erledigt] Stadt um die Hallen, Z-Fighting beseitigt, alle alten Modelle überarbeitet, 17 neue Teile
 - [erledigt] Tourplanung mit Kalender und Verfügbarkeit, fester Ablauf Termine → Bühne → Tickets, Saalplan-Preise pro Bereich, Tour-Abrechnung mit Diagrammen
 - [erledigt] Terminplanung neu: Kartenfenster + Hallenliste links, großer Monatskalender rechts (Halle wählen, Tage anklicken)
-- Büro mit Roblox-Charakter, der sich an den PC setzt (Label-Menü im PC)
+- [erledigt] Begehbares Label (Spielfigur, Stationen statt Tabs, HUD, Server-Spielstand, Sandbox)
+- [erledigt] Tourplanung in 6 Schritten am Weltkarten-Tisch, Venues nach Level gesperrt
+- [erledigt] Meetingraum mit Artist-Tafel, Handy für Social, Freischaltung der Räume mit Leitpfeil
+- [erledigt] Konzerttag: Einblendung, Teleport in die Halle, frei laufen oder Show-Kameras, Ergebnis, zurück ins Büro
+- Mini-Aufgaben während der Show (Scheinwerfer reparieren, Merch auffüllen) – Struktur steht in Client/ShowTasks.lua
 
 ## Später
 - Musik (eigene Songs pro Artist), Setlist-Editor

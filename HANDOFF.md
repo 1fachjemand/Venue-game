@@ -2,6 +2,22 @@
 
 Diese Datei fasst das ganze bisherige Projekt zusammen. **Neuer Chat: bitte zuerst diese Datei, dann `ROADMAP.md` lesen.**
 
+
+## 0. NEU (Nov 2026): Begehbares Label statt Tab-Menü – ZUERST LESEN
+Das Spiel läuft jetzt mit Spielfigur in einer Welt. Die Menüs sind Orte (Stationen mit ProximityPrompt „E“).
+- **Server hält den Spielstand** (`src/server/GameServer.server.lua`): lädt/speichert (DataStore, Sandbox mit eigenem Schlüssel `player_<id>_sandbox`), baut das Gebäude, führt alle Aktionen aus. Alle Änderungen laufen über `Logic/Actions.lua` (reines Lua, getestet). Der Client fragt per RemoteFunction `Remotes.Action` (Argumente als JSON) und bekommt nur geänderte Top-Level-Schlüssel zurück (`delta`), die per `Util.syncInto` in `app.state` kopiert werden (Tabellen bleiben dieselben). **Nie mehr `app.state` direkt ändern, immer `app:act(name, args)`.**
+- **Stage Builder** ändert das Design lokal und schickt es beim Schließen (`app:saveDesign`), der Server rechnet pro Teil-`uid` ab (`Actions.designCost`).
+- **Gebäude** `World/Hub.lua` (Server baut es bei x=4000): hell (Tageslicht, Holz, weiß, Farbakzente, kein Neon), Büro mit Laptop + Weltkarten-Tisch + Charts-TV, Mitarbeiter-Tische, Kaffeebar, Empfang, Meetingraum (Seats mit CanTouch!), Lounge, Bühnen-Halle (Rolltor öffnet nach der 1. Show), kleine geschlossene Straße mit Läden, Bushaltestelle, Plakatwand, Tourbus. Z-Fighting-Regel: Deko mind. 0,04 Studs vor der Fläche; Prüfung mit `tools/render3d/scenario_hub.lua` (schreibt `parts.txt`) + `tools/zfight/check.py`.
+- **Client-Welt** `Client/World.lua`: Prompts, Namensschilder, goldener Leitpfeil (`GS.objective` bzw. `World.guide(id)`), Weltkarte auf dem Tisch, Pins der Touren, Charts-TV, Artist-Poster, Leute (Mitarbeiter tippen, Passanten, Café-Gäste, mit `People`), Zoom-Grenze 22, Meeting (Kamera auf Tafel, SurfaceGui in PlayerGui, SIGN-Knöpfe, Aufstehen beendet).
+- **HUD** (`App:buildHud`): Geld, Datum, Level-Balken, NEXT DAY (Zeit läuft nur per Knopf), Ziel-Zeile, Handy-Knopf (SOCIAL als Smartphone, `Screens/PhoneScreen.lua`), Ladebildschirm `App:showLoading`.
+- **Stationen** öffnen Seiten über `app:openStation(station, page)`. `app:go(page)` zu einer Seite einer *anderen* Station schließt und schickt den Pfeil dorthin.
+- **Tourplanung** (`PlannerScreen.lua`) in 6 Schritten: Artist (übersprungen bei nur einem) → Land (Karte vollflächig) → Venue (nur Level-erlaubte, Rest grau: `Config.VENUE_LEVEL`) → Datum (Kalender allein) → Ticketpreise → Bestätigen (Bühne automatisch, umschaltbar). „+ ADD ANOTHER SHOW“ zurück zur Karte.
+- **Konzerttag**: Jede Show des Tages wird live (`s.skipLive` = auto). Karte „TODAY …“ (`App:showTonight`, Bus fährt nach 8 s), `playShow` auf dem Server, dann `LiveShow.run(walk=true)`: Spieler steht in der Halle, läuft frei, V = laufen, 0–5 = Show-Kameras; danach Ergebnis-Kacheln (`App:showResult`) und zurück ins Büro. Mini-Aufgaben später in `Client/ShowTasks.lua` registrieren (start/update/stop bekommen den Show-Kontext).
+- **Freischaltung** (`GS.unlocks`): Büro, Karte, Meeting von Anfang an; Bühnen-Halle nach der 1. Show; Charts nach der 1. fertigen Tour (oder 5 Shows).
+- **Sandbox (DEV)** im Hauptmenü nur in Studio / für den Place-Besitzer: Geld 1 Mrd. (wird nach jeder Aktion aufgefüllt), Level 5, alles offen, Knöpfe „SKIP TO NEXT SHOW“ / „+7 DAYS“.
+- Tests: `run_mock.py` startet jetzt Server + Client (Attrappe kann RemoteFunction, DataStore, LoadCharacter, Seats `MOCK.sit`, Prompts `MOCK.prompt`). Cheats im Test über `shared.HeadlinerServer.sessions[...]`.
+- **Offen / Feedback abwarten:** Look des neuen Büros im echten Roblox, Sitzen im Meetingraum, Laufen in der Halle (Kollisionen von Bühnenteilen), Mini-Aufgaben in der Show.
+
 ## 1. Was ist das Projekt?
 Ein Roblox-Spiel (PC, Spieltexte auf **Englisch**): **HEADLINER – Music Label Tour Manager**.
 Man leitet ein Musiklabel, plant Touren für eigene Artists über eine Weltkarte, baut Bühnen in 3D und schaut Konzerte live in 3D.

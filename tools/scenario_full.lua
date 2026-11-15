@@ -177,13 +177,18 @@ assert(SRV().tours[1] and SRV().tours[1].id == tour.id, "the tour is not on the 
 -- 3) press NEXT DAY until opening night
 local found = false
 for _ = 1, 200 do
-	if #MOCK.buttons("WATCH LIVE") > 0 then found = true break end
+	if #MOCK.buttons("GO TO THE SHOW") > 0 then found = true break end
 	nextDay()
 end
 assert(found, "no SHOWTIME modal")
 log("showtime on day", app.state.day)
-MOCK.clickExact("WATCH LIVE")
+MOCK.clickExact("GO TO THE SHOW")
 assert(app.mode == "live", "live show did not start")
+steps(40)
+local char = MOCK.player.Character
+log("player in the venue at", char.PrimaryPart.CFrame.Position, "camera", workspace.CurrentCamera.CameraType)
+assert(char.PrimaryPart.CFrame.Position.X < 1000, "the character was not brought into the venue")
+assert(workspace.CurrentCamera.CameraType == Enum.CameraType.Custom, "walk mode: normal camera")
 MOCK.click("^Close")
 MOCK.click("^Speed")
 steps(300)
@@ -194,9 +199,12 @@ local frames = 600
 while app.mode == "live" and frames < 8000 do MOCK.step(1 / 30) frames = frames + 1 end
 log("live show finished after frames", frames, "mode", app.mode)
 assert(#MOCK.buttons("^Continue$") == 1, "no show report")
-log("report:", MOCK.texts("Attendance")[1])
+log("report:", MOCK.texts("@")[1], MOCK.texts("^TICKETS SOLD$")[1])
 MOCK.clickExact("Continue")
+steps(60)
 assert(app.mode == "world", "back in the building after the show")
+log("player back at", char.PrimaryPart.CFrame.Position)
+assert(char.PrimaryPart.CFrame.Position.X > 3000, "back in the office")
 assert(W.prompts.stagehall.Enabled, "the stage hall opens after the first show")
 assert(GS.objective(app.state).target == "stagehall", "next goal: stage hall")
 
@@ -204,7 +212,7 @@ assert(GS.objective(app.state).target == "stagehall", "next goal: stage hall")
 local done = false
 for _ = 1, 400 do
 	if #MOCK.buttons("^Great!$") > 0 then done = true break end
-	if #MOCK.buttons("^Skip$") > 0 then MOCK.clickExact("Skip")
+	if #MOCK.buttons("^Skip show$") > 0 then MOCK.clickExact("Skip show")
 	elseif #MOCK.buttons("^Continue$") > 0 then MOCK.clickExact("Continue")
 	elseif #MOCK.buttons("^Nice!$") > 0 then MOCK.clickExact("Nice!")
 	else nextDay() end
@@ -513,11 +521,11 @@ MOCK.clickExact("✕  CLOSE")
 found = false
 for _ = 1, 200 do
 	clearModals()
-	if #MOCK.buttons("WATCH LIVE") > 0 then found = true break end
+	if #MOCK.buttons("GO TO THE SHOW") > 0 then found = true break end
 	nextDay()
 end
 assert(found, "no stadium showtime")
-MOCK.clickExact("WATCH LIVE")
+MOCK.clickExact("GO TO THE SHOW")
 steps(120)
 local crowd = 0
 for _, d in ipairs(workspace:GetDescendants()) do if d.Name == "Fan" then crowd = crowd + 1 end end
@@ -527,7 +535,7 @@ steps(2)
 MOCK.clickExact("Continue")
 for _ = 1, 200 do
 	if #MOCK.buttons("^Great!$") > 0 then break end
-	if #MOCK.buttons("^Skip$") > 0 then MOCK.clickExact("Skip")
+	if #MOCK.buttons("^Skip show$") > 0 then MOCK.clickExact("Skip show")
 	elseif #MOCK.buttons("^Continue$") > 0 then MOCK.clickExact("Continue")
 	else nextDay() end
 end

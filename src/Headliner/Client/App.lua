@@ -1031,6 +1031,7 @@ function App:tourReport(tour, finished)
 	return close
 end
 
+-- show day: "TODAY: Lila Moon in Paris, Le Petit Neon", then you travel to the venue
 function App:processLiveQueue()
 	if self.modalOpen or (self.mode ~= "world" and self.mode ~= "menu") then
 		return
@@ -1045,83 +1046,189 @@ function App:processLiveQueue()
 		self:processLiveQueue()
 		return
 	end
-	local v = Countries.venueById[s.venueId]
-	local ad = Artists.byId[tour.artistId]
-	self:modal("SHOWTIME!", string.format("<b>%s</b> plays <b>%s</b> in %s tonight.<br/>%s / %s tickets sold.<br/><br/>Do you want to watch the show live?", ad.name, v.name, v.city, Util.number(s.sold), Util.number(v.cap)), {
-		{ "Skip", T.panel3, function()
-			self:resolveShow(tour, item.idx, false)
-		end },
-		{ "WATCH LIVE", T.accent, function()
-			self:resolveShow(tour, item.idx, true)
-		end },
-	}, 640)
+	if self.mode == "menu" then
+		self:closeScreen()
+	end
+	self:showTonight(tour, item.idx)
 end
 
--- the server decides and books the result first, the show (if watched) then plays it out
+function App:showTonight(tour, idx)
+	local s = tour.shows[idx]
+	local v = Countries.venueById[s.venueId]
+	local ad = Artists.byId[tour.artistId]
+	local col = UI.rgb(ad.color)
+	self.modalOpen = true
+	if self.world then
+		self.world.freeze(true)
+	end
+	SoundFX.sfx("cheer", 0.4)
+	local layer = UI.New("TextButton", { Parent = self.canvas, Name = "Tonight", Size = UI.px(1920, 1080), BackgroundColor3 = Color3.fromRGB(10, 8, 20), BackgroundTransparency = 0.15, AutoButtonColor = false, Text = "", ZIndex = 80 })
+	local box = UI.New("Frame", { Parent = layer, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.48), Size = UI.px(1000, 520), BackgroundColor3 = T.panel, BorderSizePixel = 0, ZIndex = 81, UI.Corner(24), UI.Stroke(col, 3, 0) })
+	UI.New("Frame", { Parent = box, Size = UI.px(1000, 14), BackgroundColor3 = col, BorderSizePixel = 0, ZIndex = 82, UI.Corner(24) })
+	local function z(inst)
+		inst.ZIndex = 83
+		return inst
+	end
+	z(UI.Pill(box, "TODAY  ·  SHOW DAY", UI.px(380, 44), UI.px(240, 34), T.bad, 16))
+	z(UI.Label(box, ad.name, UI.px(0, 92), UI.px(1000, 90), { textSize = 76, font = UI.FontBlack, alignX = Enum.TextXAlignment.Center }))
+	z(UI.Label(box, "live in " .. v.city .. ",  " .. v.name, UI.px(0, 184), UI.px(1000, 44), { textSize = 32, font = UI.FontBold, color = col, alignX = Enum.TextXAlignment.Center }))
+	local f = math.min(1, s.sold / math.max(1, s.cap))
+	z(UI.Label(box, Util.number(math.min(s.sold, s.cap)) .. " / " .. Util.number(s.cap) .. " tickets sold" .. (f >= 1 and "  ·  SOLD OUT" or ""), UI.px(0, 240), UI.px(1000, 34), { textSize = 22, color = (f >= 1) and T.gold or T.sub, alignX = Enum.TextXAlignment.Center }))
+	local count = z(UI.Label(box, "", UI.px(0, 296), UI.px(1000, 30), { textSize = 18, color = T.sub, alignX = Enum.TextXAlignment.Center }))
+	local gone = false
+	local function close()
+		if gone then
+			return false
+		end
+		gone = true
+		layer:Destroy()
+		self.modalOpen = false
+		return true
+	end
+	local go = z(UI.Button(box, "GO TO THE SHOW", UI.px(300, 350), UI.px(400, 76), { color = T.accent, textSize = 26 }, function()
+		if close() then
+			self:resolveShow(tour, idx, true)
+		end
+	end))
+	for _, d in ipairs(go:GetDescendants()) do
+		if d:IsA("GuiObject") then
+			d.ZIndex = 84
+		end
+	end
+	local skip = z(UI.Button(box, "Skip show", UI.px(420, 444), UI.px(160, 40), { color = T.panel3, textSize = 15 }, function()
+		if close() then
+			self:resolveShow(tour, idx, false)
+		end
+	end))
+	for _, d in ipairs(skip:GetDescendants()) do
+		if d:IsA("GuiObject") then
+			d.ZIndex = 84
+		end
+	end
+	-- the bus leaves by itself after a few seconds
+	task.spawn(function()
+		for k = 8, 1, -1 do
+			if gone then
+				return
+			end
+			count.Text = "The tour bus leaves in " .. k .. "..."
+			task.wait(1)
+		end
+		if close() then
+			self:resolveShow(tour, idx, true)
+		end
+	end)
+end
+
+-- the server decides and books the result first; then you watch the show in the venue (or skip it)
 function App:resolveShow(tour, idx, watch)
 	local ok, msg, data = self:act("playShow", { tourId = tour.id, idx = idx })
 	if not ok or not data then
 		self:toast(msg or "The show could not start.", T.bad)
+		if self.world then
+			self.world.freeze(self.mode ~= "world")
+		end
 		self:processLiveQueue()
 		return
 	end
 	tour = GS.getTour(self.state, tour.id) or tour
 	local result = data.result
-	local function report()
+	local function afterReport()
+		for _, id in ipairs(data.achievements or {}) do
+			self:toast("<b>Achievement unlocked:</b> " .. Achievements.byId[id].name, T.accent, 8)
+		end
+		if data.completed then
+			self:tourCompleted(tour)
+		end
+		self:refreshCurrent()
+		self:processLiveQueue()
+	end
+	if not watch then
 		self:showResult(tour, idx, result, function()
-			for _, id in ipairs(data.achievements or {}) do
-				self:toast("<b>Achievement unlocked:</b> " .. Achievements.byId[id].name, T.accent, 8)
+			if self.world and self.mode == "world" then
+				self.world.freeze(false)
 			end
-			if data.completed then
-				self:tourCompleted(tour)
-			end
-			self:refreshCurrent()
-			self:processLiveQueue()
+			afterReport()
 		end)
+		return
 	end
-	if watch then
-		local LiveShow = require(Root.Client.LiveShow)
-		local s = tour.shows[idx]
-		local back = self.current
-		LiveShow.run(self, {
-			artistId = tour.artistId,
-			design = GS.showDesign(self.state, tour, idx),
-			venueId = s.venueId,
-			sold = result.sold,
-			tourName = tour.name,
-			result = result,
-			onDone = function()
-				if back and self.screens[back] then
-					self:go(back)
-				else
-					self:closeScreen()
-				end
-				report()
-			end,
-		})
-	else
-		report()
-	end
+	local LiveShow = require(Root.Client.LiveShow)
+	local s = tour.shows[idx]
+	local closeLoading = self:showLoading(string.upper(Artists.byId[tour.artistId].name), "Tonight: " .. Countries.venueById[s.venueId].name .. ", " .. Countries.venueById[s.venueId].city)
+	self.inShow = true
+	LiveShow.run(self, {
+		artistId = tour.artistId,
+		design = GS.showDesign(self.state, tour, idx),
+		venueId = s.venueId,
+		sold = result.sold,
+		tourName = tour.name,
+		result = result,
+		walk = true,
+		-- the show is over: the result while you are still in the venue, then back to the office
+		onFinish = function(leave)
+			self:showResult(tour, idx, result, function()
+				local closeBack = self:showLoading("HEADLINER", "Back to the office")
+				leave()
+				task.delay(1, closeBack)
+			end)
+		end,
+		onDone = function()
+			self.inShow = false
+			self:closeScreen()
+			afterReport()
+		end,
+	})
+	task.delay(1.2, closeLoading)
 end
 
+-- the result of a show: tiles with the numbers, the stars and what the press says
 function App:showResult(tour, idx, r, onClose)
 	local s = tour.shows[idx]
 	local v = Countries.venueById[s.venueId]
 	local ad = Artists.byId[tour.artistId]
-	local body = table.concat({
-		"<b>" .. ad.name .. " @ " .. v.name .. ", " .. v.city .. "</b>",
-		"",
-		"<font size='28' color='#ffcd3c'>" .. Util.stars(r.stars) .. "</font>   rating " .. math.floor(r.rating + 0.5) .. "/100",
-		"<i>" .. r.review .. "</i>",
-		"",
-		"Attendance: <b>" .. Util.number(r.sold) .. " / " .. Util.number(r.cap) .. "</b>" .. (r.soldOut and "  <font color='#ffcd3c'><b>SOLD OUT!</b></font>" or ""),
-		"Ticket gross: <b>" .. Util.money(r.gross) .. "</b>  (" .. Util.money(r.price) .. " per ticket)",
-		"Costs: venue " .. Util.money(r.rent) .. ", production " .. Util.money(r.production) .. ", travel " .. Util.money(r.travel) .. ", artist share " .. Util.money(r.artistCut),
-		"Label profit: <b><font color='" .. (r.net >= 0 and "#2ecc71" or "#ff5252") .. "'>" .. Util.money(r.net) .. "</font></b>",
-		"New fans: <b>+" .. Util.number(r.fansGained) .. "</b>",
-	}, "\n")
 	SoundFX.sfx(r.net >= 0 and "cash" or "error", 0.7)
-	self:modal("SHOW REPORT", body, { { "Continue", T.accent, onClose } }, 760)
+	self.modalOpen = true
+	local layer = UI.New("TextButton", { Parent = self.canvas, Name = "ShowReport", Size = UI.px(1920, 1080), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.35, AutoButtonColor = false, Text = "", ZIndex = 85 })
+	local box = UI.New("Frame", { Parent = layer, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UI.px(1100, 640), BackgroundColor3 = T.panel, BorderSizePixel = 0, ZIndex = 86, UI.Corner(20), UI.Stroke(r.soldOut and T.gold or T.accent, 3, 0) })
+	local function lbl(text, pos, size, opts)
+		local l = UI.Label(box, text, pos, size, opts)
+		l.ZIndex = 87
+		return l
+	end
+	lbl("SHOW REPORT", UI.px(40, 26), UI.px(500, 30), { textSize = 18, font = UI.FontBlack, color = T.accent2 })
+	lbl(ad.name .. "  @  " .. v.name .. ", " .. v.city, UI.px(40, 56), UI.px(1020, 46), { textSize = 34, font = UI.FontBlack })
+	lbl(Util.stars(r.stars) .. "   " .. math.floor(r.rating + 0.5) .. " / 100", UI.px(40, 106), UI.px(600, 44), { textSize = 34, color = T.gold, font = UI.FontBlack })
+	lbl(tostring(r.review), UI.px(40, 152), UI.px(1020, 50), { textSize = 19, color = T.sub, wrap = true, alignY = Enum.TextYAlignment.Top })
+	local fill = (r.cap > 0) and r.sold / r.cap or 0
+	local tiles = {
+		{ "TICKETS SOLD", Util.number(r.sold) .. " / " .. Util.number(r.cap), T.text },
+		{ "VENUE FULL", math.floor(fill * 100 + 0.5) .. "%" .. (r.soldOut and "  SOLD OUT" or ""), r.soldOut and T.gold or (fill > 0.7 and T.good or T.warn) },
+		{ "TICKET MONEY", Util.money(r.gross), T.text },
+		{ "LABEL PROFIT", (r.net >= 0 and "+" or "") .. Util.money(r.net), r.net >= 0 and T.good or T.bad },
+		{ "NEW FANS", "+" .. Util.number(r.fansGained), T.accent2 },
+		{ "COSTS", Util.money(r.rent + r.production + r.travel + r.artistCut), T.bad },
+	}
+	for i, tl in ipairs(tiles) do
+		local col, row = (i - 1) % 3, math.floor((i - 1) / 3)
+		local tile = UI.New("Frame", { Parent = box, Position = UI.px(40 + col * 346, 216 + row * 134), Size = UI.px(330, 120), BackgroundColor3 = T.panel2, BorderSizePixel = 0, ZIndex = 87, UI.Corner(14) })
+		local a = UI.Label(tile, tl[1], UI.px(20, 14), UI.px(300, 22), { textSize = 15, color = T.sub, font = UI.FontBold })
+		local b = UI.Label(tile, tl[2], UI.px(20, 44), UI.px(300, 56), { textSize = 30, font = UI.FontBlack, color = tl[3] })
+		a.ZIndex, b.ZIndex = 88, 88
+	end
+	lbl("Costs: venue " .. Util.moneyShort(r.rent) .. "  ·  production " .. Util.moneyShort(r.production) .. "  ·  travel " .. Util.moneyShort(r.travel) .. "  ·  artist share " .. Util.moneyShort(r.artistCut), UI.px(40, 494), UI.px(1020, 26), { textSize = 16, color = T.sub })
+	local btn = UI.Button(box, "Continue", UI.px(800, 548), UI.px(260, 64), { color = T.accent, textSize = 22 }, function()
+		layer:Destroy()
+		self.modalOpen = false
+		if onClose then
+			onClose()
+		end
+	end)
+	btn.ZIndex = 88
+	for _, d in ipairs(btn:GetDescendants()) do
+		if d:IsA("GuiObject") then
+			d.ZIndex = 89
+		end
+	end
 end
 
 return App

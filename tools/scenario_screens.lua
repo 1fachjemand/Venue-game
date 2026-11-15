@@ -102,6 +102,18 @@ MOCK.click("PLACE", 1)
 local Stage3D = require(root.Client.Stage3D)
 for _, r in ipairs(Stage3D.items) do if r.kind == "led" then require(root.Client.Designer).current.select(r) break end end
 dump("16_designer_screen")
+MOCK.clickExact("DONE")
+for _ = 1, 30 do MOCK.step(0.05) end
+if app.mode == "menu" then MOCK.clickExact("✕  CLOSE") end
+do
+	local t = app.state.tours[1]
+	SRV().day = t.shows[1].day app:applyDelta(app:call("resync").delta)
+	app:showTonight(t, 1)
+	dump("17_tonight")
+	MOCK.clickExact("Skip show")
+	dump("18_show_report")
+	MOCK.clickExact("Continue")
+end
 print("dumped")
 -- tour report with made-up results
 do

@@ -145,7 +145,7 @@ local function placeArrow(t)
 		return
 	end
 	local target = World.target and Hub.STATIONS[World.target]
-	local visible = target ~= nil and not World.frozen
+	local visible = target ~= nil and not World.frozen and World.app.mode == "world"
 	if not visible then
 		for _, p in ipairs({ ar.a, ar.b, ar.stem }) do
 			p.Transparency = 1

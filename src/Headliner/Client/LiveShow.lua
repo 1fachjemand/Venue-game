@@ -15,6 +15,7 @@ local Venue = require(Root.Client.Venue)
 local LiveFeed = require(Root.Client.LiveFeed)
 local SoundFX = require(Root.Client.SoundFX)
 local AudioMap = require(Root.Data.AudioMap)
+local ShowTasks = require(Root.Client.ShowTasks)
 
 local T = UI.Theme
 local LiveShow = {}
@@ -531,11 +532,20 @@ function LiveShow.run(app, opts)
 	local songLbl = UI.Label(info, "", UI.px(14, 70), UI.px(530, 28), { textSize = 19, color = T.gold, font = UI.FontBold })
 	local _, setProg = UI.Bar(overlay, UI.px(24, 186), UI.px(560, 5), 0, T.accent)
 
-	local camMode = 1
+	-- opts.walk: the player is in the venue with their character and can walk around (camera "Walk"),
+	-- or switch to the show cameras like before
+	local walkMode = opts.walk == true and app.world ~= nil
+	local camMode = walkMode and 0 or 1
 	local camButtons = {}
-	local bar = UI.Panel(overlay, UI.px(1920 / 2 - 450, 1012), UI.px(900, 52), T.panel)
+	local bar = UI.Panel(overlay, UI.px(1920 / 2 - 505, 1012), UI.px(1010, 52), T.panel)
 	bar.BackgroundTransparency = 0.35
 	UI.List(false, 6, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center).Parent = bar
+	if walkMode then
+		camButtons[0] = UI.Button(bar, "Walk [V]", nil, UI.px(100, 38), { order = 0, textSize = 14 }, function()
+			camMode = 0
+		end)
+		UI.Label(overlay, "WASD = walk around the venue   ·   V = walk   ·   0 - 5 = show cameras", UI.px(0, 976), UI.px(1920, 30), { textSize = 17, font = UI.FontBold, alignX = Enum.TextXAlignment.Center }).TextStrokeTransparency = 0.5
+	end
 	for i, name in ipairs(CAMERA_NAMES) do
 		camButtons[i] = UI.Button(bar, name .. " [" .. (i - 1) .. "]", nil, UI.px(104, 38), { order = i, textSize = 14 }, function()
 			camMode = i
@@ -562,6 +572,8 @@ function LiveShow.run(app, opts)
 		}
 		if map[input.KeyCode] then
 			camMode = map[input.KeyCode]
+		elseif input.KeyCode == Enum.KeyCode.V and walkMode then
+			camMode = 0
 		end
 	end)
 
@@ -569,6 +581,20 @@ function LiveShow.run(app, opts)
 	cam.CameraType = Enum.CameraType.Scriptable
 	cam.FieldOfView = 60
 	local size = crowd.size
+	-- the player stands at the back of the floor, looking at the stage
+	local W = app.world
+	if walkMode then
+		local _, char = W.humanoid()
+		if char and char.PrimaryPart then
+			local spawnZ = size.center and (size.floorEnd - 6) or math.max(deckCenter.Z + 30, size.floorEnd - 8)
+			char:PivotTo(CFrame.lookAt(Vector3.new(0, 4, spawnZ), Vector3.new(0, 4, deckCenter.Z)))
+		end
+		W.freeze(false)
+		W.setZoom(40)
+		W.resetCamera()
+	end
+	local taskCtx = { app = app, venue = venue, look = look, crowd = crowd, items = items, overlay = overlay, character = walkMode and select(2, W.humanoid()) or nil, t = 0, timeScale = 1 }
+	ShowTasks.start(taskCtx)
 	local camCF = nil
 	local t = 0
 	local hitIndex = 1
@@ -622,14 +648,9 @@ function LiveShow.run(app, opts)
 
 	local done = false
 	local conn
-	local function finish()
-		if done then
-			return
-		end
-		done = true
+	local function cleanup()
 		SoundFX.crowd(0)
 		SoundFX.menu("office")
-		conn:Disconnect()
 		keyConn:Disconnect()
 		for _, p in ipairs(performers) do
 			p:destroy()
@@ -638,8 +659,32 @@ function LiveShow.run(app, opts)
 		Stage3D.clearDesign()
 		Stage3D.setLighting("designer")
 		overlay:Destroy()
+		if walkMode then
+			W.setZoom()
+			W.toSpawn()
+		end
 		if opts.onDone then
 			opts.onDone()
+		end
+	end
+	local function finish()
+		if done then
+			return
+		end
+		done = true
+		conn:Disconnect()
+		ShowTasks.stop(taskCtx)
+		if opts.onFinish then
+			-- the result screen comes while you are still in the venue; then back home
+			if walkMode then
+				W.freeze(true)
+			end
+			bar.Visible = false
+			cam.CameraType = Enum.CameraType.Scriptable
+			cam.CFrame = CFrame.lookAt(Vector3.new(0, 40, (size.center and 0 or deckCenter.Z) + 120), deckCenter + Vector3.new(0, 10, 0))
+			opts.onFinish(cleanup)
+		else
+			cleanup()
 		end
 	end
 
@@ -815,13 +860,23 @@ function LiveShow.run(app, opts)
 		end
 		setProg(t / showLength)
 
+		taskCtx.t, taskCtx.seg, taskCtx.timeScale = t, seg, timeScale
+		ShowTasks.update(dt, taskCtx)
 		-- camera
 		local mode = camMode
 		if mode == 1 then
 			mode = autoOrder[(math.floor(t / 7) % #autoOrder) + 1]
 		end
-		for i, b in ipairs(camButtons) do
+		for i, b in pairs(camButtons) do
 			b.BackgroundColor3 = (i == camMode) and T.accent or T.panel3
+		end
+		if mode == 0 then
+			-- walking: the normal Roblox camera follows the character
+			if cam.CameraType ~= Enum.CameraType.Custom then
+				W.resetCamera()
+				camCF = nil
+			end
+			return
 		end
 		local pos, at = shot(mode, t, leadPos, leadYaw)
 		local target = CFrame.lookAt(pos, at)
