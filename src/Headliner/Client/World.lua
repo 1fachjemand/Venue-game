@@ -238,7 +238,7 @@ local function refreshChartsWall(unlocked)
 	end
 	f:ClearAllChildren()
 	if not unlocked then
-		UI.Label(f, "🔒  CHARTS", UI.px(0, 220), UI.px(1220, 90), { textSize = 72, font = UI.FontBlack, color = T.sub, alignX = Enum.TextXAlignment.Center })
+		UI.Label(f, "LOCKED  CHARTS", UI.px(0, 220), UI.px(1220, 90), { textSize = 72, font = UI.FontBlack, color = T.sub, alignX = Enum.TextXAlignment.Center })
 		UI.Label(f, GS.UNLOCK_HINT.charts, UI.px(0, 320), UI.px(1220, 50), { textSize = 34, color = T.sub, alignX = Enum.TextXAlignment.Center })
 		return
 	end
@@ -338,22 +338,22 @@ function World.refreshPosters()
 			New("UIGradient", { Parent = bg, Color = ColorSequence.new(col, dark), Rotation = 0 })
 			posterPicture(bg, ad, UDim2.fromOffset(0, 0), UDim2.fromOffset(420, 600), idx)
 			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(420, 120), Size = UDim2.fromOffset(400, 160), BackgroundTransparency = 1, Text = string.upper(ad.name), TextScaled = true, TextColor3 = Color3.new(1, 1, 1), Font = font })
-			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(420, 300), Size = UDim2.fromOffset(400, 60), BackgroundTransparency = 1, Text = onTour and "WORLD TOUR · ON SALE NOW" or "NEW ALBUM OUT NOW", TextScaled = true, TextColor3 = T.gold, Font = UI.FontBlack })
-			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(420, 380), Size = UDim2.fromOffset(400, 40), BackgroundTransparency = 1, Text = ad.genre .. "  ·  " .. line, TextScaled = true, TextColor3 = Color3.fromRGB(230, 230, 240), Font = UI.FontBold })
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(420, 300), Size = UDim2.fromOffset(400, 60), BackgroundTransparency = 1, Text = onTour and "WORLD TOUR | ON SALE NOW" or "NEW ALBUM OUT NOW", TextScaled = true, TextColor3 = T.gold, Font = UI.FontBlack })
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(420, 380), Size = UDim2.fromOffset(400, 40), BackgroundTransparency = 1, Text = ad.genre .. "  |  " .. line, TextScaled = true, TextColor3 = Color3.fromRGB(230, 230, 240), Font = UI.FontBold })
 		elseif layout == 0 then
 			-- tour poster: gradient, the artist full figure, name on top, dates below
 			New("UIGradient", { Parent = bg, Color = ColorSequence.new(col, dark), Rotation = 90 })
 			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(14, 14), Size = UDim2.fromOffset(392, 80), BackgroundTransparency = 1, Text = string.upper(ad.name), TextScaled = true, TextColor3 = Color3.new(1, 1, 1), Font = font })
 			posterPicture(bg, ad, UDim2.fromOffset(10, 96), UDim2.fromOffset(400, 380), idx)
-			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(14, 486), Size = UDim2.fromOffset(392, 46), BackgroundTransparency = 1, Text = onTour and "WORLD TOUR · ON SALE NOW" or "LIVE " .. (Config.START_YEAR + 1), TextScaled = true, TextColor3 = T.gold, Font = UI.FontBlack })
-			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(14, 540), Size = UDim2.fromOffset(392, 34), BackgroundTransparency = 1, Text = "LONDON · PARIS · BERLIN · NEW YORK", TextScaled = true, TextColor3 = Color3.fromRGB(230, 230, 240), Font = UI.FontBold })
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(14, 486), Size = UDim2.fromOffset(392, 46), BackgroundTransparency = 1, Text = onTour and "WORLD TOUR | ON SALE NOW" or "LIVE " .. (Config.START_YEAR + 1), TextScaled = true, TextColor3 = T.gold, Font = UI.FontBlack })
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(14, 540), Size = UDim2.fromOffset(392, 34), BackgroundTransparency = 1, Text = "LONDON | PARIS | BERLIN | NEW YORK", TextScaled = true, TextColor3 = Color3.fromRGB(230, 230, 240), Font = UI.FontBold })
 		elseif layout == 1 then
 			-- album cover: a big sun behind a close-up, title at the bottom
 			bg.BackgroundColor3 = Color3.fromRGB(246, 236, 220)
 			New("Frame", { Parent = bg, Position = UDim2.fromOffset(40, 60), Size = UDim2.fromOffset(340, 340), BackgroundColor3 = col, BorderSizePixel = 0, UI.Corner(170) })
 			posterPicture(bg, ad, UDim2.fromOffset(10, 30), UDim2.fromOffset(400, 420), idx)
 			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(20, 456), Size = UDim2.fromOffset(380, 70), BackgroundTransparency = 1, Text = ad.name, TextScaled = true, TextColor3 = dark, Font = font })
-			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(20, 530), Size = UDim2.fromOffset(380, 40), BackgroundTransparency = 1, Text = "THE NEW ALBUM · " .. line, TextScaled = true, TextColor3 = col:Lerp(dark, 0.4), Font = UI.FontBold })
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(20, 530), Size = UDim2.fromOffset(380, 40), BackgroundTransparency = 1, Text = "THE NEW ALBUM | " .. line, TextScaled = true, TextColor3 = col:Lerp(dark, 0.4), Font = UI.FontBold })
 		elseif layout == 2 then
 			-- festival / club night: dark with stripes
 			bg.BackgroundColor3 = dark
@@ -362,7 +362,7 @@ function World.refreshPosters()
 			end
 			posterPicture(bg, ad, UDim2.fromOffset(10, 20), UDim2.fromOffset(400, 400), idx)
 			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(14, 420), Size = UDim2.fromOffset(392, 90), BackgroundTransparency = 1, Text = string.upper(ad.name), TextScaled = true, TextColor3 = col:Lerp(Color3.new(1, 1, 1), 0.4), Font = font })
-			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(14, 516), Size = UDim2.fromOffset(392, 40), BackgroundTransparency = 1, Text = ad.genre .. " NIGHT · " .. line, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), Font = UI.FontBold })
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(14, 516), Size = UDim2.fromOffset(392, 40), BackgroundTransparency = 1, Text = ad.genre .. " NIGHT | " .. line, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), Font = UI.FontBold })
 		else
 			-- minimal: white with a coloured frame
 			bg.BackgroundColor3 = Color3.new(1, 1, 1)
@@ -631,10 +631,10 @@ local function tourBusLabel()
 	local state = World.app.state
 	for _, t in ipairs(state.tours) do
 		if t.status ~= "done" then
-			return string.upper(Artists.byId[t.artistId].name) .. " · " .. string.upper(t.name), UI.rgb(Artists.byId[t.artistId].color)
+			return string.upper(Artists.byId[t.artistId].name) .. " | " .. string.upper(t.name), UI.rgb(Artists.byId[t.artistId].color)
 		end
 	end
-	return "NOVA RAY · STARDUST WORLD TOUR", Color3.fromRGB(255, 120, 180)
+	return "NOVA RAY | STARDUST WORLD TOUR", Color3.fromRGB(255, 120, 180)
 end
 
 local function animateTraffic(t)
@@ -730,7 +730,7 @@ local function boardCard(parent, ad, state, signed, y, x)
 	New("Frame", { Parent = card, Size = UI.px(372, 8), BackgroundColor3 = UI.rgb(ad.color), BorderSizePixel = 0, UI.Corner(14) })
 	People.preview(card, ad.look, UI.rgb(ad.color), UI.px(10, 16), UI.px(110, 170), Color3.fromRGB(32, 36, 54))
 	UI.Label(card, ad.name, UI.px(130, 16), UI.px(236, 32), { textSize = 26, font = UI.FontBlack })
-	UI.Label(card, ad.genre .. (ad.members > 1 and ("  ·  " .. ad.members .. " members") or "  ·  solo"), UI.px(130, 50), UI.px(236, 22), { textSize = 16, color = UI.rgb(ad.color), font = UI.FontBold })
+	UI.Label(card, ad.genre .. (ad.members > 1 and ("  |  " .. ad.members .. " members") or "  |  solo"), UI.px(130, 50), UI.px(236, 22), { textSize = 16, color = UI.rgb(ad.color), font = UI.FontBold })
 	local function stat(yy, label, frac, txt, col)
 		UI.Label(card, label, UI.px(130, yy), UI.px(60, 22), { textSize = 14, color = T.sub, font = UI.FontBold })
 		UI.Bar(card, UI.px(190, yy + 7), UI.px(110, 9), math.clamp(frac, 0, 1), col)
@@ -746,7 +746,7 @@ local function boardCard(parent, ad, state, signed, y, x)
 		if tour then
 			UI.Label(card, ad.bio, UI.px(14, 204), UI.px(346, 58), { textSize = 15, color = T.sub, wrap = true, alignY = Enum.TextYAlignment.Top })
 		else
-			UI.Button(card, planned and "IN PLANNING  ·  GO ON" or "PLAN A TOUR", UI.px(14, 204), UI.px(344, 52), { color = planned and T.panel3 or T.accent, textSize = 18 }, function()
+			UI.Button(card, planned and "IN PLANNING  |  GO ON" or "PLAN A TOUR", UI.px(14, 204), UI.px(344, 52), { color = planned and T.panel3 or T.accent, textSize = 18 }, function()
 				World.planTour(ad.id)
 			end)
 		end
@@ -755,7 +755,7 @@ local function boardCard(parent, ad, state, signed, y, x)
 		local locked = ad.level > lvl
 		local afford = state.money >= ad.signCost
 		UI.Label(card, "Costs " .. Util.money(ad.signCost), UI.px(130, 168), UI.px(236, 22), { textSize = 16, color = T.gold, font = UI.FontBold })
-		local txt = locked and ("LOCKED · needs level " .. ad.level) or (afford and "SIGN" or "NOT ENOUGH MONEY")
+		local txt = locked and ("LOCKED | needs level " .. ad.level) or (afford and "SIGN" or "NOT ENOUGH MONEY")
 		UI.Button(card, txt, UI.px(14, 204), UI.px(344, 52), { color = (not locked and afford) and T.good or T.panel3, disabled = locked or not afford, textSize = 18 }, function()
 			app:confirm("Sign " .. ad.name .. "?", "Signing costs <b>" .. Util.money(ad.signCost) .. "</b>. Then you can book their tours at the world map table.", function()
 				local ok, msg, data = app:act("sign", { artistId = ad.id })
@@ -779,7 +779,7 @@ function World.drawBoard()
 	g:ClearAllChildren()
 	local state = World.app.state
 	local bg = New("Frame", { Parent = g, Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(16, 18, 30), BorderSizePixel = 0 })
-	UI.Label(bg, "MEETING  ·  " .. string.upper(state.labelName), UI.px(30, 14), UI.px(1000, 44), { textSize = 34, font = UI.FontBlack, color = T.text })
+	UI.Label(bg, "MEETING  |  " .. string.upper(state.labelName), UI.px(30, 14), UI.px(1000, 44), { textSize = 34, font = UI.FontBlack, color = T.text })
 	UI.Label(bg, "Stand up (SPACE) to end the meeting", UI.px(1040, 22), UI.px(530, 30), { textSize = 18, color = T.sub, alignX = Enum.TextXAlignment.Right })
 	local cols = { { "YOUR ROSTER", GS.signedArtists(state), true, 30 }, { "AVAILABLE TALENT", GS.unsignedArtists(state), false, 818 } }
 	for _, c in ipairs(cols) do
@@ -895,7 +895,7 @@ function World.refresh()
 		end
 		local mk = World.markers[id]
 		if mk then
-			mk.name.Text = (open and "" or "🔒  ") .. info.name
+			mk.name.Text = (open and "" or "LOCKED  ") .. info.name
 			mk.name.TextColor3 = open and T.text or T.sub
 			mk.sub.Text = open and ((id == "meeting" and not World.inMeetingSeat()) and "Sit down to start a meeting" or info.sub) or (GS.UNLOCK_HINT[id] or "")
 			mk.sub.TextColor3 = open and T.accent2 or T.warn
@@ -924,7 +924,9 @@ function World.refresh()
 			end
 		end
 	end
-	World.target = World.override or GS.objective(state).target
+	-- the arrow is a tutorial: it guides until the first show; later only when a button sends you somewhere
+	local tutorial = state.stats.shows == 0
+	World.target = World.override or (tutorial and GS.objective(state).target or nil)
 	refreshChartsWall(un.charts)
 	refreshPins()
 	World.refreshPosters()

@@ -2,6 +2,7 @@
 -- The game state lives on the server (src/server/GameServer). `app.state` is a copy that the
 -- server keeps up to date; every change goes through app:act(name, args).
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local StarterGui = game:GetService("StarterGui")
 local Root = script:FindFirstAncestor("Headliner")
@@ -206,6 +207,7 @@ function App:beginGame(isNew)
 	self.world = World
 	World.start(self)
 	SoundFX.menu("office")
+	self:startClock()
 	self:refreshHud()
 	-- the loading picture stays until the character stands in the office
 	task.spawn(function()
@@ -317,9 +319,16 @@ function App:buildHud()
 	self.levelLbl = UI.Label(hud, "", UI.px(356, 38), UI.px(226, 20), { textSize = 13, color = T.sub, alignX = Enum.TextXAlignment.Right })
 	self.moneyLbl = UI.Label(hud, "", UI.px(18, 62), UI.px(220, 40), { textSize = 30, font = UI.FontBlack, color = T.good })
 	self.dateLbl = UI.Label(hud, "", UI.px(238, 66), UI.px(170, 34), { textSize = 17, font = UI.FontBold, color = T.text })
-	UI.Button(hud, "NEXT DAY  ▶", UI.px(414, 64), UI.px(168, 42), { color = T.accent, textSize = 16 }, function()
-		self:nextDay()
-	end)
+	-- time runs by itself; pause / speed
+	self.speedBtns = {}
+	for i, sp in ipairs(Config.SPEEDS) do
+		local b = UI.Button(hud, sp.label, UI.px(400 + (i - 1) * 46, 64), UI.px(42, 42), { textSize = 15 }, function()
+			self:setSpeed(i)
+		end)
+		table.insert(self.speedBtns, b)
+	end
+	local _, setDay = UI.Bar(hud, UI.px(238, 102), UI.px(150, 4), 0, T.accent2)
+	self.setDayProgress = setDay
 	-- what to do next (follow the arrow)
 	local obj = UI.New("Frame", { Parent = self.canvas, Name = "Objective", Position = UI.px(20, 148), Size = UI.px(600, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = T.panel, BackgroundTransparency = 0.2, BorderSizePixel = 0, UI.Corner(12), UI.Padding(16, 16, 10, 10) })
 	self.objectiveFrame = obj
@@ -338,7 +347,7 @@ function App:buildHud()
 	-- sandbox tools (developer test mode only)
 	if self.state.sandbox then
 		local sb = UI.New("Frame", { Parent = self.canvas, Name = "Sandbox", Position = UI.px(1500, 20), Size = UI.px(400, 112), BackgroundColor3 = Color3.fromRGB(60, 40, 10), BackgroundTransparency = 0.1, BorderSizePixel = 0, UI.Corner(12), UI.Stroke(T.gold, 2, 0) })
-		UI.Label(sb, "SANDBOX  ·  developer mode", UI.px(16, 8), UI.px(370, 24), { textSize = 16, font = UI.FontBlack, color = T.gold })
+		UI.Label(sb, "SANDBOX  |  developer mode", UI.px(16, 8), UI.px(370, 24), { textSize = 16, font = UI.FontBlack, color = T.gold })
 		UI.Button(sb, "SKIP TO NEXT SHOW", UI.px(14, 42), UI.px(230, 56), { color = T.gold, textColor = BLACK, textSize = 15 }, function()
 			self:devSkip(true)
 		end)
@@ -364,14 +373,14 @@ function App:refreshHud()
 	if not st or not self.hud then
 		return
 	end
-	local money = st.sandbox and "∞ SANDBOX" or Util.money(st.money)
+	local money = st.sandbox and "UNLIMITED" or Util.money(st.money)
 	self.moneyLbl.Text = money
 	self.moneyLbl.TextColor3 = (st.money < 0) and T.bad or T.good
 	local dateTxt = Util.date(st.day, Config.START_YEAR)
 	self.dateLbl.Text = dateTxt
 	local lvl, def, nextDef = GS.level(st)
 	self.labelLbl.Text = st.labelName
-	self.levelPill.Text = "LV " .. lvl .. "  ·  " .. string.upper(def.name)
+	self.levelPill.Text = "LV " .. lvl .. "  |  " .. string.upper(def.name)
 	if nextDef then
 		local f = (st.stats.tickets - def.tickets) / math.max(1, nextDef.tickets - def.tickets)
 		self.setLevelBar(math.clamp(f, 0, 1))
@@ -381,7 +390,7 @@ function App:refreshHud()
 		self.levelLbl.Text = "max level"
 	end
 	local o = GS.objective(st)
-	self.objectiveLbl.Text = "<font color='#2dd4bf'>NEXT  ▸</font>  " .. o.text
+	self.objectiveLbl.Text = "<font color='#2dd4bf'>NEXT  ></font>  " .. o.text
 	-- unread fan posts since the phone was last opened
 	local unread = math.max(0, #(st.social or {}) - (self.seenPosts or 0))
 	self.phoneBadge.Visible = unread > 0
@@ -392,11 +401,17 @@ function App:refreshHud()
 		self.barDate.Text = dateTxt
 	end
 	local walking = self.mode == "world"
+	for _, list in ipairs({ self.speedBtns or {}, self.barSpeedBtns or {} }) do
+		for i, b in ipairs(list) do
+			b.BackgroundColor3 = (i == (self.speed or 2)) and T.accent2 or T.panel3
+			b.TextColor3 = (i == (self.speed or 2)) and Color3.new(0, 0, 0) or T.text
+		end
+	end
 	self.hud.Visible = walking or self.mode == "phone"
 	self.objectiveFrame.Visible = walking
 	self.phoneButton.Visible = walking
 	if not self.meetingHint then
-		self.meetingHint = UI.Label(self.canvas, "MEETING  ·  click SIGN on the board  ·  press SPACE to stand up", UI.px(0, 1020), UI.px(1920, 40), { textSize = 22, font = UI.FontBold, alignX = Enum.TextXAlignment.Center })
+		self.meetingHint = UI.Label(self.canvas, "MEETING  |  click SIGN on the board  |  press SPACE to stand up", UI.px(0, 1020), UI.px(1920, 40), { textSize = 22, font = UI.FontBold, alignX = Enum.TextXAlignment.Center })
 		self.meetingHint.TextStrokeTransparency = 0.4
 	end
 	self.meetingHint.Visible = self.mode == "meeting"
@@ -410,7 +425,7 @@ local TITLES = {
 	office = "LAPTOP",
 	tours = "LAPTOP",
 	tourplan = "LAPTOP",
-	planner = "WORLD MAP  ·  PLAN A TOUR",
+	planner = "WORLD MAP  |  PLAN A TOUR",
 	artists = "MEETING ROOM",
 	stages = "STAGE HALL",
 	charts = "CHARTS",
@@ -431,10 +446,14 @@ function App:buildScreenBar()
 	end
 	self.barMoney = UI.Label(bar, "", UI.px(1200, 4), UI.px(250, 32), { textSize = 26, font = UI.FontBlack, color = T.good, alignX = Enum.TextXAlignment.Right })
 	self.barDate = UI.Label(bar, "", UI.px(1200, 34), UI.px(250, 24), { textSize = 16, color = T.sub, alignX = Enum.TextXAlignment.Right })
-	UI.Button(bar, "NEXT DAY", UI.px(1470, 10), UI.px(160, 44), { color = T.accent, textSize = 16 }, function()
-		self:nextDay()
-	end)
-	UI.Button(bar, "✕  CLOSE", UI.px(1650, 10), UI.px(250, 44), { color = T.panel3, textSize = 18 }, function()
+	self.barSpeedBtns = {}
+	for i, sp in ipairs(Config.SPEEDS) do
+		local b = UI.Button(bar, sp.label, UI.px(1460 + (i - 1) * 45, 12), UI.px(41, 40), { textSize = 14 }, function()
+			self:setSpeed(i)
+		end)
+		table.insert(self.barSpeedBtns, b)
+	end
+	UI.Button(bar, "CLOSE", UI.px(1650, 10), UI.px(250, 44), { color = T.panel3, textSize = 18 }, function()
 		self:closeScreen()
 	end)
 end
@@ -451,13 +470,6 @@ local STATION_NAME = { laptop = "LAPTOP", maptable = "WORLD MAP table", meeting 
 
 function App:openStation(station, page, args)
 	self.station = station
-	-- visiting the stage hall with a planned tour counts as "stage checked"
-	local d = self.state.draft
-	if station == "stagehall" and d and d.artistId and #(d.shows or {}) > 0 and not d.stageSet then
-		d.stageSet = true
-		self:act("setDraft", { draft = d })
-		self:toast("Stage checked for the tour plan. Change it or build a new one here, then <b>announce on the LAPTOP</b>.", T.accent2, 7)
-	end
 	self:showPage(page, args)
 end
 
@@ -763,15 +775,53 @@ function App:showWelcome()
 		"<b>WORLD MAP table</b>   plan a tour: country, venue, date, ticket price.",
 		"<b>LAPTOP</b>   your shows, ticket sales and news.",
 		"<b>MEETING ROOM</b>   sit down to meet your artists and new talent.",
-		"<b>NEXT DAY</b>   moves time forward. On a show day you travel to the venue.",
+		"<b>Time</b> runs by itself (II pauses, 1x / 2x / 4x speed). On the opening night you travel to the venue.",
 		"",
 		"Follow the glowing arrow. Start small: clubs first!",
 	}, "\n"), { { "Let's go!", T.accent } }, 760)
 end
 
------------------------------------------------------------------- time
+------------------------------------------------------------------ time: runs by itself (pause / 1x / 2x / 4x)
+function App:setSpeed(i)
+	self.speed = i
+	self:refreshHud()
+end
+
+-- time stands still in shows, the stage builder, popups and while a show of today waits
+function App:timeRuns()
+	local m = self.mode
+	return (m == "world" or m == "menu" or m == "phone" or m == "meeting") and not self.modalOpen and #self.liveQueue == 0 and not self.dayBusy
+end
+
+function App:startClock()
+	if self.clockRunning then
+		return
+	end
+	self.clockRunning = true
+	self.speed = self.speed or 2
+	local acc = 0
+	RunService.Heartbeat:Connect(function(dt)
+		local secs = Config.SPEEDS[self.speed or 2].seconds
+		if secs <= 0 or not self.state or not self:timeRuns() then
+			return
+		end
+		acc = acc + dt
+		if self.setDayProgress then
+			self.setDayProgress(math.clamp(acc / secs, 0, 1))
+		end
+		if acc >= secs then
+			acc = 0
+			self.dayBusy = true
+			task.spawn(function()
+				self:nextDay()
+				self.dayBusy = false
+			end)
+		end
+	end)
+end
+
 function App:nextDay()
-	if self.modalOpen or #self.liveQueue > 0 or (self.mode ~= "world" and self.mode ~= "menu" and self.mode ~= "phone") then
+	if self.modalOpen or #self.liveQueue > 0 or (self.mode ~= "world" and self.mode ~= "menu" and self.mode ~= "phone" and self.mode ~= "meeting") then
 		return
 	end
 	local ok, msg, ev = self:act("nextDay")
@@ -1082,11 +1132,11 @@ function App:showTonight(tour, idx)
 		inst.ZIndex = 83
 		return inst
 	end
-	z(UI.Pill(box, "TODAY  ·  SHOW DAY", UI.px(380, 44), UI.px(240, 34), T.bad, 16))
+	z(UI.Pill(box, "TODAY  |  SHOW DAY", UI.px(380, 44), UI.px(240, 34), T.bad, 16))
 	z(UI.Label(box, ad.name, UI.px(0, 92), UI.px(1000, 90), { textSize = 76, font = UI.FontBlack, alignX = Enum.TextXAlignment.Center }))
 	z(UI.Label(box, "live in " .. v.city .. ",  " .. v.name, UI.px(0, 184), UI.px(1000, 44), { textSize = 32, font = UI.FontBold, color = col, alignX = Enum.TextXAlignment.Center }))
 	local f = math.min(1, s.sold / math.max(1, s.cap))
-	z(UI.Label(box, Util.number(math.min(s.sold, s.cap)) .. " / " .. Util.number(s.cap) .. " tickets sold" .. (f >= 1 and "  ·  SOLD OUT" or ""), UI.px(0, 240), UI.px(1000, 34), { textSize = 22, color = (f >= 1) and T.gold or T.sub, alignX = Enum.TextXAlignment.Center }))
+	z(UI.Label(box, Util.number(math.min(s.sold, s.cap)) .. " / " .. Util.number(s.cap) .. " tickets sold" .. (f >= 1 and "  |  SOLD OUT" or ""), UI.px(0, 240), UI.px(1000, 34), { textSize = 22, color = (f >= 1) and T.gold or T.sub, alignX = Enum.TextXAlignment.Center }))
 	local count = z(UI.Label(box, "", UI.px(0, 296), UI.px(1000, 30), { textSize = 18, color = T.sub, alignX = Enum.TextXAlignment.Center }))
 	local gone = false
 	local function close()
@@ -1228,7 +1278,7 @@ function App:showResult(tour, idx, r, onClose)
 		local b = UI.Label(tile, tl[2], UI.px(20, 44), UI.px(300, 56), { textSize = 30, font = UI.FontBlack, color = tl[3] })
 		a.ZIndex, b.ZIndex = 88, 88
 	end
-	lbl("Costs: venue " .. Util.moneyShort(r.rent) .. "  ·  production " .. Util.moneyShort(r.production) .. "  ·  travel " .. Util.moneyShort(r.travel) .. "  ·  artist share " .. Util.moneyShort(r.artistCut), UI.px(40, 494), UI.px(1020, 26), { textSize = 16, color = T.sub })
+	lbl("Costs: venue " .. Util.moneyShort(r.rent) .. "  |  production " .. Util.moneyShort(r.production) .. "  |  travel " .. Util.moneyShort(r.travel) .. "  |  artist share " .. Util.moneyShort(r.artistCut), UI.px(40, 494), UI.px(1020, 26), { textSize = 16, color = T.sub })
 	local btn = UI.Button(box, "Continue", UI.px(800, 548), UI.px(260, 64), { color = T.accent, textSize = 22 }, function()
 		layer:Destroy()
 		self.modalOpen = false

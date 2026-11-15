@@ -220,15 +220,8 @@ function Util.syncInto(dst, src)
 end
 
 function Util.stars(n)
-	local s = ""
-	for i = 1, 5 do
-		if i <= n then
-			s = s .. "\226\152\133" -- U+2605 black star
-		else
-			s = s .. "\226\152\134" -- U+2606 white star
-		end
-	end
-	return s
+	-- plain text (Roblox fonts have no star symbols)
+	return tostring(n) .. "/5 stars"
 end
 
 function Util.totalFans(fans)

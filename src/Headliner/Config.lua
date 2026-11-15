@@ -19,7 +19,13 @@ Config.MAX_SHOWS_PER_TOUR = 60
 -- Part of the ticket gross that goes to the artist
 Config.ARTIST_SHARE = 0.35
 
--- Time only moves when the player presses NEXT DAY (no running clock any more)
+-- Time runs by itself: seconds per in-game day for each speed (II = paused)
+Config.SPEEDS = {
+	{ label = "II", seconds = 0 },
+	{ label = "1x", seconds = 30 },
+	{ label = "2x", seconds = 12 },
+	{ label = "4x", seconds = 4 },
+}
 
 -- Sandbox (developer test mode): money never runs out, every level, artist, venue and station is open
 Config.SANDBOX_MONEY = 1000000000

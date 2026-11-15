@@ -240,7 +240,7 @@ function GS.unlocks(state)
 		maptable = true,
 		meeting = true,
 		phone = true,
-		stagehall = all or st.shows >= 1,
+		stagehall = true, -- build a stage right from the first tour
 		charts = all or anyDone or st.shows >= 5,
 	}
 end
@@ -266,8 +266,7 @@ function GS.planStage(state)
 		return "dates"
 	elseif not d.pricesSet then
 		return "tickets"
-	elseif not d.stageSet and GS.unlocks(state).stagehall then
-		-- (the first tour uses the starter stage: the stage hall opens after the first show)
+	elseif not d.stageSet then
 		return "stage"
 	end
 	return "announce"
@@ -299,9 +298,6 @@ function GS.objective(state)
 	if #state.tours == 0 then
 		return { text = "Sit down in the MEETING ROOM and pick the artist for your first tour.", target = "meeting" }
 	end
-	if un.stagehall and not visited.stagehall then
-		return { text = "The STAGE HALL is open! Build your own stage show.", target = "stagehall" }
-	end
 	if un.charts and not visited.charts then
 		return { text = "The CHARTS screen is on! See where your tours rank.", target = "charts" }
 	end
@@ -323,7 +319,7 @@ function GS.objective(state)
 		end
 		if nextDay then
 			local d = nextDay - state.day
-			return { text = "Next show in " .. d .. " day" .. (d == 1 and "" or "s") .. ". Press NEXT DAY, check ticket sales on the LAPTOP.", target = nil }
+			return { text = "Next show in " .. d .. " day" .. (d == 1 and "" or "s") .. ". Ticket sales are on the LAPTOP.", target = nil }
 		end
 	end
 	return { text = "No tour on sale. Pick the next artist in the MEETING ROOM.", target = "meeting" }
@@ -718,7 +714,9 @@ function GS.createTour(state, draft)
 			noise = 1 - Config.DEMAND_NOISE + math.random() * 2 * Config.DEMAND_NOISE,
 			travel = Sim.travelCost(prev, v, #(GS.getDesign(state, designs[GS.venueClass(v)]) or design).items),
 			done = false,
-			watch = (i == 1) and (draft.watchFirst == true),
+			-- you are asked to go to the opening night; the other shows run by themselves
+			-- (pick them on the laptop: TOURS > WATCH)
+			skipLive = (i > 1) or nil,
 		})
 		prev = v
 	end

@@ -103,7 +103,7 @@ function StagesScreen:refresh()
 			end
 		end
 		local banner = UI.New("Frame", { Parent = body, Position = UI.px(760, 16), Size = UI.px(820, 88), BackgroundColor3 = UI.shade(T.accent, 0.35), BorderSizePixel = 0, UI.Corner(12), UI.Stroke(T.accent2, 2, 0.2) })
-		UI.Label(banner, "TOUR PLAN · " .. string.upper(Artists.byId[d.artistId].name) .. " needs a stage for: " .. table.concat(need, ", "), UI.px(16, 8), UI.px(790, 30), { textSize = 18, font = UI.FontBlack })
+		UI.Label(banner, "TOUR PLAN | " .. string.upper(Artists.byId[d.artistId].name) .. " needs a stage for: " .. table.concat(need, ", "), UI.px(16, 8), UI.px(790, 30), { textSize = 18, font = UI.FontBlack })
 		UI.Label(banner, "The best fitting stages are used. Edit or build one here, then pick it and announce on the LAPTOP.", UI.px(16, 42), UI.px(790, 40), { textSize = 15, color = T.text, wrap = true })
 	end
 	local canAdd = #state.designs < Config.MAX_DESIGNS
@@ -119,7 +119,7 @@ function StagesScreen:refresh()
 		local card = UI.New("Frame", { Parent = grid, BackgroundColor3 = T.panel, BorderSizePixel = 0, LayoutOrder = i, UI.Corner(14), UI.Stroke(T.stroke, 1, 0.3) })
 		thumbnail(card, d, UI.px(10, 10), UI.px(432, 200))
 		UI.Label(card, d.name, UI.px(18, 218), UI.px(416, 34), { textSize = 26, font = UI.FontBlack })
-		local pill = UI.Pill(card, string.upper(d.class) .. "  ·  " .. (d.layout == "center" and "CENTER" or "END STAGE"), UI.px(18, 256), UI.px(190, 26), T.accent2, 13)
+		local pill = UI.Pill(card, string.upper(d.class) .. "  |  " .. (d.layout == "center" and "CENTER" or "END STAGE"), UI.px(18, 256), UI.px(190, 26), T.accent2, 13)
 		pill.TextColor3 = BLACK
 		local t = usedBy(state, d.id)
 		if t then
@@ -127,7 +127,24 @@ function StagesScreen:refresh()
 		elseif d.template then
 			UI.Pill(card, "STARTER", UI.px(216, 256), UI.px(100, 26), T.panel3, 13)
 		end
-		UI.Label(card, GS.songCount(d) .. " songs   ·   " .. st.count .. " items   ·   " .. Util.money(st.cost) .. " per show", UI.px(18, 290), UI.px(416, 24), { textSize = 16, color = T.sub })
+		UI.Label(card, GS.songCount(d) .. " songs   |   " .. st.count .. " items   |   " .. Util.money(st.cost) .. " per show", UI.px(18, 290), UI.px(416, 24), { textSize = 16, color = T.sub })
+		-- a tour in planning: this stage can be selected for it
+		local dd = state.draft or {}
+		if dd.artistId and #(dd.shows or {}) > 0 then
+			local fitsAny, chosen = false, false
+			for _, sh in ipairs(dd.shows) do
+				local cls = GS.venueClass(Countries.venueById[sh.venueId])
+				if Config.STAGE_CLASS_BY_ID[d.class].order <= Config.STAGE_CLASS_BY_ID[cls].order then
+					fitsAny = true
+					if (dd.designs or {})[cls] == d.id then
+						chosen = true
+					end
+				end
+			end
+			UI.Button(card, chosen and "SELECTED FOR THE TOUR" or "SELECT FOR TOUR", UI.px(226, 168), UI.px(208, 34), { textSize = 13, color = chosen and T.good or T.accent2, textColor = Color3.new(0, 0, 0), disabled = not fitsAny }, function()
+				self:selectForTour(d)
+			end)
+		end
 		UI.Button(card, "EDIT", UI.px(18, 330), UI.px(200, 54), { color = T.accent, textSize = 20 }, function()
 			app.returnScreen = self.back or "stages"
 			app:openDesigner(d.id)
@@ -150,6 +167,30 @@ function StagesScreen:refresh()
 			end)
 		end)
 	end
+end
+
+-- use this stage for every venue size of the planned tour it fits
+function StagesScreen:selectForTour(d)
+	local app, state = self.app, self.app.state
+	local dd = state.draft
+	dd.designs = dd.designs or {}
+	local used = {}
+	for _, sh in ipairs(dd.shows) do
+		local cls = GS.venueClass(Countries.venueById[sh.venueId])
+		if Config.STAGE_CLASS_BY_ID[d.class].order <= Config.STAGE_CLASS_BY_ID[cls].order and not used[cls] then
+			used[cls] = true
+			dd.designs[cls] = d.id
+		end
+	end
+	dd.stageSet = true
+	app:act("setDraft", { draft = dd })
+	local list = {}
+	for cls in pairs(used) do
+		table.insert(list, cls)
+	end
+	table.sort(list)
+	app:toast("<b>" .. UI.esc(d.name) .. "</b> is the stage for the " .. table.concat(list, ", ") .. " shows. Announce the tour on the LAPTOP.", T.good, 7)
+	self:refresh()
 end
 
 -- "new stage" dialog: size, layout and how to start

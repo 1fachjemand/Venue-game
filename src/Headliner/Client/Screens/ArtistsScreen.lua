@@ -48,7 +48,7 @@ function ArtistsScreen:card(ad, order)
 	People.preview(card, ad.look, UI.rgb(ad.color), UI.px(12, 20), UI.px(150, 230), Color3.fromRGB(30, 34, 50))
 	UI.Label(card, ad.name, UI.px(176, 18), UI.px(264, 36), { textSize = 28, font = UI.FontBlack })
 	local members = ad.members > 1 and (ad.members .. " members") or "Solo"
-	UI.Label(card, ad.genre .. "  ·  " .. members, UI.px(176, 54), UI.px(264, 22), { textSize = 16, color = UI.rgb(ad.color), font = UI.FontBold })
+	UI.Label(card, ad.genre .. "  |  " .. members, UI.px(176, 54), UI.px(264, 22), { textSize = 16, color = UI.rgb(ad.color), font = UI.FontBold })
 	UI.Label(card, Util.tier(total), UI.px(176, 78), UI.px(264, 22), { textSize = 15, color = T.sub })
 	local function stat(y, label, frac, txt, col)
 		UI.Label(card, label, UI.px(176, y), UI.px(70, 22), { textSize = 14, color = T.sub, font = UI.FontBold })
@@ -67,7 +67,7 @@ function ArtistsScreen:card(ad, order)
 	UI.Label(card, "Biggest in " .. Regions.byId[best].name, UI.px(176, 198), UI.px(264, 22), { textSize = 15 })
 	UI.Label(card, "Tickets ~" .. Util.money(Sim.fairPrice(state, ad.id, "uk")), UI.px(176, 222), UI.px(264, 22), { textSize = 15, color = T.sub })
 	UI.Label(card, ad.bio, UI.px(18, 262), UI.px(330, 44), { textSize = 15, color = T.sub, wrap = true, alignY = Enum.TextYAlignment.Top })
-	UI.Button(card, "▶ Listen", UI.px(354, 264), UI.px(80, 36), { textSize = 14 }, function()
+	UI.Button(card, "> Listen", UI.px(354, 264), UI.px(80, 36), { textSize = 14 }, function()
 		if not SoundFX.preview(ad.id) then
 			app:toast("Music is not uploaded yet (see audio/README.md).", T.warn, 4)
 		end

@@ -225,4 +225,15 @@ Social.ITEM_NAMES = {
 	bubbles = "bubbles", snow = "snow", candles = "candle-light part", sofa = "living-room set", stringlights = "fairy lights", tvstack = "TV wall",
 }
 
+-- more posts from Data/SocialMore.lua
+do
+	local more = require(script:FindFirstAncestor("Headliner").Data.SocialMore)
+	for kind, list in pairs(more) do
+		Social.POSTS[kind] = Social.POSTS[kind] or {}
+		for _, p in ipairs(list) do
+			table.insert(Social.POSTS[kind], p)
+		end
+	end
+end
+
 return Social

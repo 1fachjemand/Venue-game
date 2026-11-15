@@ -159,7 +159,7 @@ function ToursScreen:refreshDetail()
 
 	-- show table
 	local y0 = tour.status ~= "done" and 262 or 182
-	local headers = { { "DATE", 24 }, { "VENUE", 150 }, { "TICKETS", 600 }, { "PRICE", 900 }, { "RESULT", 1050 }, { "LIVE", 1270 } }
+	local headers = { { "DATE", 24 }, { "VENUE", 150 }, { "TICKETS", 600 }, { "PRICE", 900 }, { "RESULT", 1050 }, { "WATCH", 1250 } }
 	for _, h in ipairs(headers) do
 		UI.Label(d, h[1], UI.px(h[2], y0), UI.px(200, 20), { textSize = 13, color = T.sub, font = UI.FontBold })
 	end
@@ -188,7 +188,7 @@ function ToursScreen:refreshDetail()
 		end
 		if not s.done then
 			local live = not s.skipLive
-			UI.Button(row, live and "GO" or "auto", UI.px(1250, 10), UI.px(60, 34), { color = live and T.accent or T.panel, textSize = 14 }, function()
+			UI.Button(row, live and "WATCH" or "auto", UI.px(1236, 10), UI.px(76, 34), { color = live and T.accent or T.panel, textSize = 14 }, function()
 				app:act("setLive", { tourId = tour.id, idx = i, live = not live })
 				app:refreshCurrent()
 			end)

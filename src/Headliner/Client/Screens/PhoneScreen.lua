@@ -12,24 +12,24 @@ local T = UI.Theme
 local PhoneScreen = {}
 PhoneScreen.__index = PhoneScreen
 
-local W, H = 580, 1010
-local SCALE = 0.82 -- the feed cards are made for 640 px, the phone screen is 540 wide
+local W, H = 660, 1010
+local SCALE = 0.95 -- the feed cards are made for 640 px
 
 function PhoneScreen.new(app)
 	local self = setmetatable({ app = app, tab = "feed" }, PhoneScreen)
-	local frame = UI.New("Frame", { Parent = app.canvas, Name = "Phone", Position = UI.px(1310, 36), Size = UI.px(W, H), BackgroundColor3 = Color3.fromRGB(14, 14, 18), BorderSizePixel = 0, Visible = false, ZIndex = 30, UI.Corner(56), UI.Stroke(Color3.fromRGB(70, 70, 82), 4, 0) })
+	local frame = UI.New("Frame", { Parent = app.canvas, Name = "Phone", Position = UI.px(1230, 36), Size = UI.px(W, H), BackgroundColor3 = Color3.fromRGB(14, 14, 18), BorderSizePixel = 0, Visible = false, ZIndex = 30, UI.Corner(56), UI.Stroke(Color3.fromRGB(70, 70, 82), 4, 0) })
 	self.frame = frame
 	-- the screen
 	local screen = UI.New("Frame", { Parent = frame, Position = UI.px(18, 18), Size = UI.px(W - 36, H - 36), BackgroundColor3 = T.bg, BorderSizePixel = 0, ClipsDescendants = true, UI.Corner(42) })
 	self.screen = screen
 	UI.New("Frame", { Parent = frame, Position = UI.px(W / 2 - 70, 26), Size = UI.px(140, 30), BackgroundColor3 = Color3.fromRGB(8, 8, 10), BorderSizePixel = 0, ZIndex = 40, UI.Corner(15) })
 	self.status = UI.Label(screen, "", UI.px(36, 12), UI.px(200, 24), { textSize = 15, font = UI.FontBold })
-	UI.Label(screen, "5G  ▮▮▮  92%", UI.px(W - 236, 12), UI.px(170, 24), { textSize = 14, font = UI.FontBold, alignX = Enum.TextXAlignment.Right })
+	UI.Label(screen, "5G  |||  92%", UI.px(W - 236, 12), UI.px(170, 24), { textSize = 14, font = UI.FontBold, alignX = Enum.TextXAlignment.Right })
 	-- app header
 	local head = UI.New("Frame", { Parent = screen, Position = UI.px(0, 50), Size = UI.px(W - 36, 70), BackgroundColor3 = T.panel, BorderSizePixel = 0 })
 	UI.Label(head, "FanFeed", UI.px(22, 6), UI.px(300, 36), { textSize = 28, font = UI.FontBlack, color = T.accent2 })
 	self.sub = UI.Label(head, "", UI.px(22, 40), UI.px(400, 22), { textSize = 14, color = T.sub })
-	UI.Button(head, "✕", UI.px(W - 36 - 64, 12), UI.px(46, 46), { textSize = 20, color = T.panel3 }, function()
+	UI.Button(head, "X", UI.px(W - 36 - 64, 12), UI.px(46, 46), { textSize = 20, color = T.panel3 }, function()
 		app:closePhone()
 	end)
 	-- tabs at the bottom

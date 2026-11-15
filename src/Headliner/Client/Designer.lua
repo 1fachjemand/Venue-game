@@ -39,7 +39,7 @@ local BLACK = Color3.new(0, 0, 0)
 local GEOMETRY_KEYS = { w = true, d = true, h = true, skin = true, edge = true, scr = true }
 
 local HELP = table.concat({
-	"<b>Place</b>   pick an item below, click into the world, then press  <b>✓</b>  (or Enter)",
+	"<b>Place</b>   pick an item below, click into the world, then press  <b>OK</b>  (or Enter)",
 	"<b>Line up</b>   drag the arrows: <font color='#eb463c'>red</font> / <font color='#3c8cff'>blue</font> move, <font color='#5ad250'>green</font> lifts it up",
 	"<b>Turn</b>   drag the <font color='#ff9628'>orange ring</font> or press R / Q      <b>Size</b>   drag the <font color='#ffcd3c'>gold cubes</font>",
 	"<b>Select</b>   click a placed item      <b>Copy</b>  C      <b>Delete</b>  X      <b>Cancel</b>  Esc / F",
@@ -658,18 +658,18 @@ function Designer.open(app, designId)
 			gridIndex = gridIndex % #GRIDS + 1
 			refreshToolbar()
 		end).LayoutOrder = 1
-		toolButton("Turn " .. TURNS[turnIndex] .. "°", 104, T.panel2, nil, function()
+		toolButton("Turn " .. TURNS[turnIndex] .. " deg", 104, T.panel2, nil, function()
 			turnIndex = turnIndex % #TURNS + 1
 			refreshToolbar()
 		end).LayoutOrder = 2
-		toolButton("⟲ Turn (R)", 120, nil, nil, function()
+		toolButton("Reposts: Turn (R)", 120, nil, nil, function()
 			rotate(TURNS[turnIndex])
 		end, not (tgt or mode == "place")).LayoutOrder = 3
 		toolButton("Copy (C)", 100, nil, nil, copySelected, not tgt).LayoutOrder = 4
 		toolButton("Delete (X)", 110, UI.shade(T.bad, 0.7), nil, deleteSelected, not tgt).LayoutOrder = 5
-		toolButton("✕", 56, T.panel2, T.bad, cancel, not (tgt or mode == "place")).LayoutOrder = 6
+		toolButton("X", 56, T.panel2, T.bad, cancel, not (tgt or mode == "place")).LayoutOrder = 6
 		local price = pending and Sim.itemPrice(pending.def, pending.rec) or nil
-		local okBtn = toolButton(pending and ("✓  PLACE  " .. (price > 0 and Util.moneyShort(price) or "")) or "✓", pending and 180 or 56, pending and T.good or T.panel2, pending and BLACK or T.sub, confirm, not pending)
+		local okBtn = toolButton(pending and ("DONE:  PLACE  " .. (price > 0 and Util.moneyShort(price) or "")) or "OK", pending and 180 or 56, pending and T.good or T.panel2, pending and BLACK or T.sub, confirm, not pending)
 		okBtn.LayoutOrder = 7
 		toolbar.Size = UI.px(pending and 900 or 776, 58)
 		toolbar.Position = UI.px(960 - (pending and 450 or 388), 800)
@@ -776,7 +776,7 @@ function Designer.open(app, designId)
 				applyChange({ skin = it[1] })
 			end)
 			local f = nextOrder(row(34))
-			UI.Button(f, (rec.edge and "☑" or "☐") .. "  Edge lights", UI.px(0, 0), UI.px(140, 32), { textSize = 13 }, function()
+			UI.Button(f, (rec.edge and "[X]" or "[ ]") .. "  Edge lights", UI.px(0, 0), UI.px(140, 32), { textSize = 13 }, function()
 				applyChange({ edge = not rec.edge })
 			end)
 			if selected and not pending then
@@ -829,10 +829,10 @@ function Designer.open(app, designId)
 						refreshInspector()
 					end
 				end
-				UI.Button(f, "◀ Earlier", UI.px(0, 0), UI.px(145, 32), { textSize = 13, disabled = idx <= 1 }, function()
+				UI.Button(f, "< Earlier", UI.px(0, 0), UI.px(145, 32), { textSize = 13, disabled = idx <= 1 }, function()
 					swap(list[idx - 1])
 				end)
-				UI.Button(f, "Later ▶", UI.px(151, 0), UI.px(145, 32), { textSize = 13, disabled = idx >= #list }, function()
+				UI.Button(f, "Later >", UI.px(151, 0), UI.px(145, 32), { textSize = 13, disabled = idx >= #list }, function()
 					swap(list[idx + 1])
 				end)
 			end
@@ -942,7 +942,7 @@ function Designer.open(app, designId)
 			end
 		end
 		nextOrder(section("POSITION"))
-		stepper("Turn", (rec.r or 0) .. "°", function()
+		stepper("Turn", (rec.r or 0) .. " deg", function()
 			rotate(-TURNS[turnIndex])
 		end, function()
 			rotate(TURNS[turnIndex])
@@ -954,8 +954,8 @@ function Designer.open(app, designId)
 		end)
 		if pending then
 			local f = nextOrder(row(48))
-			UI.Button(f, "✕ Cancel", UI.px(0, 4), UI.px(120, 42), { textSize = 15 }, cancel)
-			UI.Button(f, "✓ PLACE", UI.px(126, 4), UI.px(170, 42), { textSize = 17, color = T.good, textColor = BLACK }, confirm)
+			UI.Button(f, "X Cancel", UI.px(0, 4), UI.px(120, 42), { textSize = 15 }, cancel)
+			UI.Button(f, "DONE: PLACE", UI.px(126, 4), UI.px(170, 42), { textSize = 17, color = T.good, textColor = BLACK }, confirm)
 		end
 	end
 
@@ -982,7 +982,7 @@ function Designer.open(app, designId)
 			inst.Name = "TopItem"
 			return inst
 		end
-		tag(UI.Button(top, "◀  MY STAGES", UI.px(16, 10), UI.px(170, 44), { textSize = 16 }, function()
+		tag(UI.Button(top, "< MY STAGES", UI.px(16, 10), UI.px(170, 44), { textSize = 16 }, function()
 			Designer.close()
 			app:enterMode("menu")
 			app:go("stages")
@@ -1008,20 +1008,20 @@ function Designer.open(app, designId)
 			end
 			nameBox.Text = self.design.name
 		end)
-		local pill = tag(UI.Pill(top, string.upper(self.design.class) .. "  ·  " .. (self.design.layout == "center" and "CENTER STAGE" or "END STAGE"), UI.px(512, 18), UI.px(220, 28), T.accent2, 14))
+		local pill = tag(UI.Pill(top, string.upper(self.design.class) .. "  |  " .. (self.design.layout == "center" and "CENTER STAGE" or "END STAGE"), UI.px(512, 18), UI.px(220, 28), T.accent2, 14))
 		pill.TextColor3 = BLACK
 		tag(UI.Button(top, "?", UI.px(744, 10), UI.px(44, 44), { textSize = 20, color = helpBox.Visible and T.accent or T.panel3 }, function()
 			helpBox.Visible = not helpBox.Visible
 			refreshTop()
 		end))
 		local ad = previewArtist()
-		tag(UI.Button(top, "Artist: " .. (ad and ad.name or "-") .. "  ▸", UI.px(1010, 10), UI.px(230, 44), { textSize = 15 }, function()
+		tag(UI.Button(top, "Artist: " .. (ad and ad.name or "-") .. "  >", UI.px(1010, 10), UI.px(230, 44), { textSize = 15 }, function()
 			self.previewIndex = self.previewIndex % math.max(1, #signed) + 1
 			render()
 			refreshTop()
 			refreshStats()
 		end))
-		tag(UI.Button(top, "▶  PREVIEW SHOW", UI.px(1250, 10), UI.px(200, 44), { color = T.accent2, textColor = BLACK, textSize = 16 }, function()
+		tag(UI.Button(top, "> PREVIEW SHOW", UI.px(1250, 10), UI.px(200, 44), { color = T.accent2, textColor = BLACK, textSize = 16 }, function()
 			Designer.preview()
 		end))
 		tag(UI.Button(top, "DONE", UI.px(1460, 10), UI.px(140, 44), { color = T.accent, textSize = 18 }, function()
@@ -1471,6 +1471,18 @@ function Designer.preview()
 	local ad = self.previewArtist()
 	if not ad then
 		self.app:toast("Sign an artist first.", T.warn)
+		return
+	end
+	-- a show needs a stage: at least one stage deck
+	local hasDeck = false
+	for _, it in ipairs(self.design.items) do
+		local def = StageItems.byId[it.t]
+		if def and def.deck then
+			hasDeck = true
+		end
+	end
+	if not hasDeck then
+		self.app:toast("You need a stage first: place at least one stage deck (STAGE category).", T.warn, 6)
 		return
 	end
 	local app, design = self.app, self.design

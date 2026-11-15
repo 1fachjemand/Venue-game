@@ -331,7 +331,7 @@ function SocialScreen:post(list, p, order)
 	local av = UI.New("TextLabel", { Parent = head, Size = UI.px(44, 44), BackgroundColor3 = AVATARS[p.avatar or 1], Text = p.name:sub(1, 1), TextColor3 = BLACK, TextSize = 22, Font = UI.FontBlack, UI.Corner(22) })
 	local _ = av
 	UI.Label(head, p.name, UI.px(56, 0), UI.px(300, 24), { textSize = 18, font = UI.FontBold })
-	UI.Label(head, p.handle .. "  ·  " .. ago(state, p.day), UI.px(56, 24), UI.px(400, 20), { textSize = 14, color = T.sub })
+	UI.Label(head, p.handle .. "  |  " .. ago(state, p.day), UI.px(56, 24), UI.px(400, 20), { textSize = 14, color = T.sub })
 	if ad then
 		local tag = UI.Pill(head, ad.name, UI.px(458, 10), UI.px(150, 24), UI.rgb(ad.color), 12)
 		tag.TextColor3 = BLACK
@@ -344,7 +344,7 @@ function SocialScreen:post(list, p, order)
 		Text = UI.esc(p.text),
 		RichText = true,
 		TextWrapped = true,
-		TextSize = 19,
+		TextSize = 22,
 		TextColor3 = T.text,
 		Font = UI.Font,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -356,7 +356,7 @@ function SocialScreen:post(list, p, order)
 		photo(card, ad, p.seed or seed, p.pkind or ((seed % 2 == 0) and "selfie" or "stage"), p).LayoutOrder = 3
 	end
 	local foot = UI.New("Frame", { Parent = card, Size = UI.px(608, 22), BackgroundTransparency = 1, LayoutOrder = 4 })
-	UI.Label(foot, "♥ " .. Util.short(p.likes or 0) .. "      ⟲ " .. Util.short(p.reposts or 0), UI.px(0, 0), UI.px(300, 22), { textSize = 15, color = T.sub })
+	UI.Label(foot, "Likes: " .. Util.short(p.likes or 0) .. "      Reposts: " .. Util.short(p.reposts or 0), UI.px(0, 0), UI.px(300, 22), { textSize = 15, color = T.sub })
 	local moodTxt = (p.mood > 0) and "positive" or ((p.mood < 0) and "critical" or "neutral")
 	UI.Label(foot, moodTxt, UI.px(408, 0), UI.px(200, 22), { textSize = 14, font = UI.FontBold, color = MOOD_COLOR[p.mood] or T.sub, alignX = Enum.TextXAlignment.Right })
 end
@@ -424,12 +424,12 @@ function SocialScreen:refresh()
 	local tips = UI.Panel(body, UI.px(1180, 510), UI.px(700, 480))
 	UI.Label(tips, "WHAT FANS TALK ABOUT", UI.px(24, 16), UI.px(600, 30), { textSize = 22, font = UI.FontBlack, color = T.accent })
 	UI.Label(tips, table.concat({
-		"•  Great shows get photos, love and fan projects.",
-		"•  Weak shows and bare stages get criticism.",
-		"•  Very high ticket prices make fans angry.",
-		"•  Fans notice special stage moments: lifts, pyro, the LED cube, balloons...",
-		"•  Empty venues: fans worry when tickets don't sell.",
-		"•  Cancelled tours hurt the mood a lot.",
+		"-  Great shows get photos, love and fan projects.",
+		"-  Weak shows and bare stages get criticism.",
+		"-  Very high ticket prices make fans angry.",
+		"-  Fans notice special stage moments: lifts, pyro, the LED cube, balloons...",
+		"-  Empty venues: fans worry when tickets don't sell.",
+		"-  Cancelled tours hurt the mood a lot.",
 	}, "\n"), UI.px(24, 60), UI.px(650, 400), { textSize = 18, wrap = true, alignY = Enum.TextYAlignment.Top, color = T.text })
 	local _c = Config
 end

@@ -133,7 +133,7 @@ function MainMenu.show(app, info, onStart)
 				UI.Label(card, ad.genre .. (ad.members > 1 and ("  |  " .. ad.members .. "-piece band") or "  |  Solo"), UI.px(118, 44), UI.px(240, 22), { textSize = 15, color = UI.rgb(ad.color), font = UI.FontBold })
 				UI.Label(card, ad.bio, UI.px(118, 70), UI.px(230, 40), { textSize = 14, color = T.sub, wrap = true, alignY = Enum.TextYAlignment.Top })
 				UI.Label(card, Util.short(Util.totalFans(ad.fans)) .. " fans  |  skill " .. ad.skill, UI.px(118, 116), UI.px(240, 22), { textSize = 14, font = UI.FontBold })
-				UI.Button(card, "▶", UI.px(366, 104), UI.px(118, 34), { textSize = 16 }, function()
+				UI.Button(card, "Listen", UI.px(366, 104), UI.px(118, 34), { textSize = 16 }, function()
 					if not SoundFX.preview(ad.id) then
 						app:toast("Music is not uploaded yet.", T.warn, 3)
 					end

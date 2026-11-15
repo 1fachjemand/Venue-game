@@ -544,7 +544,7 @@ function LiveShow.run(app, opts)
 		camButtons[0] = UI.Button(bar, "Walk [V]", nil, UI.px(100, 38), { order = 0, textSize = 14 }, function()
 			camMode = 0
 		end)
-		UI.Label(overlay, "WASD = walk around the venue   ·   V = walk   ·   0 - 5 = show cameras", UI.px(0, 976), UI.px(1920, 30), { textSize = 17, font = UI.FontBold, alignX = Enum.TextXAlignment.Center }).TextStrokeTransparency = 0.5
+		UI.Label(overlay, "WASD = walk around the venue   |   V = walk   |   0 - 5 = show cameras", UI.px(0, 976), UI.px(1920, 30), { textSize = 17, font = UI.FontBold, alignX = Enum.TextXAlignment.Center }).TextStrokeTransparency = 0.5
 	end
 	for i, name in ipairs(CAMERA_NAMES) do
 		camButtons[i] = UI.Button(bar, name .. " [" .. (i - 1) .. "]", nil, UI.px(104, 38), { order = i, textSize = 14 }, function()

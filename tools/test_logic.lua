@@ -83,7 +83,7 @@ for day = 1, 60 do
   for _, a in ipairs(ev.achievements) do print("ACH", a) end
   for _, t in ipairs(ev.completed) do print("COMPLETED", t.name, t.gross, t.net) end
 end
-check(live >= 1, "shows of the day are played live")
+check(live >= 1, "the opening night is played live")
 check(tour.status == "done" and t2.status == "done", "tours done")
 print("money", state.money, "lila fans", Util.totalFans(state.artists.lila.fans), "hype", state.artists.lila.hype)
 local rows, best = GS.chart(state)
@@ -251,7 +251,7 @@ do
   local okP, _, dataP = Actions.run(st, "playShow", { tourId = tour.id, idx = 1 })
   check(okP and dataP.result and tour.shows[1].done, "playShow")
   check(not Actions.run(st, "playShow", { tourId = tour.id, idx = 1 }), "a show plays only once")
-  check(GS.unlocks(st).stagehall, "stage hall opens after the first show")
+  check(GS.unlocks(st).stagehall, "stage hall is open")
   -- stage builder: the server pays the difference per item uid
   local d = st.designs[1]
   local before = st.money
@@ -284,10 +284,7 @@ do
   check(#fresh.draft.shows == 1 and GS.planStage(fresh) == "tickets", "dates saved (bad venue dropped), then tickets")
   check(GS.objective(fresh).target == "laptop", "tickets on the laptop")
   Actions.run(fresh, "setDraft", { draft = { artistId = "lila", shows = fresh.draft.shows, pricesSet = true } })
-  check(GS.planStage(fresh) == "announce", "first tour: starter stage, the hall is still closed")
-  fresh.stats.shows = 1
-  check(GS.objective(fresh).target == "stagehall", "later: the stage hall")
-  fresh.stats.shows = 0
+  check(GS.objective(fresh).target == "stagehall", "then the stage hall")
   Actions.run(fresh, "setDraft", { draft = { artistId = "kai", shows = fresh.draft.shows } })
   check(fresh.draft.artistId == nil and #fresh.draft.shows == 0, "an unsigned artist can't be planned")
   Actions.run(fresh, "setDraft", { draft = { artistId = "lila", shows = { { venueId = "uk_fiddle", day = 30 } }, pricesSet = true, stageSet = true } })

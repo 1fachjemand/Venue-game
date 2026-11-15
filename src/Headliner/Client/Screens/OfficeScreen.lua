@@ -47,7 +47,7 @@ function OfficeScreen:refresh()
 	-- header: label name + level progress in one line
 	UI.Label(body, state.labelName, UI.px(40, 16), UI.px(900, 56), { textSize = 44, font = UI.FontBlack })
 	local lvl, def, nextDef = GS.level(state)
-	UI.Pill(body, "LEVEL " .. lvl .. "  ·  " .. string.upper(def.name), UI.px(40, 76), UI.px(250, 28), T.accent, 14)
+	UI.Pill(body, "LEVEL " .. lvl .. "  |  " .. string.upper(def.name), UI.px(40, 76), UI.px(250, 28), T.accent, 14)
 	if nextDef then
 		local f = (state.stats.tickets - def.tickets) / (nextDef.tickets - def.tickets)
 		UI.Bar(body, UI.px(306, 86), UI.px(360, 10), f, T.gold)
@@ -66,7 +66,7 @@ function OfficeScreen:refresh()
 		UI.Label(hero, ad.name, UI.px(250, 46), UI.px(820, 48), { textSize = 40, font = UI.FontBlack })
 		UI.Label(hero, v.name .. ", " .. v.city, UI.px(250, 96), UI.px(820, 30), { textSize = 22 })
 		local days = nextShow.s.day - state.day
-		UI.Label(hero, (days <= 0 and "Tonight" or ("In " .. days .. " day" .. (days == 1 and "" or "s"))) .. "   ·   " .. Util.date(nextShow.s.day, Config.START_YEAR), UI.px(250, 130), UI.px(820, 26), { textSize = 18, color = T.sub })
+		UI.Label(hero, (days <= 0 and "Tonight" or ("In " .. days .. " day" .. (days == 1 and "" or "s"))) .. "   |   " .. Util.date(nextShow.s.day, Config.START_YEAR), UI.px(250, 130), UI.px(820, 26), { textSize = 18, color = T.sub })
 		local f = math.min(1, nextShow.s.sold / nextShow.s.cap)
 		local col = f >= 1 and T.gold or (f > 0.7 and T.good or (f > 0.4 and T.warn or T.bad))
 		UI.Bar(hero, UI.px(250, 178), UI.px(520, 18), f, col)
@@ -74,29 +74,10 @@ function OfficeScreen:refresh()
 		UI.Button(hero, "OPEN TOUR", UI.px(250, 222), UI.px(220, 56), { color = T.accent, textSize = 18 }, function()
 			app:go("tours", { tourId = nextShow.tour.id })
 		end)
-		UI.Button(hero, "+ PLAN ANOTHER TOUR", UI.px(484, 222), UI.px(280, 56), { textSize = 16 }, function()
-			app:go("planner")
-		end)
 	else
 		UI.Label(hero, "WHAT NOW?", UI.px(30, 22), UI.px(600, 22), { textSize = 15, color = T.accent2, font = UI.FontBold })
 		UI.Label(hero, "No shows booked yet", UI.px(30, 46), UI.px(1000, 48), { textSize = 38, font = UI.FontBlack })
-		UI.Label(hero, "Book a tour for one of your artists. Start with small clubs, they sell out more easily.", UI.px(30, 98), UI.px(1040, 28), { textSize = 18, color = T.sub })
-		local actions = {
-			{ "+ PLAN A TOUR", "Pick venues and a price", T.accent2, function()
-				app:go("planner")
-			end },
-			{ "BUILD A STAGE", "Design your show", T.accent, function()
-				app:go("stages")
-			end },
-			{ "FIND TALENT", "Sign new artists", T.panel3, function()
-				app:go("artists", { tab = "scout" })
-			end },
-		}
-		for i, a in ipairs(actions) do
-			local b = UI.Button(body, "", UI.px(70 + (i - 1) * 350, 284), UI.px(330, 110), { color = a[3] }, a[4])
-			UI.Label(b, a[1], UI.px(20, 18), UI.px(300, 34), { textSize = 24, font = UI.FontBlack, color = (a[3] == T.accent2) and BLACK or T.text })
-			UI.Label(b, a[2], UI.px(20, 60), UI.px(300, 26), { textSize = 16, color = (a[3] == T.accent2) and BLACK or T.sub })
-		end
+		UI.Label(hero, "A tour starts in the MEETING ROOM (pick the artist), then the WORLD MAP table (dates), then here on the laptop (TOUR PLAN: ticket prices, stage, announce).", UI.px(30, 98), UI.px(1040, 60), { textSize = 18, color = T.sub, wrap = true })
 	end
 
 	-- upcoming shows

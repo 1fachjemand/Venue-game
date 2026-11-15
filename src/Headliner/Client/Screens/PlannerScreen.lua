@@ -95,7 +95,7 @@ function MapScreen:hoverCountry(cid)
 	local aid = self.draft.artistId
 	if aid then
 		local tip, pool = Sim.recommendation(state, aid, cid)
-		txt = txt .. "\n~" .. Util.short(pool) .. " fans of " .. Artists.byId[aid].name .. "  ·  Promoter tip: " .. tip
+		txt = txt .. "\n~" .. Util.short(pool) .. " fans of " .. Artists.byId[aid].name .. "  |  Promoter tip: " .. tip
 	end
 	self.hoverBox.Text = txt .. "\n<font color='#9696b2'>Click to see the venues</font>"
 	self.hoverBox.Visible = true
@@ -358,7 +358,7 @@ function MapScreen:fillRouteList(parent, w, h)
 		local v = Countries.venueById[s.venueId]
 		local _, dshort = Util.date(s.day, Config.START_YEAR)
 		local row = UI.New("Frame", { Parent = list, Size = UI.px(w - 44, 30), BackgroundColor3 = T.panel2, BorderSizePixel = 0, LayoutOrder = i, UI.Corner(6) })
-		UI.Label(row, i .. ".  " .. dshort .. "   " .. v.city .. "  ·  " .. v.name, UI.px(10, 0), UI.px(w - 64, 30), { textSize = 14 })
+		UI.Label(row, i .. ".  " .. dshort .. "   " .. v.city .. "  |  " .. v.name, UI.px(10, 0), UI.px(w - 64, 30), { textSize = 14 })
 	end
 end
 
@@ -413,8 +413,8 @@ function MapScreen:buildVenueStep(body)
 		local row = UI.New("Frame", { Parent = list, Size = UI.px(1820, 84), BackgroundColor3 = open and T.panel2 or T.panel, BorderSizePixel = 0, LayoutOrder = i, UI.Corner(10) })
 		local pill = UI.Pill(row, vt.label, UI.px(16, 28), UI.px(110, 28), open and UI.rgb(vt.color) or T.panel3, 13)
 		local _ = pill
-		UI.Label(row, (open and "" or "🔒  ") .. v.name, UI.px(146, 10), UI.px(700, 34), { textSize = 24, font = UI.FontBold, color = open and T.text or T.sub })
-		UI.Label(row, v.city .. "   ·   " .. Util.number(v.cap) .. " seats   ·   rent " .. Util.moneyShort(Sim.venueRent(v)), UI.px(146, 46), UI.px(700, 26), { textSize = 16, color = T.sub })
+		UI.Label(row, (open and "" or "LOCKED  ") .. v.name, UI.px(146, 10), UI.px(700, 34), { textSize = 24, font = UI.FontBold, color = open and T.text or T.sub })
+		UI.Label(row, v.city .. "   |   " .. Util.number(v.cap) .. " seats   |   rent " .. Util.moneyShort(Sim.venueRent(v)), UI.px(146, 46), UI.px(700, 26), { textSize = 16, color = T.sub })
 		if open then
 			-- promoter estimate (a range, not a promise)
 			local shows = {}
@@ -802,10 +802,7 @@ function MapScreen:buildPlanPage(body)
 	local panel = UI.Panel(body, UI.px(20, 70), UI.px(1880, 930))
 	if not draft.artistId then
 		UI.Label(panel, "No tour in planning", UI.px(40, 40), UI.px(1000, 50), { textSize = 38, font = UI.FontBlack })
-		UI.Label(panel, "Every tour starts in the MEETING ROOM: sit down, start the meeting and press PLAN A TOUR at one of your artists.", UI.px(40, 100), UI.px(1500, 60), { textSize = 20, color = T.sub, wrap = true })
-		UI.Button(panel, "GO TO THE MEETING ROOM", UI.px(40, 180), UI.px(420, 64), { color = T.accent, textSize = 20 }, function()
-			app:go("artists")
-		end)
+		UI.Label(panel, "Every tour starts in the MEETING ROOM: sit down, start the meeting and press PLAN A TOUR at one of your artists. Then plan the dates at the WORLD MAP table. Here you set the ticket prices, pick the stage and announce the tour.", UI.px(40, 100), UI.px(1500, 90), { textSize = 22, color = T.sub, wrap = true })
 		return
 	end
 	local ad = Artists.byId[draft.artistId]
@@ -813,26 +810,30 @@ function MapScreen:buildPlanPage(body)
 	-- the four parts of the plan with where they are done
 	local cards = {
 		{ "ARTIST", ad.name, true, "Meeting room", nil },
-		{ "DATES", #draft.shows .. " show" .. (#draft.shows == 1 and "" or "s"), #draft.shows > 0, "World map", function()
-			app:go("planner")
-		end },
+
+		{ "DATES", #draft.shows .. " show" .. (#draft.shows == 1 and "" or "s"), #draft.shows > 0, "World map", nil },
 		{ "TICKET PRICES", draft.pricesSet and "set" or "not set yet", draft.pricesSet == true, "here", function()
 			self.page = "tickets"
 			self:refresh()
 		end },
-		GS.unlocks(state).stagehall and { "STAGE", draft.stageSet and "checked" or "not checked yet", draft.stageSet == true, "Stage hall", function()
-			app:go("stages")
-		end } or { "STAGE", "starter stage", true, "stage hall (opens after the first show)", nil },
+		{ "STAGE", draft.stageSet and "selected" or "not selected yet", draft.stageSet == true, "stage", (not draft.stageSet) and function()
+			-- the stages shown below are fine: use them
+			draft.stageSet = true
+			self:saveDraft()
+			self:refresh()
+		end or nil },
 	}
 	for i, c in ipairs(cards) do
 		local x = 28 + (i - 1) * 462
 		local card = UI.New("Frame", { Parent = panel, Position = UI.px(x, 20), Size = UI.px(450, 118), BackgroundColor3 = c[3] and UI.shade(T.good, 0.3) or T.panel2, BorderSizePixel = 0, UI.Corner(12), UI.Stroke(c[3] and T.good or T.warn, 2, 0.2) })
 		UI.Label(card, i .. "  " .. c[1], UI.px(16, 10), UI.px(300, 24), { textSize = 16, font = UI.FontBlack, color = c[3] and T.good or T.warn })
-		UI.Label(card, (c[3] and "✓ " or "") .. c[2], UI.px(16, 38), UI.px(420, 32), { textSize = 22, font = UI.FontBold })
+		UI.Label(card, (c[3] and "DONE: " or "") .. c[2], UI.px(16, 38), UI.px(420, 32), { textSize = 22, font = UI.FontBold })
 		if c[5] then
-			UI.Button(card, (c[4] == "here") and "SET PRICES" or ("GO TO " .. string.upper(c[4])), UI.px(16, 74), UI.px(260, 34), { textSize = 13, color = (c[4] == "here") and T.accent or T.panel3 }, c[5])
+			UI.Button(card, (c[4] == "here") and "SET PRICES" or "USE THE STAGES BELOW", UI.px(16, 74), UI.px(300, 34), { textSize = 14, color = T.accent }, c[5])
+		elseif c[4] == "stage" then
+			UI.Label(card, "build or select stages in the STAGE HALL", UI.px(16, 78), UI.px(420, 24), { textSize = 15, color = T.sub })
 		else
-			UI.Label(card, "picked in the " .. c[4], UI.px(16, 78), UI.px(400, 24), { textSize = 14, color = T.sub })
+			UI.Label(card, "picked at the " .. string.lower(c[4]) .. ((c[4] == "World map") and " table" or ""), UI.px(16, 78), UI.px(420, 24), { textSize = 15, color = T.sub })
 		end
 	end
 	UI.Label(panel, "TOUR NAME", UI.px(28, 152), UI.px(400, 22), { textSize = 15, color = T.sub, font = UI.FontBold })
@@ -865,7 +866,7 @@ function MapScreen:buildPlanPage(body)
 	for _, need in ipairs(self:classesNeeded()) do
 		local d = self:designForClass(need.class)
 		local fits = self:fittingDesigns(need.class)
-		local label = need.class .. ": " .. (d and d.name or "none") .. ((#fits > 1) and "  ▸" or "")
+		local label = need.class .. ": " .. (d and d.name or "none") .. ((#fits > 1) and "  >" or "")
 		local w = math.min(380, #label * 9 + 30)
 		UI.Button(panel, label, UI.px(sx, 184), UI.px(w, 36), { textSize = 14, color = d and T.panel3 or UI.shade(T.bad, 0.5), disabled = #fits < 2 }, function()
 			local idx = 1
@@ -991,7 +992,7 @@ function MapScreen:refreshHeader()
 		end
 	end
 	local ad = self.draft.artistId and Artists.byId[self.draft.artistId]
-	UI.Label(h, "TOUR PLAN" .. (ad and ("  ·  " .. string.upper(ad.name)) or "") .. "  ·  STEP " .. idx .. " OF 5", UI.px(196, 6), UI.px(700, 24), { textSize = 16, color = T.accent2, font = UI.FontBlack })
+	UI.Label(h, "TOUR PLAN" .. (ad and ("  |  " .. string.upper(ad.name)) or "") .. "  |  STEP " .. idx .. " OF 5", UI.px(196, 6), UI.px(700, 24), { textSize = 16, color = T.accent2, font = UI.FontBlack })
 	local title = (self.mode == "map") and ("Dates: " .. (MAP_TITLE[self.step] or "")) or ((self.page == "tickets") and "Ticket prices" or "Check the plan & announce")
 	UI.Label(h, title, UI.px(196, 28), UI.px(900, 34), { textSize = 28, font = UI.FontBlack })
 	local stage = GS.planStage(state)

@@ -29,10 +29,10 @@ MOCK.clickExact("Let's go!")
 dump("04b_world_hud")
 MOCK.prompt("laptop")
 dump("04c_laptop")
-MOCK.clickExact("✕  CLOSE")
+MOCK.clickExact("CLOSE")
 MOCK.prompt("maptable")
 dump("05a_plan_no_artist")
-MOCK.clickExact("✕  CLOSE")
+MOCK.clickExact("CLOSE")
 app:act("setDraft", { draft = { artistId = "juno" } })
 MOCK.prompt("maptable")
 local map = app.screens.planner
@@ -75,7 +75,7 @@ end
 dump("09_tours")
 MOCK.clickExact("OVERVIEW")
 dump("11_office_after")
-MOCK.clickExact("✕  CLOSE")
+MOCK.clickExact("CLOSE")
 dump("11b_world_after")
 local seat = workspace.StarlightRecords:FindFirstChild("MeetingSeat1", true)
 MOCK.sit(seat)
@@ -89,7 +89,7 @@ app:openPhone()
 dump("12_phone_feed")
 MOCK.clickExact("FAN MOOD")
 dump("12b_phone_mood")
-MOCK.clickExact("✕")
+MOCK.clickExact("X")
 SRV().stats.shows = 1 app:applyDelta(app:call("resync").delta) app:refreshCurrent()
 MOCK.prompt("stagehall")
 dump("13_stages")
@@ -111,7 +111,7 @@ for _, r in ipairs(Stage3D.items) do if r.kind == "led" then require(root.Client
 dump("16_designer_screen")
 MOCK.clickExact("DONE")
 for _ = 1, 30 do MOCK.step(0.05) end
-if app.mode == "menu" then MOCK.clickExact("✕  CLOSE") end
+if app.mode == "menu" then MOCK.clickExact("CLOSE") end
 do
 	local t = app.state.tours[1]
 	SRV().day = t.shows[1].day app:applyDelta(app:call("resync").delta)
