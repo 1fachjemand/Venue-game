@@ -251,6 +251,10 @@ function A.cancelTour(state, a)
 	return GS.cancelTour(state, a.tourId)
 end
 
+function A.cancelShow(state, a)
+	return GS.cancelShow(state, a.tourId, num(a.idx))
+end
+
 function A.renameTour(state, a)
 	local tour = GS.getTour(state, a.tourId)
 	local name = str(a.name, 40)
@@ -328,6 +332,16 @@ function A.copyDesign(state, a)
 	end
 	local c = GS.addDesign(state, (d.name .. " copy"):sub(1, 24), items, d.class, d.layout)
 	return true, nil, { designId = c.id }
+end
+
+function A.renameDesign(state, a)
+	local d = GS.getDesign(state, a.designId)
+	local name = str(a.name, 24)
+	if not d or not name then
+		return false, "Please type a name."
+	end
+	d.name = name
+	return true, "Stage renamed: " .. name
 end
 
 function A.deleteDesign(state, a)

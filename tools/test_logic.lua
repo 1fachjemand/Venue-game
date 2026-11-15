@@ -291,6 +291,27 @@ do
   check(GS.planStage(fresh) == "announce", "ready to announce")
   local okA, _, dA = Actions.run(fresh, "announceTour", { name = "Moon Tour" })
   check(okA and GS.getTour(fresh, dA.tourId).name == "Moon Tour" and fresh.draft.artistId == nil, "announced from the plan, plan cleared")
+  -- travel days: same country / neighbour = next day, same continent = 1 travel day, other continent = 2
+  local function gap(a, b) return GS.travelGap({ venueId = a }, { venueId = b }) end
+  check(gap("uk_fiddle", "uk_o3") == 1, "same country: no travel day")
+  check(gap("uk_fiddle", "fr_neon") == 1 and gap("fr_neon", "de_keller") == 1, "neighbour: no travel day")
+  check(gap("uk_fiddle", "de_keller") == 2, "two countries away: one travel day")
+  check(gap("uk_fiddle", "us_bowery") == 3, "other continent: two travel days")
+  -- cancel one show: the venue is paid, hype drops, the tour goes on
+  local cs = GS.new("Cancel", "lila")
+  cs.money = 5000000
+  local okCT, ct = GS.createTour(cs, { artistId = "lila", designId = cs.designs[1].id, price = 30, shows = { { venueId = "uk_fiddle", day = 30 }, { venueId = "fr_neon", day = 32 }, { venueId = "de_keller", day = 35 } } })
+  check(okCT, "tour for cancel test")
+  if okCT then
+    local m0, h0 = cs.money, cs.artists.lila.hype
+    local cost = GS.cancelShowCost(cs, ct, 2)
+    local okX = Actions.run(cs, "cancelShow", { tourId = ct.id, idx = 2 })
+    check(okX and #ct.shows == 2 and cs.money == m0 - cost and (cs.artists.lila.hype < h0 or h0 == 0), "cancel a show: venue paid, hype down")
+    check(ct.shows[2].venueId == "de_keller", "the other shows stay")
+    check(not Actions.run(cs, "cancelShow", { tourId = ct.id, idx = 9 }), "no such show")
+    cs.day = 30
+    check(not Actions.run(cs, "cancelShow", { tourId = ct.id, idx = 1 }), "today's show can't be cancelled")
+  end
   -- in-place sync keeps tables
   local dst = { list = { { id = "a", v = 1 }, { id = "b", v = 2 } }, n = 1, gone = true }
   local keepB = dst.list[2]

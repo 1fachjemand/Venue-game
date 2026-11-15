@@ -184,7 +184,18 @@ function ToursScreen:refreshDetail()
 			UI.Label(row, Util.stars(r.stars) .. "  " .. Util.moneyShort(r.gross), UI.px(1040, 4), UI.px(220, 24), { textSize = 16, font = UI.FontBold, color = T.gold })
 			UI.Label(row, "profit " .. Util.moneyShort(r.net), UI.px(1040, 28), UI.px(220, 20), { textSize = 13, color = r.net >= 0 and T.good or T.bad })
 		else
-			UI.Label(row, s.sold >= s.cap and "waiting for show day" or "tickets on sale", UI.px(1040, 0), UI.px(220, 54), { textSize = 13, color = T.sub })
+			UI.Label(row, s.sold >= s.cap and "waiting for show day" or "tickets on sale", UI.px(1040, 0), UI.px(110, 54), { textSize = 13, color = T.sub, wrap = true })
+			-- a show that sells badly can be dropped: the venue is paid anyway, fans are disappointed
+			if daysLeft > 0 and (tour.played > 0 or #tour.shows > 1) then
+				UI.Button(row, "CANCEL", UI.px(1150, 10), UI.px(80, 34), { color = UI.shade(T.bad, 0.6), textSize = 13 }, function()
+					local cost, hype = GS.cancelShowCost(state, tour, i)
+					app:confirm("Cancel the show in " .. v.city .. "?", string.format("%s tickets sold so far. The venue still has to be paid (%s) and %s loses hype (-%d). The tickets are refunded. Selling few tickets can also cost money: is it worth it?", Util.number(s.sold), Util.money(cost), ad.name, hype), function()
+						local ok, msg = app:act("cancelShow", { tourId = tour.id, idx = i })
+						app:toast(msg or "", ok and T.warn or T.bad, 6)
+						app:refreshCurrent()
+					end)
+				end)
+			end
 		end
 		if not s.done then
 			local live = not s.skipLive

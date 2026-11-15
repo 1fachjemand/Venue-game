@@ -150,7 +150,17 @@ function StagesScreen:refresh()
 		local st = Sim.designStats(d, nil)
 		local card = UI.New("Frame", { Parent = grid, BackgroundColor3 = T.panel, BorderSizePixel = 0, LayoutOrder = i, UI.Corner(14), UI.Stroke(T.stroke, 1, 0.3) })
 		thumbnail(card, d, UI.px(10, 10), UI.px(432, 200))
-		UI.Label(card, d.name, UI.px(18, 218), UI.px(416, 34), { textSize = 26, font = UI.FontBlack })
+		-- the name: click it and type a new one
+		local nameBox = UI.New("TextBox", { Parent = card, Position = UI.px(12, 216), Size = UI.px(428, 38), BackgroundColor3 = T.panel2, BorderSizePixel = 0, Text = d.name, PlaceholderText = "Name this stage", ClearTextOnFocus = false, TextColor3 = T.text, TextSize = 24, Font = UI.FontBlack, TextXAlignment = Enum.TextXAlignment.Left, UI.Corner(8), UI.Padding(10, 10, 0, 0) })
+		UI.Label(card, "RENAME", UI.px(372, 220), UI.px(60, 14), { textSize = 11, color = T.sub, font = UI.FontBold, alignX = Enum.TextXAlignment.Right })
+		nameBox.FocusLost:Connect(function()
+			local txt = nameBox.Text:gsub("^%s+", ""):gsub("%s+$", "")
+			if #txt > 0 and txt ~= d.name then
+				local ok, msg = app:act("renameDesign", { designId = d.id, name = txt })
+				app:toast(msg or "", ok and T.good or T.bad)
+			end
+			nameBox.Text = d.name
+		end)
 		local pill = UI.Pill(card, string.upper(d.class) .. "  |  " .. (d.layout == "center" and "CENTER" or "END STAGE"), UI.px(18, 256), UI.px(190, 26), T.accent2, 13)
 		pill.TextColor3 = BLACK
 		local t = usedBy(state, d.id)

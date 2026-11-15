@@ -138,7 +138,8 @@ function People.new(parent, outfit, scale, role, seed, look)
 	elseif acc == "backpack" then
 		extra("Backpack", Vector3.new(1.5, 1.6, 0.7), "torso", CFrame.new(0, 0, -0.86), (look.bag and c3(look.bag)) or Color3.fromRGB(60, 70, 90), Enum.Material.Fabric)
 	elseif acc == "sparkle" then
-		extra("Sparkles", Vector3.new(2.05, 0.6, 1.06), "torso", CFrame.new(0, -0.2, 0), Color3.fromRGB(255, 235, 250), Enum.Material.Neon)
+		-- a glittering belt: a bit bigger than the torso and the jacket (1.06 deep), so no faces lie on top of each other
+		extra("Sparkles", Vector3.new(2.1, 0.6, 1.14), "torso", CFrame.new(0, -0.2, 0), Color3.fromRGB(255, 235, 250), Enum.Material.Neon)
 	end
 	if look.jacket then
 		extra("JacketL", Vector3.new(0.6, 2.02, 1.06), "torso", CFrame.new(-0.72, 0, 0), c3(look.jacket))
@@ -373,7 +374,8 @@ function People:update(pos, yaw, opts)
 	if self.prop then
 		if self.role == "lead" then
 			if micAtMouth then
-				self.prop.CFrame = headCF * CFrame.new(0.1 * s, -0.35 * s, 0.85 * s) * CFrame.Angles(math.rad(-70), 0, 0)
+				-- the grille end (top) is a hand's width in front of the mouth, never inside the head
+				self.prop.CFrame = headCF * CFrame.new(0.1 * s, -0.36 * s, 1.17 * s) * CFrame.Angles(math.rad(-70), 0, 0)
 			else
 				self.prop.CFrame = self.armR.CFrame * CFrame.new(0, -1.2 * s, 0)
 			end

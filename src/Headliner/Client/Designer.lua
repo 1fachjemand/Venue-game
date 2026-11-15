@@ -1174,11 +1174,14 @@ function Designer.open(app, designId)
 		}))
 		nameBox.FocusLost:Connect(function()
 			local txt = nameBox.Text:gsub("^%s+", ""):gsub("%s+$", "")
-			if #txt > 0 then
+			if #txt > 0 and txt:sub(1, 24) ~= self.design.name then
 				self.design.name = txt:sub(1, 24)
+				-- saved together with the stage when the builder closes (an action now would reload the unsaved stage)
+				app:toast("Stage name: " .. self.design.name, T.good)
 			end
 			nameBox.Text = self.design.name
 		end)
+		tag(UI.Label(top, "STAGE NAME (click to rename)", UI.px(204, 0), UI.px(300, 12), { textSize = 10, color = T.sub, font = UI.FontBold }))
 		local pill = tag(UI.Pill(top, string.upper(self.design.class) .. "  |  " .. (self.design.layout == "center" and "CENTER STAGE" or "END STAGE"), UI.px(512, 18), UI.px(220, 28), T.accent2, 14))
 		pill.TextColor3 = BLACK
 		tag(UI.Button(top, "?", UI.px(744, 10), UI.px(44, 44), { textSize = 20, color = helpBox.Visible and T.accent or T.panel3 }, function()

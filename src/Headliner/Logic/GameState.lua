@@ -450,7 +450,8 @@ function GS.nextFreeDay(state, venueId, from, taken)
 	return from
 end
 
--- days needed between two shows: same venue next day, same country 2 days, another country 3 days
+-- days needed between two shows: the next day in the same country or a neighbour country,
+-- one travel day in between on the same continent, two travel days to another continent
 function GS.travelGap(a, b)
 	if not a or not b then
 		return 0
@@ -458,10 +459,7 @@ function GS.travelGap(a, b)
 	if a.venueId == b.venueId then
 		return 1
 	end
-	if Countries.venueById[a.venueId].countryId == Countries.venueById[b.venueId].countryId then
-		return 2
-	end
-	return 3
+	return 1 + Countries.travelDays(Countries.venueById[a.venueId].countryId, Countries.venueById[b.venueId].countryId)
 end
 
 -- Show days of a route: another night in the same venue is the next day, a new venue `gap` days later
@@ -872,6 +870,16 @@ function GS.applyShow(state, tour, idx, r)
 	Social.onShow(state, tour, idx, r, GS.showDesign(state, tour, idx))
 	local completed = tour.played >= #tour.shows
 	if completed then
+		GS.finishTour(state, tour)
+	end
+	return { completed = completed, achievements = GS.checkAchievements(state) }
+end
+
+-- the last show of a tour is over (or the remaining ones were cancelled)
+function GS.finishTour(state, tour)
+	local a = state.artists[tour.artistId]
+	local st = state.stats
+	do
 		tour.status = "done"
 		tour.endDay = state.day
 		local regions, nreg = {}, 0
@@ -891,7 +899,50 @@ function GS.applyShow(state, tour, idx, r)
 		end
 		GS.log(state, "\"" .. tour.name .. "\" finished: " .. Util.money(tour.gross) .. " gross, " .. Util.number(tour.attendance) .. " fans.")
 	end
-	return { completed = completed, achievements = GS.checkAchievements(state) }
+end
+
+-- what cancelling one show costs: the venue is paid anyway, fans who bought tickets are disappointed
+function GS.cancelShowCost(state, tour, idx)
+	local s = tour.shows[idx]
+	local v = Countries.venueById[s.venueId]
+	local share = math.min(1, (s.sold or 0) / math.max(1, s.cap))
+	return Sim.venueRent(v), math.floor(2 + share * 6 + 0.5)
+end
+
+function GS.cancelShow(state, tourId, idx)
+	local tour = GS.getTour(state, tourId)
+	local s = tour and type(idx) == "number" and tour.shows[idx]
+	if not tour or not s or tour.status == "done" then
+		return false, "Show not found."
+	end
+	if s.done then
+		return false, "This show was already played."
+	end
+	if s.day <= state.day then
+		return false, "The show is today. Too late to cancel."
+	end
+	if tour.played == 0 and #tour.shows <= 1 then
+		return false, "This is the only show. Cancel the whole tour instead."
+	end
+	local cost, hype = GS.cancelShowCost(state, tour, idx)
+	if state.money < cost and not state.sandbox then
+		return false, "Not enough money to pay the venue (" .. Util.money(cost) .. ")."
+	end
+	local v = Countries.venueById[s.venueId]
+	state.money = state.money - cost
+	tour.net = tour.net - cost
+	tour.cancelledShows = (tour.cancelledShows or 0) + 1
+	local a = state.artists[tour.artistId]
+	a.hype = Util.clamp(a.hype - hype, 0, 100)
+	table.remove(tour.shows, idx)
+	GS.log(state, "Cancelled " .. Artists.byId[tour.artistId].name .. " @ " .. v.name .. ": venue paid " .. Util.money(cost) .. ", hype -" .. hype .. ".")
+	Social.add(state, "cancelshow", { artistId = tour.artistId, tour = tour, venueId = v.id }, 2)
+	if tour.played >= #tour.shows then
+		GS.finishTour(state, tour)
+	else
+		Sim.updateTourSales(state, tour)
+	end
+	return true, "Show in " .. v.city .. " cancelled. Venue paid (" .. Util.money(cost) .. "), fans are disappointed (hype -" .. hype .. ")."
 end
 
 -- Advances one day. Returns events for the UI.

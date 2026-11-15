@@ -485,4 +485,59 @@ for _, c in ipairs(Countries.list) do
 	end
 end
 
+-- Travel between shows (GS.travelGap): neighbours share a land border or a fixed link
+-- (Channel Tunnel UK-France, Oresund Bridge Denmark-Sweden). Continents for long trips.
+Countries.NEIGHBOURS = {
+	uk = { "ie", "fr" },
+	ie = { "uk" },
+	fr = { "uk", "be", "de", "ch", "it", "es" },
+	nl = { "be", "de" },
+	de = { "nl", "be", "fr", "ch", "at", "cz", "pl", "dk" },
+	ch = { "fr", "de", "at", "it" },
+	it = { "fr", "ch", "at" },
+	es = { "fr", "pt" },
+	se = { "no", "dk" },
+	be = { "fr", "nl", "de" },
+	at = { "de", "ch", "it", "cz" },
+	pl = { "de", "cz" },
+	no = { "se" },
+	dk = { "de", "se" },
+	pt = { "es" },
+	cz = { "de", "at", "pl" },
+	us = { "ca", "mx" },
+	ca = { "us" },
+	mx = { "us" },
+	br = { "ar", "co" },
+	ar = { "br", "cl" },
+	cl = { "ar" },
+	co = { "br" },
+}
+Countries.CONTINENT = {
+	uk = "Europe", ie = "Europe", fr = "Europe", nl = "Europe", de = "Europe", ch = "Europe", it = "Europe", es = "Europe",
+	se = "Europe", be = "Europe", at = "Europe", pl = "Europe", no = "Europe", dk = "Europe", pt = "Europe", cz = "Europe",
+	us = "North America", ca = "North America", mx = "North America",
+	br = "South America", ar = "South America", cl = "South America", co = "South America",
+	jp = "Asia", kr = "Asia", ["in"] = "Asia", ph = "Asia", sg = "Asia", th = "Asia", ae = "Asia",
+	au = "Oceania", nz = "Oceania",
+	za = "Africa",
+}
+Countries.neighbourSet = {}
+for id, list in pairs(Countries.NEIGHBOURS) do
+	Countries.neighbourSet[id] = {}
+	for _, n in ipairs(list) do
+		Countries.neighbourSet[id][n] = true
+	end
+end
+
+-- travel days between two countries: 0 = same country or a neighbour, 1 = same continent, 2 = another continent
+function Countries.travelDays(a, b)
+	if a == b or (Countries.neighbourSet[a] and Countries.neighbourSet[a][b]) then
+		return 0
+	end
+	if Countries.CONTINENT[a] and Countries.CONTINENT[a] == Countries.CONTINENT[b] then
+		return 1
+	end
+	return 2
+end
+
 return Countries

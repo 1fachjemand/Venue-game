@@ -187,6 +187,14 @@ Social.POSTS = {
 		{ -1, "Cancelled shows in {city}. Not the news I wanted today" },
 		{ -1, "Got my refund. Still sad. {artist} come back soon" },
 	},
+	cancelshow = {
+		{ -1, "{artist} cancelled the {city} show?? I had tickets for {venue}" },
+		{ -1, "No {artist} in {city} anymore. Low sales they say. I was going!" },
+		{ -1, "Refund for {venue} came in. I'd rather have the show, {label}" },
+		{ 0, "Heard the {city} date of {tour} is gone. Guess I'm travelling to the next one" },
+		{ -1, "Cancelled in {city} but they still play everywhere else? Hmm" },
+		{ 0, "Sad about {city}, but please come back with a smaller venue {artist}" },
+	},
 	countdown = {
 		{ 1, "{artist} in {city} is in a few days. Not sleeping until then" },
 		{ 0, "Packing list for {artist}: tickets, charger, earplugs, snacks" },
