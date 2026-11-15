@@ -13,6 +13,7 @@ local GS = require(Root.Logic.GameState)
 local UI = require(Root.Client.UI)
 local Hub = require(Root.World.Hub)
 local Stage3D = require(Root.Client.Stage3D)
+local People = require(Root.Client.People)
 
 local T = UI.Theme
 local New = UI.New
@@ -61,11 +62,20 @@ function World.toSpawn()
 	end
 end
 
+-- the camera stays close: you are in the street, not above the city
+World.MAX_ZOOM = 22
+function World.setZoom(maxZoom)
+	local player = Players.LocalPlayer
+	player.CameraMinZoomDistance = 2
+	player.CameraMaxZoomDistance = maxZoom or World.MAX_ZOOM
+end
+
 local function onCharacter(char)
 	local h = char:WaitForChild("Humanoid", 10)
 	if not h then
 		return
 	end
+	World.setZoom()
 	World.freeze(World.frozen)
 	World.resetCamera()
 	h.Seated:Connect(function()
@@ -104,10 +114,9 @@ end
 -- glowing arrow over the next station + a light beam from the player to it
 local function buildArrow()
 	local m = New("Model", { Name = "GuideArrow", Parent = World.folder })
-	local a = cpart(m, "ArmA", Vector3.new(0.7, 3.2, 0.7), CFrame.new(), T.gold, Enum.Material.Neon)
-	local b = cpart(m, "ArmB", Vector3.new(0.7, 3.2, 0.7), CFrame.new(), T.gold, Enum.Material.Neon)
-	local stem = cpart(m, "Stem", Vector3.new(0.7, 3.4, 0.7), CFrame.new(), T.gold, Enum.Material.Neon)
-	New("PointLight", { Parent = stem, Range = 14, Brightness = 1.5, Color = T.gold })
+	local a = cpart(m, "ArmA", Vector3.new(0.8, 3.2, 0.8), CFrame.new(), T.gold, Enum.Material.SmoothPlastic)
+	local b = cpart(m, "ArmB", Vector3.new(0.8, 3.2, 0.74), CFrame.new(), T.gold, Enum.Material.SmoothPlastic)
+	local stem = cpart(m, "Stem", Vector3.new(0.68, 3.4, 0.68), CFrame.new(), T.gold, Enum.Material.SmoothPlastic)
 	local target = New("Attachment", { Name = "BeamTarget", Parent = stem })
 	World.arrow = { model = m, a = a, b = b, stem = stem, target = target }
 	local beam = New("Beam", {
@@ -115,7 +124,7 @@ local function buildArrow()
 		Parent = m,
 		Attachment1 = target,
 		Color = ColorSequence.new(T.gold, T.accent2),
-		Transparency = NumberSequence.new(0.45, 0.75),
+		Transparency = NumberSequence.new(0.35, 0.7),
 		Width0 = 0.35,
 		Width1 = 0.35,
 		FaceCamera = true,
@@ -170,7 +179,7 @@ end
 local MAP_S = 22 / 360
 local function mapPos(lat, lon, y)
 	-- north is the far side seen from the office (+Z), east to the right (-X)
-	return O + Vector3.new(-lon * MAP_S, y or 3.24, 6 + (lat - 11) * MAP_S)
+	return O + Vector3.new(-lon * MAP_S, y or 3.23, 6 + (lat - 11) * MAP_S)
 end
 World.mapPos = mapPos
 
@@ -181,7 +190,7 @@ local function buildTableMap()
 		local row, col, w, h = r[1], r[2], r[3], r[4]
 		local lon = -180 + (col + w / 2) * deg
 		local lat = WorldMap.LAT_TOP - (row + h / 2) * deg
-		cpart(f, "Land", Vector3.new(w * deg * MAP_S, 0.06, h * deg * MAP_S), CFrame.new(mapPos(lat, lon)), T.accent2, Enum.Material.Neon, 0.35)
+		cpart(f, "Land", Vector3.new(w * deg * MAP_S, 0.06, h * deg * MAP_S), CFrame.new(mapPos(lat, lon)), Color3.fromRGB(150, 206, 132), Enum.Material.SmoothPlastic)
 	end
 	World.pinFolder = New("Folder", { Name = "Pins", Parent = World.folder })
 end
@@ -200,8 +209,8 @@ local function refreshPins()
 				local c = Countries.byId[s.countryId]
 				if c and not seen[c.id] and not s.done then
 					seen[c.id] = true
-					cpart(World.pinFolder, "Pin", Vector3.new(0.18, 1.4, 0.18), CFrame.new(mapPos(c.lat, c.lon, 3.95)), col, Enum.Material.Neon)
-					cpart(World.pinFolder, "PinHead", Vector3.new(0.5, 0.5, 0.5), CFrame.new(mapPos(c.lat, c.lon, 4.7)), col, Enum.Material.Neon).Shape = Enum.PartType.Ball
+					cpart(World.pinFolder, "Pin", Vector3.new(0.18, 1.4, 0.18), CFrame.new(mapPos(c.lat, c.lon, 3.96)), Color3.fromRGB(230, 230, 236), Enum.Material.Metal)
+					cpart(World.pinFolder, "PinHead", Vector3.new(0.6, 0.6, 0.6), CFrame.new(mapPos(c.lat, c.lon, 4.75)), col, Enum.Material.SmoothPlastic).Shape = Enum.PartType.Ball
 				end
 			end
 		end
@@ -245,6 +254,136 @@ local function refreshChartsWall(unlocked)
 		UI.Label(row, r.artist, UI.px(150, 4), UI.px(560, 40), { textSize = 34, font = UI.FontBlack })
 		UI.Label(row, r.tour, UI.px(150, 42), UI.px(560, 30), { textSize = 24, color = T.sub })
 		UI.Label(row, Util.moneyShort(r.gross), UI.px(760, 0), UI.px(380, 76), { textSize = 40, font = UI.FontBlack, color = r.player and T.good or T.text, alignX = Enum.TextXAlignment.Right })
+	end
+end
+
+------------------------------------------------------------------ posters of the artists (on walls, bus stop, billboard)
+-- signed artists first (with "ON TOUR" when a tour runs), then the stars you can still sign
+local FACES = { Back = Enum.NormalId.Back, Front = Enum.NormalId.Front, Left = Enum.NormalId.Left, Right = Enum.NormalId.Right }
+function World.refreshPosters()
+	local state = World.app.state
+	local order = {}
+	for _, ad in ipairs(Artists.list) do
+		if state.artists[ad.id].signed then
+			table.insert(order, ad)
+		end
+	end
+	for _, ad in ipairs(Artists.list) do
+		if not state.artists[ad.id].signed then
+			table.insert(order, ad)
+		end
+	end
+	local key = ""
+	for _, ad in ipairs(order) do
+		key = key .. ad.id .. (state.artists[ad.id].signed and "1" or "0") .. (GS.activeTour(state, ad.id) and "t" or "")
+	end
+	if World.posterKey == key then
+		return
+	end
+	World.posterKey = key
+	for _, p in ipairs(World.posters or {}) do
+		local idx = p:GetAttribute("Poster")
+		local ad = order[(idx - 1) % #order + 1]
+		local old = p:FindFirstChild("PosterGui")
+		if old then
+			old:Destroy()
+		end
+		local g = New("SurfaceGui", { Name = "PosterGui", Parent = p, Face = FACES[p:GetAttribute("Face")] or Enum.NormalId.Back, SizingMode = Enum.SurfaceGuiSizingMode.FixedSize, CanvasSize = Vector2.new(420, 600), LightInfluence = 0.3 })
+		local col = UI.rgb(ad.color)
+		local bg = New("Frame", { Parent = g, Size = UDim2.fromScale(1, 1), BackgroundColor3 = col, BorderSizePixel = 0, UI.New("UIGradient", { Color = ColorSequence.new(col, Color3.fromRGB(24, 22, 40)), Rotation = 90 }) })
+		-- spotlight + a silhouette of the artist
+		New("Frame", { Parent = bg, Position = UDim2.fromOffset(60, 40), Size = UDim2.fromOffset(300, 300), BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.75, BorderSizePixel = 0, UI.Corner(150) })
+		New("Frame", { Parent = bg, Position = UDim2.fromOffset(165, 110), Size = UDim2.fromOffset(90, 90), BackgroundColor3 = Color3.fromRGB(26, 22, 40), BorderSizePixel = 0, UI.Corner(45) })
+		New("Frame", { Parent = bg, Position = UDim2.fromOffset(130, 205), Size = UDim2.fromOffset(160, 190), BackgroundColor3 = Color3.fromRGB(26, 22, 40), BorderSizePixel = 0, UI.Corner(40) })
+		New("Frame", { Parent = bg, Position = UDim2.fromOffset(90, 150), Size = UDim2.fromOffset(40, 140), Rotation = -25, BackgroundColor3 = Color3.fromRGB(26, 22, 40), BorderSizePixel = 0, UI.Corner(20) })
+		New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(16, 410), Size = UDim2.fromOffset(388, 90), BackgroundTransparency = 1, Text = string.upper(ad.name), TextScaled = true, TextColor3 = Color3.new(1, 1, 1), Font = UI.FontBlack })
+		local signed = state.artists[ad.id].signed
+		local onTour = GS.activeTour(state, ad.id) ~= nil
+		local line = onTour and "ON TOUR NOW" or (signed and (ad.genre .. "  ·  " .. string.upper(state.labelName)) or (ad.genre .. "  ·  COMING SOON"))
+		New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(16, 504), Size = UDim2.fromOffset(388, 40), BackgroundTransparency = 1, Text = line, TextScaled = true, TextColor3 = onTour and T.gold or Color3.fromRGB(230, 230, 240), Font = UI.FontBold })
+		New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(16, 552), Size = UDim2.fromOffset(388, 30), BackgroundTransparency = 1, Text = "LIVE  ·  WORLD TOUR  ·  TICKETS SOON", TextScaled = true, TextColor3 = Color3.fromRGB(200, 200, 220), Font = UI.FontBold })
+	end
+end
+
+------------------------------------------------------------------ people: staff at work, people in the street, at the cafe
+local LOOK_TOPS = { { 240, 120, 100 }, { 110, 160, 230 }, { 250, 210, 90 }, { 120, 200, 170 }, { 236, 236, 240 }, { 150, 120, 220 }, { 60, 64, 80 } }
+local HAIRS = { "short", "long", "bun", "pony", "afro", "buzz", "messy" }
+local function randomLook(i)
+	local rng = Random.new(i * 7919 + 13)
+	return {
+		skin = rng:NextInteger(1, #People.SKINS),
+		hair = HAIRS[rng:NextInteger(1, #HAIRS)],
+		top = LOOK_TOPS[rng:NextInteger(1, #LOOK_TOPS)],
+		pants = ({ { 40, 50, 80 }, { 50, 50, 56 }, { 170, 150, 120 } })[rng:NextInteger(1, 3)],
+		shoes = { 30, 30, 34 },
+	}
+end
+
+local function buildPeople()
+	local f = New("Folder", { Name = "People", Parent = World.folder })
+	World.npcs = {}
+	local n = 0
+	local function add(kind, data)
+		n = n + 1
+		local look = randomLook(n)
+		local fig = People.new(f, UI.rgb(look.top), 1, "dancer", n, look)
+		table.insert(World.npcs, { fig = fig, kind = kind, data = data, ph = n * 1.7, seg = 1, t = 0 })
+	end
+	for _, st in ipairs(Hub.STAFF) do
+		add("sit", { pos = st.pos, yaw = st.yaw, work = st.desk })
+	end
+	for _, st in ipairs(Hub.SITTERS) do
+		add("sit", { pos = st.pos, yaw = st.yaw })
+	end
+	for i, path in ipairs(Hub.WALKS) do
+		add("walk", { path = path, speed = 6 + (i % 3) * 1.5 })
+		if i <= 4 then
+			add("walk", { path = path, speed = 5 + (i % 2) * 2, offset = 0.5 })
+		end
+	end
+end
+
+local function pathLength(path)
+	local len = 0
+	for i = 2, #path do
+		len = len + (path[i] - path[i - 1]).Magnitude
+	end
+	return len
+end
+
+local function animatePeople(t)
+	for _, npc in ipairs(World.npcs or {}) do
+		local d = npc.data
+		if npc.kind == "sit" then
+			-- sitting; office staff type on the keyboard
+			npc.fig:update(O + d.pos, d.yaw, { t = t + npc.ph, beat = 0, energy = 0, walking = false, move = "piano" })
+		else
+			local path = d.path
+			local len = d.len or pathLength(path)
+			d.len = len
+			-- walk the path forward and back
+			local dist = ((t * d.speed) + (d.offset or 0) * len) % (len * 2)
+			local back = dist > len
+			if back then
+				dist = len * 2 - dist
+			end
+			local pos, dir = path[1], path[2] - path[1]
+			local acc = 0
+			for i = 2, #path do
+				local segLen = (path[i] - path[i - 1]).Magnitude
+				if acc + segLen >= dist then
+					local f = (dist - acc) / math.max(0.01, segLen)
+					pos = path[i - 1]:Lerp(path[i], f)
+					dir = path[i] - path[i - 1]
+					break
+				end
+				acc = acc + segLen
+			end
+			if back then
+				dir = -dir
+			end
+			npc.fig:update(O + pos, math.atan2(dir.X, dir.Z), { t = t + npc.ph, beat = 0, energy = 0, walking = true })
+		end
 	end
 end
 
@@ -320,7 +459,7 @@ function World.refresh()
 		local up = un.stagehall and 15 or 0
 		if World.doorUp ~= up then
 			World.doorUp = up
-			door:PivotTo(CFrame.new(O + Vector3.new(39.9, 7 + up, 10)))
+			door:PivotTo(CFrame.new(O + Vector3.new(40.18, 7.2 + up, 10)))
 			for _, p in ipairs(door:GetDescendants()) do
 				if p:IsA("BasePart") and p.Name == "Slat" then
 					p.CanCollide = not un.stagehall
@@ -340,6 +479,7 @@ function World.refresh()
 	World.target = GS.objective(state).target
 	refreshChartsWall(un.charts)
 	refreshPins()
+	World.refreshPosters()
 end
 
 ------------------------------------------------------------------ start
@@ -367,6 +507,15 @@ function World.start(app)
 	end
 	buildArrow()
 	buildTableMap()
+	buildPeople()
+	World.posters = {}
+	if World.root then
+		for _, d in ipairs(World.root:GetDescendants()) do
+			if d:IsA("BasePart") and d:GetAttribute("Poster") then
+				table.insert(World.posters, d)
+			end
+		end
+	end
 	if World.root then
 		buildChartsWall()
 	end
@@ -385,10 +534,16 @@ function World.start(app)
 	World.freeze(false)
 	World.refresh()
 	local t = 0
+	local peopleT = 0
 	RunService.RenderStepped:Connect(function(dt)
 		t = t + dt
 		if app.mode == "world" then
 			placeArrow(t)
+			peopleT = peopleT + dt
+			if peopleT > 1 / 30 then
+				peopleT = 0
+				animatePeople(t)
+			end
 			-- the meeting prompt only shows while sitting
 			local pr = World.prompts.meeting
 			if pr then

@@ -199,15 +199,108 @@ function App:beginGame(isNew)
 	self.toastFrame = UI.New("Frame", { Parent = self.canvas, Name = "Toasts", Position = UI.px(740, 80), Size = UI.px(440, 900), BackgroundTransparency = 1, ZIndex = 60 })
 	UI.List(true, 8, Enum.HorizontalAlignment.Center).Parent = self.toastFrame
 	self.mode = "world"
+	local closeLoading = self:showLoading("HEADLINER", "Welcome to " .. self.state.labelName)
 	local World = require(Root.Client.World)
 	self.world = World
 	World.start(self)
 	SoundFX.menu("office")
 	self:refreshHud()
+	-- the loading picture stays until the character stands in the office
+	task.spawn(function()
+		local t0 = os.clock()
+		while not (self.player.Character and self.player.Character.PrimaryPart) and os.clock() - t0 < 10 do
+			task.wait(0.1)
+		end
+		task.wait(0.8)
+		closeLoading()
+	end)
 	if isNew then
 		self:showWelcome()
 	elseif self.saveAvailable then
 		self:toast("Welcome back! Progress saves automatically.", T.good)
+	end
+end
+
+
+------------------------------------------------------------------ loading screen (a faded concert picture)
+local TIPS = {
+	"Tip: small clubs sell out more easily. Grow step by step.",
+	"Tip: press E at a station. Follow the golden arrow.",
+	"Tip: a sold-out show brings hype, hype sells the next tour.",
+	"Tip: check ticket sales on the LAPTOP and react with marketing.",
+	"Tip: sit down in the MEETING ROOM to meet new talent.",
+	"Tip: bigger venues need a bigger label level.",
+}
+function App:showLoading(title, sub)
+	local root = UI.New("CanvasGroup", { Parent = self.gui, Name = "Loading", Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(12, 10, 22), BorderSizePixel = 0, ZIndex = 200 })
+	UI.New("UIGradient", { Parent = root, Color = ColorSequence.new(Color3.fromRGB(70, 40, 130), Color3.fromRGB(10, 8, 20)), Rotation = 90 })
+	local function frame(props)
+		props.Parent = props.Parent or root
+		props.BorderSizePixel = 0
+		props.ZIndex = props.ZIndex or 201
+		return UI.New("Frame", props)
+	end
+	-- light beams from the rig
+	for i = 0, 7 do
+		local beam = frame({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.15 + i * 0.1, 0.06), Size = UDim2.fromScale(0.06, 0.95), Rotation = (i - 3.5) * 9, BackgroundColor3 = (i % 2 == 0) and T.accent2 or T.accent })
+		UI.New("UIGradient", { Parent = beam, Rotation = 90, Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 1) }) })
+		frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.15 + i * 0.1, 0.06), Size = UDim2.fromScale(0.02, 0.035), BackgroundColor3 = Color3.new(1, 1, 1), UI.Corner(8) })
+	end
+	frame({ Position = UDim2.fromScale(0.05, 0.045), Size = UDim2.fromScale(0.9, 0.012), BackgroundColor3 = Color3.fromRGB(70, 70, 84) })
+	-- the stage glow
+	local glow = frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.74), Size = UDim2.fromScale(0.8, 0.22), BackgroundColor3 = T.accent, UI.Corner(400) })
+	UI.New("UIGradient", { Parent = glow, Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0.45), NumberSequenceKeypoint.new(1, 1) }) })
+	-- the crowd (silhouettes, raised hands, phone lights)
+	local rng = Random.new(5)
+	for row = 0, 2 do
+		for k = 0, 27 do
+			local x = (k + (row % 2) * 0.5) / 27
+			local y = 0.84 + row * 0.06 + rng:NextNumber(-0.01, 0.01)
+			local dark = Color3.fromRGB(8 + row * 4, 6 + row * 3, 16 + row * 5)
+			frame({ AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(x, y), Size = UDim2.fromScale(0.045, 0.2), BackgroundColor3 = dark, UI.Corner(30), ZIndex = 202 + row })
+			frame({ AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromScale(x, y + 0.01), Size = UDim2.fromScale(0.022, 0.045), BackgroundColor3 = dark, UI.Corner(30), ZIndex = 202 + row })
+			if rng:NextNumber() < 0.3 then
+				local arm = frame({ AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromScale(x + 0.012, y + 0.03), Size = UDim2.fromScale(0.006, 0.09), Rotation = rng:NextNumber(-20, 20), BackgroundColor3 = dark, ZIndex = 202 + row })
+				if rng:NextNumber() < 0.5 then
+					frame({ Parent = arm, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0), Size = UDim2.fromOffset(7, 7), BackgroundColor3 = Color3.fromRGB(255, 250, 220), UI.Corner(4), ZIndex = 210 })
+				end
+			end
+		end
+	end
+	-- faded: a soft dark veil over the picture
+	frame({ Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, ZIndex = 220 })
+	local center = frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.42), Size = UDim2.fromOffset(900, 300), BackgroundTransparency = 1, ZIndex = 221 })
+	local scale = UI.New("UIScale", { Parent = center, Scale = self.uiScale and self.uiScale.Scale or 1 })
+	local _ = scale
+	UI.New("TextLabel", { Parent = center, Size = UDim2.fromOffset(900, 110), BackgroundTransparency = 1, Text = title or "HEADLINER", TextColor3 = T.text, TextSize = 96, Font = UI.FontBlack, ZIndex = 222 })
+	UI.New("TextLabel", { Parent = center, Position = UDim2.fromOffset(0, 112), Size = UDim2.fromOffset(900, 36), BackgroundTransparency = 1, Text = sub or "", TextColor3 = T.accent2, TextSize = 26, Font = UI.FontBold, ZIndex = 222 })
+	local barBg = UI.New("Frame", { Parent = center, Position = UDim2.fromOffset(250, 176), Size = UDim2.fromOffset(400, 10), BackgroundColor3 = Color3.fromRGB(60, 60, 80), BorderSizePixel = 0, ZIndex = 222, UI.Corner(5) })
+	local bar = UI.New("Frame", { Parent = barBg, Size = UDim2.fromScale(0, 1), BackgroundColor3 = T.accent2, BorderSizePixel = 0, ZIndex = 223, UI.Corner(5) })
+	local tip = UI.New("TextLabel", { Parent = center, Position = UDim2.fromOffset(0, 210), Size = UDim2.fromOffset(900, 30), BackgroundTransparency = 1, Text = TIPS[math.random(1, #TIPS)], TextColor3 = T.sub, TextSize = 20, Font = UI.Font, ZIndex = 222 })
+	local alive = true
+	task.spawn(function()
+		local f = 0
+		while alive do
+			f = math.min(0.95, f + (1 - f) * 0.08)
+			bar.Size = UDim2.fromScale(f, 1)
+			task.wait(0.1)
+		end
+	end)
+	local closed = false
+	return function(fade)
+		if closed then
+			return
+		end
+		closed = true
+		bar.Size = UDim2.fromScale(1, 1)
+		local _t = tip
+		task.delay(0.25, function()
+			UI.Tween(root, fade or 0.6, { GroupTransparency = 1 })
+			task.delay((fade or 0.6) + 0.1, function()
+				alive = false
+				root:Destroy()
+			end)
+		end)
 	end
 end
 

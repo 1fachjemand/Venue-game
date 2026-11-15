@@ -43,6 +43,21 @@ local function add(folder)
 end
 add(workspace.StarlightRecords)
 add(workspace.HubClient)
+-- the same parts as a list for tools/zfight/check.py
+local zl = {}
+for _, folder in ipairs({ workspace.StarlightRecords, workspace.HubClient }) do
+	for _, d in ipairs(folder:GetDescendants()) do
+		local cls = d.ClassName
+		if (cls == "Part" or cls == "Seat" or cls == "SpawnLocation") and d.Transparency < 0.99 and not d:FindFirstAncestor("People") then
+			local shape = (rawget(d, "__props") and d.__props.Shape and d.__props.Shape.Name) or "Block"
+			local c = d.CFrame
+			local t = { "hub", d.Name, shape, string.format("%.3f", d.Size.X), string.format("%.3f", d.Size.Y), string.format("%.3f", d.Size.Z), string.format("%.3f", c._p.X), string.format("%.3f", c._p.Y), string.format("%.3f", c._p.Z) }
+			for i = 1, 9 do t[#t + 1] = string.format("%.5f", c._r[i]) end
+			zl[#zl + 1] = table.concat(t, " ")
+		end
+	end
+end
+WRITEFILE(OUT_DIR .. "/parts.txt", table.concat(zl, "\n"))
 local O = Hub.ORIGIN
 local function P(x, y, z) return O + Vector3.new(x, y, z) end
 local cams = {
