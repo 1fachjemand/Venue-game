@@ -257,6 +257,69 @@ function GS.songCount(design)
 	return GS.songPlan(design).count
 end
 
+------------------------------------------------------------------ calendar: when is a venue free?
+-- Venues host other events too (other bands, sport, fairs). This is the same in every game: a few days a month
+-- are taken, stadiums more often (match days). Your own shows (any artist) also block the venue.
+local BUSY_SHARE = { club = 0.12, theatre = 0.18, arena = 0.22, amphi = 0.2, stadium = 0.3 }
+local function venueHash(id)
+	local h = 0
+	for i = 1, #id do
+		h = (h * 31 + string.byte(id, i)) % 100003
+	end
+	return h
+end
+-- returns nil if free, otherwise a short reason
+function GS.venueBusy(state, venueId, day, ignore)
+	for _, t in ipairs(state.tours or {}) do
+		if t ~= ignore then
+			for _, s in ipairs(t.shows) do
+				if s.venueId == venueId and s.day == day and not s.done then
+					return Artists.byId[t.artistId].name
+				end
+			end
+		end
+	end
+	local v = Countries.venueById[venueId]
+	local look = Countries.VENUE_TYPES[v.type].look
+	-- other events come in short runs: decide per 2-day block, then per day
+	local h = venueHash(venueId)
+	local block = math.floor(day / 2)
+	local x = math.sin(block * 12.9898 + h * 0.78233) * 43758.5453
+	x = x - math.floor(x)
+	if x < (BUSY_SHARE[look] or 0.18) then
+		local y = math.sin(day * 4.1414 + h * 1.337) * 9631.17
+		y = y - math.floor(y)
+		if y < 0.75 then
+			return (look == "stadium") and "football" or "other event"
+		end
+	end
+	return nil
+end
+
+-- the earliest free day for a show at a venue, not before `from` and not on a day of `taken` (set of days)
+function GS.nextFreeDay(state, venueId, from, taken)
+	for d = from, from + 120 do
+		if not GS.venueBusy(state, venueId, d) and not (taken and taken[d]) then
+			return d
+		end
+	end
+	return from
+end
+
+-- days needed between two shows: same venue next day, same country 2 days, another country 3 days
+function GS.travelGap(a, b)
+	if not a or not b then
+		return 0
+	end
+	if a.venueId == b.venueId then
+		return 1
+	end
+	if Countries.venueById[a.venueId].countryId == Countries.venueById[b.venueId].countryId then
+		return 2
+	end
+	return 3
+end
+
 -- Show days of a route: another night in the same venue is the next day, a new venue `gap` days later
 function GS.scheduleDays(startDay, shows, gap)
 	local days = {}
@@ -456,14 +519,43 @@ function GS.createTour(state, draft)
 		ratingSum = 0,
 	}
 	local prev = nil
+	local dated = true
+	for _, s in ipairs(draft.shows) do
+		dated = dated and s.day ~= nil
+	end
+	if dated then
+		table.sort(draft.shows, function(a, b)
+			return a.day < b.day
+		end)
+		for i = 2, #draft.shows do
+			if draft.shows[i].day == draft.shows[i - 1].day then
+				return false, "Two shows on the same day. Move one of them in the calendar."
+			end
+		end
+	end
 	local days = GS.scheduleDays(state.day + firstIn, draft.shows, gap)
 	for i, s in ipairs(draft.shows) do
+		if s.day then
+			days[i] = s.day
+			if s.day <= state.day + 2 then
+				return false, "A show date is too soon (the first show needs a few days of ticket sales)."
+			end
+			local busy = GS.venueBusy(state, s.venueId, s.day)
+			if busy then
+				return false, Countries.venueById[s.venueId].name .. " is not free on that day (" .. busy .. ")."
+			end
+		end
+	end
+	for i, s in ipairs(draft.shows) do
 		local v = Countries.venueById[s.venueId]
+		local look = Countries.VENUE_TYPES[v.type].look
+		local prices = (draft.prices and draft.prices[look]) and Util.deepCopy(draft.prices[look]) or Sim.defaultPrices(draft.price or s.price or 30, look)
 		table.insert(tour.shows, {
 			venueId = v.id,
 			countryId = v.countryId,
 			cap = v.cap,
-			price = math.max(5, math.floor(draft.price or s.price or 30)),
+			prices = prices,
+			price = Sim.avgPrice(look, prices),
 			day = days[i],
 			sold = 0,
 			noise = 1 - Config.DEMAND_NOISE + math.random() * 2 * Config.DEMAND_NOISE,
@@ -473,6 +565,7 @@ function GS.createTour(state, draft)
 		})
 		prev = v
 	end
+	tour.price = tour.shows[1].price
 	table.insert(state.tours, 1, tour)
 	Sim.updateTourSales(state, tour)
 	GS.log(state, ad.name .. " announced \"" .. tour.name .. "\" (" .. #tour.shows .. " shows).")
@@ -519,10 +612,20 @@ function GS.setTourPrice(state, tourId, price)
 	if not tour or tour.status == "done" then
 		return
 	end
+	local old = math.max(1, tour.price or price)
 	tour.price = Util.clamp(math.floor(price), 5, 2000)
+	local f = tour.price / old
 	for _, s in ipairs(tour.shows) do
 		if not s.done then
-			s.price = tour.price
+			local v = Countries.venueById[s.venueId]
+			if s.prices then
+				for id, p in pairs(s.prices) do
+					s.prices[id] = Util.clamp(Util.round(p * f), 5, 4000)
+				end
+				s.price = Sim.avgPrice(Countries.VENUE_TYPES[v.type].look, s.prices)
+			else
+				s.price = tour.price
+			end
 		end
 	end
 	Sim.updateTourSales(state, tour)
@@ -565,7 +668,10 @@ function GS.applyShow(state, tour, idx, r)
 	local a = state.artists[tour.artistId]
 	s.done = true
 	s.sold = r.sold
-	s.result = { sold = r.sold, gross = r.gross, net = r.net, stars = r.stars, rating = Util.round(r.rating), review = r.review }
+	s.result = {
+		sold = r.sold, gross = r.gross, net = r.net, stars = r.stars, rating = Util.round(r.rating), review = r.review,
+		rent = r.rent, production = r.production, travel = r.travel, artistCut = r.artistCut, cap = r.cap, fansGained = r.fansGained,
+	}
 
 	state.money = state.money + r.net
 	tour.gross = tour.gross + r.gross

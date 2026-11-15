@@ -155,13 +155,67 @@ function Stage3D.snapToTruss(x, z)
 		if r.kind == "truss_beam" then
 			local lp = r.cf:PointToObjectSpace(Vector3.new(x, r.cf.Position.Y, z))
 			local half = ((r.rec and r.rec.w) or 24) / 2
-			if math.abs(lp.Z) < 3 and math.abs(lp.X) <= half + 1 then
-				local wp = r.cf * Vector3.new(math.clamp(lp.X, -half, half), 0, 0)
+			if math.abs(lp.Z) < 5 and math.abs(lp.X) <= half + 1.5 then
+				local wp = r.cf * Vector3.new(math.clamp(math.floor(lp.X + 0.5), -half, half), 0, 0)
 				return wp.X, wp.Z, true
 			end
 		end
 	end
 	return x, z, false
+end
+
+-- Lines a new truss beam up with the nearest other beam: same direction (or square to it), on one line,
+-- end to end or parallel at whole studs. returns x, z, r
+function Stage3D.alignTruss(x, z, r, w, except)
+	local best, bestD = nil, 40
+	for _, o in ipairs(Stage3D.items) do
+		if o.kind == "truss_beam" and o ~= except and o.rec then
+			local lp = o.cf:PointToObjectSpace(Vector3.new(x, o.cf.Position.Y, z))
+			local half = (o.rec.w or 24) / 2
+			local dx = math.max(0, math.abs(lp.X) - half - w / 2)
+			local d = math.sqrt(dx * dx + lp.Z * lp.Z)
+			if d < bestD then
+				best, bestD = o, d
+			end
+		end
+	end
+	if not best then
+		return x, z, r
+	end
+	local orot = best.rec.r or 0
+	local diff = ((r - orot) % 180 + 180) % 180
+	local half = (best.rec.w or 24) / 2
+	local lp = best.cf:PointToObjectSpace(Vector3.new(x, best.cf.Position.Y, z))
+	local lx, lz = lp.X, lp.Z
+	if diff < 25 or diff > 155 then
+		-- parallel: on the same line (if close) or at a whole-stud distance; ends meet when they are close
+		r = orot
+		if math.abs(lz) < 5 then
+			lz = 0
+			local gap = math.abs(lx) - (half + w / 2)
+			if math.abs(gap) < 4 then
+				lx = (lx >= 0 and 1 or -1) * (half + w / 2)
+			end
+		else
+			lz = math.floor(lz + 0.5)
+			if math.abs(lx) < 3 then
+				lx = 0
+			end
+		end
+	elseif diff > 65 and diff < 115 then
+		-- square to it: one end touches the other beam
+		r = orot + 90
+		if math.abs(lx) <= half + 2 then
+			lx = math.floor(lx + 0.5)
+			if math.abs(math.abs(lz) - w / 2) < 5 then
+				lz = (lz >= 0 and 1 or -1) * w / 2
+			end
+		end
+	else
+		return x, z, r
+	end
+	local wp = best.cf * Vector3.new(lx, 0, lz)
+	return wp.X, wp.Z, r % 360
 end
 
 function Stage3D.itemCFrame(def, rec, except)

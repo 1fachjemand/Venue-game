@@ -34,8 +34,22 @@ function MainMenu.show(app, saved, onStart)
 		}),
 	})
 	local body = UI.New("Frame", { Parent = root, Size = UI.px(PANEL_W, 1080), BackgroundTransparency = 1 })
+	-- the menu sits at the left edge of the screen, the caption at the right edge (also on screens wider than 16:9)
+	local function edges()
+		local gap = app.sideGap or 0
+		column.Position = UI.px(-gap, 0)
+		column.Size = UI.px(PANEL_W + 220 + gap, 1080)
+		body.Position = UI.px(-gap, 0)
+	end
+	edges()
 	-- caption of the venue on screen
-	local caption = UI.New("Frame", { Parent = root, Position = UI.px(1360, 930), Size = UI.px(520, 110), BackgroundColor3 = T.panel, BackgroundTransparency = 0.25, BorderSizePixel = 0, UI.Corner(12) })
+	local caption = UI.New("Frame", { Parent = root, Position = UI.px(1360 + (app.sideGap or 0), 930), Size = UI.px(520, 110), BackgroundColor3 = T.panel, BackgroundTransparency = 0.25, BorderSizePixel = 0, UI.Corner(12) })
+	app.onRescale = function()
+		if root.Parent then
+			edges()
+			caption.Position = UI.px(1360 + (app.sideGap or 0), 930)
+		end
+	end
 	local capName = UI.Label(caption, "", UI.px(20, 10), UI.px(480, 36), { textSize = 28, font = UI.FontBlack })
 	local capCity = UI.Label(caption, "", UI.px(20, 46), UI.px(480, 24), { textSize = 17, color = T.sub })
 	local capTonight = UI.Label(caption, "", UI.px(20, 74), UI.px(480, 26), { textSize = 17, font = UI.FontBold, color = T.accent2 })

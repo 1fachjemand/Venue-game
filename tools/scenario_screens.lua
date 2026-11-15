@@ -24,9 +24,23 @@ local map = app.screens.planner
 for _, cid in ipairs({ "uk", "fr", "de" }) do map.selected = cid map:refresh() MOCK.click("^%+ ADD$", 1) end
 map.selected = "de" map:refresh() MOCK.click("^%+ ADD$", 1)
 map.selected = "uk" map:refresh()
+MOCK.click("^ARENAS") MOCK.click("^%+ ADD$", 1)
+app.state.money = 5000000
 dump("06_plan_route")
-MOCK.clickExact("NEXT: TICKETS & STAGE >")
-dump("07_plan_tickets")
+MOCK.clickExact("CALENDAR", 1)
+dump("06b_calendar")
+MOCK.clickExact("X", 1)
+MOCK.clickExact("NEXT: STAGE >")
+dump("07_plan_stage")
+if #MOCK.buttons("^BUILD ARENA STAGE$") > 0 then
+	local GS = require(root.Logic.GameState)
+	local SI = require(root.Data.StageItems)
+	for _, p in ipairs(SI.PRESETS) do if p.name == "Portal Ring" then GS.addDesignFromTemplate(app.state, p) end end
+	map:refresh()
+end
+MOCK.clickExact("STAGE READY - NEXT: TICKETS >")
+MOCK.clickExact("ARENAS")
+dump("07b_plan_tickets")
 MOCK.clickExact("NEXT: CONFIRM >")
 dump("08_plan_confirm")
 MOCK.clickExact("ANNOUNCE TOUR")
@@ -58,3 +72,16 @@ local Stage3D = require(root.Client.Stage3D)
 for _, r in ipairs(Stage3D.items) do if r.kind == "led" then require(root.Client.Designer).current.select(r) break end end
 dump("16_designer_screen")
 print("dumped")
+-- tour report with made-up results
+do
+	local t = app.state.tours[1]
+	for i, s in ipairs(t.shows) do
+		s.done = true
+		local sold = math.floor(s.cap * (0.55 + 0.1 * i))
+		s.result = { sold = math.min(sold, s.cap), cap = s.cap, gross = math.min(sold, s.cap) * s.price, rent = 2000 + i * 500, production = 3000, travel = 1500 * i, artistCut = math.floor(math.min(sold, s.cap) * s.price * 0.35), stars = 3 + i % 3, rating = 70 + i * 4 }
+		s.result.net = s.result.gross - s.result.rent - s.result.production - s.result.travel - s.result.artistCut
+		t.played = i
+	end
+	app:tourReport(t, true)
+	dump("20_report")
+end

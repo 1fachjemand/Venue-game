@@ -34,6 +34,7 @@
 - [erledigt] 4 neue Menü-Venues (Zürich, Paris, Madrid, Wembley), zufällige Reihenfolge, viel mehr Fan-Posts und Fotos
 - [erledigt] Menü-Venues mit echter Umgebung aus OpenStreetMap, Glas-Eingänge undurchsichtig, Weltkarte repariert und übersichtlicher
 - [erledigt] Stadt um die Hallen, Z-Fighting beseitigt, alle alten Modelle überarbeitet, 17 neue Teile
+- [erledigt] Tourplanung mit Kalender und Verfügbarkeit, fester Ablauf Termine → Bühne → Tickets, Saalplan-Preise pro Bereich, Tour-Abrechnung mit Diagrammen
 - Büro mit Roblox-Charakter, der sich an den PC setzt (Label-Menü im PC)
 
 ## Später

@@ -256,7 +256,7 @@ function LiveShow.run(app, opts)
 			elseif r.kind == "keys" then
 				seat, move, yaw = (r.cf * CFrame.new(0, 0, -2.4)).Position, "keys", math.rad(r.rec.r or 0)
 			elseif r.kind == "acoustic" then
-				seat, move, yaw = (r.cf * CFrame.new(0, 2, 0)).Position, "piano", math.rad(r.rec.r or 0)
+				seat, move, yaw = (r.cf * CFrame.new(0, 1.15, 0)).Position, "piano", math.rad(r.rec.r or 0)
 			elseif r.kind == "harp" then
 				seat, move, yaw = (r.cf * CFrame.new(0.2, 0, -2.4)).Position, "piano", math.rad(r.rec.r or 0)
 			elseif r.kind == "drums" then
@@ -454,12 +454,15 @@ function LiveShow.run(app, opts)
 	end
 	-- returns position, yaw, walking, hidden
 	local function leadState(t)
+		LiveShow.popping = false
 		if leadRole == "dj" then
 			return home, centerStage and idleYaw(t) or 0, false, false
 		end
 		if lift and t < liftUp0 + upDur then
+			LiveShow.popping = lift.kind == "poplift" and t >= liftUp0
 			return start + Vector3.new(0, riseY(lift, liftUp0, t), 0), 0, false, t < liftUp0
 		end
+		LiveShow.popping = false
 		local pos = start
 		curWalk = nil
 		for _, w in ipairs(walks) do
@@ -474,6 +477,7 @@ function LiveShow.run(app, opts)
 					if t < w[1] then
 						return pos, idleYaw(t), false, true
 					end
+					LiveShow.popping = w.lift.kind == "poplift"
 					return to + Vector3.new(0, riseY(w.lift, w[1], t), 0), 0, false, false
 				elseif w.kind == "hidden" then
 					return to, 0, false, true
@@ -735,6 +739,9 @@ function LiveShow.run(app, opts)
 			leadYaw = curWalk.play.yaw
 		end
 		local armsUp = 0
+		if LiveShow.popping then
+			move = "pop"
+		end
 		lead:update(leadPos, leadYaw, { t = t, beat = beat, energy = energy, walking = walking, armsUp = armsUp, move = move })
 		local bandMove = (ad.genre == "K-Pop") and move or (((ad.genre == "Metal" or ad.genre == "Rock") and seg.kind == "banger") and "headbang" or "idle")
 		for _, b in ipairs(band) do

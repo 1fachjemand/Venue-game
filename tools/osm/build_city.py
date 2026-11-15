@@ -12,13 +12,13 @@ S = 2.0  # studs per metre
 SCENES = {
     # name: centre (lat, lon) = venue centre, rot = degrees to turn the map (venue long axis -> x), half = half size in m,
     # exclude = circles (lat, lon, r m) whose buildings are replaced by hand-made models, anchors = named points
-    "o3": dict(c=(51.50302, 0.00322), rot=0, half=1300, exclude=[(51.50302, 0.00322, 200)], anchors={}),
+    "o3": dict(c=(51.50302, 0.00322), rot=0, half=1300, exclude=[(51.50302, 0.00322, 200)], anchors={}, clear=[(110, 470, 130)]),
     "msg": dict(c=(40.75051, -73.99341), rot=-29, half=1000, exclude=[(40.75051, -73.99341, 70), (40.74844, -73.98566, 40)], anchors={"empire": (40.74844, -73.98566), "penn": (40.75040, -73.99510)}),
-    "lanxus": dict(c=(50.93838, 6.98300), rot=0, half=1500, box=(-2150, -900, 800, 900), exclude=[(50.93838, 6.98300, 95), (50.94130, 6.95825, 80)], anchors={"dom": (50.94130, 6.95825), "bridge": (50.94030, 6.96550)}),
-    "zurich": dict(c=(47.41172, 8.55167), rot=0, half=1100, exclude=[(47.41172, 8.55167, 75)], anchors={}),
-    "paris": dict(c=(48.92447, 2.36016), rot=0, half=1200, exclude=[(48.92447, 2.36016, 170)], anchors={}),
-    "madrid": dict(c=(40.45306, -3.68835), rot=0, half=1100, exclude=[(40.45306, -3.68835, 130)], anchors={}),
-    "wembley": dict(c=(51.55600, -0.27959), rot=0, half=1200, exclude=[(51.55600, -0.27959, 170)], anchors={"station": (51.5634, -0.2795)}),
+    "lanxus": dict(c=(50.93838, 6.98300), rot=0, half=1500, box=(-2150, -900, 800, 900), clear=[(-230, -14, 110)], exclude=[(50.93838, 6.98300, 95), (50.94130, 6.95825, 80)], anchors={"dom": (50.94130, 6.95825), "bridge": (50.94030, 6.96550)}),
+    "zurich": dict(c=(47.41172, 8.55167), rot=0, half=1100, exclude=[(47.41172, 8.55167, 75)], anchors={}, clear=[(2, 225, 75), (2, -130, 50)]),
+    "paris": dict(c=(48.92447, 2.36016), rot=0, half=1200, exclude=[(48.92447, 2.36016, 170)], anchors={}, clear=[(0, 0, 400)]),
+    "madrid": dict(c=(40.45306, -3.68835), rot=0, half=1100, exclude=[(40.45306, -3.68835, 130)], anchors={}, clear=[(-300, 0, 70), (0, 270, 60), (0, -270, 60)]),
+    "wembley": dict(c=(51.55600, -0.27959), rot=0, half=1200, exclude=[(51.55600, -0.27959, 170)], anchors={"station": (51.5634, -0.2795)}, clear=[(-20, -380, 90)]),
 }
 
 def lonlat(z, tx, ty, px, py):
@@ -46,6 +46,9 @@ def main(cache, name):
         x0, z0, x1, z1 = cfg["box"]
         area = box(x0 * S, z0 * S, x1 * S, z1 * S)
     excl = [(Point(*local(lo, la)), r * S) for la, lo, r in cfg["exclude"]]
+    clear = [(Point(x, z), r) for x, z, r in cfg.get("clear", [])]
+    def cleared(pt):
+        return any(pt.distance(c[0]) < c[1] for c in clear)
     buildings, roads, water, green, plaza = [], [], [], [], []
     for f in sorted(glob.glob(os.path.join(cache, "14_*.pbf"))):
         _, tx, ty = os.path.basename(f)[:-4].split("_")
@@ -81,6 +84,8 @@ def main(cache, name):
             mh = ft["properties"].get("render_min_height", 0) or 0
             if ft["properties"].get("hide_3d"):
                 continue
+            if mh > 3 or (mh > 0 and h - mh < 8):
+                continue  # canopies, walkways and other floating parts look like clutter from the air
             for p in conv(ft["geometry"]):
                 if p.geom_type == "Polygon" and p.area > 30 * S * S:
                     buildings.append((p, max(h, 6), mh))
@@ -202,6 +207,8 @@ def main(cache, name):
         dm = far(cpt)
         if p.area / (S * S) < 40 + (dm / 480) ** 2 * 260:
             continue
+        if cleared(cpt):
+            continue
         for x, z, w, d, yaw in rects(p, 6 * S, 8):
             if w < 3 or d < 3:
                 continue
@@ -217,6 +224,8 @@ def main(cache, name):
             continue
         dm = far(g.centroid)
         if (key in ("service", "pedestrian") and dm > 650) or (key == "minor" and dm > 1100):
+            continue
+        if key in ("service", "minor") and cleared(g.centroid):
             continue
         g = g.intersection(area).simplify(1.5 * S)
         for gg in getattr(g, "geoms", [g]):
@@ -254,6 +263,11 @@ def main(cache, name):
     Wt = each(water, 5 * S, 80, 100)
     G = each([g for g in green if far(g.centroid) < 1300], 8 * S, 16, 400)
     P = each(plaza, 4 * S, 10, 100)
+    for c, r in clear:
+        # the open square itself (a disc made of a few boxes)
+        disc = c.buffer(r, 16)
+        for x, z, w, d, yaw in rects(disc, 8 * S, 12):
+            P += [round(x), round(z), round(w) + 1, round(d) + 1, round(yaw) % 180]
     A = {k: [round(v) for v in local(lo, la)] for k, (la, lo) in cfg["anchors"].items()}
     def arr(name, v, per):
         lines = []

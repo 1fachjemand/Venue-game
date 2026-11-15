@@ -99,6 +99,11 @@ function App.start()
 	local function rescale()
 		local vp = workspace.CurrentCamera.ViewportSize
 		scale.Scale = math.min(vp.X / 1920, vp.Y / 1080)
+		-- on screens wider than 16:9 the canvas is centred: how far (in canvas pixels) its left edge is from the screen edge
+		self.sideGap = math.max(0, (vp.X / math.max(scale.Scale, 0.01) - 1920) / 2)
+		if self.onRescale then
+			self.onRescale()
+		end
 	end
 	rescale()
 	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale)
@@ -467,30 +472,175 @@ function App:nextDay()
 end
 
 function App:tourCompleted(tour)
+	self:tourReport(tour, true)
+	self:save()
+end
+
+-- Tour report: real numbers per show (not estimates) with charts
+function App:tourReport(tour, finished)
 	local ad = Artists.byId[tour.artistId]
-	local rows, _ = GS.chart(self.state)
-	local rank = "-"
-	for _, r in ipairs(rows) do
-		if r.tourId == tour.id then
-			rank = "#" .. r.rank
+	local state = self.state
+	self.modalOpen = true
+	local layer = UI.New("TextButton", { Parent = self.canvas, Name = "TourReport", Size = UI.px(1920, 1080), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.35, AutoButtonColor = false, Text = "", ZIndex = 50 })
+	local box = UI.New("Frame", { Parent = layer, Position = UI.px(90, 50), Size = UI.px(1740, 980), BackgroundColor3 = T.panel, BorderSizePixel = 0, ZIndex = 51, UI.Corner(16), UI.Stroke(T.accent, 2, 0) })
+	local function z(inst)
+		for _, d in ipairs(inst:GetDescendants()) do
+			if d:IsA("GuiObject") then
+				d.ZIndex = 52
+			end
 		end
 	end
-	local avg = tour.played > 0 and (tour.ratingSum / tour.played) or 0
-	self:modal("TOUR COMPLETE!", table.concat({
-		"<b>" .. ad.name .. " - " .. UI.esc(tour.name) .. "</b>",
-		"",
-		"Shows: <b>" .. tour.played .. "</b>   Sold out: <b>" .. tour.sellouts .. "</b>",
-		"Attendance: <b>" .. Util.number(tour.attendance) .. "</b>",
-		"Gross: <b>" .. Util.money(tour.gross) .. "</b>",
-		"Label profit: <b>" .. Util.money(tour.net) .. "</b>",
-		"Average rating: <b>" .. math.floor(avg + 0.5) .. "/100</b>",
-		"All-time chart position: <b>" .. rank .. "</b>",
-		"",
-		ad.name .. " now has <b>" .. Util.short(Util.totalFans(self.state.artists[ad.id].fans)) .. "</b> fans (" .. Util.tier(Util.totalFans(self.state.artists[ad.id].fans)) .. ").",
-	}, "\n"), { { "Charts", T.panel3, function()
+	local function close()
+		layer:Destroy()
+		self.modalOpen = false
+		task.defer(function()
+			self:processLiveQueue()
+		end)
+	end
+	-- collect the played shows
+	local rows = {}
+	local tot = { gross = 0, rent = 0, production = 0, travel = 0, cut = 0, net = 0, sold = 0, cap = 0, rating = 0, n = 0, sellouts = 0 }
+	for i, s in ipairs(tour.shows) do
+		if s.done and s.result then
+			local r = s.result
+			local v = Countries.venueById[s.venueId]
+			local costs = (r.rent or 0) + (r.production or 0) + (r.travel or 0) + (r.artistCut or 0)
+			if costs == 0 then
+				costs = (r.gross or 0) - (r.net or 0)
+			end
+			local row = { i = i, v = v, day = s.day, gross = r.gross or 0, net = r.net or 0, costs = costs, rent = r.rent or 0, production = r.production or 0, travel = r.travel or 0, cut = r.artistCut or 0, sold = r.sold or 0, cap = r.cap or s.cap, stars = r.stars or 0, rating = r.rating or 0 }
+			table.insert(rows, row)
+			tot.gross = tot.gross + row.gross
+			tot.net = tot.net + row.net
+			tot.rent = tot.rent + row.rent
+			tot.production = tot.production + row.production
+			tot.travel = tot.travel + row.travel
+			tot.cut = tot.cut + row.cut
+			tot.sold = tot.sold + row.sold
+			tot.cap = tot.cap + row.cap
+			tot.rating = tot.rating + row.rating
+			tot.n = tot.n + 1
+			if row.sold >= row.cap then
+				tot.sellouts = tot.sellouts + 1
+			end
+		end
+	end
+	local costsAll = tot.gross - tot.net
+	UI.Label(box, finished and "TOUR COMPLETE - THE REPORT" or "TOUR REPORT", UI.px(32, 20), UI.px(1000, 40), { textSize = 32, font = UI.FontBlack, color = T.accent })
+	UI.Label(box, ad.name .. "  -  " .. UI.esc(tour.name) .. "   |   " .. tot.n .. " of " .. #tour.shows .. " shows played", UI.px(32, 62), UI.px(1400, 26), { textSize = 18, color = T.sub })
+	-- key numbers
+	local kpis = {
+		{ "TICKETS SOLD", Util.short(tot.sold) .. " / " .. Util.short(tot.cap), T.text },
+		{ "FILL", (tot.cap > 0 and math.floor(tot.sold / tot.cap * 100 + 0.5) or 0) .. "%", T.text },
+		{ "GROSS", Util.money(tot.gross), T.text },
+		{ "COSTS", Util.money(costsAll), T.bad },
+		{ "PROFIT", (tot.net >= 0 and "+" or "") .. Util.money(tot.net), tot.net >= 0 and T.good or T.bad },
+		{ "AVG RATING", (tot.n > 0 and math.floor(tot.rating / tot.n + 0.5) or 0) .. "/100", T.gold },
+		{ "SOLD OUT", tot.sellouts .. " / " .. tot.n, T.text },
+	}
+	for i, k in ipairs(kpis) do
+		local tile = UI.New("Frame", { Parent = box, Position = UI.px(32 + (i - 1) * 240, 100), Size = UI.px(228, 78), BackgroundColor3 = T.panel2, BorderSizePixel = 0, UI.Corner(10) })
+		UI.Label(tile, k[1], UI.px(14, 8), UI.px(210, 18), { textSize = 13, color = T.sub, font = UI.FontBold })
+		UI.Label(tile, k[2], UI.px(14, 30), UI.px(210, 38), { textSize = 24, font = UI.FontBlack, color = k[3] })
+	end
+	-- chart 1: per show, money in (gross) and out (costs stacked), profit as a dot
+	local cw, ch = 1100, 330
+	local chart = UI.New("Frame", { Parent = box, Position = UI.px(32, 230), Size = UI.px(cw, ch), BackgroundColor3 = Color3.fromRGB(18, 18, 26), BorderSizePixel = 0, UI.Corner(10) })
+	UI.Label(box, "MONEY PER SHOW  (green = ticket gross, stacked = costs, dot = profit)", UI.px(32, 198), UI.px(cw, 26), { textSize = 15, font = UI.FontBold, color = T.sub })
+	local maxV = 1
+	for _, r in ipairs(rows) do
+		maxV = math.max(maxV, r.gross, r.costs)
+	end
+	local minNet = 0
+	for _, r in ipairs(rows) do
+		minNet = math.min(minNet, r.net)
+	end
+	local zeroY = ch - 30 - (ch - 50) * (-minNet) / (maxV - minNet)
+	local scale = (ch - 50) / (maxV - minNet)
+	UI.New("Frame", { Parent = chart, Position = UI.px(10, zeroY), Size = UI.px(cw - 20, 1), BackgroundColor3 = T.sub, BorderSizePixel = 0 })
+	UI.Label(chart, Util.moneyShort(maxV), UI.px(10, 6), UI.px(200, 18), { textSize = 12, color = T.sub })
+	local n = math.max(1, #rows)
+	local slot = (cw - 40) / n
+	local bw = math.max(3, math.min(36, slot * 0.38))
+	local COSTCOL = { Color3.fromRGB(230, 90, 90), Color3.fromRGB(240, 150, 60), Color3.fromRGB(150, 110, 230), Color3.fromRGB(90, 160, 240) }
+	for k, r in ipairs(rows) do
+		local x = 20 + (k - 1) * slot + slot / 2
+		local gh = r.gross * scale
+		UI.New("Frame", { Parent = chart, Position = UI.px(x - bw - 1, zeroY - gh), Size = UI.px(bw, gh), BackgroundColor3 = Color3.fromRGB(60, 200, 120), BorderSizePixel = 0 })
+		local y = zeroY
+		for c, val in ipairs({ r.rent, r.production, r.travel, r.cut }) do
+			local hh = val * scale
+			y = y - hh
+			UI.New("Frame", { Parent = chart, Position = UI.px(x + 1, y), Size = UI.px(bw, hh), BackgroundColor3 = COSTCOL[c], BorderSizePixel = 0 })
+		end
+		local ny = zeroY - r.net * scale
+		UI.New("Frame", { Parent = chart, Position = UI.px(x - 5, ny - 5), Size = UI.px(10, 10), BackgroundColor3 = (r.net >= 0) and Color3.new(1, 1, 1) or T.bad, BorderSizePixel = 0, UI.Corner(5) })
+		if n <= 16 then
+			UI.Label(chart, r.v.city, UI.px(x - slot / 2, ch - 26), UI.px(slot, 20), { textSize = 11, color = T.sub, alignX = Enum.TextXAlignment.Center })
+		end
+	end
+	-- chart 2: where the money went
+	local px0 = 1160
+	UI.Label(box, "WHERE THE MONEY WENT", UI.px(px0, 198), UI.px(540, 26), { textSize = 15, font = UI.FontBold, color = T.sub })
+	local parts = {
+		{ "Venue rent", tot.rent, COSTCOL[1] },
+		{ "Stage production", tot.production, COSTCOL[2] },
+		{ "Travel & trucks", tot.travel, COSTCOL[3] },
+		{ "Artist's share", tot.cut, COSTCOL[4] },
+		{ (tot.net >= 0) and "Label profit" or "Loss", math.abs(tot.net), (tot.net >= 0) and Color3.fromRGB(60, 200, 120) or T.bad },
+	}
+	local sum = 0
+	for _, pp in ipairs(parts) do
+		sum = sum + pp[2]
+	end
+	local bx = 0
+	local bar = UI.New("Frame", { Parent = box, Position = UI.px(px0, 236), Size = UI.px(540, 40), BackgroundColor3 = T.panel2, BorderSizePixel = 0, ClipsDescendants = true, UI.Corner(8) })
+	for i, pp in ipairs(parts) do
+		local w = (sum > 0) and pp[2] / sum * 540 or 0
+		UI.New("Frame", { Parent = bar, Position = UI.px(bx, 0), Size = UI.px(w, 40), BackgroundColor3 = pp[3], BorderSizePixel = 0 })
+		bx = bx + w
+		local ly = 292 + (i - 1) * 46
+		UI.New("Frame", { Parent = box, Position = UI.px(px0, ly + 6), Size = UI.px(18, 18), BackgroundColor3 = pp[3], BorderSizePixel = 0, UI.Corner(4) })
+		UI.Label(box, pp[1], UI.px(px0 + 30, ly), UI.px(260, 30), { textSize = 17 })
+		UI.Label(box, Util.money(pp[2]) .. "  (" .. ((sum > 0) and math.floor(pp[2] / sum * 100 + 0.5) or 0) .. "%)", UI.px(px0 + 280, ly), UI.px(260, 30), { textSize = 17, font = UI.FontBold, alignX = Enum.TextXAlignment.Right })
+	end
+	-- chart 3: how full every show was
+	UI.Label(box, "HOW FULL EVERY SHOW WAS", UI.px(32, 580), UI.px(cw, 26), { textSize = 15, font = UI.FontBold, color = T.sub })
+	local fchart = UI.New("Frame", { Parent = box, Position = UI.px(32, 610), Size = UI.px(cw, 190), BackgroundColor3 = Color3.fromRGB(18, 18, 26), BorderSizePixel = 0, UI.Corner(10) })
+	for k, r in ipairs(rows) do
+		local x = 20 + (k - 1) * slot + slot / 2
+		local f = (r.cap > 0) and r.sold / r.cap or 0
+		local hh = 150 * f
+		local col = (f >= 0.999) and T.gold or ((f > 0.75) and T.good or ((f > 0.45) and T.warn or T.bad))
+		UI.New("Frame", { Parent = fchart, Position = UI.px(x - bw, 170 - hh), Size = UI.px(bw * 2, hh), BackgroundColor3 = col, BorderSizePixel = 0 })
+		if n <= 24 then
+			UI.Label(fchart, math.floor(f * 100 + 0.5) .. "%", UI.px(x - slot / 2, 150 - hh), UI.px(slot, 18), { textSize = 11, alignX = Enum.TextXAlignment.Center })
+		end
+	end
+	-- best and worst show
+	local best, worst
+	for _, r in ipairs(rows) do
+		if not best or r.net > best.net then
+			best = r
+		end
+		if not worst or r.net < worst.net then
+			worst = r
+		end
+	end
+	local lines = {}
+	if best then
+		table.insert(lines, "Best show: <b>" .. best.v.name .. ", " .. best.v.city .. "</b>  (" .. (best.net >= 0 and "+" or "") .. Util.money(best.net) .. ", " .. best.stars .. " stars)")
+		table.insert(lines, "Weakest show: <b>" .. worst.v.name .. ", " .. worst.v.city .. "</b>  (" .. (worst.net >= 0 and "+" or "") .. Util.money(worst.net) .. ", " .. worst.stars .. " stars)")
+	end
+	table.insert(lines, ad.name .. " now has <b>" .. Util.short(Util.totalFans(state.artists[ad.id].fans)) .. "</b> fans (" .. Util.tier(Util.totalFans(state.artists[ad.id].fans)) .. ").")
+	UI.Label(box, table.concat(lines, "\n"), UI.px(px0, 540), UI.px(540, 260), { textSize = 17, rich = true, wrap = true, alignY = Enum.TextYAlignment.Top })
+	UI.Button(box, "Charts", UI.px(1280, 900), UI.px(200, 56), { color = T.panel3, textSize = 18 }, function()
+		close()
 		self:go("charts")
-	end }, { "Great!", T.accent } }, 640)
-	self:save()
+	end)
+	UI.Button(box, finished and "Great!" or "Close", UI.px(1500, 900), UI.px(208, 56), { color = T.accent, textSize = 20 }, close)
+	z(box)
+	return close
 end
 
 function App:processLiveQueue()

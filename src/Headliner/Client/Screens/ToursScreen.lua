@@ -151,6 +151,12 @@ function ToursScreen:refreshDetail()
 		end
 	end
 
+	if tour.played > 0 then
+		UI.Button(d, "TOUR REPORT", UI.px(1180, tour.status ~= "done" and 150 or 132), UI.px(160, 40), { color = T.accent2, textColor = Color3.new(0, 0, 0), textSize = 15 }, function()
+			app:tourReport(tour, false)
+		end)
+	end
+
 	-- show table
 	local y0 = tour.status ~= "done" and 262 or 182
 	local headers = { { "DATE", 24 }, { "VENUE", 150 }, { "TICKETS", 600 }, { "PRICE", 900 }, { "RESULT", 1050 }, { "LIVE", 1270 } }

@@ -271,15 +271,35 @@ function Designer.open(app, designId)
 	end
 
 	-- floor/deck point under the mouse (snapped to the grid)
-	local function mousePoint(except, def)
+	-- rig items: the point where the mouse ray meets the rig height (not the floor far below),
+	-- so the piece hangs exactly under the cursor. returns x, z (and r for truss beams that line up)
+	local function mousePoint(except, def, rec)
 		local ray = mouseRay()
-		local hit = Stage3D.raycast(ray.Origin, ray.Direction * 3000, except)
-		if not hit then
-			return nil
+		local x, z
+		if def and def.mount == "rig" then
+			local y = Stage3D.rigY() - ((def.id == "truss_beam") and 0 or 2) + ((rec and rec.yo) or 0)
+			if math.abs(ray.Direction.Y) < 1e-4 then
+				return nil
+			end
+			local k = (y - ray.Origin.Y) / ray.Direction.Y
+			if k <= 0 then
+				return nil
+			end
+			local p = ray.Origin + ray.Direction * k
+			x, z = snapG(p.X), snapG(p.Z)
+		else
+			local hit = Stage3D.raycast(ray.Origin, ray.Direction * 3000, except)
+			if not hit then
+				return nil
+			end
+			x, z = snapG(hit.Position.X), snapG(hit.Position.Z)
 		end
-		local x, z = snapG(hit.Position.X), snapG(hit.Position.Z)
 		if def and def.mount == "rig" and def.id ~= "truss_beam" then
 			x, z = Stage3D.snapToTruss(x, z) -- lights click onto truss beams
+		elseif def and def.id == "truss_beam" and rec then
+			local r
+			x, z, r = Stage3D.alignTruss(x, z, rec.r or 0, rec.w or (def.size and def.size.w) or 24, except)
+			return x, z, r
 		end
 		return x, z
 	end
@@ -1059,7 +1079,10 @@ function Designer.open(app, designId)
 			return
 		end
 		local def, rec = placeDef, ghostRec
-		local x, z = mousePoint(nil, def)
+		local x, z, rr = mousePoint(nil, def, rec)
+		if rr then
+			rec.r = rr -- a truss beam turns to line up with its neighbour
+		end
 		if not x then
 			clearGhost()
 			return
@@ -1316,9 +1339,12 @@ function Designer.open(app, designId)
 				refreshToolbar()
 			elseif mode == "pending" and pending then
 				-- clicking somewhere else moves the new piece there
-				local x, z = mousePoint(nil, pending.def)
+				local x, z, rr = mousePoint(pending, pending.def, pending.rec)
 				if x and Stage3D.inBounds(x, z) then
 					pending.rec.x, pending.rec.z = x, z
+					if rr then
+						pending.rec.r = rr
+					end
 					floorY(pending.rec, pending.def)
 					placePending()
 				end

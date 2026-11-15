@@ -83,6 +83,43 @@ local function isLeap(y)
 end
 
 -- day 0 = Jan 1 of startYear
+-- year, month (1-12), day of month (1-31) of a game day; weekday 1 = Monday (day 0 = Fri, Jan 1 2027)
+function Util.ymd(day, startYear)
+	local y = startYear or 2027
+	local d = math.floor(day)
+	while d >= (isLeap(y) and 366 or 365) do
+		d = d - (isLeap(y) and 366 or 365)
+		y = y + 1
+	end
+	local m = 1
+	while true do
+		local ml = (m == 2 and isLeap(y)) and 29 or MDAYS[m]
+		if d < ml then
+			break
+		end
+		d = d - ml
+		m = m + 1
+	end
+	return y, m, d + 1, (math.floor(day) + 4) % 7 + 1
+end
+function Util.monthLength(y, m)
+	return (m == 2 and isLeap(y)) and 29 or MDAYS[m]
+end
+function Util.monthName(m)
+	return MONTHS[m]
+end
+-- game day of a date
+function Util.dayOf(y, m, dd, startYear)
+	local day = 0
+	for yy = startYear or 2027, y - 1 do
+		day = day + (isLeap(yy) and 366 or 365)
+	end
+	for mm = 1, m - 1 do
+		day = day + Util.monthLength(y, mm)
+	end
+	return day + dd - 1
+end
+
 function Util.date(day, startYear)
 	local y = startYear or 2027
 	local d = math.floor(day)

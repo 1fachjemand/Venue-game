@@ -97,6 +97,127 @@ function Sim.productionScore(design, genre, cap)
 	return Util.clamp(score, 0, 100), st, expected, maxFit
 end
 
+------------------------------------------------------------------ seat sections (like a ticket shop seat map)
+-- per venue look: share of the capacity, price factor against the base ticket price, standing or seated
+Sim.SECTIONS = {
+	club = {
+		{ id = "ga", name = "Standing", share = 1, mult = 1, standing = true },
+	},
+	theatre = {
+		{ id = "stalls", name = "Stalls (standing)", share = 0.5, mult = 1, standing = true },
+		{ id = "circle", name = "Dress Circle", share = 0.3, mult = 1.15 },
+		{ id = "upper", name = "Upper Circle", share = 0.2, mult = 0.75 },
+	},
+	arena = {
+		{ id = "golden", name = "Golden Circle", share = 0.08, mult = 1.8, standing = true },
+		{ id = "floor", name = "Floor (standing)", share = 0.27, mult = 1, standing = true },
+		{ id = "lower", name = "Lower Tier", share = 0.4, mult = 1.15 },
+		{ id = "upper", name = "Upper Tier", share = 0.25, mult = 0.75 },
+	},
+	amphi = {
+		{ id = "pit", name = "Pit (standing)", share = 0.3, mult = 1.1, standing = true },
+		{ id = "bowl", name = "Seated Bowl", share = 0.45, mult = 1 },
+		{ id = "lawn", name = "Lawn", share = 0.25, mult = 0.65, standing = true },
+	},
+	stadium = {
+		{ id = "golden", name = "Golden Circle", share = 0.07, mult = 1.9, standing = true },
+		{ id = "field", name = "Field (standing)", share = 0.28, mult = 1, standing = true },
+		{ id = "lower", name = "Lower Tier", share = 0.35, mult = 1.1 },
+		{ id = "upper", name = "Upper Tier", share = 0.3, mult = 0.7 },
+	},
+}
+function Sim.lookOf(venue)
+	return Countries.VENUE_TYPES[venue.type].look
+end
+function Sim.sections(venue)
+	return Sim.SECTIONS[Sim.lookOf(venue)] or Sim.SECTIONS.arena
+end
+-- default prices of the sections of a look for a base price
+function Sim.defaultPrices(base, look)
+	local out = {}
+	for _, sec in ipairs(Sim.SECTIONS[look] or Sim.SECTIONS.arena) do
+		out[sec.id] = math.max(5, Util.round(base * sec.mult))
+	end
+	return out
+end
+-- average ticket price (weighted by the size of the sections)
+function Sim.avgPrice(look, prices)
+	local sum, w = 0, 0
+	for _, sec in ipairs(Sim.SECTIONS[look] or Sim.SECTIONS.arena) do
+		sum = sum + (prices[sec.id] or 0) * sec.share
+		w = w + sec.share
+	end
+	return math.max(5, Util.round(sum / math.max(0.01, w)))
+end
+-- Splits ticket buyers over the sections: a section that is cheap for what it offers sells faster,
+-- an expensive one slower; fans who find a sold-out section partly move on to the others.
+-- returns soldBy = { [id] = n }, total sold, gross
+function Sim.splitSections(look, cap, prices, demand)
+	local secs = Sim.SECTIONS[look] or Sim.SECTIONS.arena
+	local avg = Sim.avgPrice(look, prices)
+	local want, room, weight, sumW = {}, {}, {}, 0
+	for _, sec in ipairs(secs) do
+		local p = math.max(1, prices[sec.id] or avg * sec.mult)
+		weight[sec.id] = sec.share * Util.clamp((sec.mult * avg / p) ^ 1.6, 0.05, 4)
+		sumW = sumW + weight[sec.id]
+	end
+	local spill = 0
+	for _, sec in ipairs(secs) do
+		local c = math.floor(cap * sec.share)
+		want[sec.id] = demand * weight[sec.id] / math.max(1e-6, sumW)
+		room[sec.id] = c
+		if want[sec.id] > c then
+			spill = spill + (want[sec.id] - c) * 0.6
+			want[sec.id] = c
+		end
+	end
+	for _ = 1, 3 do
+		if spill < 1 then
+			break
+		end
+		local open = 0
+		for _, sec in ipairs(secs) do
+			if want[sec.id] < room[sec.id] then
+				open = open + weight[sec.id]
+			end
+		end
+		if open <= 0 then
+			break
+		end
+		local s2 = spill
+		spill = 0
+		for _, sec in ipairs(secs) do
+			if want[sec.id] < room[sec.id] then
+				local add = s2 * weight[sec.id] / open
+				want[sec.id] = want[sec.id] + add
+				if want[sec.id] > room[sec.id] then
+					spill = spill + (want[sec.id] - room[sec.id])
+					want[sec.id] = room[sec.id]
+				end
+			end
+		end
+	end
+	local soldBy, total, gross = {}, 0, 0
+	for _, sec in ipairs(secs) do
+		local n = math.floor(want[sec.id])
+		soldBy[sec.id] = n
+		total = total + n
+		gross = gross + n * (prices[sec.id] or avg)
+	end
+	return soldBy, total, gross
+end
+-- prices of a show (old saves only have one price)
+function Sim.showPrices(s, venue)
+	if s.prices then
+		return s.prices
+	end
+	local out = {}
+	for _, sec in ipairs(Sim.sections(venue)) do
+		out[sec.id] = s.price
+	end
+	return out
+end
+
 ------------------------------------------------------------------ prices & demand
 function Sim.ticketBase(state, artistId)
 	local a = state.artists[artistId]
@@ -216,7 +337,15 @@ function Sim.updateTourSales(state, tour)
 			s.demand = d[i]
 			local total = s.day - tour.announcedDay
 			local elapsed = state.day - tour.announcedDay
-			local target = math.floor(math.min(s.cap, d[i] * Sim.salesFraction(elapsed, total)))
+			local v = Countries.venueById[s.venueId]
+			local soldBy, target = Sim.splitSections(Sim.lookOf(v), s.cap, Sim.showPrices(s, v), d[i] * Sim.salesFraction(elapsed, total))
+			s.secSold = s.secSold or {}
+			local sum = 0
+			for id, n in pairs(soldBy) do
+				s.secSold[id] = math.max(s.secSold[id] or 0, n)
+				sum = sum + s.secSold[id]
+			end
+			target = math.max(target, sum)
 			if target > s.sold then
 				s.sold = target
 			end
@@ -292,8 +421,8 @@ function Sim.estimate(state, draft, design)
 	local prev = nil
 	for i, s in ipairs(draft.shows) do
 		local v = Countries.venueById[s.venueId]
-		local sold = math.floor(math.min(v.cap, d[i]))
-		local gross = sold * s.price
+		local prices = Sim.showPrices(s, v)
+		local _, sold, gross = Sim.splitSections(Sim.lookOf(v), v.cap, prices, d[i])
 		local rent = Sim.venueRent(v)
 		local st = stFor(v)
 		local travel = Sim.travelCost(prev, v, st.count)
@@ -302,9 +431,12 @@ function Sim.estimate(state, draft, design)
 		local n = Config.DEMAND_NOISE
 		local low = math.min(1, d[i] * (1 - n) / v.cap)
 		local high = math.min(1, d[i] * (1 + n) / v.cap)
+		local _, soldLo, grossLo = Sim.splitSections(Sim.lookOf(v), v.cap, prices, d[i] * (1 - n))
+		local _, soldHi, grossHi = Sim.splitSections(Sim.lookOf(v), v.cap, prices, d[i] * (1 + n))
+		low, high = soldLo / v.cap, soldHi / v.cap
 		res.rows[i] = { demand = d[i], sold = sold, fill = sold / v.cap, fillLow = low, fillHigh = high, gross = gross, costs = costs, net = gross - costs }
-		res.grossLow = (res.grossLow or 0) + math.floor(low * v.cap) * s.price
-		res.grossHigh = (res.grossHigh or 0) + math.floor(high * v.cap) * s.price
+		res.grossLow = (res.grossLow or 0) + grossLo
+		res.grossHigh = (res.grossHigh or 0) + grossHi
 		res.tickets = res.tickets + sold
 		res.capacity = res.capacity + v.cap
 		res.gross = res.gross + gross
@@ -326,7 +458,18 @@ function Sim.showResult(state, tour, idx, design, rnd)
 	local ad = Artists.byId[tour.artistId]
 
 	local sold = math.min(s.sold, v.cap)
-	local gross = sold * s.price
+	local prices = Sim.showPrices(s, v)
+	local gross = 0
+	if s.secSold then
+		local n = 0
+		for id, k in pairs(s.secSold) do
+			gross = gross + k * (prices[id] or s.price)
+			n = n + k
+		end
+		gross = gross + math.max(0, sold - n) * s.price
+	else
+		gross = sold * s.price
+	end
 	local rent = Sim.venueRent(v)
 	local prodScore, st = Sim.productionScore(design, ad.genre, v.cap)
 	local travel = s.travel or 0
@@ -360,6 +503,7 @@ function Sim.showResult(state, tour, idx, design, rnd)
 		cap = v.cap,
 		fill = fill,
 		price = s.price,
+		secSold = s.secSold,
 		gross = gross,
 		rent = rent,
 		production = st.cost,

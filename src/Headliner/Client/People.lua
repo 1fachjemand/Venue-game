@@ -226,7 +226,11 @@ function People:update(pos, yaw, opts)
 		lean = 0.8
 		bob = 0
 	elseif move == "piano" or move == "drumsolo" then
-		drop = 1.4 * s -- sitting
+		drop = 2 * s - 2.25 -- sitting: hips on a seat about 2.25 studs high
+		bob = 0
+	elseif move == "pop" then
+		-- shot out of the pop-up lift: tucked legs, arms up
+		lean = -0.15
 		bob = 0
 	end
 	local root = CFrame.new(pos) * CFrame.Angles(0, yaw + hipYaw, 0) * CFrame.new(0, bob + lift - drop, 0)
@@ -237,7 +241,9 @@ function People:update(pos, yaw, opts)
 	if move == "kneel" then
 		legLA, legRA = 1.45, -0.3
 	elseif move == "piano" or move == "drumsolo" then
-		legLA, legRA = 1.5, 1.5
+		legLA, legRA = -0.8, -0.72 -- thighs forward and down, feet on the floor (never through the seat)
+	elseif move == "pop" then
+		legLA, legRA = -0.9, -0.35
 	elseif move == "jump" then
 		legLA, legRA = 0.35 * math.abs(beatWave), 0.35 * math.abs(beatWave)
 	end
@@ -263,7 +269,10 @@ function People:update(pos, yaw, opts)
 	local up = opts.armsUp or 0
 	local lx, lz = -swing * 0.8, 0
 	local rx, rz = swing * 0.8, 0
-	if move == "wave" or up > 0.5 then
+	if move == "pop" then
+		lx, lz = -2.95, -0.35
+		rx, rz = -2.95, 0.35
+	elseif move == "wave" or up > 0.5 then
 		lx, lz = -2.8, -0.25 + math.sin(t * 5) * 0.35
 		rx, rz = -2.8, 0.25 - math.sin(t * 5) * 0.35
 	elseif move == "point" then

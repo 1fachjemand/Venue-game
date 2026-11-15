@@ -195,4 +195,25 @@ do
   print("social kinds", table.concat(list, ","), "posts", #st.social)
   check(kinds.show_great or kinds.show_ok or kinds.show_bad, "posts after the shows")
 end
+-- seat sections: never more than the capacity, a cheap section sells more than an expensive one
+do
+  local prices = Sim.defaultPrices(40, "arena")
+  local by, total, gross = Sim.splitSections("arena", 10000, prices, 50000)
+  check(total <= 10000 and total >= 9000, "a hot show sells (almost) all sections: " .. total)
+  local p2 = Sim.defaultPrices(40, "arena")
+  p2.upper = 200
+  local by2 = Sim.splitSections("arena", 10000, p2, 6000)
+  local by3 = Sim.splitSections("arena", 10000, prices, 6000)
+  check(by2.upper < by3.upper, "an expensive upper tier sells less")
+  print("sections", by.golden, by.floor, by.lower, by.upper, "gross", gross)
+  -- venue calendar: some days are taken, the same in every game
+  local st = GS.new("Cal", "juno")
+  local busy, n = 0, 0
+  for d = 20, 200 do
+    n = n + 1
+    if GS.venueBusy(st, "uk_o3", d) then busy = busy + 1 end
+  end
+  check(busy > 0 and busy < n * 0.4, "arena is sometimes booked: " .. busy .. "/" .. n)
+  check(GS.venueBusy(st, "uk_o3", 77) == GS.venueBusy(st, "uk_o3", 77), "calendar is deterministic")
+end
 print("FAILS", fails)

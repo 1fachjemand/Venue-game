@@ -764,12 +764,13 @@ local function osmCity(name, o)
 	local function flats(arr, top, color, mat, refl, nm)
 		for i = 1, #arr, 5 do
 			local k = ((i - 1) / 5) % 4
-			P(nm, V(arr[i + 2], 0.4, arr[i + 3]), yawCF(arr[i], top - 0.2 + k * 0.03, arr[i + 1], arr[i + 4]), color, mat, 0, refl)
+			P(nm, V(arr[i + 2], 0.2, arr[i + 3]), yawCF(arr[i], top - 0.1 + k * 0.06, arr[i + 1], arr[i + 4]), color, mat, 0, refl)
 		end
 	end
-	flats(d.G, 0.25, rgb(30, 54, 34), M.Grass, 0, "Park")
-	flats(d.P, 0.32, rgb(98, 98, 102), M.Pavement, 0, "Square")
-	flats(d.W, 0.42, rgb(14, 30, 50), M.Glass, 0.3, "Water")
+	-- layers never share a height (top faces): parks 0.10-0.28, squares 0.31-0.49, water 0.52-0.70, roads 0.86-0.98
+	flats(d.G, 0.1, rgb(30, 54, 34), M.Grass, 0, "Park")
+	flats(d.P, 0.31, rgb(98, 98, 102), M.Pavement, 0, "Square")
+	flats(d.W, 0.52, rgb(14, 30, 50), M.Glass, 0.3, "Water")
 	-- roads and railways
 	local R = d.R
 	local lamps, lanes = 0, {}
@@ -781,7 +782,7 @@ local function osmCity(name, o)
 			k = k - 10
 		end
 		local len = (b - a).Magnitude
-		local y = (bridge and 10 or 0.55) + ((i - 1) / 6 % 5) * 0.025
+		local y = (bridge and 10 or 0.76) + ((i - 1) / 6 % 5) * 0.03
 		local mid = (a + b) / 2
 		local cf = CFrame.lookAt(mid + V(0, y, 0), b + V(0, y, 0))
 		if k == 6 or k == 7 then
@@ -792,7 +793,7 @@ local function osmCity(name, o)
 				P("Rail", V(0.35, 0.3, len + 1), cf * CF(sx, 0.3, 0), rgb(150, 150, 156), M.Metal)
 			end
 		else
-			P("Road", V(w, 0.3, len + w * 0.5), cf, ROAD_COLOR[k] or ROAD_COLOR[3], (k == 5) and M.Pavement or M.Asphalt)
+			P("Road", V(w, 0.2, len + w * 0.5), cf, ROAD_COLOR[k] or ROAD_COLOR[3], (k == 5) and M.Pavement or M.Asphalt)
 		end
 		if bridge then
 			P("BridgeDeck", V(w + 2, 2.4, len + 1), cf * CF(0, -1.4, 0), rgb(70, 70, 74), M.Concrete)
@@ -847,6 +848,9 @@ local function osmCity(name, o)
 		local f = CITY_FACADES[st] or CITY_FACADES[1]
 		local a = math.rad(yaw)
 		groundAdd({ x = x, z = z, hw = w / 2, hd = dd / 2, c = math.cos(a), s = math.sin(a) })
+		-- neighbours in a row share a facade line: every building is a tiny bit smaller and higher or lower
+		-- than its neighbour, so no two faces lie exactly in one plane (no flicker)
+		w, dd, h = w - rnd(0.15, 0.9), dd - rnd(0.15, 0.9), h + rnd(-0.4, 0.4)
 		local cf = yawCF(x, 0, z, yaw)
 		P("Building", V(w, h - mh, dd), cf * CF(0, mh + (h - mh) / 2, 0), f[1], f[2], 0, (f[2] == M.Glass) and 0.08 or 0)
 		local bands = 0
@@ -857,9 +861,10 @@ local function osmCity(name, o)
 		end
 		for k2 = 1, bands do
 			if rng:NextNumber() < 0.8 then
-				local y = mh + 5 + (k2 - 1) * (h - mh - 8) / math.max(1, bands - 1)
+				local y = mh + 5 + (k2 - 1) * (h - mh - 8) / math.max(1, bands - 1) + rnd(-0.5, 0.5)
 				local lit = rng:NextNumber() < 0.6
-				P("Windows", V(w + 0.4, 2.2, dd + 0.4), cf * CF(0, y, 0), lit and BLACK:Lerp(pick(LIT), rnd(0.35, 0.75)) or rgb(28, 34, 46), lit and M.Neon or M.Glass)
+				local o = rnd(0.2, 0.5)
+				P("Windows", V(w + o, 2.2, dd + o), cf * CF(0, y, 0), lit and BLACK:Lerp(pick(LIT), rnd(0.35, 0.75)) or rgb(28, 34, 46), lit and M.Neon or M.Glass)
 			end
 		end
 		if dist < 220 and h > 16 and w > 12 and dd > 12 then
