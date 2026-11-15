@@ -275,7 +275,25 @@ do
   check(Actions.run(sb, "devSkip", { days = 7 }) and sb.day == 7, "sandbox skip")
   -- objective
   local fresh = GS.new("Obj", "lila")
-  check(GS.objective(fresh).target == "maptable", "first goal: world map")
+  check(GS.objective(fresh).target == "meeting", "first goal: pick the artist in the meeting room")
+  -- the tour plan, room by room
+  check(GS.planStage(fresh) == "artist", "plan starts with the artist")
+  check(Actions.run(fresh, "setDraft", { draft = { artistId = "lila" } }) and fresh.draft.artistId == "lila", "artist picked")
+  check(GS.objective(fresh).target == "maptable", "then the world map")
+  Actions.run(fresh, "setDraft", { draft = { artistId = "lila", shows = { { venueId = "uk_fiddle", day = 30 }, { venueId = "nope", day = 31 } } } })
+  check(#fresh.draft.shows == 1 and GS.planStage(fresh) == "tickets", "dates saved (bad venue dropped), then tickets")
+  check(GS.objective(fresh).target == "laptop", "tickets on the laptop")
+  Actions.run(fresh, "setDraft", { draft = { artistId = "lila", shows = fresh.draft.shows, pricesSet = true } })
+  check(GS.planStage(fresh) == "announce", "first tour: starter stage, the hall is still closed")
+  fresh.stats.shows = 1
+  check(GS.objective(fresh).target == "stagehall", "later: the stage hall")
+  fresh.stats.shows = 0
+  Actions.run(fresh, "setDraft", { draft = { artistId = "kai", shows = fresh.draft.shows } })
+  check(fresh.draft.artistId == nil and #fresh.draft.shows == 0, "an unsigned artist can't be planned")
+  Actions.run(fresh, "setDraft", { draft = { artistId = "lila", shows = { { venueId = "uk_fiddle", day = 30 } }, pricesSet = true, stageSet = true } })
+  check(GS.planStage(fresh) == "announce", "ready to announce")
+  local okA, _, dA = Actions.run(fresh, "announceTour", { name = "Moon Tour" })
+  check(okA and GS.getTour(fresh, dA.tourId).name == "Moon Tour" and fresh.draft.artistId == nil, "announced from the plan, plan cleared")
   -- in-place sync keeps tables
   local dst = { list = { { id = "a", v = 1 }, { id = "b", v = 2 } }, n = 1, gone = true }
   local keepB = dst.list[2]

@@ -74,6 +74,8 @@ function GS.new(labelName, starterId, opts)
 		levelSeen = 1,
 		sandbox = opts.sandbox == true,
 		visited = {},
+		-- the tour being planned, step by step in different rooms (see GS.planStage)
+		draft = {},
 		stats = {
 			shows = 0,
 			sellouts = 0,
@@ -247,6 +249,30 @@ GS.UNLOCK_HINT = {
 	charts = "Opens after your first finished tour",
 }
 
+-- how far the tour plan is: "artist" (meeting room) -> "dates" (world map) -> "tickets" (laptop)
+-- -> "stage" (stage hall) -> "announce" (laptop); nil = nothing planned
+GS.PLAN_STEPS = {
+	{ id = "artist", name = "ARTIST", where = "Meeting room", station = "meeting" },
+	{ id = "dates", name = "DATES", where = "World map", station = "maptable" },
+	{ id = "tickets", name = "TICKETS", where = "Laptop", station = "laptop" },
+	{ id = "stage", name = "STAGE", where = "Stage hall", station = "stagehall" },
+	{ id = "announce", name = "ANNOUNCE", where = "Laptop", station = "laptop" },
+}
+function GS.planStage(state)
+	local d = state.draft or {}
+	if not d.artistId then
+		return "artist"
+	elseif #(d.shows or {}) == 0 then
+		return "dates"
+	elseif not d.pricesSet then
+		return "tickets"
+	elseif not d.stageSet and GS.unlocks(state).stagehall then
+		-- (the first tour uses the starter stage: the stage hall opens after the first show)
+		return "stage"
+	end
+	return "announce"
+end
+
 -- what the player should do next: { text, target = station id or nil }
 function GS.objective(state)
 	local un = GS.unlocks(state)
@@ -257,8 +283,21 @@ function GS.objective(state)
 			active = t
 		end
 	end
+	local d = state.draft or {}
+	if d.artistId then
+		local name = Artists.byId[d.artistId].name
+		local stage = GS.planStage(state)
+		if stage == "dates" then
+			return { text = "Plan the dates of " .. name .. "'s tour at the WORLD MAP table.", target = "maptable" }
+		elseif stage == "tickets" then
+			return { text = "Set the ticket prices on the LAPTOP (TOUR PLAN).", target = "laptop" }
+		elseif stage == "stage" then
+			return { text = "Pick or build the stage in the STAGE HALL.", target = "stagehall" }
+		end
+		return { text = "Check the plan on the LAPTOP and announce the tour!", target = "laptop" }
+	end
 	if #state.tours == 0 then
-		return { text = "Walk to the WORLD MAP table and plan your first tour.", target = "maptable" }
+		return { text = "Sit down in the MEETING ROOM and pick the artist for your first tour.", target = "meeting" }
 	end
 	if un.stagehall and not visited.stagehall then
 		return { text = "The STAGE HALL is open! Build your own stage show.", target = "stagehall" }
@@ -287,7 +326,7 @@ function GS.objective(state)
 			return { text = "Next show in " .. d .. " day" .. (d == 1 and "" or "s") .. ". Press NEXT DAY, check ticket sales on the LAPTOP.", target = nil }
 		end
 	end
-	return { text = "No tour on sale. Plan the next one at the WORLD MAP table.", target = "maptable" }
+	return { text = "No tour on sale. Pick the next artist in the MEETING ROOM.", target = "meeting" }
 end
 
 ------------------------------------------------------------------ designs

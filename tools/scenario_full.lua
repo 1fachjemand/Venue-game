@@ -66,7 +66,7 @@ assert(MOCK.player.Character and MOCK.player.Character:FindFirstChild("Humanoid"
 assert(app.hud.Visible and #MOCK.buttons("^OFFICE$") == 0, "old tab bar still there")
 assert(#MOCK.buttons("^>>>$") == 0, "speed buttons still there")
 log("label", app.state.labelName, "money", app.state.money, "objective", GS.objective(app.state).text)
-assert(GS.objective(app.state).target == "maptable", "first goal should be the world map")
+assert(GS.objective(app.state).target == "meeting", "first goal: the meeting room")
 local W = app.world
 assert(W.prompts.laptop.Enabled and W.prompts.maptable.Enabled, "start stations open")
 assert(not W.prompts.stagehall.Enabled, "stage hall should be locked")
@@ -103,11 +103,64 @@ local function book(cid, n)
 	assert(#map.draft.shows == before + 1, "day click did not add a show")
 end
 
--- 2) plan a tour: 6 steps, one screen each (only one artist -> the artist step is skipped)
+-- the meeting room board: PLAN A TOUR for an artist (stands up, the arrow goes to the world map)
+local function planArtist(artistId)
+	local seat = workspace.StarlightRecords:FindFirstChild("MeetingSeat3", true)
+	MOCK.sit(seat)
+	steps(2)
+	MOCK.prompt("meeting")
+	assert(app.mode == "meeting", "meeting did not start")
+	local name = require(root.Data.Artists).byId[artistId].name
+	local done = false
+	for _, l in ipairs(app.world.boardGui:GetDescendants()) do
+		if not done and l:IsA("TextLabel") and l.Text == name then
+			for _, b in ipairs(l.Parent:GetDescendants()) do
+				if not done and b:IsA("TextButton") and (b.Text == "PLAN A TOUR" or b.Text:find("IN PLANNING")) then
+					b.MouseButton1Click:Fire() MOCK.runTasks() done = true
+				end
+			end
+		end
+	end
+	assert(done, "no PLAN A TOUR button for " .. artistId)
+	if #MOCK.buttons("^Yes$") > 0 then MOCK.clickExact("Yes") end
+	MOCK.sit(nil)
+	steps(2)
+	assert(app.state.draft.artistId == artistId and SRV().draft.artistId == artistId, "plan not started for " .. artistId)
+	assert(app.world.target == "maptable", "arrow should point to the world map")
+end
+-- the laptop: ticket prices, (stage hall), announce
+local function pricesAndAnnounce(withStageHall)
+	MOCK.prompt("laptop")
+	MOCK.clickExact("TOUR PLAN")
+	assert(app.current == "tourplan", "tour plan page")
+	MOCK.clickExact("SET PRICES")
+	MOCK.clickExact("+5", 1)
+	MOCK.clickExact("SAVE PRICES >")
+	assert(SRV().draft.pricesSet, "prices not saved")
+	MOCK.clickExact("✕  CLOSE")
+	if withStageHall then
+		assert(app.world.target == "stagehall", "arrow should point to the stage hall")
+		MOCK.prompt("stagehall")
+		assert(SRV().draft.stageSet, "stage hall visit not counted")
+		MOCK.clickExact("✕  CLOSE")
+	end
+	assert(app.world.target == "laptop", "arrow should point to the laptop for the announcement")
+	MOCK.prompt("laptop")
+	MOCK.clickExact("TOUR PLAN")
+	log("plan page:", MOCK.texts("Estimated gross")[1])
+	MOCK.clickExact("ANNOUNCE TOUR")
+end
+
+-- 2) plan a tour room by room: meeting room (artist) -> world map (dates) -> laptop (prices, announce)
 MOCK.prompt("maptable")
 local map = app.screens.planner
-assert(map.step == 2 and map.draft.artistId == "lila", "one artist: starts on the map (step 2)")
-assert(#MOCK.texts("^STEP 2 OF 6$") == 1, "progress shown")
+assert(#MOCK.texts("^Which artist goes on tour") == 1, "map table without an artist asks for the meeting room")
+MOCK.clickExact("GO TO THE MEETING ROOM")
+assert(app.mode == "world" and app.world.target == "meeting", "guided to the meeting room")
+planArtist("lila")
+MOCK.prompt("maptable")
+assert(map.step == 2 and map.draft.artistId == "lila", "the map shows the countries")
+assert(#MOCK.texts("STEP 2 OF 5") == 1, "plan progress shown")
 local WM3 = require(root.Client.WorldMap3D)
 log("3D map active", WM3.active, "country parts", #WM3.queryParts)
 MOCK.clickExact("Europe")
@@ -148,18 +201,10 @@ assert(map.routeBox.Visible, "booked shows listed on the map")
 for _, cid in ipairs({ "fr", "de", "nl" }) do book(cid, 1) end
 log("draft shows", #map.draft.shows)
 for i = 2, #map.draft.shows do assert(map.draft.shows[i].day > map.draft.shows[i - 1].day, "dates not sorted") end
-MOCK.clickExact("NEXT: TICKET PRICES >")
-assert(map.step == 5, "ticket step")
-MOCK.clickExact("+5", 1)
-MOCK.clickExact("-1", 1)
-log("section prices", MOCK.texts("^%$%d+$")[1], MOCK.texts("% sold")[1])
-MOCK.clickExact("<  BACK")
-assert(map.step == 4, "back from tickets -> calendar")
-MOCK.clickExact("NEXT: TICKET PRICES >")
-MOCK.clickExact("NEXT: CONFIRM >")
-assert(map.step == 6)
-log("confirm estimate:", MOCK.texts("Estimated gross")[1], "stage:", MOCK.texts("^Club: ")[1])
-MOCK.clickExact("ANNOUNCE TOUR")
+MOCK.clickExact("DONE: PRICES ON THE LAPTOP >")
+assert(app.mode == "world" and app.world.target == "laptop", "after the dates: to the laptop")
+assert(#SRV().draft.shows == #map.draft.shows, "dates are on the server")
+pricesAndAnnounce(false)
 if app.current ~= "tours" then for _, d in ipairs(app.toastFrame:GetDescendants()) do if d:IsA("TextLabel") then log("toast:", d.Text) end end end
 assert(app.current == "tours", "not on tours screen after announce")
 local tour = app.state.tours[1]
@@ -504,17 +549,15 @@ assert(app.mode == "world", "phone closed")
 cheat(function(s) s.money = 60000000 s.stats.tickets = 2000000 end)
 log("sign nova", app:act("sign", { artistId = "nova" }))
 clearModals()
+planArtist("nova")
 MOCK.prompt("maptable")
-map:show({ artistId = "nova" })
 assert(map.step == 2, "planner for nova")
 book("uk", -1) -- the last (biggest) venue: the stadium
 book("uk", 1) -- and a club: needs a smaller stage too
 log("nova draft", #map.draft.shows, map.draft.artistId)
-MOCK.clickExact("NEXT: TICKET PRICES >")
-log("ticket tabs", table.concat(MOCK.texts("^STADIUMS$"), ","), table.concat(MOCK.texts("^CLUBS$"), ","))
-MOCK.clickExact("NEXT: CONFIRM >")
+MOCK.clickExact("DONE: PRICES ON THE LAPTOP >")
+pricesAndAnnounce(true)
 log("stages:", table.concat(MOCK.texts("^%a+: .+"), " | "))
-MOCK.clickExact("ANNOUNCE TOUR")
 local nt = app.state.tours[1]
 log("nova tour", nt.name, nt.shows[1].venueId, nt.shows[1].sold)
 MOCK.clickExact("✕  CLOSE")
@@ -545,12 +588,11 @@ local rows, best = GS.chart(app.state)
 log("best chart rank", best)
 
 -- 9) cancel a tour (laptop > tours)
+planArtist("kai")
 MOCK.prompt("maptable")
-map:show({ artistId = "kai" })
 book("us", 1)
-MOCK.clickExact("NEXT: TICKET PRICES >")
-MOCK.clickExact("NEXT: CONFIRM >")
-MOCK.clickExact("ANNOUNCE TOUR")
+MOCK.clickExact("DONE: PRICES ON THE LAPTOP >")
+pricesAndAnnounce(true)
 local nTours = #app.state.tours
 MOCK.clickExact("Cancel tour")
 MOCK.clickExact("Yes")

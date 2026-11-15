@@ -3,6 +3,7 @@ local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local StageItems = require(Root.Data.StageItems)
 local Artists = require(Root.Data.Artists)
+local Countries = require(Root.Data.Countries)
 local Util = require(Root.Logic.Util)
 local Sim = require(Root.Logic.Sim)
 local GS = require(Root.Logic.GameState)
@@ -90,6 +91,21 @@ function StagesScreen:refresh()
 	UI.ClearChildren(body)
 	UI.Label(body, "My Stages", UI.px(40, 20), UI.px(800, 56), { textSize = 44, font = UI.FontBlack })
 	UI.Label(body, "Every tour takes one stage per venue size (club, theatre, arena, stadium). Changes save automatically.", UI.px(42, 76), UI.px(1200, 26), { textSize = 18, color = T.sub })
+	-- the tour in planning: which stage sizes it needs
+	local d = state.draft or {}
+	if d.artistId and #(d.shows or {}) > 0 then
+		local need, seen = {}, {}
+		for _, sh in ipairs(d.shows) do
+			local cls = GS.venueClass(Countries.venueById[sh.venueId])
+			if not seen[cls] then
+				seen[cls] = true
+				table.insert(need, cls)
+			end
+		end
+		local banner = UI.New("Frame", { Parent = body, Position = UI.px(760, 16), Size = UI.px(820, 88), BackgroundColor3 = UI.shade(T.accent, 0.35), BorderSizePixel = 0, UI.Corner(12), UI.Stroke(T.accent2, 2, 0.2) })
+		UI.Label(banner, "TOUR PLAN · " .. string.upper(Artists.byId[d.artistId].name) .. " needs a stage for: " .. table.concat(need, ", "), UI.px(16, 8), UI.px(790, 30), { textSize = 18, font = UI.FontBlack })
+		UI.Label(banner, "The best fitting stages are used. Edit or build one here, then pick it and announce on the LAPTOP.", UI.px(16, 42), UI.px(790, 40), { textSize = 15, color = T.text, wrap = true })
+	end
 	local canAdd = #state.designs < Config.MAX_DESIGNS
 	UI.Button(body, "+  NEW STAGE", UI.px(1600, 26), UI.px(280, 60), { color = T.accent, textSize = 22, disabled = not canAdd }, function()
 		self:newDialog()

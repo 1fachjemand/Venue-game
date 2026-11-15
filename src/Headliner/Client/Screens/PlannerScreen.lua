@@ -1,5 +1,6 @@
--- PLAN A TOUR (at the world map table): one clean screen per step:
--- 1 artist -> 2 country (world map) -> 3 venue -> 4 date (calendar) -> 5 ticket prices -> 6 confirm.
+-- PLAN A TOUR: the plan (app.state.draft, stored on the server) is made in different rooms:
+-- meeting room (artist) -> world map table (this screen, mode "map": country -> venue -> date)
+-- -> laptop (mode "plan": ticket prices, stage, check, announce) with a trip to the stage hall.
 -- A tour can have many shows: after a date, "+ ADD ANOTHER SHOW" goes back to the map.
 local UserInputService = game:GetService("UserInputService")
 local Root = script:FindFirstAncestor("Headliner")
@@ -12,6 +13,7 @@ local Sim = require(Root.Logic.Sim)
 local GS = require(Root.Logic.GameState)
 local UI = require(Root.Client.UI)
 local People = require(Root.Client.People)
+local SoundFX = require(Root.Client.SoundFX)
 
 local T = UI.Theme
 local MapScreen = {}
@@ -46,16 +48,16 @@ local function heatColor(pool)
 	return Color3.fromRGB(40, 220, 120)
 end
 
-function MapScreen.new(app)
-	local self = setmetatable({ app = app, step = 1 }, MapScreen)
-	self.frame = UI.New("Frame", { Parent = app.content, Size = UI.px(1920, 1008), BackgroundTransparency = 1, Visible = false, Name = "Planner" })
+function MapScreen.new(app, mode)
+	local self = setmetatable({ app = app, step = 2, mode = mode or "map", page = "plan" }, MapScreen)
+	self.frame = UI.New("Frame", { Parent = app.content, Size = UI.px(1920, 1008), BackgroundTransparency = 1, Visible = false, Name = (mode == "plan") and "TourPlan" or "Planner" })
 	-- in step 2 the 3D map shows through the map window: dark cover around it
 	self.mapMask = UI.New("Frame", { Parent = self.frame, Size = UI.px(1920, 1008), BackgroundTransparency = 1, Visible = false, Name = "MapMask" })
 	for _, r in ipairs({ { -3000, -200, 7920, 270 }, { -3000, 70, 3020, 930 }, { 1900, 70, 3000, 930 }, { -3000, 1000, 7920, 3000 } }) do
 		UI.New("Frame", { Parent = self.mapMask, Position = UI.px(r[1], r[2]), Size = UI.px(r[3], r[4]), BackgroundColor3 = T.bg, BorderSizePixel = 0 })
 	end
 	self.header = UI.New("Frame", { Parent = self.frame, Position = UI.px(0, 0), Size = UI.px(1920, 66), BackgroundTransparency = 1, ZIndex = 5 })
-	self.draft = { artistId = nil, name = "", designs = {}, firstIn = 21, gap = 2, price = 30, prices = {}, shows = {} }
+	self.draft = { shows = {}, prices = {}, designs = {} }
 	-- step 2 keeps its map alive between visits; the other steps are rebuilt
 	self.routeView = UI.New("Frame", { Parent = self.frame, Size = UI.px(1920, 1008), BackgroundTransparency = 1, Visible = false })
 	self.body = UI.New("Frame", { Parent = self.frame, Size = UI.px(1920, 1008), BackgroundTransparency = 1 })
@@ -370,8 +372,8 @@ function MapScreen:refreshRouteBox()
 	end
 	UI.Label(p, "YOUR TOUR: " .. n .. " SHOW" .. (n == 1 and "" or "S"), UI.px(14, 10), UI.px(300, 28), { textSize = 18, font = UI.FontBlack, color = T.accent2 })
 	self:fillRouteList(p, 460, 180)
-	UI.Button(p, "DONE: TICKET PRICES >", UI.px(12, 190), UI.px(436, 48), { color = T.accent, textSize = 17 }, function()
-		self:setStep(5)
+	UI.Button(p, "DONE: PRICES ON THE LAPTOP >", UI.px(12, 190), UI.px(436, 48), { color = T.accent, textSize = 17 }, function()
+		self:doneWithDates()
 	end)
 	-- the route list is shorter here
 	for _, c in ipairs(p:GetChildren()) do
@@ -485,6 +487,7 @@ function MapScreen:dayClicked(day)
 	for i, s in ipairs(draft.shows) do
 		if s.day == day then
 			table.remove(draft.shows, i)
+			self:saveDraft()
 			self:refresh()
 			return
 		end
@@ -492,6 +495,7 @@ function MapScreen:dayClicked(day)
 	if self:dayState(day) == "ok" and #draft.shows < Config.MAX_SHOWS_PER_TOUR then
 		table.insert(draft.shows, { venueId = self.picked, day = day })
 		self:sortShows()
+		self:saveDraft()
 		self:refresh()
 	end
 end
@@ -623,61 +627,9 @@ function MapScreen:buildDateStep()
 	UI.Button(p, "+ ADD ANOTHER SHOW", UI.px(W - 700, 846), UI.px(330, 60), { textSize = 18, disabled = #draft.shows == 0 }, function()
 		self:setStep(2)
 	end)
-	UI.Button(p, "NEXT: TICKET PRICES >", UI.px(W - 350, 846), UI.px(330, 60), { color = T.accent, textSize = 18, disabled = #draft.shows == 0 }, function()
-		self:setStep(5)
+	UI.Button(p, "DONE: PRICES ON THE LAPTOP >", UI.px(W - 350, 846), UI.px(330, 60), { color = T.accent, textSize = 17, disabled = #draft.shows == 0 }, function()
+		self:doneWithDates()
 	end)
-end
-
------------------------------------------------------------------- step 1: artist
-function MapScreen:buildArtistStep(body)
-	local state = self.app.state
-	UI.Label(body, "Pick one of your artists. Artists who are already on tour can't start a new one.", UI.px(40, 90), UI.px(1400, 26), { textSize = 18, color = T.sub })
-	local grid = UI.Scroll(body, UI.px(40, 170), UI.px(1840, 830))
-	UI.New("UIGridLayout", { Parent = grid, CellSize = UI.px(440, 300), CellPadding = UI.px(16, 16), SortOrder = Enum.SortOrder.LayoutOrder })
-	for i, ad in ipairs(GS.signedArtists(state)) do
-		local a = state.artists[ad.id]
-		local tour = GS.activeTour(state, ad.id)
-		local sel = self.draft.artistId == ad.id
-		local card = UI.New("Frame", { Parent = grid, BackgroundColor3 = sel and UI.shade(T.accent, 0.45) or T.panel, BorderSizePixel = 0, LayoutOrder = i, UI.Corner(12), UI.Stroke(sel and T.accent or T.stroke, sel and 3 or 1, 0) })
-		UI.New("Frame", { Parent = card, Size = UI.px(440, 10), BackgroundColor3 = UI.rgb(ad.color), BorderSizePixel = 0, UI.Corner(12) })
-		People.preview(card, ad.look, UI.rgb(ad.color), UI.px(300, 16), UI.px(130, 200))
-		UI.Label(card, ad.name, UI.px(20, 22), UI.px(280, 36), { textSize = 28, font = UI.FontBlack })
-		UI.Label(card, ad.genre .. "  |  " .. Util.tier(Util.totalFans(a.fans)), UI.px(20, 60), UI.px(280, 22), { textSize = 16, color = T.sub })
-		local lines = {
-			"Fans: <b>" .. Util.short(Util.totalFans(a.fans)) .. "</b>   Hype: <b>" .. math.floor(a.hype) .. "</b>   Skill: <b>" .. ad.skill .. "</b>",
-			"Strongest in: <b>" .. (function()
-				local best, n = "EU", -1
-				for rid, f in pairs(a.fans) do
-					if f > n then
-						best, n = rid, f
-					end
-				end
-				return Regions.byId[best].name
-			end)() .. "</b>",
-			"Suggested ticket price: <b>~" .. Util.money(Util.round(Sim.ticketBase(state, ad.id))) .. "</b>",
-		}
-		UI.Label(card, table.concat(lines, "\n"), UI.px(20, 96), UI.px(280, 130), { textSize = 16, rich = true, wrap = true, alignY = Enum.TextYAlignment.Top })
-		if tour then
-			UI.Label(card, "On tour: " .. tour.name, UI.px(20, 236), UI.px(400, 44), { textSize = 16, color = T.warn, font = UI.FontBold })
-		else
-			UI.Button(card, sel and "SELECTED - NEXT >" or "SELECT", UI.px(20, 232), UI.px(400, 50), { color = T.accent, textSize = 18 }, function()
-				self:setArtist(ad.id)
-				self:setStep(2)
-			end)
-		end
-	end
-end
-
-function MapScreen:setArtist(id)
-	if self.draft.artistId ~= id then
-		self.draft.artistId = id
-		self.draft.shows = {}
-		local ad = Artists.byId[id]
-		self.draft.name = ad.name .. " Live " .. (Config.START_YEAR + math.floor(self.app.state.day / 365))
-		self.draft.price = math.max(5, Util.round(Sim.ticketBase(self.app.state, id)))
-		self.draft.prices = {}
-		self.selected = nil
-	end
 end
 
 ------------------------------------------------------------------ step 5: tickets (seat map like a ticket shop)
@@ -820,6 +772,7 @@ function MapScreen:buildTicketStep(body)
 			UI.Button(row, (dv > 0 and "+" or "") .. dv, UI.px(bx, 22), UI.px(46, 48), { textSize = 15 }, function()
 				prices[sec.id] = math.clamp(prices[sec.id] + dv, 5, 4000)
 				self.ticketSec = sec.id
+				self:saveDraft()
 				self:refresh()
 			end)
 		end
@@ -834,58 +787,87 @@ function MapScreen:buildTicketStep(body)
 		"<font color='#9696b2'>Estimates can be wrong. You see the real sales once the tour is announced.</font>",
 	}
 	UI.Label(right, table.concat(lines, "\n"), UI.px(28, y + 10), UI.px(800, 130), { textSize = 16, rich = true, wrap = true, alignY = Enum.TextYAlignment.Top })
-	UI.Button(right, "NEXT: CONFIRM >", UI.px(520, 846), UI.px(312, 60), { color = T.accent, textSize = 18 }, function()
-		self:setStep(6)
+	UI.Button(right, "SAVE PRICES >", UI.px(520, 846), UI.px(312, 60), { color = T.accent, textSize = 18 }, function()
+		self:syncPrices()
+		self.draft.pricesSet = true
+		self:saveDraft()
+		self.page = "plan"
+		self:refresh()
 	end)
 end
 
------------------------------------------------------------------- step 6: confirm (the stage is picked automatically, you can change it)
-function MapScreen:buildConfirmStep(body)
-	local state, draft = self.app.state, self.draft
-	local ad = Artists.byId[draft.artistId]
-	local est = self:estimate()
-	local prodNames = {}
-	for _, need in ipairs(self:classesNeeded()) do
-		local d = self:designForClass(need.class)
-		table.insert(prodNames, d and d.name or "?")
-	end
+------------------------------------------------------------------ the laptop: the whole plan, ticket prices, stage, announce
+function MapScreen:buildPlanPage(body)
+	local app, state, draft = self.app, self.app.state, self.draft
 	local panel = UI.Panel(body, UI.px(20, 70), UI.px(1880, 930))
-	UI.Label(panel, "TOUR NAME", UI.px(28, 18), UI.px(400, 22), { textSize = 15, color = T.sub, font = UI.FontBold })
+	if not draft.artistId then
+		UI.Label(panel, "No tour in planning", UI.px(40, 40), UI.px(1000, 50), { textSize = 38, font = UI.FontBlack })
+		UI.Label(panel, "Every tour starts in the MEETING ROOM: sit down, start the meeting and press PLAN A TOUR at one of your artists.", UI.px(40, 100), UI.px(1500, 60), { textSize = 20, color = T.sub, wrap = true })
+		UI.Button(panel, "GO TO THE MEETING ROOM", UI.px(40, 180), UI.px(420, 64), { color = T.accent, textSize = 20 }, function()
+			app:go("artists")
+		end)
+		return
+	end
+	local ad = Artists.byId[draft.artistId]
+	local stage = GS.planStage(state)
+	-- the four parts of the plan with where they are done
+	local cards = {
+		{ "ARTIST", ad.name, true, "Meeting room", nil },
+		{ "DATES", #draft.shows .. " show" .. (#draft.shows == 1 and "" or "s"), #draft.shows > 0, "World map", function()
+			app:go("planner")
+		end },
+		{ "TICKET PRICES", draft.pricesSet and "set" or "not set yet", draft.pricesSet == true, "here", function()
+			self.page = "tickets"
+			self:refresh()
+		end },
+		GS.unlocks(state).stagehall and { "STAGE", draft.stageSet and "checked" or "not checked yet", draft.stageSet == true, "Stage hall", function()
+			app:go("stages")
+		end } or { "STAGE", "starter stage", true, "stage hall (opens after the first show)", nil },
+	}
+	for i, c in ipairs(cards) do
+		local x = 28 + (i - 1) * 462
+		local card = UI.New("Frame", { Parent = panel, Position = UI.px(x, 20), Size = UI.px(450, 118), BackgroundColor3 = c[3] and UI.shade(T.good, 0.3) or T.panel2, BorderSizePixel = 0, UI.Corner(12), UI.Stroke(c[3] and T.good or T.warn, 2, 0.2) })
+		UI.Label(card, i .. "  " .. c[1], UI.px(16, 10), UI.px(300, 24), { textSize = 16, font = UI.FontBlack, color = c[3] and T.good or T.warn })
+		UI.Label(card, (c[3] and "✓ " or "") .. c[2], UI.px(16, 38), UI.px(420, 32), { textSize = 22, font = UI.FontBold })
+		if c[5] then
+			UI.Button(card, (c[4] == "here") and "SET PRICES" or ("GO TO " .. string.upper(c[4])), UI.px(16, 74), UI.px(260, 34), { textSize = 13, color = (c[4] == "here") and T.accent or T.panel3 }, c[5])
+		else
+			UI.Label(card, "picked in the " .. c[4], UI.px(16, 78), UI.px(400, 24), { textSize = 14, color = T.sub })
+		end
+	end
+	UI.Label(panel, "TOUR NAME", UI.px(28, 152), UI.px(400, 22), { textSize = 15, color = T.sub, font = UI.FontBold })
 	local nameBox = UI.New("TextBox", {
 		Parent = panel,
-		Position = UI.px(28, 42),
-		Size = UI.px(700, 54),
+		Position = UI.px(28, 176),
+		Size = UI.px(640, 50),
 		BackgroundColor3 = T.panel2,
 		BorderSizePixel = 0,
-		Text = draft.name,
+		Text = draft.name or (ad.name .. " Live " .. (Config.START_YEAR + math.floor(state.day / 365))),
 		PlaceholderText = "Tour name",
 		ClearTextOnFocus = false,
 		TextColor3 = T.text,
-		TextSize = 26,
+		TextSize = 24,
 		Font = UI.FontBlack,
 		UI.Corner(8),
 	})
 	nameBox.FocusLost:Connect(function()
 		draft.name = nameBox.Text:sub(1, 40)
+		self:saveDraft()
 	end)
-	self:syncPrices()
-	local lo, hi = math.huge, 0
-	for _, s in ipairs(draft.shows) do
-		for _, p in pairs(s.prices) do
-			lo, hi = math.min(lo, p), math.max(hi, p)
-		end
+	if #draft.shows == 0 then
+		UI.Label(panel, "Plan the dates at the WORLD MAP table first.", UI.px(28, 260), UI.px(1200, 40), { textSize = 22, color = T.warn, font = UI.FontBold })
+		return
 	end
-	UI.Label(panel, ad.name .. "   |   " .. #draft.shows .. " shows   |   tickets " .. Util.money(lo) .. " - " .. Util.money(hi), UI.px(760, 42), UI.px(1100, 54), { textSize = 19, color = T.sub })
 	-- stage per venue size: picked automatically, a click shows the next one that fits
-	local sx = 760
-	UI.Label(panel, "STAGE:", UI.px(sx, 96), UI.px(80, 34), { textSize = 15, color = T.sub, font = UI.FontBold })
-	sx = sx + 80
+	local sx = 700
+	UI.Label(panel, "STAGE:", UI.px(sx, 186), UI.px(80, 34), { textSize = 15, color = T.sub, font = UI.FontBold })
+	sx = sx + 76
 	for _, need in ipairs(self:classesNeeded()) do
 		local d = self:designForClass(need.class)
 		local fits = self:fittingDesigns(need.class)
 		local label = need.class .. ": " .. (d and d.name or "none") .. ((#fits > 1) and "  ▸" or "")
-		local w = math.min(420, #label * 9 + 30)
-		UI.Button(panel, label, UI.px(sx, 94), UI.px(w, 36), { textSize = 14, color = d and T.panel3 or UI.shade(T.bad, 0.5), disabled = #fits < 2 }, function()
+		local w = math.min(380, #label * 9 + 30)
+		UI.Button(panel, label, UI.px(sx, 184), UI.px(w, 36), { textSize = 14, color = d and T.panel3 or UI.shade(T.bad, 0.5), disabled = #fits < 2 }, function()
 			local idx = 1
 			for k, f in ipairs(fits) do
 				if f == d then
@@ -893,84 +875,105 @@ function MapScreen:buildConfirmStep(body)
 				end
 			end
 			draft.designs[need.class] = fits[idx % #fits + 1].id
+			self:saveDraft()
 			self:refresh()
 		end)
 		sx = sx + w + 8
 	end
-
-	local headers = { { "#", 28 }, { "DATE", 70 }, { "VENUE", 200 }, { "SEATS", 860 }, { "PROMOTER ESTIMATE", 1040 } }
+	-- the shows with the promoter estimate
+	local est = self:estimate()
+	local headers = { { "#", 28 }, { "DATE", 70 }, { "VENUE", 200 }, { "SEATS", 860 }, { "AVG. TICKET", 1010 }, { "PROMOTER ESTIMATE", 1200 } }
 	for _, h in ipairs(headers) do
-		UI.Label(panel, h[1], UI.px(h[2], 156), UI.px(300, 20), { textSize = 13, color = T.sub, font = UI.FontBold })
+		UI.Label(panel, h[1], UI.px(h[2], 246), UI.px(300, 20), { textSize = 13, color = T.sub, font = UI.FontBold })
 	end
-	local list = UI.Scroll(panel, UI.px(16, 180), UI.px(1848, 520))
-	-- (stages are built in the STAGE HALL; here the best fitting one is used)
+	local list = UI.Scroll(panel, UI.px(16, 270), UI.px(1848, 420))
 	UI.List(true, 4).Parent = list
-	local days = self:showDays()
 	for i, s in ipairs(draft.shows) do
 		local v = Countries.venueById[s.venueId]
 		local r = est.rows[i]
-		local row = UI.New("Frame", { Parent = list, Size = UI.px(1828, 44), BackgroundColor3 = (i % 2 == 0) and T.panel2 or T.panel3, BorderSizePixel = 0, LayoutOrder = i, UI.Corner(6) })
-		local _, dateShort = Util.date(days[i], Config.START_YEAR)
-		UI.Label(row, tostring(i), UI.px(12, 0), UI.px(40, 44), { textSize = 16, font = UI.FontBold })
-		UI.Label(row, dateShort, UI.px(54, 0), UI.px(120, 44), { textSize = 16 })
-		UI.Label(row, v.name .. ", " .. v.city, UI.px(184, 0), UI.px(640, 44), { textSize = 16, font = UI.FontBold })
-		UI.Label(row, Util.number(v.cap), UI.px(844, 0), UI.px(160, 44), { textSize = 16 })
-		UI.Label(row, rangeText(r.fillLow, r.fillHigh), UI.px(1024, 0), UI.px(400, 44), { textSize = 16, font = UI.FontBold, color = rangeColor(r.fillLow, r.fillHigh) })
+		local row = UI.New("Frame", { Parent = list, Size = UI.px(1828, 42), BackgroundColor3 = (i % 2 == 0) and T.panel2 or T.panel3, BorderSizePixel = 0, LayoutOrder = i, UI.Corner(6) })
+		local _, dateShort = Util.date(s.day, Config.START_YEAR)
+		UI.Label(row, tostring(i), UI.px(12, 0), UI.px(40, 42), { textSize = 16, font = UI.FontBold })
+		UI.Label(row, dateShort, UI.px(54, 0), UI.px(120, 42), { textSize = 16 })
+		UI.Label(row, v.name .. ", " .. v.city, UI.px(184, 0), UI.px(640, 42), { textSize = 16, font = UI.FontBold })
+		UI.Label(row, Util.number(v.cap), UI.px(844, 0), UI.px(140, 42), { textSize = 16 })
+		UI.Label(row, Util.money(s.price or 0), UI.px(994, 0), UI.px(160, 42), { textSize = 16 })
+		UI.Label(row, rangeText(r.fillLow, r.fillHigh), UI.px(1184, 0), UI.px(400, 42), { textSize = 16, font = UI.FontBold, color = rangeColor(r.fillLow, r.fillHigh) })
 	end
 	local lines = {
 		"Estimated gross: <b>" .. Util.money(est.grossLow or 0) .. " - " .. Util.money(est.grossHigh or 0) .. "</b>",
 		"Estimated label profit: <b>" .. Util.money(est.netLow or 0) .. " - " .. Util.money(est.netHigh or 0) .. "</b>   (after venues, production, travel and the artist's 35%)",
-		"<font color='#9696b2'>The promoter can be wrong. Once announced, watch the real pre-sale on the LAPTOP and react with marketing or price changes.</font>",
+		"<font color='#9696b2'>The promoter can be wrong. After the announcement, watch the real pre-sale on the TOURS page and react with marketing or prices.</font>",
 	}
-	UI.Label(panel, table.concat(lines, "\n"), UI.px(28, 716), UI.px(1820, 100), { textSize = 18, rich = true, wrap = true, alignY = Enum.TextYAlignment.Top })
-	UI.Button(panel, "ANNOUNCE TOUR", UI.px(1452, 846), UI.px(400, 60), { color = T.accent, textSize = 24 }, function()
+	UI.Label(panel, table.concat(lines, "\n"), UI.px(28, 706), UI.px(1400, 100), { textSize = 18, rich = true, wrap = true, alignY = Enum.TextYAlignment.Top })
+	local ready = stage == "announce"
+	if not ready then
+		UI.Label(panel, "Still to do: " .. ((not draft.pricesSet) and "ticket prices  " or "") .. ((stage == "stage") and "stage check in the STAGE HALL" or ""), UI.px(28, 846), UI.px(1000, 60), { textSize = 18, color = T.warn, font = UI.FontBold })
+	end
+	UI.Button(panel, "ANNOUNCE TOUR", UI.px(1452, 846), UI.px(400, 60), { color = ready and T.accent or T.panel3, textSize = 24 }, function()
 		self:syncPrices()
-		local ok, msg, data = self.app:act("createTour", { draft = draft })
+		self:saveDraft()
+		local ok, msg, data = app:act("announceTour", { name = draft.name })
 		if not ok then
-			self.app:toast(msg or "Could not announce the tour.", T.bad)
+			app:toast(msg or "Could not announce the tour.", T.bad)
 			return
 		end
 		local res = GS.getTour(state, data.tourId)
-		self.app:toast("<b>" .. UI.esc(res.name) .. "</b> is announced! Tickets are on sale now.", T.good, 8)
-		self.draft = { artistId = nil, name = "", designs = draft.designs, firstIn = 21, gap = 2, price = 30, prices = {}, shows = {} }
-		self.step = 1
-		self.selected, self.picked = nil, nil
-		self.app:go("tours", { tourId = res.id })
+		SoundFX.sfx("cash", 0.6)
+		app:toast("<b>" .. UI.esc(res.name) .. "</b> is announced! Tickets are on sale now.", T.good, 8)
+		self.picked, self.selected = nil, nil
+		app:showPage("tours", { tourId = res.id })
 	end)
 end
 
------------------------------------------------------------------- header: back, step x of 6, progress
-function MapScreen:availableArtists()
-	local out = {}
-	for _, ad in ipairs(GS.signedArtists(self.app.state)) do
-		if not GS.activeTour(self.app.state, ad.id) then
-			table.insert(out, ad)
-		end
+------------------------------------------------------------------ the plan in the server state
+function MapScreen:syncDraft()
+	local state = self.app.state
+	state.draft = state.draft or {}
+	local d = state.draft
+	d.shows = d.shows or {}
+	d.prices = d.prices or {}
+	d.designs = d.designs or {}
+	if d.artistId and not d.price then
+		d.price = math.max(5, Util.round(Sim.ticketBase(state, d.artistId)))
 	end
-	return out
+	if d.artistId and not d.name then
+		d.name = Artists.byId[d.artistId].name .. " Live " .. (Config.START_YEAR + math.floor(state.day / 365))
+	end
+	self.draft = d
 end
 
+function MapScreen:saveDraft()
+	self.app:act("setDraft", { draft = self.draft })
+	self:syncDraft()
+end
+
+-- the dates are done: the ticket prices are set on the laptop
+function MapScreen:doneWithDates()
+	self.app:closeScreen()
+	if self.app.world then
+		self.app.world.guide("laptop")
+	end
+	self.app:toast("Dates saved. Next: set the <b>ticket prices</b> on the LAPTOP (TOUR PLAN).", T.accent2, 7)
+end
+
+------------------------------------------------------------------ header: the plan steps (rooms) and back
+local MAP_TITLE = { [2] = "Pick a country", [3] = "Pick a venue", [4] = "Pick a date" }
 function MapScreen:back()
-	local s = self.step
-	if s == 2 and #self:availableArtists() <= 1 then
-		self.app:closeScreen()
-		return
-	end
-	if s == 5 then
-		-- back to the calendar of the last venue
-		local last = self.draft.shows[#self.draft.shows]
-		if last then
-			self.picked = last.venueId
-			self.selected = Countries.venueById[last.venueId].countryId
+	if self.mode == "plan" then
+		if self.page == "tickets" then
+			self.page = "plan"
+			self:refresh()
+		else
+			self.app:closeScreen()
 		end
-		self:setStep(self.picked and 4 or 2)
 		return
 	end
-	if s <= 1 then
+	if self.step <= 2 then
 		self.app:closeScreen()
 		return
 	end
-	self:setStep(s - 1)
+	self:setStep(self.step - 1)
 end
 
 function MapScreen:refreshHeader()
@@ -979,17 +982,31 @@ function MapScreen:refreshHeader()
 	UI.Button(h, "<  BACK", UI.px(20, 8), UI.px(150, 50), { textSize = 18 }, function()
 		self:back()
 	end)
-	UI.Label(h, "STEP " .. self.step .. " OF 6", UI.px(196, 6), UI.px(220, 24), { textSize = 16, color = T.accent2, font = UI.FontBlack })
-	UI.Label(h, STEP_TITLE[self.step], UI.px(196, 28), UI.px(900, 34), { textSize = 28, font = UI.FontBlack })
-	for i, name in ipairs(STEPS) do
-		local done, active = i < self.step, i == self.step
-		local x = 1100 + (i - 1) * 134
-		UI.New("Frame", { Parent = h, Position = UI.px(x, 14), Size = UI.px(126, 8), BackgroundColor3 = active and T.accent or (done and T.accent2 or T.panel3), BorderSizePixel = 0, UI.Corner(4) })
-		UI.Label(h, name, UI.px(x, 26), UI.px(126, 24), { textSize = 13, font = UI.FontBold, color = active and T.text or (done and T.accent2 or T.sub), alignX = Enum.TextXAlignment.Center })
+	local state = self.app.state
+	local current = (self.mode == "map") and "dates" or ((self.page == "tickets") and "tickets" or GS.planStage(state))
+	local idx = 1
+	for i, ps in ipairs(GS.PLAN_STEPS) do
+		if ps.id == current then
+			idx = i
+		end
 	end
-	local n = #self.draft.shows
-	if n > 0 and self.step ~= 2 then
-		UI.Label(h, n .. " show" .. (n == 1 and "" or "s") .. " booked", UI.px(900, 28), UI.px(180, 30), { textSize = 15, color = T.sub, alignX = Enum.TextXAlignment.Right })
+	local ad = self.draft.artistId and Artists.byId[self.draft.artistId]
+	UI.Label(h, "TOUR PLAN" .. (ad and ("  ·  " .. string.upper(ad.name)) or "") .. "  ·  STEP " .. idx .. " OF 5", UI.px(196, 6), UI.px(700, 24), { textSize = 16, color = T.accent2, font = UI.FontBlack })
+	local title = (self.mode == "map") and ("Dates: " .. (MAP_TITLE[self.step] or "")) or ((self.page == "tickets") and "Ticket prices" or "Check the plan & announce")
+	UI.Label(h, title, UI.px(196, 28), UI.px(900, 34), { textSize = 28, font = UI.FontBlack })
+	local stage = GS.planStage(state)
+	local stageIdx = 1
+	for i, ps in ipairs(GS.PLAN_STEPS) do
+		if ps.id == stage then
+			stageIdx = i
+		end
+	end
+	for i, ps in ipairs(GS.PLAN_STEPS) do
+		local done, active = i < stageIdx, ps.id == current
+		local x = 1100 + (i - 1) * 160
+		UI.New("Frame", { Parent = h, Position = UI.px(x, 10), Size = UI.px(150, 8), BackgroundColor3 = active and T.accent or (done and T.accent2 or T.panel3), BorderSizePixel = 0, UI.Corner(4) })
+		UI.Label(h, ps.name, UI.px(x, 20), UI.px(150, 22), { textSize = 13, font = UI.FontBold, color = active and T.text or (done and T.accent2 or T.sub), alignX = Enum.TextXAlignment.Center })
+		UI.Label(h, ps.where, UI.px(x, 40), UI.px(150, 18), { textSize = 11, color = T.sub, alignX = Enum.TextXAlignment.Center })
 	end
 end
 
@@ -1000,55 +1017,58 @@ end
 
 ------------------------------------------------------------------ refresh
 function MapScreen:show(args)
-	if args and args.artistId then
-		self:setArtist(args.artistId)
+	self:syncDraft()
+	if self.mode == "plan" then
+		self.page = (args and args.page) or "plan"
+	elseif (args and args.restart) or self.lastArtist ~= self.draft.artistId or #self.draft.shows == 0 then
+		-- a new plan starts on the world map
 		self.step = 2
+		self.selected, self.picked = nil, nil
 	end
-	-- only one artist can tour: skip the artist step
-	local avail = self:availableArtists()
-	if self.step == 1 and #avail == 1 then
-		self:setArtist(avail[1].id)
-		self.step = 2
-	end
+	self.lastArtist = self.draft.artistId
 	self:refresh()
 end
 
 function MapScreen:refresh()
-	local state = self.app.state
-	-- make sure the drafted artist is still available
-	local aid = self.draft.artistId
-	if aid and (not state.artists[aid].signed or GS.activeTour(state, aid)) then
-		self.draft.artistId = nil
-		self.draft.shows = {}
-	end
-	if not self.draft.artistId then
-		self.step = 1
-	elseif self.step == 3 and not self.selected then
-		self.step = 2
-	elseif self.step == 4 and not self.picked then
-		self.step = (self.selected and 3) or 2
-	elseif self.step >= 5 and #self.draft.shows == 0 then
-		self.step = 2
-	end
+	self:syncDraft()
 	self:refreshHeader()
 	UI.ClearChildren(self.body)
-	self.routeView.Visible = self.step == 2
-	self.mapMask.Visible = self.step == 2
-	if self.step ~= 2 then
+	local mapStep = self.mode == "map" and self.draft.artistId and self.step == 2
+	self.routeView.Visible = mapStep == true
+	self.mapMask.Visible = mapStep == true
+	if not mapStep then
 		self:deactivateMap()
 	end
-	if self.step == 1 then
-		self:buildArtistStep(self.body)
-	elseif self.step == 2 then
+	if self.mode == "plan" then
+		if self.page == "tickets" and #self.draft.shows > 0 then
+			self:buildTicketStep(self.body)
+		else
+			self:buildPlanPage(self.body)
+		end
+		return
+	end
+	if not self.draft.artistId then
+		local panel = UI.Panel(self.body, UI.px(20, 70), UI.px(1880, 930))
+		UI.Label(panel, "Which artist goes on tour?", UI.px(40, 40), UI.px(1200, 50), { textSize = 38, font = UI.FontBlack })
+		UI.Label(panel, "Pick the artist in the MEETING ROOM first: sit down, start the meeting and press PLAN A TOUR. Then come back here to plan the dates.", UI.px(40, 100), UI.px(1500, 60), { textSize = 20, color = T.sub, wrap = true })
+		UI.Button(panel, "GO TO THE MEETING ROOM", UI.px(40, 180), UI.px(420, 64), { color = T.accent, textSize = 20 }, function()
+			self.app:go("artists")
+		end)
+		return
+	end
+	if self.step == 3 and not self.selected then
+		self.step = 2
+	elseif self.step == 4 and not self.picked then
+		self.step = self.selected and 3 or 2
+	elseif self.step < 2 or self.step > 4 then
+		self.step = 2
+	end
+	if self.step == 2 then
 		self:refreshRoute()
 	elseif self.step == 3 then
 		self:buildVenueStep(self.body)
-	elseif self.step == 4 then
-		self:buildDateStep()
-	elseif self.step == 5 then
-		self:buildTicketStep(self.body)
 	else
-		self:buildConfirmStep(self.body)
+		self:buildDateStep()
 	end
 end
 

@@ -150,6 +150,90 @@ function A.createTour(state, a)
 	return true, nil, { tourId = res.id }
 end
 
+-- the tour plan (built step by step in different rooms) is stored on the server
+local function cleanDraft(state, d)
+	local out = { shows = {}, prices = {}, designs = {} }
+	local ad = Artists.byId[(type(d.artistId) == "string") and d.artistId or ""]
+	if ad and state.artists[ad.id].signed and not GS.activeTour(state, ad.id) then
+		out.artistId = ad.id
+	end
+	if not out.artistId then
+		return out
+	end
+	out.name = str(d.name, 40)
+	out.price = num(d.price)
+	out.pricesSet = d.pricesSet == true
+	out.stageSet = d.stageSet == true
+	if type(d.shows) == "table" then
+		for _, s in ipairs(d.shows) do
+			if #out.shows >= Config.MAX_SHOWS_PER_TOUR then
+				break
+			end
+			if type(s) == "table" and Countries.venueById[s.venueId or ""] and num(s.day) then
+				table.insert(out.shows, { venueId = s.venueId, day = math.floor(s.day) })
+			end
+		end
+	end
+	if type(d.prices) == "table" then
+		for look, list in pairs(d.prices) do
+			if type(look) == "string" and type(list) == "table" then
+				out.prices[look] = {}
+				for sec, p in pairs(list) do
+					if type(sec) == "string" and num(p) then
+						out.prices[look][sec] = Util.clamp(math.floor(p), 5, 4000)
+					end
+				end
+			end
+		end
+	end
+	if type(d.designs) == "table" then
+		for cls, id in pairs(d.designs) do
+			if type(cls) == "string" and type(id) == "string" and GS.getDesign(state, id) then
+				out.designs[cls] = id
+			end
+		end
+	end
+	return out
+end
+
+function A.setDraft(state, a)
+	if type(a.draft) ~= "table" then
+		return false, "Bad plan."
+	end
+	state.draft = cleanDraft(state, a.draft)
+	return true
+end
+
+-- the plan becomes a real tour: tickets go on sale
+function A.announceTour(state, a)
+	local d = cleanDraft(state, state.draft or {})
+	if not d.artistId then
+		return false, "Pick an artist in the MEETING ROOM first."
+	end
+	if #d.shows == 0 then
+		return false, "Plan the dates at the WORLD MAP table first."
+	end
+	-- venue sizes without a chosen stage get the biggest stage that fits
+	for _, s in ipairs(d.shows) do
+		local vc = GS.venueClass(Countries.venueById[s.venueId])
+		if not d.designs[vc] then
+			local vo, best, bestO = Config.STAGE_CLASS_BY_ID[vc].order, nil, 0
+			for _, des in ipairs(state.designs) do
+				local o = Config.STAGE_CLASS_BY_ID[des.class].order
+				if o <= vo and o > bestO then
+					best, bestO = des, o
+				end
+			end
+			d.designs[vc] = best and best.id or nil
+		end
+	end
+	local ok, msg, data = A.createTour(state, { draft = { artistId = d.artistId, name = str(a.name, 40) or d.name, designs = d.designs, prices = d.prices, price = d.price, shows = d.shows } })
+	if ok then
+		state.draft = {}
+	end
+	return ok, msg, data
+end
+
 function A.buyMarketing(state, a)
 	return GS.buyMarketing(state, a.tourId, a.id)
 end

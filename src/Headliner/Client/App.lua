@@ -190,14 +190,15 @@ function App:beginGame(isNew)
 	self:buildScreenBar()
 	local Screens = Root.Client.Screens
 	self.screens.office = require(Screens.OfficeScreen).new(self)
-	self.screens.planner = require(Screens.PlannerScreen).new(self)
+	self.screens.planner = require(Screens.PlannerScreen).new(self, "map")
+	self.screens.tourplan = require(Screens.PlannerScreen).new(self, "plan")
 	self.screens.artists = require(Screens.ArtistsScreen).new(self)
 	self.screens.tours = require(Screens.ToursScreen).new(self)
 	self.screens.charts = require(Screens.ChartsScreen).new(self)
 	self.screens.stages = require(Screens.StagesScreen).new(self)
 	self.screens.social = require(Screens.SocialScreen).new(self)
 	self.phone = require(Screens.PhoneScreen).new(self)
-	self.toastFrame = UI.New("Frame", { Parent = self.canvas, Name = "Toasts", Position = UI.px(740, 80), Size = UI.px(440, 900), BackgroundTransparency = 1, ZIndex = 60 })
+	self.toastFrame = UI.New("Frame", { Parent = self.canvas, Name = "Toasts", Position = UI.px(740, 150), Size = UI.px(440, 900), BackgroundTransparency = 1, ZIndex = 60 })
 	UI.List(true, 8, Enum.HorizontalAlignment.Center).Parent = self.toastFrame
 	self.mode = "world"
 	local closeLoading = self:showLoading("HEADLINER", "Welcome to " .. self.state.labelName)
@@ -408,6 +409,7 @@ end
 local TITLES = {
 	office = "LAPTOP",
 	tours = "LAPTOP",
+	tourplan = "LAPTOP",
 	planner = "WORLD MAP  ·  PLAN A TOUR",
 	artists = "MEETING ROOM",
 	stages = "STAGE HALL",
@@ -422,8 +424,8 @@ function App:buildScreenBar()
 	self.barTitle = UI.Label(bar, "", UI.px(24, 0), UI.px(520, 64), { textSize = 24, font = UI.FontBlack, color = T.accent })
 	-- laptop: two pages
 	self.barTabs = {}
-	for i, tab in ipairs({ { "office", "OVERVIEW" }, { "tours", "TOURS" } }) do
-		self.barTabs[tab[1]] = UI.Button(bar, tab[2], UI.px(300 + (i - 1) * 156, 10), UI.px(146, 44), { textSize = 16 }, function()
+	for i, tab in ipairs({ { "office", "OVERVIEW" }, { "tours", "TOURS" }, { "tourplan", "TOUR PLAN" } }) do
+		self.barTabs[tab[1]] = UI.Button(bar, tab[2], UI.px(300 + (i - 1) * 166, 10), UI.px(156, 44), { textSize = 16 }, function()
 			self:go(tab[1])
 		end)
 	end
@@ -439,16 +441,23 @@ end
 
 -- which pages a station shows; any other page is a different place in the building
 local STATION_PAGES = {
-	laptop = { office = true, tours = true },
-	maptable = { planner = true, tours = true, office = true },
+	laptop = { office = true, tours = true, tourplan = true },
+	maptable = { planner = true },
 	stagehall = { stages = true },
 	charts = { charts = true },
 }
-local PAGE_STATION = { office = "laptop", tours = "laptop", planner = "maptable", artists = "meeting", stages = "stagehall", charts = "charts" }
+local PAGE_STATION = { office = "laptop", tours = "laptop", tourplan = "laptop", planner = "maptable", artists = "meeting", stages = "stagehall", charts = "charts" }
 local STATION_NAME = { laptop = "LAPTOP", maptable = "WORLD MAP table", meeting = "MEETING ROOM (sit down)", stagehall = "STAGE HALL", charts = "CHARTS screen" }
 
 function App:openStation(station, page, args)
 	self.station = station
+	-- visiting the stage hall with a planned tour counts as "stage checked"
+	local d = self.state.draft
+	if station == "stagehall" and d and d.artistId and #(d.shows or {}) > 0 and not d.stageSet then
+		d.stageSet = true
+		self:act("setDraft", { draft = d })
+		self:toast("Stage checked for the tour plan. Change it or build a new one here, then <b>announce on the LAPTOP</b>.", T.accent2, 7)
+	end
 	self:showPage(page, args)
 end
 
@@ -465,6 +474,10 @@ function App:go(name, args)
 		return
 	end
 	local target = PAGE_STATION[name]
+	-- a tour plan starts with the artist in the meeting room
+	if name == "planner" and not (self.state.draft or {}).artistId then
+		target = "meeting"
+	end
 	if self.mode == "menu" then
 		self:closeScreen()
 	end
@@ -489,7 +502,7 @@ function App:showPage(name, args)
 	self.screenBar.Visible = true
 	self.barTitle.Text = TITLES[name] or string.upper(name)
 	for key, b in pairs(self.barTabs) do
-		b.Visible = (name == "office" or name == "tours")
+		b.Visible = (name == "office" or name == "tours" or name == "tourplan")
 		b.BackgroundColor3 = (key == name) and T.accent or T.panel3
 	end
 	for key, scr in pairs(self.screens) do

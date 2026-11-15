@@ -741,8 +741,15 @@ local function boardCard(parent, ad, state, signed, y, x)
 	stat(138, "HYPE", a.hype / 100, tostring(math.floor(a.hype)), T.accent)
 	if signed then
 		local tour = GS.activeTour(state, ad.id)
-		UI.Label(card, tour and ("ON TOUR: " .. tour.name) or "Ready for a tour", UI.px(130, 168), UI.px(236, 22), { textSize = 15, color = tour and T.gold or T.good, font = UI.FontBold })
-		UI.Label(card, ad.bio, UI.px(14, 196), UI.px(346, 66), { textSize = 15, color = T.sub, wrap = true, alignY = Enum.TextYAlignment.Top })
+		local planned = (state.draft or {}).artistId == ad.id
+		UI.Label(card, tour and ("ON TOUR: " .. tour.name) or (planned and "Tour in planning" or "Ready for a tour"), UI.px(130, 168), UI.px(236, 22), { textSize = 15, color = tour and T.gold or T.good, font = UI.FontBold })
+		if tour then
+			UI.Label(card, ad.bio, UI.px(14, 204), UI.px(346, 58), { textSize = 15, color = T.sub, wrap = true, alignY = Enum.TextYAlignment.Top })
+		else
+			UI.Button(card, planned and "IN PLANNING  ·  GO ON" or "PLAN A TOUR", UI.px(14, 204), UI.px(344, 52), { color = planned and T.panel3 or T.accent, textSize = 18 }, function()
+				World.planTour(ad.id)
+			end)
+		end
 	else
 		local lvl = GS.level(state)
 		local locked = ad.level > lvl
@@ -787,6 +794,35 @@ function World.drawBoard()
 			UI.Label(sc, c[3] and "Nobody yet." or "You signed everyone. What a label!", UI.px(10, 10), UI.px(700, 40), { textSize = 20, color = T.sub })
 		end
 	end
+end
+
+-- PLAN A TOUR on the board: this artist goes on tour; next stop: the world map table
+function World.planTour(artistId)
+	local app = World.app
+	local d = app.state.draft or {}
+	local function go()
+		if d.artistId ~= artistId then
+			app:act("setDraft", { draft = { artistId = artistId } })
+		end
+		World.standUp()
+		World.guide("maptable")
+		app:toast("<b>" .. Artists.byId[artistId].name .. "</b> goes on tour! Next: plan the dates at the <b>WORLD MAP</b> table.", T.accent2, 7)
+	end
+	if d.artistId and d.artistId ~= artistId and #(d.shows or {}) > 0 then
+		app:confirm("New tour plan?", "The plan for <b>" .. Artists.byId[d.artistId].name .. "</b> (" .. #d.shows .. " shows) will be dropped.", go)
+	else
+		go()
+	end
+end
+
+-- get up from the chair (ends the meeting)
+function World.standUp()
+	local h = hum()
+	if h then
+		h.Sit = false
+		h.Jump = true
+	end
+	World.endMeeting()
 end
 
 function World.startMeeting()
