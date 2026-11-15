@@ -461,7 +461,7 @@ MOCK.clickExact("Copy (C)")
 MOCK.click("PLACE", 1)
 log("copy placed", n0, "->", #design.items)
 -- step 2 (setlist & show): screens: live camera, per-song change; instruments: song number; effects per song
-MOCK.clickExact("STEP 2: SETLIST & SHOW >")
+MOCK.clickExact("2  SETLIST & SHOW")
 log("phase show, catalog visible", Designer.current.panels[3].Visible)
 for _, r in ipairs(Stage3D.items) do if r.kind == "led" then Designer.current.select(r) break end end
 MOCK.clickExact("Live: artist")
@@ -483,7 +483,7 @@ if fxRec then
 else
 	log("no effect item in this design")
 end
-MOCK.clickExact("< STEP 1: BUILD")
+MOCK.clickExact("1  BUILD")
 for _, r in ipairs(Stage3D.items) do if r.kind == "piano" then Designer.current.select(r) break end end
 H.moveX.MouseEnter:Fire() -- the mouse was over an arrow when the item was deleted
 MOCK.clickExact("Delete (X)")
@@ -560,7 +560,7 @@ assert(#design.items == nq + 1, "Q must place the item")
 key(Enum.KeyCode.F)
 key(Enum.KeyCode.F)
 -- more spots = longer setlist (step 2)
-MOCK.clickExact("STEP 2: SETLIST & SHOW >")
+MOCK.clickExact("2  SETLIST & SHOW")
 MOCK.clickExact("+ ADD ARTIST SPOT (a new song)")
 for k = 1, 6 do
 	MOCK.mouse = Vector2.new(900 + k * 10, 500)
@@ -571,7 +571,7 @@ log("songs in this design", GS.songCount(design))
 assert(GS.songCount(design) == 8, "lift + pop-up = song 1, 6 spots + tower lift = songs 2-8")
 key(Enum.KeyCode.F)
 log("setlist rows", #MOCK.texts("^SONG %d"))
-MOCK.clickExact("< STEP 1: BUILD")
+MOCK.clickExact("1  BUILD")
 -- camera controls
 UIS.InputBegan:Fire(MOCK.input(Enum.UserInputType.MouseButton2), false)
 UIS.InputChanged:Fire(MOCK.input(Enum.UserInputType.MouseMovement, { Delta = Vector3.new(30, 10, 0) }), false)
@@ -584,7 +584,7 @@ MOCK.keys = {}
 MOCK.clickExact("?")
 -- preview this design (every item type, 6 songs) at 4x speed
 MOCK.click("^Artist:")
-MOCK.clickExact("> PREVIEW SHOW")
+MOCK.clickExact("Preview show")
 assert(app.mode == "live", "preview did not start")
 MOCK.click("^Speed")
 MOCK.click("^Speed")
@@ -668,7 +668,7 @@ for _, tpl in ipairs({ { "ARENA", "CENTER STAGE", "The Cube" }, { "ARENA", "END 
 	MOCK.clickExact("CREATE & BUILD")
 	assert(app.mode == "designer" and Designer.current.design.name == tpl[3], "template " .. tpl[3])
 	log("template", tpl[3], "items", #Designer.current.design.items, "songs", GS.songCount(Designer.current.design), "cost", 5000000 - app.state.money)
-	MOCK.clickExact("> PREVIEW SHOW")
+	MOCK.clickExact("Preview show")
 	MOCK.click("^Speed")
 	MOCK.click("^Speed")
 	local f = 0

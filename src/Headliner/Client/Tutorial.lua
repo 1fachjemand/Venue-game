@@ -150,7 +150,7 @@ Tutorial.STEPS = {
 		at = "stagehall",
 		lines = {
 			"Click an item to select it. The arrows move it, the gold cubes make it bigger, R turns it.",
-			"<b>STEP 2: SETLIST & SHOW</b> plans what happens in every song. Press <b>DONE</b> when you're happy.",
+			"The tab <b>2  SETLIST & SHOW</b> plans what happens in every song. Press <b>DONE</b> when you're happy.",
 		},
 		hint = "Press DONE when you are finished.",
 		done = function(app)

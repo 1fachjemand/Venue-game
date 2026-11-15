@@ -95,7 +95,31 @@ function Stage3D.showGrid(on)
 	end
 end
 
+-- shows: a hazy hall (the beams glow in the dust), soft bloom around bright lights, a little contrast
+local showFx = nil
+local function setShowEffects(on)
+	if on and not showFx then
+		showFx = {
+			atmosphere = Instance.new("Atmosphere"),
+			bloom = Instance.new("BloomEffect"),
+			cc = Instance.new("ColorCorrectionEffect"),
+		}
+		local a = showFx.atmosphere
+		a.Name, a.Density, a.Offset, a.Color, a.Decay, a.Glare, a.Haze = "ShowHaze", 0.36, 0.05, Color3.fromRGB(52, 46, 62), Color3.fromRGB(24, 20, 30), 0, 2.2
+		local b = showFx.bloom
+		b.Name, b.Intensity, b.Size, b.Threshold = "ShowBloom", 0.8, 30, 1.3
+		local c = showFx.cc
+		c.Name, c.Contrast, c.Saturation, c.Brightness = "ShowColor", 0.1, 0.06, 0
+	end
+	if showFx then
+		for _, fx in pairs(showFx) do
+			fx.Parent = on and Lighting or nil
+		end
+	end
+end
+
 function Stage3D.setLighting(mode)
+	setShowEffects(mode == "show")
 	Lighting.GlobalShadows = false
 	Lighting.FogEnd = 100000
 	Lighting.ClockTime = (mode == "show") and 0 or 14

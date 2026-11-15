@@ -121,7 +121,7 @@ dump("15_designer_pending")
 MOCK.clickExact("Screens")
 MOCK.click("PLACE", 1)
 local Stage3D = require(root.Client.Stage3D)
-MOCK.clickExact("STEP 2: SETLIST & SHOW >")
+MOCK.clickExact("2  SETLIST & SHOW")
 for _, r in ipairs(Stage3D.items) do if r.kind == "led" then require(root.Client.Designer).current.select(r) break end end
 dump("16_designer_show")
 MOCK.clickExact("DONE")

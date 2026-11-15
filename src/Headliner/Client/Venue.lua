@@ -1079,6 +1079,27 @@ function Venue.build(lookKey, fill, merchColor, opts)
 	end
 	info.count = count
 	info.cfs = table.create(#info.parts)
+	-- dust in the air: tiny slow specks everywhere above the floor and the stage, they catch the light
+	if not opts.empty then
+		local top = math.min(48, (L.roof or 60) - 6)
+		local dz0 = center and z0 or (FLOOR_START - 40)
+		local dust = New("Part", { Name = "Dust", Parent = folder, Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, Transparency = 1, Size = Vector3.new(halfW * 2, top, z1 - dz0), CFrame = CFrame.new(0, top / 2 + 1, (z1 + dz0) / 2) })
+		New("ParticleEmitter", {
+			Parent = dust,
+			Shape = Enum.ParticleEmitterShape.Box,
+			ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume,
+			Rate = math.floor(math.clamp(halfW * (z1 - dz0) / 90, 25, 140) * (((Venue.maxFigures or 1100) < 600) and 0.5 or 1)),
+			Lifetime = NumberRange.new(9, 14),
+			Speed = NumberRange.new(0.2, 0.7),
+			SpreadAngle = Vector2.new(180, 180),
+			Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 0.22) }),
+			Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.25, 0.55), NumberSequenceKeypoint.new(0.75, 0.6), NumberSequenceKeypoint.new(1, 1) }),
+			Color = ColorSequence.new(Color3.fromRGB(230, 226, 214)),
+			LightEmission = 0.4,
+			LightInfluence = 1,
+			Acceleration = Vector3.new(0, -0.03, 0),
+		})
+	end
 	info.pars = {}
 	for _, d in ipairs(folder:GetDescendants()) do
 		if d.Name == "ParLens" then

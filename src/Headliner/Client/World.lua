@@ -493,20 +493,46 @@ local function buildPeople()
 	local f = New("Folder", { Name = "People", Parent = World.folder })
 	World.npcs = {}
 	local n = 0
-	for _, st in ipairs(Hub.STAFF) do
+	local rng = Random.new(77)
+	for i, st in ipairs(Hub.STAFF) do
 		n = n + 1
-		seatedFigure(f, { pos = st.pos, yaw = st.yaw, seatY = st.seatY, work = st.desk ~= nil }, randomLook(n), n)
+		if st.desk then
+			-- office staff: they work at the desk and sometimes get a coffee, take a call or stretch
+			local look = randomLook(n)
+			local npc = { fig = People.new(f, c3(look.top), 1, "dancer", n, look), kind = "staff", st = st, route = Hub.staffRoute(st, i), ph = n * 1.3, rng = Random.new(n * 31), speed = 4.2 }
+			npc.state, npc.timer = "sit", rng:NextNumber(4, 40)
+			npc.cup = cpart(f, "Cup", Vector3.new(0.4, 0.55, 0.4), CFrame.new(), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic)
+			npc.phone = cpart(f, "Phone", Vector3.new(0.12, 0.7, 0.36), CFrame.new(), Color3.fromRGB(20, 20, 24), Enum.Material.SmoothPlastic)
+			table.insert(World.npcs, npc)
+		else
+			seatedFigure(f, { pos = st.pos, yaw = st.yaw, seatY = st.seatY, work = false }, randomLook(n), n)
+		end
+	end
+	-- stage hall crew: carry boxes from the racks to the rehearsal stage and back
+	for i, path in ipairs(Hub.HALL_WALKS) do
+		n = n + 1
+		local look = randomLook(n)
+		look.worker, look.top, look.acc, look.jacket = true, { 249, 115, 22 }, "none", nil
+		local npc = { fig = People.new(f, c3(look.top), 1, "dancer", n, look), kind = "crew", path = path, len = pathLength(path), speed = 4, ph = n * 1.9, dist = 0, dir = 1, state = "walk" }
+		npc.dist = (i - 1) * 6
+		npc.box = cpart(f, "CrewBox", Vector3.new(1.8, 1.4, 1.4), CFrame.new(), Color3.fromRGB(196, 160, 110), Enum.Material.Cardboard)
+		table.insert(World.npcs, npc)
 	end
 	for _, st in ipairs(Hub.SITTERS) do
 		n = n + 1
 		seatedFigure(f, st, randomLook(n), n)
 	end
-	local rng = Random.new(77)
 	-- indoor: walk to the coffee bar / the arcade, wait there, walk back, wait
-	for _, path in ipairs(Hub.WALKS) do
+	for wi, path in ipairs(Hub.WALKS) do
+		if wi == 1 then
+			-- the office walk is done by the staff now
+			path = nil
+		end
+		if path then
 		n = n + 1
 		local look = randomLook(n)
 		table.insert(World.npcs, { fig = People.new(f, c3(look.top), 1, "dancer", n, look), kind = "loop", path = path, len = pathLength(path), speed = 4.5, pause = 4, t = rng:NextNumber(0, 10), ph = n * 1.7 })
+		end
 	end
 	-- street: from door to door
 	for k = 1, 14 do
@@ -519,10 +545,148 @@ local function buildPeople()
 	end
 end
 
+-- office staff: sit and type, then (now and then) get a coffee, take a call or stretch, and sit down again
+local function animateStaff(npc, t, dt)
+	local st = npc.st
+	npc.timer = npc.timer - dt
+	local fig = npc.fig
+	local pos, yaw, move, walking = O + st.pos, st.yaw, "typing", false
+	local s = npc.state
+	if s == "sit" then
+		move = (math.floor((t + npc.ph) / 9) % 4 == 3) and "sitrelax" or "typing"
+		if npc.timer <= 0 then
+			local r = npc.rng:NextNumber()
+			npc.plan = (r < 0.5) and "coffee" or ((r < 0.8) and "phone" or "stretch")
+			npc.state, npc.path, npc.dist = "out", { st.pos, Hub.staffSide(st), npc.route[1] }, 0
+			npc.len = pathLength(npc.path)
+		end
+	elseif s == "out" or s == "toCoffee" or s == "back" or s == "in" then
+		npc.dist = npc.dist + dt * ((s == "out" or s == "in") and 2 or npc.speed)
+		local p, d = alongPath(npc.path, math.min(npc.dist, npc.len))
+		pos, yaw, walking, move = O + p, math.atan2(d.X, d.Z), true, "idle"
+		if s == "out" or s == "in" then
+			-- getting up / sitting down: the back stays to the desk
+			yaw = st.yaw
+		end
+		if npc.dist >= npc.len then
+			if s == "out" then
+				if npc.plan == "coffee" then
+					npc.state, npc.path, npc.dist = "toCoffee", npc.route, 0
+					npc.len = pathLength(npc.path)
+				else
+					npc.state, npc.timer = npc.plan, npc.rng:NextNumber(6, 14)
+				end
+			elseif s == "toCoffee" then
+				npc.state, npc.timer = "coffee", npc.rng:NextNumber(6, 12)
+			elseif s == "back" then
+				npc.state, npc.path, npc.dist = "in", { npc.route[1], Hub.staffSide(st), st.pos }, 0
+				npc.len = pathLength(npc.path)
+			else
+				npc.state, npc.timer = "sit", npc.rng:NextNumber(20, 60)
+			end
+		end
+	elseif s == "coffee" or s == "phone" or s == "stretch" then
+		local at = (s == "coffee") and npc.route[#npc.route] or npc.route[1]
+		pos = O + at
+		yaw = (s == "coffee") and 0 or (math.pi / 2 + math.sin((t + npc.ph) * 0.4) * 0.6)
+		move = (s == "coffee") and "drink" or s
+		if s == "stretch" and npc.timer < 3 then
+			move = "idle"
+		end
+		if npc.timer <= 0 then
+			if s == "coffee" then
+				local back = {}
+				for k = #npc.route, 1, -1 do
+					table.insert(back, npc.route[k])
+				end
+				npc.state, npc.path, npc.dist = "back", back, 0
+			else
+				npc.state, npc.path, npc.dist = "in", { npc.route[1], Hub.staffSide(st), st.pos }, 0
+			end
+			npc.len = pathLength(npc.path)
+		end
+	end
+	fig:update(pos, yaw, { t = t + npc.ph, beat = 0, energy = 0, walking = walking, move = move })
+	-- the cup (from the coffee bar back to the desk) and the phone follow the right hand
+	local holdCup = s == "coffee" or s == "back" or s == "in"
+	npc.cup.Transparency = holdCup and 0 or 1
+	npc.phone.Transparency = (s == "phone") and 0 or 1
+	if holdCup then
+		npc.cup.CFrame = fig.armR.CFrame * CFrame.new(0, -1.05, 0.15)
+	end
+	if s == "phone" then
+		npc.phone.CFrame = fig.armR.CFrame * CFrame.new(0, -1.05, 0.2)
+	end
+end
+
+-- stage hall crew: rack -> rehearsal stage with a box, a short stop, back empty, a short stop
+local function animateCrew(npc, t, dt)
+	if npc.pause and npc.pause > 0 then
+		npc.pause = npc.pause - dt
+	else
+		npc.dist = npc.dist + dt * npc.speed * npc.dir
+		if npc.dist >= npc.len then
+			npc.dist, npc.dir, npc.pause = npc.len, -1, 2.5
+		elseif npc.dist <= 0 then
+			npc.dist, npc.dir, npc.pause = 0, 1, 3
+		end
+	end
+	local carrying = npc.dir == 1 and not (npc.pause and npc.pause > 0 and npc.dist >= npc.len)
+	local p, d = alongPath(npc.path, npc.dist)
+	d = d * npc.dir
+	local moving = not (npc.pause and npc.pause > 0)
+	npc.fig:update(O + p, math.atan2(d.X, d.Z), { t = t + npc.ph, beat = 0, energy = 0, walking = moving and not carrying, move = carrying and "carry" or "idle" })
+	npc.box.Transparency = carrying and 0 or 1
+	if carrying then
+		npc.box.CFrame = npc.fig.torso.CFrame * CFrame.new(0, -0.25, 1.25)
+	end
+end
+
+-- the forklift drives along its lane in the stage hall, waits, drives back (the beacon flashes)
+local function animateForklift(t)
+	local fl = World.forklift
+	if not fl then
+		local root = World.root
+		fl = root and root:FindFirstChild("Forklift", true)
+		if not fl then
+			return
+		end
+		World.forklift = fl
+		World.forkliftBeacon = fl:FindFirstChild("Beacon")
+	end
+	local a, b = Hub.FORKLIFT_PATH[1], Hub.FORKLIFT_PATH[2]
+	local len = (b - a).Magnitude
+	local cycle = (len / 3) * 2 + 10
+	local u = t % cycle
+	local f
+	if u < 5 then
+		f = 0
+	elseif u < 5 + len / 3 then
+		f = (u - 5) / (len / 3)
+	elseif u < 10 + len / 3 then
+		f = 1
+	else
+		f = 1 - (u - 10 - len / 3) / (len / 3)
+	end
+	f = f * f * (3 - 2 * f)
+	local pos = O + a:Lerp(b, f)
+	pcall(function()
+		fl:PivotTo(CFrame.new(pos + Vector3.new(0, 1.9, 0)) * CFrame.Angles(0, -math.pi / 2, 0) * CFrame.new(0, 0, 0.6))
+	end)
+	if World.forkliftBeacon then
+		World.forkliftBeacon.Color = (math.floor(t * 3) % 2 == 0) and Color3.fromRGB(255, 140, 20) or Color3.fromRGB(90, 50, 10)
+	end
+end
+
 local function animatePeople(t, dt)
 	World.crossing = false
+	animateForklift(t)
 	for _, npc in ipairs(World.npcs or {}) do
-		if npc.kind == "loop" then
+		if npc.kind == "staff" then
+			animateStaff(npc, t, dt)
+		elseif npc.kind == "crew" then
+			animateCrew(npc, t, dt)
+		elseif npc.kind == "loop" then
 			-- there and back with a pause at both ends
 			npc.t = npc.t + dt
 			local walk = npc.len / npc.speed
@@ -1042,6 +1206,7 @@ function World.stop()
 	World.prompts = {}
 	World.markers = {}
 	World.npcs = {}
+	World.forklift = nil
 	World.traffic = {}
 	World.lastStep = nil
 end

@@ -86,6 +86,7 @@ end
 for i, st in ipairs(Hub.STAFF) do
 	if st.desk then
 		local r = Hub.staffRoute(st, i)
+		paths[#paths + 1] = { Hub.staffSide(st), r[1] }
 		local q = {}
 		for k = 1, #r - 1 do q[k] = r[k] end -- the last step is at the counter (they stand in front of it)
 		q[#q + 1] = r[#r] - Vector3.new(0, 0, 1.2)

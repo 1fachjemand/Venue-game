@@ -159,8 +159,8 @@ function Designer.open(app, designId)
 	local top = UI.New("Frame", { Parent = root, Size = UI.px(1920, 64), BackgroundColor3 = T.panel, BackgroundTransparency = 0.05, BorderSizePixel = 0, Active = true })
 	UI.New("Frame", { Parent = top, Position = UI.px(0, 62), Size = UI.px(1920, 2), BackgroundColor3 = T.accent, BorderSizePixel = 0 })
 	-- money (top right)
-	local moneyLbl = UI.Label(top, "", UI.px(1640, 6), UI.px(260, 30), { textSize = 26, font = UI.FontBlack, color = T.good, alignX = Enum.TextXAlignment.Right })
-	UI.Label(top, "YOUR MONEY", UI.px(1640, 36), UI.px(260, 20), { textSize = 13, color = T.sub, font = UI.FontBold, alignX = Enum.TextXAlignment.Right })
+	local moneyLbl = UI.Label(top, "", UI.px(1700, 6), UI.px(200, 30), { textSize = 24, font = UI.FontBlack, color = T.good, alignX = Enum.TextXAlignment.Right })
+	UI.Label(top, "YOUR MONEY", UI.px(1700, 36), UI.px(200, 20), { textSize = 13, color = T.sub, font = UI.FontBold, alignX = Enum.TextXAlignment.Right })
 
 	-- stats line under the top bar
 	local statsBar = UI.New("Frame", { Parent = root, Position = UI.px(0, 64), Size = UI.px(1920, 34), BackgroundColor3 = T.bg, BackgroundTransparency = 0.25, BorderSizePixel = 0, Active = true })
@@ -910,7 +910,8 @@ function Designer.open(app, designId)
 		okBtn.LayoutOrder = 7
 		toolbar.Size = UI.px(pending and 990 or 930, 58)
 		toolbar.Position = UI.px(960 - (pending and 495 or 465), 800)
-		toolbar.Visible = phase == "build" and catalog.Visible
+		-- the tools only show while you place or change something
+		toolbar.Visible = phase == "build" and catalog.Visible and (tgt ~= nil or mode == "place" or group ~= nil)
 	end
 
 	------------------------------------------------------------ inspector
@@ -1079,7 +1080,7 @@ function Designer.open(app, designId)
 			nextOrder(UI.Label(inspScroll, "Until then the curtain hides the stage. Watch it in PREVIEW SHOW.", nil, UI.px(296, 0), { textSize = 13, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
 		end
 		if build and showThings and def.id ~= "spot" then
-			nextOrder(UI.Label(inspScroll, "What it does in which song: set it up in STEP 2: SETLIST & SHOW (top bar).", nil, UI.px(296, 0), { textSize = 14, color = T.accent2, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
+			nextOrder(UI.Label(inspScroll, "What it does in which song: set it up in step 2: SETLIST & SHOW (tab at the top).", nil, UI.px(296, 0), { textSize = 14, color = T.accent2, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
 		end
 		if not build and not showThings then
 			nextOrder(UI.Label(inspScroll, "Nothing to set up for the show here. Go back to BUILD to move or change it.", nil, UI.px(296, 0), { textSize = 14, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
@@ -1368,7 +1369,7 @@ function Designer.open(app, designId)
 		refreshInspector()
 		refreshSetlist()
 		if p == "show" then
-			app:toast("Step 2: choose what happens in every song. Back to building with  < STEP 1: BUILD.", T.accent2, 5)
+			app:toast("Step 2: choose what happens in every song. Back to building: tab 1  BUILD.", T.accent2, 5)
 		end
 	end
 	self.setPhase = setPhase
@@ -1430,26 +1431,25 @@ function Designer.open(app, designId)
 			helpBox.Visible = not helpBox.Visible
 			refreshTop()
 		end))
-		if phase == "build" then
-			tag(UI.Button(top, "STEP 2: SETLIST & SHOW >", UI.px(798, 10), UI.px(204, 44), { textSize = 15, color = T.good }, function()
-				setPhase("show")
-			end))
-		else
-			tag(UI.Button(top, "< STEP 1: BUILD", UI.px(798, 10), UI.px(204, 44), { textSize = 15, color = T.panel3 }, function()
-				setPhase("build")
-			end))
-		end
+		-- the two steps as tabs: 1 build the stage, 2 plan the songs
+		local b1 = tag(UI.Button(top, "1  BUILD", UI.px(804, 10), UI.px(150, 44), { textSize = 16, color = (phase == "build") and T.accent or T.panel3 }, function()
+			setPhase("build")
+		end))
+		b1.Name = "TopItem"
+		tag(UI.Button(top, "2  SETLIST & SHOW", UI.px(960, 10), UI.px(226, 44), { textSize = 16, color = (phase == "show") and T.accent or T.panel3 }, function()
+			setPhase("show")
+		end))
 		local ad = previewArtist()
-		tag(UI.Button(top, "Artist: " .. (ad and ad.name or "-") .. "  >", UI.px(1010, 10), UI.px(230, 44), { textSize = 15 }, function()
+		tag(UI.Button(top, "Artist: " .. (ad and ad.name or "-"), UI.px(1200, 10), UI.px(180, 44), { textSize = 14 }, function()
 			self.previewIndex = self.previewIndex % math.max(1, #signed) + 1
 			render()
 			refreshTop()
 			refreshStats()
 		end))
-		tag(UI.Button(top, "> PREVIEW SHOW", UI.px(1250, 10), UI.px(200, 44), { color = T.accent2, textSize = 16 }, function()
+		tag(UI.Button(top, "Preview show", UI.px(1390, 10), UI.px(170, 44), { color = T.accent2, textSize = 16 }, function()
 			Designer.preview()
 		end))
-		tag(UI.Button(top, "DONE", UI.px(1460, 10), UI.px(140, 44), { color = T.accent, textSize = 18 }, function()
+		tag(UI.Button(top, "DONE", UI.px(1570, 10), UI.px(110, 44), { color = T.good, textSize = 18 }, function()
 			Designer.close()
 			app:enterMode("menu")
 			app:go(app.returnScreen or "stages")
@@ -1481,7 +1481,7 @@ function Designer.open(app, designId)
 			end
 		end
 		statsLbl.Text = string.format(
-			"Setlist: <b>%d songs</b> (spots, lifts and instruments)     Items <b>%d/%d</b>     Running cost <b>%s</b> per show     Show quality for %s:  %s",
+			"Songs <b>%d</b>      Items <b>%d / %d</b>      Cost <b>%s</b> per show      Quality for %s:  %s",
 			GS.songCount(withPending()),
 			st.count,
 			c.maxItems,

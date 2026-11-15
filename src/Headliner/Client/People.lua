@@ -83,7 +83,7 @@ function People.new(parent, outfit, scale, role, seed, look)
 		return p
 	end
 	local style = look.hair or ((rng:NextNumber() < 0.5) and "short" or "messy")
-	local hat = look.acc == "cap" or look.acc == "beanie" or look.acc == "cowboy"
+	local hat = look.acc == "cap" or look.acc == "beanie" or look.acc == "cowboy" or look.worker
 	if style ~= "buzz" and style ~= "afro" and style ~= "mohawk" and not hat then
 		extra("Hair", Vector3.new(1.3, 0.45, 1.3), "head", CFrame.new(0, 0.7, -0.05), hair)
 	end
@@ -147,6 +147,13 @@ function People.new(parent, outfit, scale, role, seed, look)
 	elseif acc == "sparkle" then
 		-- a glittering belt: a bit bigger than the torso and the jacket (1.06 deep), so no faces lie on top of each other
 		extra("Sparkles", Vector3.new(2.1, 0.6, 1.14), "torso", CFrame.new(0, -0.2, 0), Color3.fromRGB(255, 235, 250), Enum.Material.Neon)
+	end
+	if look.worker then
+		-- stage crew: yellow hard hat, reflective stripes on the vest
+		extra("HardHat", Vector3.new(1.4, 0.5, 1.4), "head", CFrame.new(0, 0.78, 0), Color3.fromRGB(250, 204, 21))
+		extra("HardHatBrim", Vector3.new(1.6, 0.1, 1.7), "head", CFrame.new(0, 0.55, -0.05), Color3.fromRGB(250, 204, 21))
+		extra("VestStripe", Vector3.new(2.04, 0.18, 1.04), "torso", CFrame.new(0, -0.35, 0), Color3.fromRGB(220, 224, 230), Enum.Material.Foil)
+		extra("VestStripe", Vector3.new(2.04, 0.18, 1.04), "torso", CFrame.new(0, 0.25, 0), Color3.fromRGB(220, 224, 230), Enum.Material.Foil)
 	end
 	if look.jacket then
 		extra("JacketL", Vector3.new(0.6, 2.02, 1.06), "torso", CFrame.new(-0.72, 0, 0), c3(look.jacket))
@@ -220,7 +227,7 @@ function People.preview(parent, look, color, pos, size, bg)
 end
 
 -- moves played on an instrument: sitting ones and those where both hands are busy (mic on a stand)
-People.SEATED = { piano = true, pianosway = true, drumsolo = true, drumfill = true, harp = true, strum = true }
+People.SEATED = { piano = true, pianosway = true, drumsolo = true, drumfill = true, harp = true, strum = true, typing = true, sitrelax = true }
 People.BUSY = { piano = true, pianosway = true, drumsolo = true, drumfill = true, harp = true, strum = true, keys = true, keyshype = true, djmix = true, djhype = true, djknob = true }
 
 -- opts: t, beat (0..1), energy (0..1), walking (bool), armsUp (0..1),
@@ -342,6 +349,28 @@ function People:update(pos, yaw, opts)
 	elseif move == "strum" then
 		lx, lz = -1.1, 0.55
 		rx, rz = -0.75 + math.sin(t * 12) * 0.25, -0.25
+	elseif move == "typing" then
+		-- hands on the keyboard, small quick moves
+		lx, lz = -1.25 + math.sin(t * 13) * 0.05, 0.22
+		rx, rz = -1.25 + math.sin(t * 11 + 1) * 0.05, -0.22
+	elseif move == "sitrelax" then
+		lx, lz = -0.5, 0.15
+		rx, rz = -0.5, -0.15
+	elseif move == "drink" then
+		-- a cup: up to the mouth now and then
+		local sip = math.max(0, math.sin(t * 0.9))
+		rx, rz = -0.9 - sip * 1.2, 0.35 + sip * 0.25
+		lx, lz = swing * 0.3, 0
+	elseif move == "phone" then
+		rx, rz = -2.5, 0.75 -- the phone at the ear
+		lx, lz = -0.35 + math.sin(t * 2) * 0.25, -0.1
+	elseif move == "stretch" then
+		lx, lz = -2.95, -0.2
+		rx, rz = -2.95, 0.2
+	elseif move == "carry" then
+		-- a box in front of the body, both hands under it
+		lx, lz = -1.35, 0.32
+		rx, rz = -1.35, -0.32
 	elseif move == "djmix" then
 		lx, lz = -1.15 + math.sin(t * 4) * 0.08, 0.1
 		rx, rz = -1.1, -0.1 + math.sin(t * 8) * 0.25 -- scratching

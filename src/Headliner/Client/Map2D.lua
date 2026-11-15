@@ -33,17 +33,17 @@ local BLOBS = {
 -- country label positions (centre of the chip)
 Map2D.POS = {
 	ca = { 220, 95 }, us = { 240, 195 }, mx = { 235, 300 },
-	co = { 345, 420 }, br = { 425, 495 }, cl = { 330, 615 }, ar = { 425, 615 },
+	co = { 345, 420 }, br = { 425, 495 }, cl = { 300, 600 }, ar = { 440, 640 },
 	no = { 715, 50 }, se = { 830, 50 },
 	ie = { 560, 105 }, dk = { 760, 105 }, pl = { 905, 105 },
-	uk = { 600, 160 }, nl = { 760, 160 }, de = { 905, 160 },
+	uk = { 590, 160 }, nl = { 770, 160 }, de = { 915, 160 },
 	be = { 700, 215 }, cz = { 880, 215 },
-	fr = { 640, 270 }, ch = { 760, 270 }, at = { 890, 270 },
-	pt = { 540, 325 }, es = { 640, 325 }, it = { 830, 325 },
+	fr = { 640, 270 }, ch = { 776, 270 }, at = { 915, 270 },
+	pt = { 540, 325 }, es = { 660, 325 }, it = { 830, 325 },
 	za = { 790, 640 },
-	ae = { 975, 405 }, ["in"] = { 1065, 400 }, th = { 1160, 440 }, sg = { 1170, 505 }, ph = { 1255, 440 },
-	kr = { 1185, 255 }, jp = { 1262, 215 },
-	au = { 1140, 640 }, nz = { 1268, 705 },
+	ae = { 965, 405 }, ["in"] = { 1060, 400 }, th = { 1150, 440 }, sg = { 1170, 505 }, ph = { 1212, 372 },
+	kr = { 1180, 255 }, jp = { 1248, 205 },
+	au = { 1110, 640 }, nz = { 1214, 708 },
 }
 
 function Map2D.new(parent, pos, size, opts)
@@ -75,7 +75,7 @@ function Map2D.new(parent, pos, size, opts)
 	for _, c in ipairs(Countries.list) do
 		local p = Map2D.POS[c.id]
 		if p then
-			local w = math.floor(#c.name * 8.6) + 46
+			local w = math.floor(#c.name * 9.6) + 48
 			local chip = New("TextButton", {
 				Parent = inner,
 				AnchorPoint = Vector2.new(0.5, 0.5),

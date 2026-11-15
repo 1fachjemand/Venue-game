@@ -35,11 +35,15 @@ Hub.STAFF = {
 	{ pos = Vector3.new(-22, 0, 25.2), yaw = 0, seatY = 2.3 }, -- reception
 }
 -- office staff leave their desk now and then: the aisle behind the chair, then to the coffee bar
+-- (they first step to the side of the chair, never through its back: Hub.staffSide)
+function Hub.staffSide(st)
+	return Vector3.new(st.pos.X + 2.4, 0, st.pos.Z)
+end
 function Hub.staffRoute(st, i)
 	local aisle = st.pos.Z + 3.4
 	local cx = 25 + (i % 4) * 2.6
 	return {
-		Vector3.new(st.pos.X, 0, aisle),
+		Vector3.new(st.pos.X + 2.4, 0, aisle),
 		Vector3.new(18.9, 0, aisle),
 		Vector3.new(18.9, 0, 22),
 		Vector3.new(cx, 0, 22),

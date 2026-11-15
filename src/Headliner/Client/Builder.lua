@@ -40,22 +40,57 @@ local function cyl(model, name, h, d, cf, color, material)
 	return part(model, name, Vector3.new(h, d, d), cf * CFrame.Angles(0, 0, math.pi / 2), color, material, Enum.PartType.Cylinder)
 end
 
-local function beam(p, a0Pos, a1Pos, width0, width1, color, transparency0)
+-- light in the haze: not a hard "laser" but a soft cone. A core that is softer right at the lamp, gets
+-- stronger, then fades out slowly, and a much wider, very faint glow around it (Builder.glowOf).
+Builder.glowOf = setmetatable({}, { __mode = "k" })
+local function softFade(t0, k)
+	t0 = math.clamp(t0, 0, 0.95)
+	return NumberSequence.new({
+		NumberSequenceKeypoint.new(0, math.min(1, t0 + 0.2 * k)),
+		NumberSequenceKeypoint.new(0.1, t0),
+		NumberSequenceKeypoint.new(0.45, t0 + (1 - t0) * 0.45),
+		NumberSequenceKeypoint.new(0.8, t0 + (1 - t0) * 0.85),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+end
+Builder.softFade = softFade
+local function beam(p, a0Pos, a1Pos, width0, width1, color, transparency0, noGlow)
 	local a0 = New("Attachment", { Position = a0Pos, Parent = p })
 	local a1 = New("Attachment", { Position = a1Pos, Parent = p })
-	return New("Beam", {
+	local t0 = (transparency0 or 0.35) + 0.12
+	local core = New("Beam", {
+		Name = "SoftBeam",
 		Attachment0 = a0,
 		Attachment1 = a1,
 		Width0 = width0,
 		Width1 = width1,
 		Color = ColorSequence.new(color),
-		Transparency = NumberSequence.new(transparency0 or 0.35, 1),
+		Transparency = softFade(t0, 1),
 		LightEmission = 1,
 		LightInfluence = 0,
 		FaceCamera = true,
-		Segments = 1,
+		Segments = 10,
 		Parent = p,
 	})
+	if noGlow then
+		return core
+	end
+	local glow = New("Beam", {
+		Name = "BeamGlow",
+		Attachment0 = a0,
+		Attachment1 = a1,
+		Width0 = width0 * 2.6,
+		Width1 = width1 * 2.1,
+		Color = ColorSequence.new(color),
+		Transparency = softFade(math.min(0.93, t0 + 0.38), 0.5),
+		LightEmission = 1,
+		LightInfluence = 0,
+		FaceCamera = true,
+		Segments = 10,
+		Parent = p,
+	})
+	Builder.glowOf[core] = glow
+	return core
 end
 
 -- adorn = true: the SurfaceGui lives in the PlayerGui and points at the part (Adornee).
@@ -1191,7 +1226,7 @@ function B.laser(m, r)
 	for i = -3, 3 do
 		local ang = math.rad(i * 9)
 		local dir = Vector3.new(math.sin(ang), -0.35, math.cos(ang)).Unit * 160
-		local b = beam(r.head, Vector3.new(0, -0.3, 1.2), dir, 0.15, 0.4, Color3.fromRGB(60, 255, 90), 0)
+		local b = beam(r.head, Vector3.new(0, -0.3, 1.2), dir, 0.15, 0.4, Color3.fromRGB(60, 255, 90), 0, true)
 		b.Enabled = false
 		table.insert(r.beams, b)
 	end
@@ -2793,6 +2828,22 @@ end
 local SIDE_ANIM = { sidewash = "par", sidebeam = "beambar", sideblinder = "blinder", sidestrobe = "strobe" }
 
 function Builder.animate(refs, ctx)
+	Builder.animateKind(refs, ctx)
+	-- the faint glow around a beam follows the beam
+	local b = refs.beam
+	local glow = b and Builder.glowOf[b]
+	if glow then
+		if glow.Enabled ~= b.Enabled then
+			glow.Enabled = b.Enabled
+		end
+		if refs.lastGlowC ~= refs.lastC then
+			refs.lastGlowC = refs.lastC
+			glow.Color = b.Color
+		end
+	end
+end
+
+function Builder.animateKind(refs, ctx)
 	local k = SIDE_ANIM[refs.kind] or refs.kind
 	local t = ctx.t
 	local c1, c2 = ctx.c1, ctx.c2
