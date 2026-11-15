@@ -3,20 +3,22 @@ local TweenService = game:GetService("TweenService")
 
 local UI = {}
 
+-- A plain, bright look: light grey background, white cards, dark text, one blue for "do this".
 UI.Theme = {
-	bg = Color3.fromRGB(11, 14, 22),
-	panel = Color3.fromRGB(19, 23, 34),
-	panel2 = Color3.fromRGB(26, 31, 45),
-	panel3 = Color3.fromRGB(37, 44, 62),
-	stroke = Color3.fromRGB(55, 64, 88),
-	text = Color3.fromRGB(236, 236, 246),
-	sub = Color3.fromRGB(150, 150, 178),
-	accent = Color3.fromRGB(108, 99, 255),
-	accent2 = Color3.fromRGB(45, 212, 191),
-	good = Color3.fromRGB(46, 204, 113),
-	warn = Color3.fromRGB(255, 193, 7),
-	bad = Color3.fromRGB(255, 82, 82),
-	gold = Color3.fromRGB(255, 205, 60),
+	bg = Color3.fromRGB(240, 242, 245),
+	panel = Color3.fromRGB(255, 255, 255),
+	panel2 = Color3.fromRGB(246, 247, 249),
+	panel3 = Color3.fromRGB(229, 232, 237),
+	stroke = Color3.fromRGB(210, 214, 221),
+	text = Color3.fromRGB(30, 33, 40),
+	sub = Color3.fromRGB(104, 110, 122),
+	accent = Color3.fromRGB(37, 99, 235),
+	accent2 = Color3.fromRGB(13, 148, 136),
+	good = Color3.fromRGB(22, 163, 74),
+	warn = Color3.fromRGB(217, 119, 6),
+	bad = Color3.fromRGB(220, 38, 38),
+	gold = Color3.fromRGB(202, 138, 4),
+	white = Color3.new(1, 1, 1),
 }
 local T = UI.Theme
 
@@ -129,6 +131,14 @@ local function shade(c, f)
 	return Color3.new(math.clamp(c.R * f, 0, 1), math.clamp(c.G * f, 0, 1), math.clamp(c.B * f, 0, 1))
 end
 UI.shade = shade
+-- how bright a colour looks (0 dark .. 1 white)
+function UI.lum(c)
+	return 0.2126 * c.R + 0.7152 * c.G + 0.0722 * c.B
+end
+-- readable text on a background: white on strong colours, dark on light ones
+function UI.onColor(bg)
+	return (UI.lum(bg) < 0.55) and Color3.new(1, 1, 1) or T.text
+end
 
 -- opts: color, textColor, textSize, font, radius, order, disabled
 function UI.Button(parent, text, pos, size, opts, onClick)
@@ -142,7 +152,7 @@ function UI.Button(parent, text, pos, size, opts, onClick)
 		BorderSizePixel = 0,
 		AutoButtonColor = false,
 		Text = text or "",
-		TextColor3 = opts.textColor or T.text,
+		TextColor3 = opts.textColor or UI.onColor(base),
 		TextSize = opts.textSize or 18,
 		Font = opts.font or UI.FontBold,
 		TextTruncate = Enum.TextTruncate.AtEnd,
@@ -150,14 +160,16 @@ function UI.Button(parent, text, pos, size, opts, onClick)
 		UI.Corner(opts.radius or 8),
 	})
 	if opts.disabled then
-		btn.BackgroundColor3 = shade(base, 0.55)
-		btn.TextColor3 = T.sub
+		btn.BackgroundColor3 = T.panel3:Lerp(base, 0.25)
+		btn.TextColor3 = Color3.fromRGB(160, 165, 175)
 		btn.Active = false
 		btn.AutoButtonColor = false
 	end
+	-- light buttons get a bit darker under the mouse, coloured ones a bit lighter
+	local hover = (UI.lum(base) > 0.7) and shade(base, 0.93) or base:Lerp(Color3.new(1, 1, 1), 0.15)
 	btn.MouseEnter:Connect(function()
 		if not opts.disabled then
-			btn.BackgroundColor3 = shade(base, 1.25)
+			btn.BackgroundColor3 = hover
 			if UI.onHover then
 				UI.onHover()
 			end
@@ -217,7 +229,7 @@ function UI.Scroll(parent, pos, size)
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		ScrollingDirection = Enum.ScrollingDirection.Y,
 		ScrollBarThickness = 8,
-		ScrollBarImageColor3 = T.stroke,
+		ScrollBarImageColor3 = Color3.fromRGB(170, 175, 185),
 		Active = true,
 	})
 end
@@ -230,7 +242,7 @@ function UI.Pill(parent, text, pos, size, color, textSize)
 		BackgroundColor3 = color,
 		BorderSizePixel = 0,
 		Text = text,
-		TextColor3 = Color3.new(1, 1, 1),
+		TextColor3 = UI.onColor(color),
 		TextSize = textSize or 13,
 		Font = UI.FontBold,
 		UI.Corner(6),

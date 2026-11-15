@@ -152,7 +152,7 @@ function ToursScreen:refreshDetail()
 	end
 
 	if tour.played > 0 then
-		UI.Button(d, "TOUR REPORT", UI.px(1180, tour.status ~= "done" and 150 or 132), UI.px(160, 40), { color = T.accent2, textColor = Color3.new(0, 0, 0), textSize = 15 }, function()
+		UI.Button(d, "TOUR REPORT", UI.px(1180, tour.status ~= "done" and 150 or 132), UI.px(160, 40), { color = T.accent2, textSize = 15 }, function()
 			app:tourReport(tour, false)
 		end)
 	end

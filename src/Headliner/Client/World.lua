@@ -72,6 +72,9 @@ function World.setZoom(maxZoom)
 end
 
 local function onCharacter(char)
+	if not char.Parent then
+		return -- an old character that was removed (back from the main menu)
+	end
 	local h = char:WaitForChild("Humanoid", 10)
 	if not h then
 		return
@@ -463,7 +466,11 @@ local function seatedFigure(f, data, look, n)
 		end
 	end
 	if look.acc == "sunglasses" then
-		p("Shades", Vector3.new(1, 0.24, 0.08), headCF * CFrame.new(0, 0.1, 0.64), Color3.fromRGB(10, 10, 12), Enum.Material.Glass)
+		for _, sx in ipairs({ -0.25, 0.25 }) do
+			p("ShadesLens", Vector3.new(0.38, 0.26, 0.05), headCF * CFrame.new(sx, 0.1, 0.625), Color3.fromRGB(40, 50, 70), Enum.Material.Glass)
+			p("ShadesArm", Vector3.new(0.04, 0.05, 0.62), headCF * CFrame.new(sx * 2.48, 0.2, 0.32), Color3.fromRGB(20, 20, 24))
+		end
+		p("ShadesTop", Vector3.new(0.9, 0.05, 0.05), headCF * CFrame.new(0, 0.235, 0.628), Color3.fromRGB(20, 20, 24))
 	end
 	local _ = n
 	return m
@@ -1011,8 +1018,41 @@ function World.refresh()
 end
 
 ------------------------------------------------------------------ start
+-- leaves the world (back to the main menu): everything the client built goes away
+function World.stop()
+	for _, c in ipairs(World.conns or {}) do
+		c:Disconnect()
+	end
+	World.conns = {}
+	for _, g in ipairs(World.posterGuis or {}) do
+		g:Destroy()
+	end
+	World.posterGuis = {}
+	if World.boardGui then
+		World.boardGui:Destroy()
+		World.boardGui = nil
+	end
+	if World.root then
+		for _, d in ipairs(World.root:GetDescendants()) do
+			if d:IsA("SurfaceGui") and d.Name == "ChartsGui" then
+				d:Destroy()
+			end
+		end
+	end
+	if World.folder then
+		World.folder:Destroy()
+		World.folder = nil
+	end
+	World.prompts = {}
+	World.markers = {}
+	World.npcs = {}
+	World.traffic = {}
+	World.lastStep = nil
+end
+
 function World.start(app)
 	World.app = app
+	World.conns = {}
 	Stage3D.setLighting("hub")
 	World.root = workspace:WaitForChild("StarlightRecords", 20)
 	local old = workspace:FindFirstChild("HubClient")
@@ -1048,14 +1088,14 @@ function World.start(app)
 	if World.root then
 		buildChartsWall()
 	end
-	ProximityPromptService.PromptTriggered:Connect(function(prompt)
+	World.conns[#World.conns + 1] = ProximityPromptService.PromptTriggered:Connect(function(prompt)
 		local id = prompt:GetAttribute("Station")
 		if id then
 			World.trigger(id)
 		end
 	end)
 	local player = Players.LocalPlayer
-	player.CharacterAdded:Connect(onCharacter)
+	World.conns[#World.conns + 1] = player.CharacterAdded:Connect(onCharacter)
 	if player.Character then
 		task.spawn(onCharacter, player.Character)
 	end
@@ -1064,7 +1104,7 @@ function World.start(app)
 	World.refresh()
 	local t = 0
 	local peopleT = 0
-	RunService.RenderStepped:Connect(function(dt)
+	World.conns[#World.conns + 1] = RunService.RenderStepped:Connect(function(dt)
 		t = t + dt
 		local showTags = app.mode == "world"
 		if World.tagsShown ~= showTags then

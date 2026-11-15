@@ -569,14 +569,20 @@ function GS.deleteDesign(state, id)
 	if #state.designs <= 1 then
 		return false, "You need at least one design."
 	end
-	local target = GS.getDesign(state, id)
-	if target and target.template then
-		return false, "Templates can't be deleted. Use CLEAR to remove what you built."
-	end
 	for i, d in ipairs(state.designs) do
 		if d.id == id then
 			table.remove(state.designs, i)
-			state.money = state.money + Util.round(GS.designValue(d) * Config.RESALE)
+			-- the example stages were free: deleting them gives no money back
+			if not d.template then
+				state.money = state.money + Util.round(GS.designValue(d) * Config.RESALE)
+			end
+			if state.draft and state.draft.designs then
+				for cls, did in pairs(state.draft.designs) do
+					if did == id then
+						state.draft.designs[cls] = nil
+					end
+				end
+			end
 			return true
 		end
 	end

@@ -530,6 +530,7 @@ end
 -- DataStore: kept in memory for the whole run
 MOCK.store = { data = {} }
 function MOCK.store:GetAsync(k) return self.data[k] end
+function MOCK.store:RemoveAsync(k) local v = self.data[k] self.data[k] = nil return v end
 function MOCK.store:SetAsync(k, v) assert(type(k) == "string" and type(v) == "string", "SetAsync args") self.data[k] = v table.insert(MOCK.saves, v) end
 function Methods.GetDataStore(self, name) assert(type(name) == "string") return MOCK.store end
 function Methods.BindToClose(self, fn) MOCK.onClose = fn end

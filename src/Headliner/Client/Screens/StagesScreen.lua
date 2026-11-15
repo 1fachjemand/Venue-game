@@ -162,10 +162,9 @@ function StagesScreen:refresh()
 			nameBox.Text = d.name
 		end)
 		local pill = UI.Pill(card, string.upper(d.class) .. "  |  " .. (d.layout == "center" and "CENTER" or "END STAGE"), UI.px(18, 256), UI.px(190, 26), T.accent2, 13)
-		pill.TextColor3 = BLACK
 		local t = usedBy(state, d.id)
 		if t then
-			UI.Pill(card, "ON TOUR", UI.px(216, 256), UI.px(100, 26), T.good, 13).TextColor3 = BLACK
+			UI.Pill(card, "ON TOUR", UI.px(216, 256), UI.px(100, 26), T.good, 13)
 		elseif d.template then
 			UI.Pill(card, "STARTER", UI.px(216, 256), UI.px(100, 26), T.panel3, 13)
 		end
@@ -183,7 +182,7 @@ function StagesScreen:refresh()
 					end
 				end
 			end
-			UI.Button(card, chosen and "SELECTED FOR THE TOUR" or "SELECT FOR TOUR", UI.px(226, 168), UI.px(208, 34), { textSize = 13, color = chosen and T.good or T.accent2, textColor = Color3.new(0, 0, 0), disabled = not fitsAny }, function()
+			UI.Button(card, chosen and "SELECTED FOR THE TOUR" or "SELECT FOR TOUR", UI.px(226, 168), UI.px(208, 34), { textSize = 13, color = chosen and T.good or T.accent2, disabled = not fitsAny }, function()
 				self:selectForTour(d)
 			end)
 		end
@@ -201,12 +200,13 @@ function StagesScreen:refresh()
 				app:refreshCurrent()
 			end)
 		end)
-		UI.Button(card, "Delete", UI.px(332, 330), UI.px(102, 54), { textSize = 16, color = UI.shade(T.bad, 0.65), disabled = d.template ~= nil or t ~= nil }, function()
-			app:confirm("Delete \"" .. UI.esc(d.name) .. "\"?", "The equipment is sold for " .. math.floor(Config.RESALE * 100) .. "% of its price (+" .. Util.money(math.floor(GS.designValue(d) * Config.RESALE)) .. ").", function()
+		UI.Button(card, "Delete", UI.px(332, 330), UI.px(102, 54), { textSize = 16, color = T.bad, disabled = t ~= nil or #state.designs <= 1 }, function()
+			local body = d.template and "This example stage will be gone. Are you sure?" or ("Are you sure? The equipment is sold for " .. math.floor(Config.RESALE * 100) .. "% of its price (+" .. Util.money(math.floor(GS.designValue(d) * Config.RESALE)) .. ").")
+			app:confirm("Delete \"" .. UI.esc(d.name) .. "\"?", body, function()
 				local ok, msg = app:act("deleteDesign", { designId = d.id })
 				app:toast(ok and "Stage deleted." or msg, ok and T.good or T.bad)
 				app:refreshCurrent()
-			end)
+			end, "Yes, I'm sure")
 		end)
 	end
 end

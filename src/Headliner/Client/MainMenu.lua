@@ -19,7 +19,8 @@ local PANEL_W = 600
 -- info = what the server knows (saved games, sandbox allowed); onStart(isNew) once a game runs
 function MainMenu.show(app, info, onStart)
 	info = info or {}
-	local saved = info.main
+	local slots = info.slots or {}
+	local chosenSlot = "1"
 	app.backdrop.Visible = false
 	app.settings = app.settings or { music = 80, effects = 80, crowd = "High" }
 	SoundFX.init(app.settings)
@@ -72,9 +73,9 @@ function MainMenu.show(app, info, onStart)
 	end
 	local function menuButton(y, text, sub, primary, onClick, disabled)
 		local b = UI.Button(body, "", UI.px(64, y), UI.px(440, sub and 76 or 62), { color = primary and T.accent or T.panel2, disabled = disabled }, onClick)
-		UI.Label(b, text, UI.px(24, sub and 8 or 0), UI.px(400, sub and 36 or 62), { textSize = 24, font = UI.FontBlack, color = disabled and T.sub or T.text })
+		UI.Label(b, text, UI.px(24, sub and 8 or 0), UI.px(400, sub and 36 or 62), { textSize = 24, font = UI.FontBlack, color = disabled and T.sub or (primary and Color3.new(1, 1, 1) or T.text) })
 		if sub then
-			UI.Label(b, sub, UI.px(24, 44), UI.px(400, 22), { textSize = 15, color = primary and Color3.fromRGB(225, 225, 255) or T.sub })
+			UI.Label(b, sub, UI.px(24, 44), UI.px(400, 22), { textSize = 15, color = primary and Color3.fromRGB(225, 232, 255) or T.sub })
 		end
 		return b
 	end
@@ -139,7 +140,7 @@ function MainMenu.show(app, info, onStart)
 					end
 				end)
 				UI.Button(card, "SIGN", UI.px(366, 50), UI.px(118, 50), { color = T.accent, textSize = 20 }, function()
-					if app:startNew(labelName, ad.id, false) then
+					if app:startNew(labelName, ad.id, false, chosenSlot) then
 						start(true)
 					end
 				end)
@@ -217,23 +218,40 @@ function MainMenu.show(app, info, onStart)
 	home = function()
 		clear()
 		logo()
-		local y = 320
-		if saved then
-			menuButton(y, "CONTINUE", saved.labelName .. "  -  " .. Util.date(saved.day, Config.START_YEAR) .. "  -  " .. Util.money(saved.money), true, function()
-				if app:continueGame("main") then
-					start(false)
-				end
-			end)
-			y = y + 92
-		end
-		menuButton(y, "NEW GAME", nil, saved == nil, function()
-			if saved then
-				app:confirm("Start over?", "A new game replaces your saved label <b>" .. UI.esc(saved.labelName) .. "</b> the next time the game saves.", nameStep)
+		-- three save slots: play a saved label or start a new one in an empty slot
+		UI.Label(body, "YOUR GAMES", UI.px(64, 262), UI.px(440, 22), { textSize = 15, color = T.sub, font = UI.FontBold })
+		local y = 290
+		for _, k in ipairs({ "1", "2", "3" }) do
+			local sv = slots[k]
+			local card = UI.Panel(body, UI.px(64, y), UI.px(440, 84), T.panel)
+			if sv then
+				UI.Label(card, sv.labelName, UI.px(18, 10), UI.px(260, 30), { textSize = 22, font = UI.FontBlack })
+				UI.Label(card, Util.date(sv.day, Config.START_YEAR) .. "   " .. Util.money(sv.money), UI.px(18, 44), UI.px(260, 24), { textSize = 15, color = T.sub })
+				UI.Button(card, "PLAY", UI.px(290, 14), UI.px(136, 40), { color = T.accent, textSize = 18 }, function()
+					if app:continueGame(k) then
+						start(false)
+					end
+				end)
+				UI.Button(card, "Delete", UI.px(330, 58), UI.px(96, 20), { textSize = 12, color = T.panel }, function()
+					app:confirm("Delete \"" .. UI.esc(sv.labelName) .. "\"?", "This save is gone for good. Are you sure?", function()
+						local res = app:call("deleteSlot", { slot = k })
+						if res.ok then
+							slots[k] = false
+						end
+						app:toast(res.msg or "", res.ok and T.good or T.bad)
+						home()
+					end)
+				end).TextColor3 = T.bad
 			else
-				nameStep()
+				UI.Label(card, "Slot " .. k .. "  -  empty", UI.px(18, 0), UI.px(260, 84), { textSize = 20, font = UI.FontBold, color = T.sub })
+				UI.Button(card, "NEW GAME", UI.px(270, 20), UI.px(156, 44), { color = T.accent, textSize = 17 }, function()
+					chosenSlot = k
+					nameStep()
+				end)
 			end
-		end)
-		y = y + 78
+			y = y + 94
+		end
+		y = y + 14
 		menuButton(y, "STORE", nil, false, storePage)
 		y = y + 78
 		menuButton(y, "SETTINGS", nil, false, settingsPage)

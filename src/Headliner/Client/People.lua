@@ -114,7 +114,14 @@ function People.new(parent, outfit, scale, role, seed, look)
 	end
 	local acc = look.acc or "none"
 	if acc == "sunglasses" then
-		extra("Shades", Vector3.new(1.0, 0.24, 0.08), "head", CFrame.new(0, 0.1, 0.62), Color3.fromRGB(10, 10, 12), Enum.Material.Glass)
+		-- real sunglasses: two lenses, a bridge and thin arms to the ears (not one black bar)
+		local frame, lens = Color3.fromRGB(20, 20, 24), Color3.fromRGB(40, 50, 70)
+		extra("ShadesLens", Vector3.new(0.38, 0.26, 0.05), "head", CFrame.new(-0.25, 0.1, 0.625), lens, Enum.Material.Glass)
+		extra("ShadesLens", Vector3.new(0.38, 0.26, 0.05), "head", CFrame.new(0.25, 0.1, 0.625), lens, Enum.Material.Glass)
+		extra("ShadesBridge", Vector3.new(0.14, 0.05, 0.04), "head", CFrame.new(0, 0.17, 0.634), frame)
+		extra("ShadesTop", Vector3.new(0.9, 0.05, 0.05), "head", CFrame.new(0, 0.235, 0.628), frame)
+		extra("ShadesArm", Vector3.new(0.04, 0.05, 0.62), "head", CFrame.new(-0.62, 0.2, 0.32), frame)
+		extra("ShadesArm", Vector3.new(0.04, 0.05, 0.62), "head", CFrame.new(0.62, 0.2, 0.32), frame)
 	elseif acc == "cap" then
 		extra("Cap", Vector3.new(1.32, 0.35, 1.32), "head", CFrame.new(0, 0.72, 0), top)
 		extra("CapBrim", Vector3.new(1.2, 0.1, 0.7), "head", CFrame.new(0, 0.58, 0.85), top)

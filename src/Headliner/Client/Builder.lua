@@ -311,14 +311,23 @@ local function lattice(m, c, L)
 	end
 end
 
+-- trusses are mostly holes: an invisible solid box makes every click on them hit
+local function hitBox(m, size, cf)
+	local p = part(m, "HitBox", size, cf, DARK)
+	p.Transparency = 1
+	p.CastShadow = false
+	return p
+end
 function B.truss_beam(m, r)
 	local w = dims(r, r.def)
 	lattice(m, CFrame.new(0, -1, 0), w)
+	hitBox(m, Vector3.new(w, 2.2, 2.2), CFrame.new(0, -1, 0))
 end
 
 function B.truss(m, r)
 	part(m, "Foot", Vector3.new(3.4, 0.3, 3.4), CFrame.new(0, 0.15, 0), DARK)
 	lattice(m, CFrame.new(0, 20, 0) * CFrame.Angles(0, 0, math.pi / 2), 40)
+	hitBox(m, Vector3.new(2.2, 40, 2.2), CFrame.new(0, 20, 0))
 end
 
 -- parts that move with a light's head: r.head is an invisible pivot, the visible body follows it
@@ -2744,7 +2753,7 @@ function Builder.ghost(refs, ok)
 	})
 	for _, d in ipairs(refs.model:GetDescendants()) do
 		if d:IsA("BasePart") then
-			if d.Name ~= "Pivot" and d.Name ~= "Target" and d.Name ~= "Nozzle" and d.Name ~= "Burst" and d.Name ~= "ArtistMark" then
+			if d.Name ~= "Pivot" and d.Name ~= "Target" and d.Name ~= "Nozzle" and d.Name ~= "Burst" and d.Name ~= "ArtistMark" and d.Name ~= "HitBox" then
 				d.Transparency = 0.25
 			end
 			d.CanQuery = false

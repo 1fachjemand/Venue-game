@@ -967,7 +967,7 @@ function Designer.open(app, designId)
 			nextOrder(UI.Label(inspScroll, "GROUP", nil, UI.px(296, 18), { textSize = 13, color = T.gold, font = UI.FontBold }))
 			nextOrder(UI.Label(inspScroll, #group .. " items selected", nil, UI.px(296, 30), { textSize = 22, font = UI.FontBlack }))
 			nextOrder(UI.Label(inspScroll, "The arrows in the middle move them together, the orange ring turns them around the middle. Shift + click adds or removes items.", nil, UI.px(296, 0), { textSize = 13, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
-			nextOrder(UI.Button(inspScroll, "Copy in place (C)", nil, UI.px(296, 36), { textSize = 15, color = T.accent2, textColor = BLACK }, copyGroup))
+			nextOrder(UI.Button(inspScroll, "Copy in place (C)", nil, UI.px(296, 36), { textSize = 15, color = T.accent2 }, copyGroup))
 			nextOrder(UI.Button(inspScroll, "Mirror to the other side (M)", nil, UI.px(296, 36), { textSize = 15 }, mirrorChosen))
 			nextOrder(UI.Button(inspScroll, "Delete all (X)", nil, UI.px(296, 36), { textSize = 15, color = UI.shade(T.bad, 0.7) }, deleteGroup))
 			nextOrder(UI.Button(inspScroll, "Clear selection", nil, UI.px(296, 32), { textSize = 13 }, function()
@@ -1035,7 +1035,7 @@ function Designer.open(app, designId)
 				applyChange({ edge = not rec.edge })
 			end)
 			if selected and not pending then
-				UI.Button(f, "Use on all decks", UI.px(148, 0), UI.px(148, 32), { textSize = 13, color = T.accent2, textColor = BLACK }, function()
+				UI.Button(f, "Use on all decks", UI.px(148, 0), UI.px(148, 32), { textSize = 13, color = T.accent2 }, function()
 					local total = 0
 					for _, other in ipairs(self.design.items) do
 						local od = StageItems.byId[other.t]
@@ -1125,7 +1125,7 @@ function Designer.open(app, designId)
 				applyChange({ songs = (#new > 0) and new or false })
 			end, 5, 54)
 			if selected and not pending then
-				nextOrder(UI.Button(inspScroll, "Use these songs for all " .. def.name .. "s", nil, UI.px(296, 32), { textSize = 13, color = T.accent2, textColor = BLACK }, function()
+				nextOrder(UI.Button(inspScroll, "Use these songs for all " .. def.name .. "s", nil, UI.px(296, 32), { textSize = 13, color = T.accent2 }, function()
 					for _, other in ipairs(self.design.items) do
 						if other.t == rec.t and other ~= rec then
 							other.songs = (type(rec.songs) == "table") and Util.deepCopy(rec.songs) or false
@@ -1264,7 +1264,7 @@ function Designer.open(app, designId)
 				end))
 			end
 			if selected and not pending then
-				nextOrder(UI.Button(inspScroll, "Use on all screens", nil, UI.px(296, 32), { textSize = 13, color = T.accent2, textColor = BLACK }, function()
+				nextOrder(UI.Button(inspScroll, "Use on all screens", nil, UI.px(296, 32), { textSize = 13, color = T.accent2 }, function()
 					local n = 0
 					for _, other in ipairs(self.design.items) do
 						if Builder.SCREEN_KINDS[other.t] and other ~= rec then
@@ -1296,7 +1296,7 @@ function Designer.open(app, designId)
 		if pending then
 			local f = nextOrder(row(48))
 			UI.Button(f, "X Cancel", UI.px(0, 4), UI.px(120, 42), { textSize = 15 }, cancel)
-			UI.Button(f, "PLACE (Q)", UI.px(126, 4), UI.px(170, 42), { textSize = 17, color = T.good, textColor = BLACK }, confirm)
+			UI.Button(f, "PLACE (Q)", UI.px(126, 4), UI.px(170, 42), { textSize = 17, color = T.good }, confirm)
 		end
 	end
 
@@ -1337,7 +1337,7 @@ function Designer.open(app, designId)
 			UI.Label(b, what, UI.px(14, 26), UI.px(360, 24), { textSize = 16, color = def and T.text or T.sub })
 		end
 		local spots = #spotRecs()
-		UI.Button(setlistPanel, "+ ADD ARTIST SPOT (a new song)", UI.px(18, 594), UI.px(394, 48), { textSize = 16, color = T.good, textColor = BLACK, disabled = spots >= StageItems.MAX_SPOTS }, function()
+		UI.Button(setlistPanel, "+ ADD ARTIST SPOT (a new song)", UI.px(18, 594), UI.px(394, 48), { textSize = 16, color = T.good, disabled = spots >= StageItems.MAX_SPOTS }, function()
 			setMode("place", spotDef)
 		end)
 		local fxAuto, fxSet = 0, 0
@@ -1426,13 +1426,12 @@ function Designer.open(app, designId)
 		end)
 		tag(UI.Label(top, "STAGE NAME (click to rename)", UI.px(204, 0), UI.px(300, 12), { textSize = 10, color = T.sub, font = UI.FontBold }))
 		local pill = tag(UI.Pill(top, string.upper(self.design.class) .. "  |  " .. (self.design.layout == "center" and "CENTER STAGE" or "END STAGE"), UI.px(512, 18), UI.px(220, 28), T.accent2, 14))
-		pill.TextColor3 = BLACK
 		tag(UI.Button(top, "?", UI.px(744, 10), UI.px(44, 44), { textSize = 20, color = helpBox.Visible and T.accent or T.panel3 }, function()
 			helpBox.Visible = not helpBox.Visible
 			refreshTop()
 		end))
 		if phase == "build" then
-			tag(UI.Button(top, "STEP 2: SETLIST & SHOW >", UI.px(798, 10), UI.px(204, 44), { textSize = 15, color = T.good, textColor = BLACK }, function()
+			tag(UI.Button(top, "STEP 2: SETLIST & SHOW >", UI.px(798, 10), UI.px(204, 44), { textSize = 15, color = T.good }, function()
 				setPhase("show")
 			end))
 		else
@@ -1447,7 +1446,7 @@ function Designer.open(app, designId)
 			refreshTop()
 			refreshStats()
 		end))
-		tag(UI.Button(top, "> PREVIEW SHOW", UI.px(1250, 10), UI.px(200, 44), { color = T.accent2, textColor = BLACK, textSize = 16 }, function()
+		tag(UI.Button(top, "> PREVIEW SHOW", UI.px(1250, 10), UI.px(200, 44), { color = T.accent2, textSize = 16 }, function()
 			Designer.preview()
 		end))
 		tag(UI.Button(top, "DONE", UI.px(1460, 10), UI.px(140, 44), { color = T.accent, textSize = 18 }, function()

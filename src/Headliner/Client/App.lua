@@ -162,13 +162,14 @@ function App.start()
 end
 
 -- MainMenu: start a new label (or the developer sandbox) / continue a saved one
-function App:startNew(labelName, starterId, sandbox)
-	local res = self:call("newGame", { labelName = labelName, starterId = starterId, sandbox = sandbox == true })
+function App:startNew(labelName, starterId, sandbox, slot)
+	local res = self:call("newGame", { labelName = labelName, starterId = starterId, sandbox = sandbox == true, slot = slot })
 	if not res.ok then
 		self:toast(res.msg or "Could not start.", T.bad)
 		return false
 	end
 	self.state = nil
+	self.slot = sandbox and "sandbox" or (slot or "1")
 	self:applyDelta(res.delta)
 	return true
 end
@@ -179,6 +180,7 @@ function App:continueGame(slot)
 		self:toast(res.msg or "Could not load.", T.bad)
 		return false
 	end
+	self.slot = slot
 	self.state = nil
 	self:applyDelta(res.delta)
 	return true
@@ -186,7 +188,13 @@ end
 
 function App:beginGame(isNew)
 	self.backdrop.Visible = false
+	-- everything the game adds to the canvas from here on is removed again when you go back to the main menu
+	self.baseChildren = {}
+	for _, c in ipairs(self.canvas:GetChildren()) do
+		self.baseChildren[c] = true
+	end
 	self:buildHud()
+	self:buildHomeButton()
 	self.content = UI.New("Frame", { Parent = self.canvas, Name = "Content", Position = UI.px(0, 72), Size = UI.px(1920, 1008), BackgroundTransparency = 1, Visible = false })
 	self:buildScreenBar()
 	local Screens = Root.Client.Screens
@@ -346,9 +354,9 @@ function App:buildHud()
 	self.phoneButton = phone
 	-- sandbox tools (developer test mode only)
 	if self.state.sandbox then
-		local sb = UI.New("Frame", { Parent = self.canvas, Name = "Sandbox", Position = UI.px(1500, 20), Size = UI.px(400, 112), BackgroundColor3 = Color3.fromRGB(60, 40, 10), BackgroundTransparency = 0.1, BorderSizePixel = 0, UI.Corner(12), UI.Stroke(T.gold, 2, 0) })
+		local sb = UI.New("Frame", { Parent = self.canvas, Name = "Sandbox", Position = UI.px(1430, 20), Size = UI.px(400, 112), BackgroundColor3 = Color3.fromRGB(60, 40, 10), BackgroundTransparency = 0.1, BorderSizePixel = 0, UI.Corner(12), UI.Stroke(T.gold, 2, 0) })
 		UI.Label(sb, "SANDBOX  |  developer mode", UI.px(16, 8), UI.px(370, 24), { textSize = 16, font = UI.FontBlack, color = T.gold })
-		UI.Button(sb, "SKIP TO NEXT SHOW", UI.px(14, 42), UI.px(230, 56), { color = T.gold, textColor = BLACK, textSize = 15 }, function()
+		UI.Button(sb, "SKIP TO NEXT SHOW", UI.px(14, 42), UI.px(230, 56), { color = T.gold, textSize = 15 }, function()
 			self:devSkip(true)
 		end)
 		UI.Button(sb, "+7 DAYS", UI.px(254, 42), UI.px(132, 56), { color = T.panel3, textSize = 15 }, function()
@@ -404,10 +412,13 @@ function App:refreshHud()
 	for _, list in ipairs({ self.speedBtns or {}, self.barSpeedBtns or {} }) do
 		for i, b in ipairs(list) do
 			b.BackgroundColor3 = (i == (self.speed or 2)) and T.accent2 or T.panel3
-			b.TextColor3 = (i == (self.speed or 2)) and Color3.new(0, 0, 0) or T.text
+			b.TextColor3 = (i == (self.speed or 2)) and Color3.new(1, 1, 1) or T.text
 		end
 	end
 	self.hud.Visible = walking or self.mode == "phone"
+	if self.homeButton then
+		self.homeButton.Visible = walking or self.mode == "phone"
+	end
 	self.objectiveFrame.Visible = walking
 	self.phoneButton.Visible = walking
 	if not self.meetingHint then
@@ -764,8 +775,8 @@ function App:modal(title, body, buttons, width)
 	return close
 end
 
-function App:confirm(title, body, onYes)
-	self:modal(title, body, { { "Cancel", T.panel3 }, { "Yes", T.bad, onYes } }, 560)
+function App:confirm(title, body, onYes, yesText)
+	self:modal(title, body, { { "Cancel", T.panel3 }, { yesText or "Yes", T.bad, onYes } }, 560)
 end
 
 function App:showWelcome()
@@ -790,7 +801,151 @@ end
 -- time stands still in shows, the stage builder, popups and while a show of today waits
 function App:timeRuns()
 	local m = self.mode
-	return (m == "world" or m == "menu" or m == "phone" or m == "meeting") and not self.modalOpen and #self.liveQueue == 0 and not self.dayBusy
+	return (m == "world" or m == "menu" or m == "phone" or m == "meeting") and not self.modalOpen and not self.homeOpen and #self.liveQueue == 0 and not self.dayBusy
+end
+
+------------------------------------------------------------------ home button: save, settings, back to the main menu
+local function houseIcon(parent, color)
+	-- a little house: roof (a turned square), walls, a door
+	local icon = UI.New("Frame", { Parent = parent, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.52), Size = UI.px(28, 26), BackgroundTransparency = 1 })
+	UI.New("Frame", { Parent = icon, AnchorPoint = Vector2.new(0.5, 0.5), Position = UI.px(14, 9), Size = UI.px(19, 19), Rotation = 45, BackgroundColor3 = color, BorderSizePixel = 0, UI.Corner(2) })
+	UI.New("Frame", { Parent = icon, Position = UI.px(4, 10), Size = UI.px(20, 15), BackgroundColor3 = color, BorderSizePixel = 0, UI.Corner(2) })
+	UI.New("Frame", { Parent = icon, Position = UI.px(11, 16), Size = UI.px(6, 9), BackgroundColor3 = T.panel, BorderSizePixel = 0 })
+	return icon
+end
+
+function App:buildHomeButton()
+	local b = UI.Button(self.canvas, "", UI.px(1844, 20), UI.px(56, 56), { color = T.panel, radius = 14 }, function()
+		self:openHome()
+	end)
+	b.Name = "HomeButton"
+	UI.Stroke(T.stroke, 1, 0).Parent = b
+	houseIcon(b, T.text)
+	self.homeButton = b
+end
+
+function App:openHome(page)
+	if self.homeLayer then
+		self.homeLayer:Destroy()
+	end
+	self.homeOpen = true
+	local layer = UI.New("TextButton", { Parent = self.canvas, Name = "HomeMenu", Size = UI.px(1920, 1080), Position = UI.px(-(self.sideGap or 0), 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.55, AutoButtonColor = false, Text = "", ZIndex = 90 })
+	self.homeLayer = layer
+	local panel = UI.New("Frame", { Parent = layer, Position = UI.px(self.sideGap or 0, 0), Size = UI.px(440, 1080), BackgroundColor3 = T.panel, BorderSizePixel = 0, ZIndex = 91 })
+	local function close()
+		self.homeOpen = false
+		if self.homeLayer then
+			self.homeLayer:Destroy()
+			self.homeLayer = nil
+		end
+	end
+	layer.MouseButton1Click:Connect(close)
+	local function z(inst)
+		inst.ZIndex = 92
+		for _, d in ipairs(inst:GetDescendants()) do
+			if d:IsA("GuiObject") then
+				d.ZIndex = 93
+			end
+		end
+		return inst
+	end
+	z(UI.Label(panel, self.state and self.state.labelName or "HEADLINER", UI.px(36, 40), UI.px(380, 40), { textSize = 30, font = UI.FontBlack }))
+	z(UI.Label(panel, "Save slot " .. tostring(self.slot or 1) .. (self.state and self.state.sandbox and "  (sandbox)" or ""), UI.px(36, 82), UI.px(380, 22), { textSize = 16, color = T.sub }))
+	local y = 140
+	local function item(text, color, fn)
+		local b = z(UI.Button(panel, text, UI.px(36, y), UI.px(368, 60), { color = color or T.panel3, textSize = 20 }, fn))
+		b.TextXAlignment = Enum.TextXAlignment.Left
+		UI.Padding(22, 10, 0, 0).Parent = b
+		y = y + 72
+		return b
+	end
+	if page == "settings" then
+		z(UI.Label(panel, "SETTINGS", UI.px(36, y), UI.px(368, 30), { textSize = 22, font = UI.FontBlack }))
+		y = y + 44
+		local st = self.settings
+		local function row(label, key)
+			z(UI.Label(panel, label, UI.px(36, y), UI.px(200, 40), { textSize = 17, font = UI.FontBold }))
+			z(UI.Button(panel, "-", UI.px(236, y), UI.px(44, 40), { textSize = 20 }, function()
+				st[key] = math.max(0, st[key] - 10)
+				SoundFX.setVolumes(st.music, st.effects)
+				self:openHome("settings")
+			end))
+			z(UI.Label(panel, tostring(st[key]), UI.px(284, y), UI.px(72, 40), { textSize = 18, font = UI.FontBold, alignX = Enum.TextXAlignment.Center }))
+			z(UI.Button(panel, "+", UI.px(360, y), UI.px(44, 40), { textSize = 20 }, function()
+				st[key] = math.min(100, st[key] + 10)
+				SoundFX.setVolumes(st.music, st.effects)
+				self:openHome("settings")
+			end))
+			y = y + 52
+		end
+		row("Music", "music")
+		row("Effects", "effects")
+		z(UI.Label(panel, "Crowd detail in shows", UI.px(36, y), UI.px(368, 30), { textSize = 17, font = UI.FontBold }))
+		y = y + 34
+		for i, lvl in ipairs({ "Low", "Medium", "High" }) do
+			z(UI.Button(panel, lvl, UI.px(36 + (i - 1) * 124, y), UI.px(116, 44), { color = (st.crowd == lvl) and T.accent or T.panel3, textSize = 16 }, function()
+				st.crowd = lvl
+				require(Root.Client.Venue).setDetail(lvl)
+				self:openHome("settings")
+			end))
+		end
+		y = y + 70
+		item("< Back", nil, function()
+			self:openHome()
+		end)
+		return
+	end
+	item("Resume", T.accent, close)
+	item("Save game", nil, function()
+		local res = self:call("save")
+		self:toast(res.msg or (res.ok and "Saved." or "Could not save."), res.ok and T.good or T.warn)
+		close()
+	end)
+	item("Settings", nil, function()
+		self:openHome("settings")
+	end)
+	item("Back to main menu", nil, function()
+		self:confirm("Back to the main menu?", "Your game is saved first.", function()
+			close()
+			self:leaveToMenu()
+		end)
+	end)
+end
+
+-- saves, removes the world and the game screens and shows the title screen again
+function App:leaveToMenu()
+	local res = self:call("leave")
+	local info = res.data
+	if type(info) == "string" then
+		local ok, dec = pcall(function()
+			return game:GetService("HttpService"):JSONDecode(info)
+		end)
+		info = ok and dec or {}
+	end
+	if self.clockConn then
+		self.clockConn:Disconnect()
+		self.clockConn = nil
+	end
+	self.clockRunning = false
+	if self.world then
+		self.world.stop()
+	end
+	for _, c in ipairs(self.canvas:GetChildren()) do
+		if not (self.baseChildren or {})[c] and not c:IsA("UIScale") then
+			c:Destroy()
+		end
+	end
+	self.screens = {}
+	self.current = nil
+	self.state = nil
+	self.liveQueue = {}
+	self.mode = "title"
+	self.homeOpen = false
+	self.modalOpen = false
+	local MainMenu = require(Root.Client.MainMenu)
+	MainMenu.show(self, info or {}, function(isNew)
+		self:beginGame(isNew)
+	end)
 end
 
 function App:startClock()
@@ -800,7 +955,7 @@ function App:startClock()
 	self.clockRunning = true
 	self.speed = self.speed or 2
 	local acc = 0
-	RunService.Heartbeat:Connect(function(dt)
+	self.clockConn = RunService.Heartbeat:Connect(function(dt)
 		local secs = Config.SPEEDS[self.speed or 2].seconds
 		if secs <= 0 or not self.state or not self:timeRuns() then
 			return
