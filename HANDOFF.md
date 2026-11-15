@@ -27,7 +27,7 @@ src/Headliner/           alle ModuleScripts (landen in ReplicatedStorage.Headlin
                          Designer (Stage Builder), Builder (3D-Modelle der Bauteile + Animation), Stage3D (Bauwelt),
                          LiveShow (Konzert), Venue (Halle + Crowd), People (Figuren + Animationen),
                          WorldMap3D (3D-Kartentisch), UI (UI-Bausteine, Farbschema)
-  Client/Screens/        Office (Zentrale), Planner (Tourplanung in 4 Schritten), Artists, Tours, Charts
+  Client/Screens/        Office (Zentrale), Planner (Tourplanung in 5 Schritten), Artists, Tours, Charts
 src/server/SaveServer.server.lua   DataStore-Speichern (funktioniert nur in veröffentlichten Places)
 src/client/Main.client.lua         Startpunkt
 tools/                   Build + Tests (siehe 4.)
@@ -48,7 +48,7 @@ ROADMAP.md               offene Wünsche
   - Technik: Gebäude-Baukasten mit LOD nach Abstand zur Flugbahn, Höhen werden automatisch unter der Flugbahn gekappt (keine Kollision), Budgets für Lichter/SurfaceGuis, ~4k/12k/6k Parts. Suchscheinwerfer, blinkende Flugwarnlichter, wechselnde LED-Texte, Bloom.
 - **Neues Spiel:** Label benennen, einen von 3 Start-Artists wählen. **Büro** als Zentrale mit Kacheln, nächsten Shows und News.
 - **Fortschritt:** 5 Label-Level nach verkauften Tickets. Größere Artists erst ab höherem Level.
-- **Tourplanung (4 Schritte):** Artist, dann Route (3D-Weltkarte mit Länder-Hover, Venue-Filter Club/Theater/Arena/Stadion, Promoter-Schätzungen statt Garantien), dann ein Ticketpreis pro Tour und eine Bühnenproduktion **pro Hallengröße**, dann Bestätigen.
+- **Tourplanung (5 Schritte, aktueller Stand siehe weiter unten):** Artist → Termine (Kartenfenster + Hallenliste + Monatskalender) → Bühne pro Hallengröße → Ticketpreise pro Bereich → Bestätigen.
 - **Simulation:** Nachfrage pro Land (Fans, Hype, Genre-Vorlieben, Preis), versteckte ±25 % Abweichung, Vorverkauf über Zeit, Marketing, Kosten (Miete, Produktion 8 % des Equipmentwerts, Reisen, 35 % Artist-Anteil), Bewertungen, Fanwachstum, Achievements, Charts.
 - **Stage Builder (neu, Stil wie Theme Park Tycoon 2):** Katalog unten (Kategorien Stage / Artist / Lights / Screens / Effects / Set Pieces, Karten mit 3D-Bild + Preis), Werkzeugleiste darüber (Grid, Dreh-Raster 15/45/90°, Drehen, Kopieren, Löschen, ✕, ✓ PLACE). Ablauf: Karte wählen → in die Welt klicken → Teil steht „noch nicht gekauft“ (grün) → mit Gizmo ausrichten (rot X, blau Z, grün Höhe = `rec.yo`, oranger Ring drehen, goldene Würfel Größe) → ✓ kauft. Inspector rechts nur bei Auswahl. Preis am Mauszeiger. „?“ zeigt die Steuerung.
 - **MY STAGES (Bibliothek, `Screens/StagesScreen.lua`):** Karten mit 3D-Vorschau, Songs/Items/Kosten, ON TOUR/STARTER, Edit/Copy/Delete. Dialog „New stage“: Größe, Typ, Start (leer, Basis-Deck oder Vorlage).
@@ -119,6 +119,13 @@ python3 tools/gen_worldmap.py <pfad>/countries-50m.json
 - Lua-Schlüsselwörter als Tabellenschlüssel (z. B. Land „in“) mit `["in"]` schreiben.
 - Dateien bei Python-Patches erst in eine Temp-Datei schreiben und dann ersetzen. Einmal wurde `Designer.lua` dabei geleert und musste aus der `.rbxlx` gerettet werden.
 - Vor dem Ausliefern immer: `check.py`, `test_logic.py`, `run_mock.py` (Ergebnis „OK – no runtime errors“), dann `build.py`.
+
+## 4b. Arbeitsablauf (so wurde bisher geliefert)
+- Arbeits-Branch: `claude/clever-goldberg-ehd8ui` (normal pushen, nie force-push). Neuer Chat: diesen Branch auschecken und darauf weiterarbeiten.
+- Jede Lieferung: `check.py`, `test_logic.py`, `run_mock.py` → `build.py` → Commit + Push → `Headliner.rbxlx` dem User schicken, mit kurzer deutscher Zusammenfassung.
+- Neue Planner-Abläufe immer auch in `tools/scenario_full.lua` und `tools/scenario_screens.lua` nachziehen und die Screens per `tools/screens.py` ansehen.
+- `api-dump.json` / `api_classes.lua` liegen nicht im Repo: in einem neuen Chat zuerst wie oben neu erzeugen.
+- Letzter Stand (Nov 2026): Terminplanung neu (Kartenfenster links oben, Hallenliste mit PICK darunter, großer Monatskalender rechts). **Feedback des Users dazu abwarten**, v. a. Kartenzoom im kleinen Fenster im echten Roblox.
 
 ## 5. Offenes Feedback und nächste Schritte (Priorität von oben)
 0. **Großer Umbau Nov 2026 (Hallen, Stadionbühnen, Lifts, Effekte, Instrumente, Social-Fotos, 4 neue Menü-Szenen): Feedback abwarten.** Echte 3D-Meshes wurden bewusst nicht genutzt (die .rbxlx wird jedes Mal neu gebaut, Meshes müssten hochgeladen und per ID eingebunden werden). Möglich später: `build.py` bettet MeshParts mit Asset-IDs ein, die der User hochlädt.
