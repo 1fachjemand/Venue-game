@@ -1,10 +1,10 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
 <External>null</External>
 <External>nil</External>
-<Item class="Workspace" referent="RBX562CF49D69BC4679B608F447DFA739B3"><Properties><string name="Name">Workspace</string></Properties></Item>
-<Item class="Lighting" referent="RBX423DC805AF444D2DBA28B668BD19E72B"><Properties><string name="Name">Lighting</string><token name="Technology">4</token><bool name="GlobalShadows">false</bool></Properties></Item>
-<Item class="Players" referent="RBXFE02B48AB06C4CBAAFA39A3687B0B912"><Properties><string name="Name">Players</string><bool name="CharacterAutoLoads">false</bool></Properties></Item>
-<Item class="ReplicatedStorage" referent="RBX42085B4F0CC04887ABE64F9ACE791E01"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="Folder" referent="RBXF611B1F569D44466A5865C35EE73707B"><Properties><string name="Name">Headliner</string></Properties><Item class="Folder" referent="RBX2ABD6ACFCE674C6BA86049B6B67FD8B4"><Properties><string name="Name">Client</string></Properties><Item class="ModuleScript" referent="RBX74934F39F81A48958F79B1C291D42861"><Properties><string name="Name">App</string><ProtectedString name="Source"><![CDATA[-- Main client controller: state, time, navigation, popups, saving.
+<Item class="Workspace" referent="RBX942CA9582F9643C79688ED9461E430D5"><Properties><string name="Name">Workspace</string></Properties></Item>
+<Item class="Lighting" referent="RBX1AC70441D1C54FCBB688015622C5AD08"><Properties><string name="Name">Lighting</string><token name="Technology">4</token><bool name="GlobalShadows">false</bool></Properties></Item>
+<Item class="Players" referent="RBX3A136AC077CC45509266FDE607F5123A"><Properties><string name="Name">Players</string><bool name="CharacterAutoLoads">false</bool></Properties></Item>
+<Item class="ReplicatedStorage" referent="RBX2BDDA6B977554C16B100871F23921F09"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="Folder" referent="RBX8ED0C6378C3A4E6792CF4D5A8C515831"><Properties><string name="Name">Headliner</string></Properties><Item class="Folder" referent="RBX85BDAD3E48B549B98117A7430D6C27BE"><Properties><string name="Name">Client</string></Properties><Item class="ModuleScript" referent="RBXE7BF511953C341CDB954C10DE8C23E07"><Properties><string name="Name">App</string><ProtectedString name="Source"><![CDATA[-- Main client controller: state, time, navigation, popups, saving.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
@@ -733,7 +733,7 @@ end
 
 return App
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXB3426F2A22D549E79EEBF18299C0C115"><Properties><string name="Name">Builder</string><ProtectedString name="Source"><![CDATA[-- Builds 3D models for stage items and animates them during shows.
+<Item class="ModuleScript" referent="RBX0623CB99B8C04902A0B873B542CDED13"><Properties><string name="Name">Builder</string><ProtectedString name="Source"><![CDATA[-- Builds 3D models for stage items and animates them during shows.
 -- Every item is built around the local origin (bottom centre for floor items, hanging point for rig items)
 -- and then moved into place with Builder.place().
 local TweenService = game:GetService("TweenService")
@@ -3669,7 +3669,7 @@ end
 
 return Builder
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXA368A0EE1F654291A9A28EF54C168395"><Properties><string name="Name">Designer</string><ProtectedString name="Source"><![CDATA[-- STAGE BUILDER: build a stage in 3D.
+<Item class="ModuleScript" referent="RBX14A2106BE5F341179557D5B35B3DB5FF"><Properties><string name="Name">Designer</string><ProtectedString name="Source"><![CDATA[-- STAGE BUILDER: build a stage in 3D.
 -- Works like park builder games: pick an item in the catalog at the bottom, click into the world to put it down,
 -- line it up with the coloured gizmo (red = X, green = height, blue = Z, orange ring = turn, gold cubes = size)
 -- and confirm with the green tick. Click a placed item to select and change it.
@@ -5164,7 +5164,7 @@ end
 
 return Designer
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX9864D10D158149FA8CD315BF36831135"><Properties><string name="Name">LiveFeed</string><ProtectedString name="Source"><![CDATA[-- Live camera pictures for LED screens ("Live: artist" / "Live: crowd").
+<Item class="ModuleScript" referent="RBX0144620C53754E329B944984DF46B589"><Properties><string name="Name">LiveFeed</string><ProtectedString name="Source"><![CDATA[-- Live camera pictures for LED screens ("Live: artist" / "Live: crowd").
 -- Every screen face gets its own little 3D scene inside its ViewportFrame:
 --   artist: copies of the performers (synced every frame) in front of a glowing LED wall, the camera slowly circles them
 --   crowd:  a crowd of fans with raised arms, light sticks and phone lights, the camera pans along the rows
@@ -5456,7 +5456,7 @@ end
 
 return LiveFeed
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX49EB875BA3CD443794CBD610B1605FAE"><Properties><string name="Name">LiveShow</string><ProtectedString name="Source"><![CDATA[-- Plays a concert in 3D: venue + crowd + your stage design + the artist.
+<Item class="ModuleScript" referent="RBX30FCEB186A4B42F1B3EE33A5D0A9B6BB"><Properties><string name="Name">LiveShow</string><ProtectedString name="Source"><![CDATA[-- Plays a concert in 3D: venue + crowd + your stage design + the artist.
 -- Every show gets its own running order: the songs, the ballad position, effects and colours change.
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -6295,7 +6295,7 @@ end
 
 return LiveShow
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXA7E626CCAE49473E9B857643DAC0F02C"><Properties><string name="Name">MainMenu</string><ProtectedString name="Source"><![CDATA[-- Title screen: menu on the left, a famous venue at night on the right (see MenuScene).
+<Item class="ModuleScript" referent="RBXB35F8C453E16465D9BCE0E1B4091AB01"><Properties><string name="Name">MainMenu</string><ProtectedString name="Source"><![CDATA[-- Title screen: menu on the left, a famous venue at night on the right (see MenuScene).
 -- New game: name your label, then pick your first artist.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
@@ -6540,7 +6540,7 @@ end
 
 return MainMenu
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX5EAB7381A63D43D0BBBDE80FB0311156"><Properties><string name="Name">MenuScene</string><ProtectedString name="Source"><![CDATA[-- Main menu background: detailed parody versions of famous venues at night.
+<Item class="ModuleScript" referent="RBXD8A851CA8529429C8DA7AD8E720D7E0F"><Properties><string name="Name">MenuScene</string><ProtectedString name="Source"><![CDATA[-- Main menu background: detailed parody versions of famous venues at night.
 -- Every scene is a whole city district built from parts. The camera flies through the streets
 -- (Catmull-Rom spline through key points) and ends at the venue. Between scenes the 3D view
 -- fades to black (ColorCorrection, so the menu UI stays visible) while the next district is built.
@@ -8597,7 +8597,7 @@ end
 
 return MenuScene
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXFEF377358E2C4921BA9A6E0D90A6F9EE"><Properties><string name="Name">People</string><ProtectedString name="Source"><![CDATA[-- Blocky performer figures (no external assets needed). Figures face +Z (towards the crowd) at yaw 0.
+<Item class="ModuleScript" referent="RBXC8314EA1E5E04861B619CB41DA5BC2D9"><Properties><string name="Name">People</string><ProtectedString name="Source"><![CDATA[-- Blocky performer figures (no external assets needed). Figures face +Z (towards the crowd) at yaw 0.
 local Root = script:FindFirstAncestor("Headliner")
 local UI = require(Root.Client.UI)
 local New = UI.New
@@ -8963,7 +8963,7 @@ end
 
 return People
 ]]></ProtectedString></Properties></Item>
-<Item class="Folder" referent="RBX0526DC0C65804AECBABA0B9BFB9918F3"><Properties><string name="Name">Screens</string></Properties><Item class="ModuleScript" referent="RBXC7493DE12A4D4BDE857266F99024E339"><Properties><string name="Name">ArtistsScreen</string><ProtectedString name="Source"><![CDATA[-- ARTISTS screen: your roster and the talent scout.
+<Item class="Folder" referent="RBXC8E6EAE6D2134B0B9AD889B2657AC393"><Properties><string name="Name">Screens</string></Properties><Item class="ModuleScript" referent="RBX07C765CA97FE43B088D08F6E18684F2E"><Properties><string name="Name">ArtistsScreen</string><ProtectedString name="Source"><![CDATA[-- ARTISTS screen: your roster and the talent scout.
 local Root = script:FindFirstAncestor("Headliner")
 local Achievements = require(Root.Data.Achievements)
 local Config = require(Root.Config)
@@ -9090,7 +9090,7 @@ end
 
 return ArtistsScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX8B52ADBF9EE746D09CC71CA20FB294C3"><Properties><string name="Name">ChartsScreen</string><ProtectedString name="Source"><![CDATA[-- CHARTS screen: Top grossing tours of all time + achievements + records.
+<Item class="ModuleScript" referent="RBX0D1177B402574C6197A0DD215F67CCF5"><Properties><string name="Name">ChartsScreen</string><ProtectedString name="Source"><![CDATA[-- CHARTS screen: Top grossing tours of all time + achievements + records.
 local Root = script:FindFirstAncestor("Headliner")
 local Achievements = require(Root.Data.Achievements)
 local Util = require(Root.Logic.Util)
@@ -9172,7 +9172,7 @@ end
 
 return ChartsScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXC2E701ED8A9E4BC3AD6F37C1EDFD56BB"><Properties><string name="Name">OfficeScreen</string><ProtectedString name="Source"><![CDATA[-- OFFICE: the home screen. Shows what happens next, upcoming shows, what fans post and the news.
+<Item class="ModuleScript" referent="RBX05B2976A843E40BE9DFDFEEEF42017E5"><Properties><string name="Name">OfficeScreen</string><ProtectedString name="Source"><![CDATA[-- OFFICE: the home screen. Shows what happens next, upcoming shows, what fans post and the news.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local Countries = require(Root.Data.Countries)
@@ -9343,7 +9343,7 @@ end
 
 return OfficeScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXBD4278688A46488DBB48663A194976D1"><Properties><string name="Name">PlannerScreen</string><ProtectedString name="Source"><![CDATA[-- PLAN A TOUR: a 5-step wizard: artist -> dates (map + calendar) -> stage -> tickets (seat map) -> confirm.
+<Item class="ModuleScript" referent="RBXF45072775CAB42C598C1D77050ECF489"><Properties><string name="Name">PlannerScreen</string><ProtectedString name="Source"><![CDATA[-- PLAN A TOUR: a 5-step wizard: artist -> dates (map + calendar) -> stage -> tickets (seat map) -> confirm.
 local UserInputService = game:GetService("UserInputService")
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
@@ -9391,106 +9391,18 @@ end
 function MapScreen.new(app)
 	local self = setmetatable({ app = app, step = 1 }, MapScreen)
 	self.frame = UI.New("Frame", { Parent = app.content, Size = UI.px(1920, 1008), BackgroundTransparency = 1, Visible = false, Name = "Planner" })
+	-- in step 2 the 3D map shows only through the map window: dark cover around it
+	self.mapMask = UI.New("Frame", { Parent = self.frame, Size = UI.px(1920, 1008), BackgroundTransparency = 1, Visible = false, Name = "MapMask" })
+	for _, r in ipairs({ { -3000, 0, 7920, 72 }, { -3000, 72, 3020, 500 }, { 780, 72, 4140, 500 }, { -3000, 572, 7920, 3000 } }) do
+		UI.New("Frame", { Parent = self.mapMask, Position = UI.px(r[1], r[2]), Size = UI.px(r[3], r[4]), BackgroundColor3 = T.bg, BorderSizePixel = 0 })
+	end
 	self.stepBar = UI.New("Frame", { Parent = self.frame, Position = UI.px(20, 8), Size = UI.px(1880, 52), BackgroundTransparency = 1 })
 	self.draft = { artistId = nil, name = "", designs = {}, firstIn = 21, gap = 2, watchFirst = true, price = 30, prices = {}, shows = {} }
 	-- step 2 (route) keeps its map alive between visits; the other steps are rebuilt
 	self.routeView = UI.New("Frame", { Parent = self.frame, Size = UI.px(1920, 1008), BackgroundTransparency = 1, Visible = false })
 	self.body = UI.New("Frame", { Parent = self.frame, Size = UI.px(1920, 1008), BackgroundTransparency = 1 })
 	self:buildMap()
-	self:buildCountryPanel()
-	self.routePanel = UI.Panel(self.routeView, UI.px(1468, 72), UI.px(432, 928))
 	return self
-end
-
------------------------------------------------------------------- map (3D world map table, see Client/WorldMap3D)
-function MapScreen:buildMap()
-	-- the map uses the whole left area; the venue list of a country slides over its lower part
-	local view = UI.New("Frame", { Parent = self.routeView, Position = UI.px(20, 72), Size = UI.px(1432, 928), BackgroundTransparency = 1, Name = "MapView" })
-	self.mapView = view
-	local bar = UI.Panel(view, UI.px(0, 0), UI.px(1432, 48), T.panel)
-	bar.BackgroundTransparency = 0.2
-	self.mapBar = bar
-	UI.Label(bar, "WORLD MAP", UI.px(16, 8), UI.px(170, 32), { textSize = 22, font = UI.FontBlack })
-	local x = 190
-	for _, v in ipairs(VIEWS) do
-		local w = #v[1] * 10 + 34
-		UI.Button(bar, v[1], UI.px(x, 9), UI.px(w, 30), { textSize = 14 }, function()
-			WorldMap3D.flyTo(v[2], v[3], v[4])
-		end)
-		x = x + w + 8
-	end
-	UI.Label(bar, "Drag = move   Wheel = zoom", UI.px(1190, 8), UI.px(226, 32), { textSize = 13, color = T.sub, alignX = Enum.TextXAlignment.Right })
-	local legendBox = UI.Panel(view, UI.px(0, 890), UI.px(1432, 38), T.panel)
-	legendBox.BackgroundTransparency = 0.2
-	self.legendBox = legendBox
-	self.legend = UI.Label(legendBox, "", UI.px(14, 0), UI.px(1404, 38), { textSize = 14, color = T.sub, rich = true })
-	self.hoverBox = UI.New("TextLabel", {
-		Parent = view,
-		Position = UI.px(10, 60),
-		Size = UI.px(480, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		BackgroundColor3 = T.panel,
-		BackgroundTransparency = 0.1,
-		Text = "",
-		RichText = true,
-		TextWrapped = true,
-		TextColor3 = T.text,
-		TextSize = 16,
-		Font = UI.Font,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Visible = false,
-		UI.Corner(8),
-		UI.Padding(12, 12, 8, 8),
-		UI.Stroke(T.gold, 1, 0.2),
-	})
-end
-
--- true if the mouse is over one of the planner's panels (then the 3D map ignores it)
-function MapScreen:overUI()
-	if self.app.modalOpen then
-		return true
-	end
-	local m = UserInputService:GetMouseLocation()
-	if self.calendar then
-		return true
-	end
-	for _, p in ipairs({ self.mapBar, self.legendBox, self.routePanel, self.countryPanel, self.stepBar, self.app.hud, self.hoverBox }) do
-		if p and p.Visible then
-			local a, sz = p.AbsolutePosition, p.AbsoluteSize
-			if m.X >= a.X and m.X <= a.X + sz.X and m.Y >= a.Y and m.Y <= a.Y + sz.Y then
-				return true
-			end
-		end
-	end
-	return false
-end
-
-function MapScreen:activateMap()
-	if self.app.mode ~= "menu" then
-		return
-	end
-	self.app.backdrop.Visible = false
-	WorldMap3D.activate({
-		isOverUI = function()
-			return self:overUI()
-		end,
-		onClick = function(cid)
-			self.selected = cid
-			self:refresh()
-		end,
-		onHover = function(cid)
-			self:hoverCountry(cid)
-		end,
-		screenCenter = function()
-			-- centre of the part of the map that is not covered by the venue list
-			local a, sz = self.mapView.AbsolutePosition, self.mapView.AbsoluteSize
-			local h = sz.Y
-			if self.countryPanel and self.countryPanel.Visible then
-				h = self.countryPanel.AbsolutePosition.Y - a.Y
-			end
-			return a.X + sz.X / 2, a.Y + h / 2
-		end,
-	})
 end
 
 function MapScreen:deactivateMap()
@@ -9680,119 +9592,210 @@ function MapScreen:estimate()
 	end)
 end
 
------------------------------------------------------------------- country panel (step 2)
-function MapScreen:buildCountryPanel()
-	local panel = UI.Panel(self.routeView, UI.px(20, 684), UI.px(1432, 316))
-	self.countryPanel = panel
-	panel.Visible = false
-	UI.Button(panel, "✕", UI.px(1388, 6), UI.px(36, 32), { textSize = 16, color = T.panel3 }, function()
-		self.selected = nil
-		self:refreshCountry()
-	end)
-	self.countryTitle = UI.Label(panel, "", UI.px(20, 8), UI.px(560, 32), { textSize = 26, font = UI.FontBlack })
-	self.countryInfo = UI.Label(panel, "", UI.px(20, 40), UI.px(1392, 24), { textSize = 15, color = T.sub, rich = true })
-	-- venue type filter
-	self.venueFilter = "ALL"
-	self.filterBar = UI.New("Frame", { Parent = panel, Position = UI.px(660, 8), Size = UI.px(716, 32), BackgroundTransparency = 1 })
-	UI.List(false, 6, Enum.HorizontalAlignment.Right).Parent = self.filterBar
-	self.venueList = UI.Scroll(panel, UI.px(12, 70), UI.px(1408, 238))
-	UI.List(true, 6).Parent = self.venueList
+------------------------------------------------------------------ step 2: dates
+-- Left: the world map (pick a country) and its venues (pick one). Right: the calendar. With a venue picked,
+-- every day shows if that venue is free; a click on a free day books the show there. A click on one of your
+-- shows removes it. Shows of your other artists are on the calendar too.
+local MAP_W, MAP_H = 760, 500
+function MapScreen:buildMap()
+	local view = UI.New("Frame", { Parent = self.routeView, Position = UI.px(20, 72), Size = UI.px(MAP_W, MAP_H), BackgroundTransparency = 1, Name = "MapView" })
+	self.mapView = view
+	local bar = UI.Panel(view, UI.px(0, 0), UI.px(MAP_W, 86), T.panel)
+	bar.BackgroundTransparency = 0.15
+	self.mapBar = bar
+	UI.Label(bar, "1. WHERE?", UI.px(14, 6), UI.px(200, 30), { textSize = 20, font = UI.FontBlack, color = T.accent })
+	UI.Label(bar, "Click a country. Drag = move, wheel = zoom.", UI.px(170, 6), UI.px(580, 30), { textSize = 14, color = T.sub, alignX = Enum.TextXAlignment.Right })
+	local x = 10
+	for _, v in ipairs(VIEWS) do
+		local w = #v[1] * 8 + 24
+		UI.Button(bar, v[1], UI.px(x, 44), UI.px(w, 32), { textSize = 13 }, function()
+			WorldMap3D.flyTo(v[2], v[3], v[4] * 1.7)
+		end)
+		x = x + w + 6
+	end
+	local legendBox = UI.Panel(view, UI.px(0, MAP_H - 34), UI.px(MAP_W, 34), T.panel)
+	legendBox.BackgroundTransparency = 0.15
+	self.legendBox = legendBox
+	self.legend = UI.Label(legendBox, "", UI.px(10, 0), UI.px(MAP_W - 20, 34), { textSize = 13, color = T.sub, rich = true })
+	self.hoverBox = UI.New("TextLabel", {
+		Parent = view,
+		Position = UI.px(10, 96),
+		Size = UI.px(440, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundColor3 = T.panel,
+		BackgroundTransparency = 0.1,
+		Text = "",
+		RichText = true,
+		TextWrapped = true,
+		TextColor3 = T.text,
+		TextSize = 15,
+		Font = UI.Font,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Visible = false,
+		UI.Corner(8),
+		UI.Padding(12, 12, 8, 8),
+		UI.Stroke(T.gold, 1, 0.2),
+	})
+	-- covers the 3D map everywhere except the map window
+	self.venuePanel = UI.Panel(self.routeView, UI.px(20, MAP_H + 84), UI.px(MAP_W, 1000 - MAP_H - 84))
+	self.calPanel = UI.Panel(self.routeView, UI.px(MAP_W + 40, 72), UI.px(1880 - MAP_W - 20, 928))
 end
 
-function MapScreen:refreshCountry()
-	local c = self.selected and Countries.byId[self.selected]
-	UI.ClearChildren(self.venueList)
-	-- the venue list only covers the map while a country is open
-	self.countryPanel.Visible = c ~= nil
-	self.legendBox.Position = c and UI.px(0, 566) or UI.px(0, 890)
-	if not c then
-		self.countryTitle.Text = "Pick a country"
-		self.countryInfo.Text = "Click a pin on the map. Pin colours show how many fans " .. (self.draft.artistId and Artists.byId[self.draft.artistId].name or "your artist") .. " has there."
+-- the 3D map only reacts inside its window
+function MapScreen:overUI()
+	if self.app.modalOpen then
+		return true
+	end
+	local m = UserInputService:GetMouseLocation()
+	local a, sz = self.mapView.AbsolutePosition, self.mapView.AbsoluteSize
+	if m.X < a.X or m.X > a.X + sz.X or m.Y < a.Y or m.Y > a.Y + sz.Y then
+		return true
+	end
+	for _, p in ipairs({ self.mapBar, self.legendBox, self.hoverBox }) do
+		if p and p.Visible then
+			local pa, ps = p.AbsolutePosition, p.AbsoluteSize
+			if m.X >= pa.X and m.X <= pa.X + ps.X and m.Y >= pa.Y and m.Y <= pa.Y + ps.Y then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+function MapScreen:activateMap()
+	if self.app.mode ~= "menu" then
 		return
 	end
-	local state = self.app.state
-	local aid = self.draft.artistId
-	local tip, pool = Sim.recommendation(state, aid, c.id)
-	self.countryTitle.Text = string.upper(c.name)
-	local info = Regions.byId[c.region].name .. "   |   Price level x" .. string.format("%.2f", c.priceLevel)
-		.. string.format("   |   <b>Promoter tip:</b> %s should play <b>%s</b> here (~%s interested fans)", Artists.byId[aid].name, tip, Util.short(pool))
-	local last = state.artists[aid].lastPlayed[c.id]
-	if last and state.day - last < 180 then
-		info = info .. "  <font color='#ffc107'>(played here recently)</font>"
+	self.app.backdrop.Visible = false
+	WorldMap3D.activate({
+		isOverUI = function()
+			return self:overUI()
+		end,
+		onClick = function(cid)
+			self.selected = cid
+			self:refresh()
+		end,
+		onHover = function(cid)
+			self:hoverCountry(cid)
+		end,
+		maxDist = 1000,
+		screenCenter = function()
+			local a, sz = self.mapView.AbsolutePosition, self.mapView.AbsoluteSize
+			return a.X + sz.X / 2, a.Y + sz.Y / 2 + 20
+		end,
+	})
+	if not self.mapOpened then
+		self.mapOpened = true
+		WorldMap3D.flyTo(VIEWS[2][2], VIEWS[2][3], VIEWS[2][4] * 1.7)
 	end
-	self.countryInfo.Text = info
+end
 
+-- venues of the chosen country (left, below the map)
+function MapScreen:refreshCountry()
+	local p = self.venuePanel
+	UI.ClearChildren(p)
+	local c = self.selected and Countries.byId[self.selected]
+	local state, aid = self.app.state, self.draft.artistId
+	if not c then
+		UI.Label(p, "2. WHICH VENUE?", UI.px(16, 10), UI.px(500, 30), { textSize = 20, font = UI.FontBlack, color = T.accent })
+		UI.Label(p, "Click a country on the map. Colours show how many fans " .. Artists.byId[aid].name .. " has there.", UI.px(16, 46), UI.px(MAP_W - 32, 60), { textSize = 16, color = T.sub, wrap = true })
+		return
+	end
+	local tip, pool = Sim.recommendation(state, aid, c.id)
+	UI.Label(p, string.upper(c.name), UI.px(16, 8), UI.px(400, 30), { textSize = 22, font = UI.FontBlack })
+	local last = state.artists[aid].lastPlayed[c.id]
+	UI.Label(p, "Promoter tip: <b>" .. tip .. "</b>  (~" .. Util.short(pool) .. " fans)" .. ((last and state.day - last < 180) and "  <font color='#ffc107'>played here recently</font>" or ""), UI.px(16, 38), UI.px(MAP_W - 32, 22), { textSize = 14, color = T.sub, rich = true })
 	-- filter chips
-	UI.ClearChildren(self.filterBar)
-	local FILTERS = { { "ALL", nil }, { "CLUBS", { Club = true } }, { "THEATRES & HALLS", { Theatre = true, Hall = true } }, { "ARENAS", { Arena = true, Amphitheatre = true } }, { "STADIUMS", { Stadium = true } } }
-	local allowed = nil
-	for i, f in ipairs(FILTERS) do
+	local FILTERS = { { "ALL", nil }, { "CLUBS", { Club = true } }, { "THEATRES", { Theatre = true, Hall = true } }, { "ARENAS", { Arena = true, Amphitheatre = true } }, { "STADIUMS", { Stadium = true } } }
+	local allowed, x = nil, 16
+	for _, f in ipairs(FILTERS) do
 		local n = 0
 		for _, v in ipairs(c.venues) do
 			if not f[2] or f[2][v.type] then
 				n = n + 1
 			end
 		end
-		local on = self.venueFilter == f[1]
+		local on = (self.venueFilter or "ALL") == f[1]
 		if on then
 			allowed = f[2]
 		end
-		UI.Button(self.filterBar, f[1] .. " (" .. n .. ")", nil, UI.px(#f[1] * 9 + 58, 32), { order = i, textSize = 13, color = on and T.accent2 or T.panel3, textColor = on and Color3.new(0, 0, 0) or T.text, disabled = n == 0 }, function()
+		local w = #f[1] * 9 + 46
+		UI.Button(p, f[1] .. " " .. n, UI.px(x, 66), UI.px(w, 30), { textSize = 13, color = on and T.accent2 or T.panel3, textColor = on and Color3.new(0, 0, 0) or T.text, disabled = n == 0 }, function()
 			self.venueFilter = f[1]
 			self:refreshCountry()
 		end)
+		x = x + w + 6
 	end
+	local list = UI.Scroll(p, UI.px(10, 104), UI.px(MAP_W - 20, 1000 - MAP_H - 84 - 114))
+	UI.List(true, 6).Parent = list
 	local shown = 0
 	for i, v in ipairs(c.venues) do
 		if not allowed or allowed[v.type] then
 			shown = shown + 1
-		local vt = Countries.VENUE_TYPES[v.type]
-		local row = UI.New("Frame", { Parent = self.venueList, Size = UI.px(1386, 56), BackgroundColor3 = T.panel2, BorderSizePixel = 0, LayoutOrder = i, UI.Corner(8) })
-		UI.Pill(row, vt.label, UI.px(12, 16), UI.px(92, 24), UI.rgb(vt.color), 13)
-		UI.Label(row, v.name, UI.px(118, 6), UI.px(420, 26), { textSize = 20, font = UI.FontBold })
-		UI.Label(row, v.city, UI.px(118, 30), UI.px(420, 20), { textSize = 15, color = T.sub })
-		UI.Label(row, Util.number(v.cap), UI.px(550, 6), UI.px(150, 26), { textSize = 20, font = UI.FontBold })
-		UI.Label(row, "capacity", UI.px(550, 30), UI.px(150, 20), { textSize = 14, color = T.sub })
-		UI.Label(row, Util.moneyShort(Sim.venueRent(v)), UI.px(710, 6), UI.px(130, 26), { textSize = 20, font = UI.FontBold })
-		UI.Label(row, "rent / show", UI.px(710, 30), UI.px(130, 20), { textSize = 14, color = T.sub })
-		-- promoter estimate (a range, not a promise)
-		local shows = {}
-		for _, s in ipairs(self.draft.shows) do
-			local sv = Countries.venueById[s.venueId]
-			if sv.countryId == c.id then
-				table.insert(shows, { venueId = s.venueId, price = Sim.avgPrice(Sim.lookOf(sv), self:pricesFor(Sim.lookOf(sv))) })
+			local vt = Countries.VENUE_TYPES[v.type]
+			local picked = self.picked == v.id
+			local row = UI.New("Frame", { Parent = list, Size = UI.px(MAP_W - 44, 58), BackgroundColor3 = picked and UI.shade(T.accent, 0.5) or T.panel2, BorderSizePixel = 0, LayoutOrder = i, UI.Corner(8) })
+			UI.Pill(row, vt.label, UI.px(10, 17), UI.px(84, 24), UI.rgb(vt.color), 12)
+			UI.Label(row, v.name, UI.px(104, 6), UI.px(290, 24), { textSize = 17, font = UI.FontBold })
+			UI.Label(row, v.city .. "  |  " .. Util.number(v.cap) .. " seats  |  rent " .. Util.moneyShort(Sim.venueRent(v)), UI.px(104, 30), UI.px(330, 20), { textSize = 13, color = T.sub })
+			-- promoter estimate (a range, not a promise)
+			local shows = {}
+			for _, s in ipairs(self.draft.shows) do
+				local sv = Countries.venueById[s.venueId]
+				if sv.countryId == c.id then
+					table.insert(shows, { venueId = s.venueId, price = Sim.avgPrice(Sim.lookOf(sv), self:pricesFor(Sim.lookOf(sv))) })
+				end
 			end
-		end
-		table.insert(shows, { venueId = v.id, price = Sim.avgPrice(Sim.lookOf(v), self:pricesFor(Sim.lookOf(v))) })
-		local d = Sim.demands(state, aid, shows, 1)[#shows]
-		local n = Config.DEMAND_NOISE
-		local lo, hi = math.min(1, d * (1 - n) / v.cap), math.min(1, d * (1 + n) / v.cap)
-		local col = rangeColor(lo, hi)
-		UI.Label(row, "Promoter estimate", UI.px(860, 6), UI.px(260, 22), { textSize = 13, color = T.sub })
-		UI.Label(row, rangeText(lo, hi) .. (lo < 0.999 and " full" or ""), UI.px(860, 26), UI.px(260, 24), { textSize = 17, color = col, font = UI.FontBold })
-		UI.Button(row, "+ ADD", UI.px(1260, 8), UI.px(110, 40), { color = T.accent, disabled = #self.draft.shows >= Config.MAX_SHOWS_PER_TOUR }, function()
-			self:addShow(v.id)
-		end)
+			table.insert(shows, { venueId = v.id, price = Sim.avgPrice(Sim.lookOf(v), self:pricesFor(Sim.lookOf(v))) })
+			local d = Sim.demands(state, aid, shows, 1)[#shows]
+			local n = Config.DEMAND_NOISE
+			local lo, hi = math.min(1, d * (1 - n) / v.cap), math.min(1, d * (1 + n) / v.cap)
+			UI.Label(row, rangeText(lo, hi) .. (lo < 0.999 and " full" or ""), UI.px(440, 6), UI.px(150, 46), { textSize = 14, color = rangeColor(lo, hi), font = UI.FontBold, wrap = true })
+			UI.Button(row, picked and "PICKED" or "PICK", UI.px(MAP_W - 150, 10), UI.px(96, 38), { color = picked and T.gold or T.accent, textColor = picked and Color3.new(0, 0, 0) or nil, textSize = 15 }, function()
+				self.picked = picked and nil or v.id
+				-- jump to the month where the next show would fit
+				if self.picked then
+					local lastS = self.draft.shows[#self.draft.shows]
+					local from = lastS and lastS.day or (state.day + 21)
+					local y, m = Util.ymd(from, Config.START_YEAR)
+					self.calMonth = { y, m }
+				end
+				self:refresh()
+			end)
 		end
 	end
 	if shown == 0 then
-		UI.Label(self.venueList, "No venues of this type here.", nil, UI.px(600, 40), { textSize = 16, color = T.sub })
+		UI.Label(list, "No venues of this type here.", nil, UI.px(600, 40), { textSize = 16, color = T.sub })
 	end
 end
 
--- consecutive shows in the same venue = one residency with several nights
-function MapScreen:routeGroups()
-	local groups = {}
-	for i, s in ipairs(self.draft.shows) do
-		local g = groups[#groups]
-		if g and g.venueId == s.venueId then
-			g.n = g.n + 1
-			g.last = i
-		else
-			table.insert(groups, { venueId = s.venueId, first = i, last = i, n = 1 })
+-- what a day means for the picked venue: "ok", or the reason why not
+function MapScreen:dayState(day)
+	local state, draft = self.app.state, self.draft
+	if day < state.day + 3 then
+		return "past"
+	end
+	for _, s in ipairs(draft.shows) do
+		if s.day == day then
+			return "mine"
 		end
 	end
-	return groups
+	if not self.picked then
+		return "none"
+	end
+	local busy = GS.venueBusy(state, self.picked, day)
+	if busy then
+		return "busy", busy
+	end
+	-- travel: enough days to and from the neighbouring shows
+	local new = { venueId = self.picked }
+	for _, s in ipairs(draft.shows) do
+		local gap = math.abs(s.day - day)
+		if gap < GS.travelGap(s, new) then
+			return "travel"
+		end
+	end
+	return "ok"
 end
 
 function MapScreen:showDays()
@@ -9803,161 +9806,155 @@ function MapScreen:showDays()
 	return out
 end
 
-function MapScreen:refreshRoutePanel()
-	local p = self.routePanel
-	UI.ClearChildren(p)
+-- click on a day: book the picked venue, or remove your show from that day
+function MapScreen:dayClicked(day)
 	local draft = self.draft
-	UI.Label(p, "YOUR DATES", UI.px(20, 12), UI.px(300, 32), { textSize = 24, font = UI.FontBlack, color = T.accent })
-	UI.Label(p, #draft.shows .. " show" .. (#draft.shows == 1 and "" or "s"), UI.px(250, 12), UI.px(164, 32), { textSize = 16, color = T.sub, alignX = Enum.TextXAlignment.Right })
-	local list = UI.Scroll(p, UI.px(10, 52), UI.px(414, 776))
-	UI.List(true, 6).Parent = list
-	if #draft.shows == 0 then
-		UI.Label(list, "Click a country on the map, then + ADD a venue. Every show gets the next free date; change it in the calendar. Add the same venue again for more nights.", nil, UI.px(396, 110), { textSize = 15, color = T.sub, wrap = true })
-	end
-	local groups = self:routeGroups()
-	for gi, g in ipairs(groups) do
-		local v = Countries.venueById[g.venueId]
-		local first, lastS = draft.shows[g.first], draft.shows[g.last]
-		local row = UI.New("Frame", { Parent = list, Size = UI.px(396, 92), BackgroundColor3 = T.panel2, BorderSizePixel = 0, LayoutOrder = gi, UI.Corner(8) })
-		local _, d1 = Util.date(first.day, Config.START_YEAR)
-		local _, d2 = Util.date(lastS.day, Config.START_YEAR)
-		local wait = ""
-		local prevS = draft.shows[g.first - 1]
-		if prevS then
-			local gap = first.day - prevS.day
-			wait = (gap > 3) and ("  (" .. gap .. " days after the last show)") or ""
+	for i, s in ipairs(draft.shows) do
+		if s.day == day then
+			table.remove(draft.shows, i)
+			self:refresh()
+			return
 		end
-		UI.Label(row, gi .. ".  " .. v.name, UI.px(10, 4), UI.px(330, 24), { textSize = 17, font = UI.FontBold })
-		UI.Label(row, (g.n > 1 and (d1 .. " - " .. d2) or d1) .. "  |  " .. v.city .. wait, UI.px(10, 28), UI.px(380, 20), { textSize = 13, color = T.sub })
-		UI.Button(row, "CALENDAR", UI.px(184, 54), UI.px(120, 30), { textSize = 13, color = T.accent2, textColor = Color3.new(0, 0, 0) }, function()
-			self:openCalendar(g)
-		end)
-		UI.Button(row, "-", UI.px(10, 54), UI.px(32, 30), { textSize = 16 }, function()
-			table.remove(draft.shows, g.last)
-			self:refresh()
-		end)
-		UI.Label(row, g.n .. (g.n == 1 and " night" or " nights"), UI.px(46, 54), UI.px(90, 30), { textSize = 15, font = UI.FontBold, alignX = Enum.TextXAlignment.Center, color = g.n > 1 and T.gold or T.text })
-		UI.Button(row, "+", UI.px(140, 54), UI.px(32, 30), { textSize = 16, disabled = #draft.shows >= Config.MAX_SHOWS_PER_TOUR }, function()
-			local d = GS.nextFreeDay(self.app.state, g.venueId, lastS.day + 1, self:takenDays())
-			table.insert(draft.shows, { venueId = g.venueId, day = d })
-			self:sortShows()
-			self:refresh()
-		end)
-		UI.Button(row, "X", UI.px(356, 14), UI.px(30, 30), { textSize = 14, color = UI.shade(T.bad, 0.7) }, function()
-			for i = g.last, g.first, -1 do
-				table.remove(draft.shows, i)
-			end
-			self:refresh()
-		end)
 	end
-	UI.Button(p, "< Back", UI.px(16, 848), UI.px(110, 60), {}, function()
-		self:setStep(1)
-	end)
-	UI.Button(p, "NEXT: STAGE >", UI.px(134, 848), UI.px(282, 60), { color = T.accent, textSize = 18, disabled = #draft.shows == 0 }, function()
-		self:setStep(3)
-	end)
+	if self:dayState(day) == "ok" and #draft.shows < Config.MAX_SHOWS_PER_TOUR then
+		table.insert(draft.shows, { venueId = self.picked, day = day })
+		self:sortShows()
+		self:refresh()
+	end
 end
 
--- calendar for one venue: free days, days taken by other events or your other artists, your own dates
-function MapScreen:openCalendar(g)
+-- shows of all your tours on a day: { "Juno Park: Paris" }
+function MapScreen:otherShows(day)
+	local out = {}
+	for _, t in ipairs(self.app.state.tours or {}) do
+		for _, s in ipairs(t.shows) do
+			if s.day == day and not s.done then
+				table.insert(out, Artists.byId[t.artistId].name .. ": " .. Countries.venueById[s.venueId].city)
+			end
+		end
+	end
+	return out
+end
+
+function MapScreen:refreshRoutePanel()
+	local p = self.calPanel
+	UI.ClearChildren(p)
 	local state, draft = self.app.state, self.draft
-	if self.calendar then
-		self.calendar:Destroy()
+	local W = 1880 - MAP_W - 20
+	if not self.calMonth then
+		local first = draft.shows[1]
+		local y, m = Util.ymd(first and first.day or (state.day + 21), Config.START_YEAR)
+		self.calMonth = { y, m }
 	end
-	local v = Countries.venueById[g.venueId]
-	local first = draft.shows[g.first]
-	local y, m = Util.ymd(first.day, Config.START_YEAR)
-	local shade = UI.New("TextButton", { Parent = self.routeView, Size = UI.px(1920, 1008), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Text = "", AutoButtonColor = false, ZIndex = 20 })
-	self.calendar = shade
-	local panel = UI.Panel(shade, UI.px(330, 110), UI.px(1260, 780))
-	panel.ZIndex = 21
-	local function close()
-		shade:Destroy()
-		self.calendar = nil
-	end
-	local function draw()
-		UI.ClearChildren(panel)
-		UI.Label(panel, "CALENDAR  -  " .. string.upper(v.name), UI.px(28, 16), UI.px(900, 34), { textSize = 24, font = UI.FontBlack, color = T.accent })
-		UI.Label(panel, "Click a free day to move " .. (g.n > 1 and ("these " .. g.n .. " nights (from that day on)") or "this show") .. ". Red days are taken by other events or by your other artists. Your other dates on this route are purple.", UI.px(28, 52), UI.px(1200, 40), { textSize = 15, color = T.sub, wrap = true })
-		UI.Button(panel, "X", UI.px(1206, 14), UI.px(40, 36), { color = T.panel3 }, close)
-		local mine = {}
-		for i, s in ipairs(draft.shows) do
-			if i < g.first or i > g.last then
-				mine[s.day] = true
-			end
+	local y, m = self.calMonth[1], self.calMonth[2]
+	UI.Label(p, "3. WHEN?", UI.px(20, 12), UI.px(200, 32), { textSize = 22, font = UI.FontBlack, color = T.accent })
+	UI.Button(p, "<", UI.px(260, 10), UI.px(48, 40), { textSize = 20 }, function()
+		m = m - 1
+		if m < 1 then
+			m, y = 12, y - 1
 		end
-		local soon = state.day + 3
-		for k = 0, 1 do
-			local my, mm = y, m + k
-			if mm > 12 then
-				mm, my = mm - 12, my + 1
-			end
-			local ox = 28 + k * 616
-			UI.Label(panel, Util.monthName(mm) .. " " .. my, UI.px(ox, 100), UI.px(300, 30), { textSize = 22, font = UI.FontBold })
-			for wd, nm in ipairs({ "Mo", "Tu", "We", "Th", "Fr", "Sa", "Su" }) do
-				UI.Label(panel, nm, UI.px(ox + (wd - 1) * 84, 136), UI.px(80, 22), { textSize = 14, color = T.sub, alignX = Enum.TextXAlignment.Center })
-			end
-			local d0 = Util.dayOf(my, mm, 1, Config.START_YEAR)
-			local _, _, _, wd0 = Util.ymd(d0, Config.START_YEAR)
-			for dd = 1, Util.monthLength(my, mm) do
-				local day = d0 + dd - 1
-				local cell = wd0 - 1 + dd - 1
-				local cx, cy = ox + (cell % 7) * 84, 164 + math.floor(cell / 7) * 70
-				local busy = GS.venueBusy(state, g.venueId, day)
-				local isMine = day >= first.day and day <= draft.shows[g.last].day and draft.shows[g.first].venueId == g.venueId
-				local color, txt, ok = T.panel2, tostring(dd), true
-				if day < soon then
-					color, ok = T.panel, false
-				elseif isMine then
-					color = T.gold
-				elseif mine[day] then
-					color, ok = UI.shade(T.accent, 0.8), false
-				elseif busy then
-					color, txt, ok = UI.shade(T.bad, 0.55), dd .. "\n" .. busy, false
+		self.calMonth = { y, m }
+		self:refreshRoutePanel()
+	end)
+	UI.Label(p, Util.monthName(m) .. " " .. y, UI.px(314, 10), UI.px(220, 40), { textSize = 24, font = UI.FontBlack, alignX = Enum.TextXAlignment.Center })
+	UI.Button(p, ">", UI.px(540, 10), UI.px(48, 40), { textSize = 20 }, function()
+		m = m + 1
+		if m > 12 then
+			m, y = 1, y + 1
+		end
+		self.calMonth = { y, m }
+		self:refreshRoutePanel()
+	end)
+	local pv = self.picked and Countries.venueById[self.picked]
+	local hint = pv and ("<b>" .. pv.name .. ", " .. pv.city .. "</b>: click a green day to play there (click several days for more nights). Click one of your shows to remove it.")
+		or "Pick a venue on the left, then click the days you want to play there."
+	UI.Label(p, hint, UI.px(610, 8), UI.px(W - 630, 46), { textSize = 14, color = pv and T.text or T.sub, rich = true, wrap = true })
+	-- weekday header and the month grid
+	local cw, ch, gap = math.floor((W - 30) / 7) - 6, 104, 6
+	for i, nm in ipairs({ "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" }) do
+		UI.Label(p, nm, UI.px(15 + (i - 1) * (cw + gap), 60), UI.px(cw, 22), { textSize = 14, color = T.sub, font = UI.FontBold, alignX = Enum.TextXAlignment.Center })
+	end
+	local d0 = Util.dayOf(y, m, 1, Config.START_YEAR)
+	local _, _, _, wd0 = Util.ymd(d0, Config.START_YEAR)
+	for dd = 1, Util.monthLength(y, m) do
+		local day = d0 + dd - 1
+		local cell = wd0 - 1 + dd - 1
+		local cx, cy = 15 + (cell % 7) * (cw + gap), 86 + math.floor(cell / 7) * (ch + gap)
+		local st, why = self:dayState(day)
+		local color = T.panel2
+		if st == "past" then
+			color = T.panel
+		elseif st == "mine" then
+			color = UI.shade(T.accent, 0.75)
+		elseif st == "ok" then
+			color = UI.shade(T.good, 0.42)
+		elseif st == "busy" then
+			color = UI.shade(T.bad, 0.42)
+		elseif st == "travel" then
+			color = T.panel3
+		end
+		local b = UI.Button(p, "", UI.px(cx, cy), UI.px(cw, ch), { color = color, disabled = st == "past" }, function()
+			self:dayClicked(day)
+		end)
+		b.Name = "Day" .. day
+		UI.Label(b, tostring(dd), UI.px(8, 4), UI.px(40, 22), { textSize = 17, font = UI.FontBold, color = (st == "past") and T.sub or T.text })
+		local lines = {}
+		if st == "mine" then
+			for i, s in ipairs(draft.shows) do
+				if s.day == day then
+					local v = Countries.venueById[s.venueId]
+					table.insert(lines, "<b>#" .. i .. " " .. v.city .. "</b>")
+					table.insert(lines, v.name)
 				end
-				local b = UI.Button(panel, txt, UI.px(cx, cy), UI.px(80, 64), { color = color, textSize = busy and 12 or 18, disabled = not ok, textColor = (isMine and Color3.new(0, 0, 0)) or nil }, function()
-					-- move the nights of this venue to the clicked day (next free days for the other nights)
-					local taken = {}
-					for i, s in ipairs(draft.shows) do
-						if i < g.first or i > g.last then
-							taken[s.day] = true
-						end
-					end
-					local dday = day
-					for i = g.first, g.last do
-						dday = GS.nextFreeDay(state, g.venueId, dday, taken)
-						draft.shows[i].day = dday
-						taken[dday] = true
-						dday = dday + 1
-					end
-					self:sortShows()
-					close()
-					self:refresh()
-				end)
-				b.ZIndex = 22
 			end
+		elseif st == "busy" then
+			table.insert(lines, "taken: " .. why)
+		elseif st == "travel" then
+			table.insert(lines, "travel day")
+		elseif st == "ok" then
+			table.insert(lines, "free")
 		end
-		UI.Button(panel, "< Earlier", UI.px(28, 712), UI.px(160, 48), {}, function()
-			m = m - 1
-			if m < 1 then
-				m, y = 12, y - 1
-			end
-			draw()
-		end)
-		UI.Button(panel, "Later >", UI.px(1072, 712), UI.px(160, 48), {}, function()
-			m = m + 1
-			if m > 12 then
-				m, y = 1, y + 1
-			end
-			draw()
-		end)
-		for _, d in ipairs(panel:GetDescendants()) do
-			if d:IsA("GuiObject") then
-				d.ZIndex = math.max(d.ZIndex, 22)
-			end
+		for _, o in ipairs(self:otherShows(day)) do
+			table.insert(lines, "<font color='#9696b2'>" .. o .. "</font>")
+		end
+		if #lines > 0 then
+			UI.Label(b, table.concat(lines, "\n"), UI.px(8, 26), UI.px(cw - 12, ch - 30), { textSize = 12, rich = true, wrap = true, alignY = Enum.TextYAlignment.Top })
 		end
 	end
-	draw()
+	-- the route in date order and the way on
+	local strip = UI.Scroll(p, UI.px(15, 750), UI.px(W - 30, 84))
+	strip.AutomaticCanvasSize = Enum.AutomaticSize.X
+	strip.ScrollingDirection = Enum.ScrollingDirection.X
+	UI.List(false, 6).Parent = strip
+	if #draft.shows == 0 then
+		UI.Label(strip, "No shows yet.", nil, UI.px(400, 70), { textSize = 16, color = T.sub })
+	end
+	for i, s in ipairs(draft.shows) do
+		local v = Countries.venueById[s.venueId]
+		local _, dshort = Util.date(s.day, Config.START_YEAR)
+		local chip = UI.Button(strip, "", nil, UI.px(170, 70), { order = i, color = T.panel3 }, function()
+			local yy, mm = Util.ymd(s.day, Config.START_YEAR)
+			self.calMonth = { yy, mm }
+			self:refreshRoutePanel()
+		end)
+		UI.Label(chip, i .. ". " .. dshort, UI.px(8, 4), UI.px(156, 22), { textSize = 14, font = UI.FontBold })
+		UI.Label(chip, v.city, UI.px(8, 26), UI.px(156, 20), { textSize = 13 })
+		UI.Label(chip, v.name, UI.px(8, 46), UI.px(156, 18), { textSize = 11, color = T.sub })
+	end
+	UI.Label(p, #draft.shows .. " show" .. (#draft.shows == 1 and "" or "s"), UI.px(15, 846), UI.px(130, 60), { textSize = 18, font = UI.FontBold })
+	-- colour legend
+	local lx = 150
+	for _, k in ipairs({ { "your show", UI.shade(T.accent, 0.75) }, { "free", UI.shade(T.good, 0.42) }, { "taken", UI.shade(T.bad, 0.42) }, { "travel day", T.panel3 } }) do
+		UI.New("Frame", { Parent = p, Position = UI.px(lx, 866), Size = UI.px(20, 20), BackgroundColor3 = k[2], BorderSizePixel = 0, UI.Corner(4) })
+		UI.Label(p, k[1], UI.px(lx + 26, 864), UI.px(110, 24), { textSize = 14, color = T.sub })
+		lx = lx + 34 + #k[1] * 9
+	end
+	UI.Button(p, "< Back", UI.px(W - 440, 846), UI.px(130, 60), {}, function()
+		self:setStep(1)
+	end)
+	UI.Button(p, "NEXT: STAGE >", UI.px(W - 300, 846), UI.px(280, 60), { color = T.accent, textSize = 18, disabled = #draft.shows == 0 }, function()
+		self:setStep(3)
+	end)
 end
 
 ------------------------------------------------------------------ step bar
@@ -10379,6 +10376,7 @@ function MapScreen:refresh()
 	self:refreshStepBar()
 	UI.ClearChildren(self.body)
 	self.routeView.Visible = self.step == 2
+	self.mapMask.Visible = self.step == 2
 	if self.step ~= 2 then
 		self:deactivateMap()
 	end
@@ -10413,14 +10411,14 @@ function MapScreen:refreshRoute()
 	WorldMap3D.setSelected(self.selected)
 	WorldMap3D.setRoute(route, counts)
 	self:activateMap()
-	self.legend.Text = "Hover a country to highlight it, click it to see its venues.   Colour = fans of <b>" .. Artists.byId[aid].name .. "</b> who want tickets:  <font color='#9646af'>very few</font>  <font color='#eb4646'>few</font>  <font color='#ff9628'>some</font>  <font color='#ffe13c'>good</font>  <font color='#a0eb5a'>many</font>  <font color='#28dc78'>huge</font>"
+	self.legend.Text = "Fans of <b>" .. Artists.byId[aid].name .. "</b>:  <font color='#9646af'>very few</font>  <font color='#eb4646'>few</font>  <font color='#ff9628'>some</font>  <font color='#ffe13c'>good</font>  <font color='#a0eb5a'>many</font>  <font color='#28dc78'>huge</font>"
 	self:refreshCountry()
 	self:refreshRoutePanel()
 end
 
 return MapScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX173E58173D194BFA9FD59BA507E52B8D"><Properties><string name="Name">SocialScreen</string><ProtectedString name="Source"><![CDATA[-- SOCIAL: what fans post about your artists. Good shows get love, bad shows and high prices get criticism.
+<Item class="ModuleScript" referent="RBX9C157CCA1F564339B7EA320021464316"><Properties><string name="Name">SocialScreen</string><ProtectedString name="Source"><![CDATA[-- SOCIAL: what fans post about your artists. Good shows get love, bad shows and high prices get criticism.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local Artists = require(Root.Data.Artists)
@@ -10858,7 +10856,7 @@ end
 
 return SocialScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX1DA6EDF95568424398538E0896B039E1"><Properties><string name="Name">StagesScreen</string><ProtectedString name="Source"><![CDATA[-- MY STAGES: all your stage designs in one place. Edit, copy, delete or start a new one.
+<Item class="ModuleScript" referent="RBX3B04A4B57FDA4D7FB4307054C2D9706E"><Properties><string name="Name">StagesScreen</string><ProtectedString name="Source"><![CDATA[-- MY STAGES: all your stage designs in one place. Edit, copy, delete or start a new one.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local StageItems = require(Root.Data.StageItems)
@@ -11096,7 +11094,7 @@ end
 
 return StagesScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXCC3A58A39748481999293E9FD5F21FEC"><Properties><string name="Name">ToursScreen</string><ProtectedString name="Source"><![CDATA[-- TOURS screen: ticket sales, prices, marketing and results of your tours.
+<Item class="ModuleScript" referent="RBX3BA9FEE2396F4E5B9027FD99C08220C5"><Properties><string name="Name">ToursScreen</string><ProtectedString name="Source"><![CDATA[-- TOURS screen: ticket sales, prices, marketing and results of your tours.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local Countries = require(Root.Data.Countries)
@@ -11296,7 +11294,7 @@ end
 return ToursScreen
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="ModuleScript" referent="RBXCF93A7A2AC1648278641BFD7C3B74C62"><Properties><string name="Name">SoundFX</string><ProtectedString name="Source"><![CDATA[-- Music and sound effects. Every sound is a part (PlaybackRegion) of a few uploaded files, see Data/Audio.lua.
+<Item class="ModuleScript" referent="RBXDA72DF2FC1634C878619623D57EE4AB9"><Properties><string name="Name">SoundFX</string><ProtectedString name="Source"><![CDATA[-- Music and sound effects. Every sound is a part (PlaybackRegion) of a few uploaded files, see Data/Audio.lua.
 -- Without uploaded IDs every function quietly does nothing.
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
@@ -11476,7 +11474,7 @@ end
 
 return SoundFX
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX67052829E9CD45B39FDFCD556876EC28"><Properties><string name="Name">Stage3D</string><ProtectedString name="Source"><![CDATA[-- The 3D world: ground, the build area of the current stage design, and the placed design items.
+<Item class="ModuleScript" referent="RBX40C3C14113954378B9590CB2C65CECAC"><Properties><string name="Name">Stage3D</string><ProtectedString name="Source"><![CDATA[-- The 3D world: ground, the build area of the current stage design, and the placed design items.
 -- There is no fixed stage: everything (decks, catwalks, center stages) is built from items.
 local Lighting = game:GetService("Lighting")
 local Root = script:FindFirstAncestor("Headliner")
@@ -11818,7 +11816,7 @@ end
 
 return Stage3D
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXFC6083F92DEF4428B4608369F35485DD"><Properties><string name="Name">UI</string><ProtectedString name="Source"><![CDATA[-- Tiny UI toolkit. All layouts are designed for a 1920x1080 canvas that gets scaled to the screen.
+<Item class="ModuleScript" referent="RBX88D67DF36B9645E6942C25248DA956B8"><Properties><string name="Name">UI</string><ProtectedString name="Source"><![CDATA[-- Tiny UI toolkit. All layouts are designed for a 1920x1080 canvas that gets scaled to the screen.
 local TweenService = game:GetService("TweenService")
 
 local UI = {}
@@ -12074,7 +12072,7 @@ end
 
 return UI
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX788D935344EE4BBFB9210B0589558146"><Properties><string name="Name">Venue</string><ProtectedString name="Source"><![CDATA[-- Builds the inside of a venue around the stage and fills it with a crowd.
+<Item class="ModuleScript" referent="RBX46DDA5558A5544029B3ECFD3A83C2E1F"><Properties><string name="Name">Venue</string><ProtectedString name="Source"><![CDATA[-- Builds the inside of a venue around the stage and fills it with a crowd.
 --   arena:   oval bowl with lower and upper tier, sections with stairs, concourse, suites, LED ribbon, roof rig,
 --            black drapes behind an end stage (or a full bowl around a center stage)
 --   stadium: football stadium with pitch and floor cover, two tiers all around, roof with floodlights
@@ -12912,7 +12910,7 @@ end
 
 return Venue
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX64EDD1F50FBC41658FDBE1FCA1BBA83D"><Properties><string name="Name">WorldMap3D</string><ProtectedString name="Source"><![CDATA[-- 3D world map table used by the tour planner. Countries light up on hover and can be clicked.
+<Item class="ModuleScript" referent="RBX81D8439153914630B45DBA3914C53D36"><Properties><string name="Name">WorldMap3D</string><ProtectedString name="Source"><![CDATA[-- 3D world map table used by the tour planner. Countries light up on hover and can be clicked.
 -- Built from Natural Earth borders (see Data/WorldMap.lua). It lives far away from the stage area.
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -13234,7 +13232,7 @@ function WM.activate(opts)
 			end
 			lastMouse = m
 		elseif input.UserInputType == Enum.UserInputType.MouseWheel and not gp and not (opts.isOverUI and opts.isOverUI()) then
-			targetDist = math.clamp(targetDist * (1 - input.Position.Z * 0.15), 45, 560)
+			targetDist = math.clamp(targetDist * (1 - input.Position.Z * 0.15), 45, opts.maxDist or 560)
 			WM.flyTarget = nil
 		end
 	end))
@@ -13314,7 +13312,7 @@ end
 return WM
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="ModuleScript" referent="RBX710A2D5D76BD41489827C18D9157C704"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[-- HEADLINER :: global tuning values
+<Item class="ModuleScript" referent="RBXC82C1E266C5647F78B9DCA66D2E9D87C"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[-- HEADLINER :: global tuning values
 local Config = {}
 
 Config.GAME_TITLE = "HEADLINER"
@@ -13404,7 +13402,7 @@ Config.MARKETING = {
 
 return Config
 ]]></ProtectedString></Properties></Item>
-<Item class="Folder" referent="RBX2AB58BA9AB97494AAC08111945ED8C91"><Properties><string name="Name">Data</string></Properties><Item class="ModuleScript" referent="RBXA5316505C3734D94B08A9109435B369C"><Properties><string name="Name">Achievements</string><ProtectedString name="Source"><![CDATA[-- Goals. Checked after every show / tour.
+<Item class="Folder" referent="RBXA3EFAF41EC074E25A2321140C65B6F93"><Properties><string name="Name">Data</string></Properties><Item class="ModuleScript" referent="RBXC9B940680CA44AD6901B982107CC1B99"><Properties><string name="Name">Achievements</string><ProtectedString name="Source"><![CDATA[-- Goals. Checked after every show / tour.
 local Achievements = {
 	list = {
 		{ id = "first_show", name = "Opening Night", desc = "Play your first show." },
@@ -13432,7 +13430,7 @@ for _, a in ipairs(Achievements.list) do
 end
 return Achievements
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXED75C84B178047D2B5EF819DB6B6C728"><Properties><string name="Name">Artists</string><ProtectedString name="Source"><![CDATA[-- Fictional artists. fans = starting fan count per region.
+<Item class="ModuleScript" referent="RBX43EE05F9F690483B9EE0056EEBAB61B5"><Properties><string name="Name">Artists</string><ProtectedString name="Source"><![CDATA[-- Fictional artists. fans = starting fan count per region.
 -- skill (0-100) = live performance quality. pricePower = how much fans pay compared to an average act.
 -- members: 1 = solo, 2+ = band/group. level = label level needed to sign. starter = can be picked for free at game start.
 
@@ -13569,7 +13567,7 @@ end
 
 return Artists
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXDE86FBEF59D7441E946EAEA4787F94A8"><Properties><string name="Name">Audio</string><ProtectedString name="Source"><![CDATA[-- Roblox asset IDs of the uploaded audio files (folder audio/ in the project, made by tools/music/make_audio.py).
+<Item class="ModuleScript" referent="RBX44470D03FAA6427DAC237BF27E5AA343"><Properties><string name="Name">Audio</string><ProtectedString name="Source"><![CDATA[-- Roblox asset IDs of the uploaded audio files (folder audio/ in the project, made by tools/music/make_audio.py).
 -- 0 = not uploaded yet: the game simply stays silent for that part.
 -- Every artist file holds 12 songs of 30 s (song n starts at (n - 1) * 30 s), see Data/AudioMap.lua.
 local Audio = {}
@@ -13593,7 +13591,7 @@ Audio.IDS = {
 
 return Audio
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXBA2FBDFA3B504A4FB7BD7C6E770A8E7D"><Properties><string name="Name">AudioMap</string><ProtectedString name="Source"><![CDATA[-- Generated by tools/music/make_audio.py: where each sound sits inside the uploaded files (seconds).
+<Item class="ModuleScript" referent="RBX16DA953853DB4F8BB4BA432097B95223"><Properties><string name="Name">AudioMap</string><ProtectedString name="Source"><![CDATA[-- Generated by tools/music/make_audio.py: where each sound sits inside the uploaded files (seconds).
 local AudioMap = {}
 AudioMap.SONG_LEN = 30
 AudioMap.BALLAD_INDEX = 4
@@ -13619,7 +13617,7 @@ AudioMap.SFX = {
 }
 return AudioMap
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX4BC9F78CBB47455C8FFD41F93B5765D6"><Properties><string name="Name">Countries</string><ProtectedString name="Source"><![CDATA[-- Countries and venues.
+<Item class="ModuleScript" referent="RBX21B68176E4474C49896E095008904784"><Properties><string name="Name">Countries</string><ProtectedString name="Source"><![CDATA[-- Countries and venues.
 -- Venue names are parody names inspired by real venues. Capacities follow the real venues'
 -- concert capacities (source: Wikipedia infoboxes, checked Nov 2026). Venues marked "fictional" are made up.
 --
@@ -14108,7 +14106,7 @@ end
 
 return Countries
 ]]></ProtectedString></Properties></Item>
-<Item class="Folder" referent="RBXBB29601459AD430387BD7B4189D370D2"><Properties><string name="Name">MenuCity</string></Properties><Item class="ModuleScript" referent="RBX06B8250EA0754FD2B53BF6DB8563A281"><Properties><string name="Name">lanxus</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="Folder" referent="RBX631ED6DF0810454A86D104164CDF00B3"><Properties><string name="Name">MenuCity</string></Properties><Item class="ModuleScript" referent="RBX21F3A4F2E92148B9A1174B97214685EE"><Properties><string name="Name">lanxus</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -15061,7 +15059,7 @@ return {
 	A = { dom = { -3472, -646 }, bridge = { -2455, -424 } },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX5E41CAD7A2734E05A69BD648109D78B0"><Properties><string name="Name">madrid</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBX681210F8C4104932BC3EF231A0BD6084"><Properties><string name="Name">madrid</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -15570,7 +15568,7 @@ return {
 	A = {  },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXB801CFD4C27A45859EC2874F576545F0"><Properties><string name="Name">msg</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBXA4B7AB9F5E1949DC8F3362548864836D"><Properties><string name="Name">msg</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z (map turned -29 deg)
 return {
@@ -16171,7 +16169,7 @@ return {
 	A = { empire = { 1365, -233 }, penn = { -238, 159 } },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXF87401C537E547B1B258AD9952D4B2AB"><Properties><string name="Name">o3</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBX01C5A1DD4DEE4888886EEA08D7330951"><Properties><string name="Name">o3</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -16761,7 +16759,7 @@ return {
 	A = {  },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXF28F6B674EF24359B30F650EC7FD235C"><Properties><string name="Name">paris</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBX3C557278BD4649F8A1515F0E9C870625"><Properties><string name="Name">paris</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -17449,7 +17447,7 @@ return {
 	A = {  },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXC4A8A2DFB48449DCB60C164347E670BE"><Properties><string name="Name">wembley</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBXF610B71524ED4BCE9A4ABCC853DCF7E0"><Properties><string name="Name">wembley</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -17869,7 +17867,7 @@ return {
 	A = { station = { 12, -1636 } },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX7C49DE86D68B4F09B074F4236FCDAF0D"><Properties><string name="Name">zurich</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBXC77738CB60A644D090872E9E38B6067E"><Properties><string name="Name">zurich</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -18505,7 +18503,7 @@ return {
 }
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="ModuleScript" referent="RBXA29B669391124B818AA3F3493239477A"><Properties><string name="Name">Regions</string><ProtectedString name="Source"><![CDATA[-- World regions. Artists have a fan count per region.
+<Item class="ModuleScript" referent="RBX9DEC79FA640D497892392411D8535B3C"><Properties><string name="Name">Regions</string><ProtectedString name="Source"><![CDATA[-- World regions. Artists have a fan count per region.
 local Regions = {
 	list = {
 		{ id = "EU", name = "Europe" },
@@ -18524,7 +18522,7 @@ end
 
 return Regions
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX3735ECEC07474595BE864BDDD08AF444"><Properties><string name="Name">Reviews</string><ProtectedString name="Source"><![CDATA[-- Review quotes by star rating. {artist} {venue} {city} are replaced.
+<Item class="ModuleScript" referent="RBX1D3A4EF81E40455B967F07BFFDA8063C"><Properties><string name="Name">Reviews</string><ProtectedString name="Source"><![CDATA[-- Review quotes by star rating. {artist} {venue} {city} are replaced.
 return {
 	[1] = {
 		"\"A night to forget. {artist} looked lost at {venue}.\"",
@@ -18549,7 +18547,7 @@ return {
 	},
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXF04740889715418B9520B72ECD825177"><Properties><string name="Name">Rivals</string><ProtectedString name="Source"><![CDATA[-- Fictional rival tours for the "Top Grossing Tours" chart. Beat them all!
+<Item class="ModuleScript" referent="RBX59D356DD2CA04D2BB4556AACDBA057C1"><Properties><string name="Name">Rivals</string><ProtectedString name="Source"><![CDATA[-- Fictional rival tours for the "Top Grossing Tours" chart. Beat them all!
 return {
 	{ artist = "Aurora Vale", tour = "The Celestial Tour", gross = 520000000, shows = 120, attendance = 6100000 },
 	{ artist = "The Midnight Kings", tour = "Crown & Glory Tour", gross = 410000000, shows = 88, attendance = 4200000 },
@@ -18566,7 +18564,7 @@ return {
 	{ artist = "The Weekend Plans", tour = "Small Rooms Tour", gross = 600000, shows = 24, attendance = 30000 },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXC312EC150C854F1C998976A40EFD7A9A"><Properties><string name="Name">Social</string><ProtectedString name="Source"><![CDATA[-- Fan posts for the SOCIAL feed. Placeholders: {artist} {venue} {city} {country} {tour} {song} {price} {tag} {item} {label}
+<Item class="ModuleScript" referent="RBX5CFAA073730248BB9F55D187561CDB22"><Properties><string name="Name">Social</string><ProtectedString name="Source"><![CDATA[-- Fan posts for the SOCIAL feed. Placeholders: {artist} {venue} {city} {country} {tour} {song} {price} {tag} {item} {label}
 -- mood: 1 = positive, 0 = neutral, -1 = negative. photo = the post shows a concert photo.
 local Social = {}
 
@@ -18795,7 +18793,7 @@ Social.ITEM_NAMES = {
 
 return Social
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX4E09500B7E62422C9AFA4F3250E83D98"><Properties><string name="Name">StageItems</string><ProtectedString name="Source"><![CDATA[-- Stage design catalog.
+<Item class="ModuleScript" referent="RBX831F1273E5AE4CA2A07FC40670159489"><Properties><string name="Name">StageItems</string><ProtectedString name="Source"><![CDATA[-- Stage design catalog.
 -- cost  = production cost per show (crew, transport, power)
 -- pts   = production value points (more points = more impressive show)
 -- tags  = used for genre bonuses
@@ -19089,7 +19087,7 @@ end
 
 return StageItems
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXB4F39471338F418B9E582E2C88633A48"><Properties><string name="Name">WorldMap</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/gen_worldmap.py from Natural Earth borders (world-atlas 2.0.2, public domain).
+<Item class="ModuleScript" referent="RBX7E9FEC91E28544EAA2DBFF9F86BBAD93"><Properties><string name="Name">WorldMap</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/gen_worldmap.py from Natural Earth borders (world-atlas 2.0.2, public domain).
 -- land: 1 degree grid (W x H). countries: 0.5 degree grid (CW x CH). Latitude 80N..58S.
 -- rects = { row, col, width, height } in grid cells (0-based).
 return {
@@ -19138,7 +19136,7 @@ return {
 }
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="Folder" referent="RBX13E9C3E2F2624F518DCD35FC11C0165E"><Properties><string name="Name">Logic</string></Properties><Item class="ModuleScript" referent="RBX265AE5F4ED944508B6B94B6669548BA5"><Properties><string name="Name">GameState</string><ProtectedString name="Source"><![CDATA[-- Game state: everything that gets saved. Pure Lua (no Roblox APIs).
+<Item class="Folder" referent="RBX5EFF7124F2244EB0B6DA4467035B2503"><Properties><string name="Name">Logic</string></Properties><Item class="ModuleScript" referent="RBX6CD364525E5E419EB54313F322E3DE79"><Properties><string name="Name">GameState</string><ProtectedString name="Source"><![CDATA[-- Game state: everything that gets saved. Pure Lua (no Roblox APIs).
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local Countries = require(Root.Data.Countries)
@@ -20012,7 +20010,7 @@ end
 
 return GS
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX7210024FC88E4AEDA5E7E0A2CEE73CD0"><Properties><string name="Name">Sim</string><ProtectedString name="Source"><![CDATA[-- Simulation formulas: demand, ticket sales, production value, show results.
+<Item class="ModuleScript" referent="RBXF379B3492B3C49959338874471CEBB8B"><Properties><string name="Name">Sim</string><ProtectedString name="Source"><![CDATA[-- Simulation formulas: demand, ticket sales, production value, show results.
 -- Pure Lua (no Roblox APIs) so it can be unit tested outside of Roblox.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
@@ -20537,7 +20535,7 @@ end
 
 return Sim
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXB96BFEFB25844E9D9CF8CF8A5D24CCA6"><Properties><string name="Name">Social</string><ProtectedString name="Source"><![CDATA[-- Generates fan posts for the SOCIAL feed. Pure Lua (no Roblox APIs).
+<Item class="ModuleScript" referent="RBX3F6AE1C9336C4825A9C85C1A762A90B9"><Properties><string name="Name">Social</string><ProtectedString name="Source"><![CDATA[-- Generates fan posts for the SOCIAL feed. Pure Lua (no Roblox APIs).
 local Root = script:FindFirstAncestor("Headliner")
 local Data = require(Root.Data.Social)
 local Countries = require(Root.Data.Countries)
@@ -20738,7 +20736,7 @@ end
 
 return Social
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX31FBCFD5FDC6437C872AA7E1889CCD8C"><Properties><string name="Name">Util</string><ProtectedString name="Source"><![CDATA[-- Small helpers (pure Lua, no Roblox APIs)
+<Item class="ModuleScript" referent="RBXB7BFA715F7CD48B2B84F29AB3940746F"><Properties><string name="Name">Util</string><ProtectedString name="Source"><![CDATA[-- Small helpers (pure Lua, no Roblox APIs)
 local Util = {}
 
 function Util.clamp(x, a, b)
@@ -20941,12 +20939,12 @@ end
 return Util
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="Folder" referent="RBXCE44E5D06C3A4A8AB007B533B9CF0AE6"><Properties><string name="Name">Remotes</string></Properties><Item class="RemoteFunction" referent="RBX4E2295EF556B4BF9B0AFFDAF56AD5152"><Properties><string name="Name">LoadGame</string></Properties></Item>
-<Item class="RemoteEvent" referent="RBXBB602A5FA3BC4160A42DCFD2437D7360"><Properties><string name="Name">SaveGame</string></Properties></Item>
+<Item class="Folder" referent="RBXFC018E3C665745A6B5523C04ABAE6D6A"><Properties><string name="Name">Remotes</string></Properties><Item class="RemoteFunction" referent="RBX70DAA52161DC4EAEB1D2A6AB9B62EE9C"><Properties><string name="Name">LoadGame</string></Properties></Item>
+<Item class="RemoteEvent" referent="RBX2D6D0A40D439461CB646FE7EE511DA97"><Properties><string name="Name">SaveGame</string></Properties></Item>
 </Item>
 </Item>
 </Item>
-<Item class="ServerScriptService" referent="RBX10A227A12410449381AA0D21715430EC"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBX5632486F397C4F5D90D8CCF1FC19CCA1"><Properties><string name="Name">SaveServer</string><bool name="Disabled">false</bool><ProtectedString name="Source"><![CDATA[-- HEADLINER server: disables avatars and handles saving (DataStore only works in a published place).
+<Item class="ServerScriptService" referent="RBXC5B7A5C2E1B844349AB3705F984555CC"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBXF6EC1C1CF0DC46128E3C4ECBDEDE2D1F"><Properties><string name="Name">SaveServer</string><bool name="Disabled">false</bool><ProtectedString name="Source"><![CDATA[-- HEADLINER server: disables avatars and handles saving (DataStore only works in a published place).
 local Players = game:GetService("Players")
 local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -20993,7 +20991,7 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="StarterPlayer" referent="RBX45F9FE67B81F4522A7414ED7646197F2"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX7F33056139554F14B4553CCC76644062"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX2406814082DF46E0A538EEE8646B2CE9"><Properties><string name="Name">Main</string><bool name="Disabled">false</bool><ProtectedString name="Source"><![CDATA[-- HEADLINER client entry point
+<Item class="StarterPlayer" referent="RBXE8F0F1C5E2F74FF49FDFBB2BFB45E274"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX8ABD4D832DBD41968599776DF838D74B"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX37882FD63A854C01B0C27EA15054D51A"><Properties><string name="Name">Main</string><bool name="Disabled">false</bool><ProtectedString name="Source"><![CDATA[-- HEADLINER client entry point
 if not game:IsLoaded() then
 	game.Loaded:Wait()
 end

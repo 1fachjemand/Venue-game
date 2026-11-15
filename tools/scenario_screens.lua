@@ -21,15 +21,25 @@ MOCK.clickExact("+ PLAN A TOUR")
 dump("05_plan_artist")
 MOCK.clickExact("SELECT")
 local map = app.screens.planner
-for _, cid in ipairs({ "uk", "fr", "de" }) do map.selected = cid map:refresh() MOCK.click("^%+ ADD$", 1) end
-map.selected = "de" map:refresh() MOCK.click("^%+ ADD$", 1)
+local function book(n)
+	map.picked = nil map:refresh()
+	MOCK.click("^PICK$", n)
+	local last = map.draft.shows[#map.draft.shows]
+	local d = last and last.day or (app.state.day + 21)
+	while map:dayState(d) ~= "ok" do d = d + 1 end
+	map:dayClicked(d)
+end
+dump("06a_plan_empty")
+for _, cid in ipairs({ "uk", "fr", "de" }) do map.selected = cid map:refresh() book(1) end
+map.selected = "de" map:refresh() book(1)
 map.selected = "uk" map:refresh()
-MOCK.click("^ARENAS") MOCK.click("^%+ ADD$", 1)
+MOCK.click("^ARENAS") book(1)
 app.state.money = 5000000
+map.picked = nil map:refresh()
 dump("06_plan_route")
-MOCK.clickExact("CALENDAR", 1)
+map.selected = "fr" map:refresh()
+MOCK.click("^PICK$", 2)
 dump("06b_calendar")
-MOCK.clickExact("X", 1)
 MOCK.clickExact("NEXT: STAGE >")
 dump("07_plan_stage")
 if #MOCK.buttons("^BUILD ARENA STAGE$") > 0 then

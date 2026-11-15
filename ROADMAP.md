@@ -35,6 +35,7 @@
 - [erledigt] Menü-Venues mit echter Umgebung aus OpenStreetMap, Glas-Eingänge undurchsichtig, Weltkarte repariert und übersichtlicher
 - [erledigt] Stadt um die Hallen, Z-Fighting beseitigt, alle alten Modelle überarbeitet, 17 neue Teile
 - [erledigt] Tourplanung mit Kalender und Verfügbarkeit, fester Ablauf Termine → Bühne → Tickets, Saalplan-Preise pro Bereich, Tour-Abrechnung mit Diagrammen
+- [erledigt] Terminplanung neu: Kartenfenster + Hallenliste links, großer Monatskalender rechts (Halle wählen, Tage anklicken)
 - Büro mit Roblox-Charakter, der sich an den PC setzt (Label-Menü im PC)
 
 ## Später

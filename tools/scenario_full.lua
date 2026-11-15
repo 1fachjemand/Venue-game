@@ -39,6 +39,21 @@ MOCK.clickExact("Let's go!")
 assert(app.current == "office", "not in office")
 log("label", app.state.labelName, "money", app.state.money)
 
+-- pick the n-th venue in the list and book it on the next free day after the last show
+local function book(n)
+	local map = app.screens.planner
+	map.picked = nil
+	map:refresh()
+	MOCK.click("^PICK$", n)
+	assert(map.picked, "no venue picked")
+	local last = map.draft.shows[#map.draft.shows]
+	local d = last and last.day or (app.state.day + 21)
+	while map:dayState(d) ~= "ok" do d = d + 1 end
+	local before = #map.draft.shows
+	map:dayClicked(d)
+	assert(#map.draft.shows == before + 1, "day click did not add a show")
+end
+
 -- 2) plan a tour (wizard)
 MOCK.clickExact("+ PLAN A TOUR")
 local map = app.screens.planner
@@ -48,11 +63,11 @@ assert(map.step == 2 and map.draft.artistId == "lila", "step 2 with lila")
 for _, cid in ipairs({ "uk", "fr", "de", "nl" }) do
 	map.selected = cid
 	map:refresh()
-	MOCK.click("^%+ ADD$", 1)
+	book(1)
 end
 map.selected = "uk"
 map:refresh()
-MOCK.click("^%+ ADD$", 2)
+book(2)
 log("draft shows", #map.draft.shows)
 MOCK.clickExact("Europe")
 steps(5)
@@ -64,18 +79,29 @@ UIS0 = game:GetService("UserInputService")
 UIS0.InputChanged:Fire(MOCK.input(Enum.UserInputType.MouseWheel, { Position = Vector3.new(0, 0, 1) }), false)
 steps(3)
 MOCK.click("^CLUBS")
-log("club filter buttons", #MOCK.buttons("^%+ ADD$"))
+log("club filter buttons", #MOCK.buttons("^PICK"))
 MOCK.click("^ALL")
 map:hoverCountry("ch")
 log("hover text", MOCK.texts("Switzerland")[1])
 -- calendar: move the first venue to another free day
-local before = map.draft.shows[1].day
-MOCK.clickExact("CALENDAR", 1)
-MOCK.clickExact("Later >")
-MOCK.click("^2[0-8]$", 1)
-log("calendar moved first show", before, "->", map.draft.shows[1].day, "shows", #map.draft.shows)
-for i = 2, #map.draft.shows do assert(map.draft.shows[i].day >= map.draft.shows[i - 1].day, "dates not sorted") end
-MOCK.click("^X$", 5)
+local m0 = map.calMonth[2]
+MOCK.clickExact("<")
+assert(map.calMonth[2] ~= m0, "month navigation failed")
+map.calMonth = { 2027, m0 }
+map:refresh()
+log("calendar month", MOCK.texts("^%a+ 20%d%d$")[1], "free days", #MOCK.texts("^free$"), "taken", #MOCK.texts("^taken:"))
+-- move the first show: remove it from its day, book it again later
+local first = map.draft.shows[1]
+map.picked = first.venueId
+map:dayClicked(first.day)
+local d = first.day + 1
+while map:dayState(d) ~= "ok" do d = d + 1 end
+map:dayClicked(d)
+log("calendar moved first show", first.day, "->", d, "shows", #map.draft.shows)
+for i = 2, #map.draft.shows do assert(map.draft.shows[i].day > map.draft.shows[i - 1].day, "dates not sorted") end
+local n0 = #map.draft.shows
+map:dayClicked(map.draft.shows[n0].day)
+assert(#map.draft.shows == n0 - 1, "click on own show did not remove it")
 MOCK.clickExact("NEXT: STAGE >")
 assert(map.step == 3)
 MOCK.clickExact("EDIT", 1)
@@ -391,13 +417,13 @@ app:go("planner", { artistId = "nova" })
 map.selected = "uk"
 map:refresh()
 MOCK.click("^STADIUMS")
-MOCK.click("^%+ ADD$", 3) -- Wemblee (biggest UK stadium)
+book(3) -- Wemblee (biggest UK stadium)
 MOCK.click("^CLUBS")
-MOCK.click("^%+ ADD$", 1) -- a club show too: needs a second, smaller production
+book(1) -- a club show too: needs a second, smaller production
 map.selected = "us"
 map:refresh()
 MOCK.click("^STADIUMS")
-MOCK.click("^%+ ADD$", 1)
+book(1)
 log("nova draft", #map.draft.shows, map.draft.artistId)
 MOCK.clickExact("NEXT: STAGE >")
 log("production sections:", table.concat(MOCK.texts("VENUES  %("), " | "))
@@ -440,7 +466,7 @@ log("best chart rank", best)
 app:go("planner", { artistId = "kai" })
 map.selected = "us"
 map:refresh()
-MOCK.click("^%+ ADD$", 1)
+book(1)
 MOCK.clickExact("NEXT: STAGE >")
 MOCK.clickExact("STAGE READY - NEXT: TICKETS >")
 MOCK.clickExact("NEXT: CONFIRM >")

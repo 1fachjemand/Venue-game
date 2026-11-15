@@ -320,7 +320,7 @@ function WM.activate(opts)
 			end
 			lastMouse = m
 		elseif input.UserInputType == Enum.UserInputType.MouseWheel and not gp and not (opts.isOverUI and opts.isOverUI()) then
-			targetDist = math.clamp(targetDist * (1 - input.Position.Z * 0.15), 45, 560)
+			targetDist = math.clamp(targetDist * (1 - input.Position.Z * 0.15), 45, opts.maxDist or 560)
 			WM.flyTarget = nil
 		end
 	end))

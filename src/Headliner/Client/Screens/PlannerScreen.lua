@@ -46,106 +46,18 @@ end
 function MapScreen.new(app)
 	local self = setmetatable({ app = app, step = 1 }, MapScreen)
 	self.frame = UI.New("Frame", { Parent = app.content, Size = UI.px(1920, 1008), BackgroundTransparency = 1, Visible = false, Name = "Planner" })
+	-- in step 2 the 3D map shows only through the map window: dark cover around it
+	self.mapMask = UI.New("Frame", { Parent = self.frame, Size = UI.px(1920, 1008), BackgroundTransparency = 1, Visible = false, Name = "MapMask" })
+	for _, r in ipairs({ { -3000, 0, 7920, 72 }, { -3000, 72, 3020, 500 }, { 780, 72, 4140, 500 }, { -3000, 572, 7920, 3000 } }) do
+		UI.New("Frame", { Parent = self.mapMask, Position = UI.px(r[1], r[2]), Size = UI.px(r[3], r[4]), BackgroundColor3 = T.bg, BorderSizePixel = 0 })
+	end
 	self.stepBar = UI.New("Frame", { Parent = self.frame, Position = UI.px(20, 8), Size = UI.px(1880, 52), BackgroundTransparency = 1 })
 	self.draft = { artistId = nil, name = "", designs = {}, firstIn = 21, gap = 2, watchFirst = true, price = 30, prices = {}, shows = {} }
 	-- step 2 (route) keeps its map alive between visits; the other steps are rebuilt
 	self.routeView = UI.New("Frame", { Parent = self.frame, Size = UI.px(1920, 1008), BackgroundTransparency = 1, Visible = false })
 	self.body = UI.New("Frame", { Parent = self.frame, Size = UI.px(1920, 1008), BackgroundTransparency = 1 })
 	self:buildMap()
-	self:buildCountryPanel()
-	self.routePanel = UI.Panel(self.routeView, UI.px(1468, 72), UI.px(432, 928))
 	return self
-end
-
------------------------------------------------------------------- map (3D world map table, see Client/WorldMap3D)
-function MapScreen:buildMap()
-	-- the map uses the whole left area; the venue list of a country slides over its lower part
-	local view = UI.New("Frame", { Parent = self.routeView, Position = UI.px(20, 72), Size = UI.px(1432, 928), BackgroundTransparency = 1, Name = "MapView" })
-	self.mapView = view
-	local bar = UI.Panel(view, UI.px(0, 0), UI.px(1432, 48), T.panel)
-	bar.BackgroundTransparency = 0.2
-	self.mapBar = bar
-	UI.Label(bar, "WORLD MAP", UI.px(16, 8), UI.px(170, 32), { textSize = 22, font = UI.FontBlack })
-	local x = 190
-	for _, v in ipairs(VIEWS) do
-		local w = #v[1] * 10 + 34
-		UI.Button(bar, v[1], UI.px(x, 9), UI.px(w, 30), { textSize = 14 }, function()
-			WorldMap3D.flyTo(v[2], v[3], v[4])
-		end)
-		x = x + w + 8
-	end
-	UI.Label(bar, "Drag = move   Wheel = zoom", UI.px(1190, 8), UI.px(226, 32), { textSize = 13, color = T.sub, alignX = Enum.TextXAlignment.Right })
-	local legendBox = UI.Panel(view, UI.px(0, 890), UI.px(1432, 38), T.panel)
-	legendBox.BackgroundTransparency = 0.2
-	self.legendBox = legendBox
-	self.legend = UI.Label(legendBox, "", UI.px(14, 0), UI.px(1404, 38), { textSize = 14, color = T.sub, rich = true })
-	self.hoverBox = UI.New("TextLabel", {
-		Parent = view,
-		Position = UI.px(10, 60),
-		Size = UI.px(480, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		BackgroundColor3 = T.panel,
-		BackgroundTransparency = 0.1,
-		Text = "",
-		RichText = true,
-		TextWrapped = true,
-		TextColor3 = T.text,
-		TextSize = 16,
-		Font = UI.Font,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Visible = false,
-		UI.Corner(8),
-		UI.Padding(12, 12, 8, 8),
-		UI.Stroke(T.gold, 1, 0.2),
-	})
-end
-
--- true if the mouse is over one of the planner's panels (then the 3D map ignores it)
-function MapScreen:overUI()
-	if self.app.modalOpen then
-		return true
-	end
-	local m = UserInputService:GetMouseLocation()
-	if self.calendar then
-		return true
-	end
-	for _, p in ipairs({ self.mapBar, self.legendBox, self.routePanel, self.countryPanel, self.stepBar, self.app.hud, self.hoverBox }) do
-		if p and p.Visible then
-			local a, sz = p.AbsolutePosition, p.AbsoluteSize
-			if m.X >= a.X and m.X <= a.X + sz.X and m.Y >= a.Y and m.Y <= a.Y + sz.Y then
-				return true
-			end
-		end
-	end
-	return false
-end
-
-function MapScreen:activateMap()
-	if self.app.mode ~= "menu" then
-		return
-	end
-	self.app.backdrop.Visible = false
-	WorldMap3D.activate({
-		isOverUI = function()
-			return self:overUI()
-		end,
-		onClick = function(cid)
-			self.selected = cid
-			self:refresh()
-		end,
-		onHover = function(cid)
-			self:hoverCountry(cid)
-		end,
-		screenCenter = function()
-			-- centre of the part of the map that is not covered by the venue list
-			local a, sz = self.mapView.AbsolutePosition, self.mapView.AbsoluteSize
-			local h = sz.Y
-			if self.countryPanel and self.countryPanel.Visible then
-				h = self.countryPanel.AbsolutePosition.Y - a.Y
-			end
-			return a.X + sz.X / 2, a.Y + h / 2
-		end,
-	})
 end
 
 function MapScreen:deactivateMap()
@@ -335,119 +247,210 @@ function MapScreen:estimate()
 	end)
 end
 
------------------------------------------------------------------- country panel (step 2)
-function MapScreen:buildCountryPanel()
-	local panel = UI.Panel(self.routeView, UI.px(20, 684), UI.px(1432, 316))
-	self.countryPanel = panel
-	panel.Visible = false
-	UI.Button(panel, "✕", UI.px(1388, 6), UI.px(36, 32), { textSize = 16, color = T.panel3 }, function()
-		self.selected = nil
-		self:refreshCountry()
-	end)
-	self.countryTitle = UI.Label(panel, "", UI.px(20, 8), UI.px(560, 32), { textSize = 26, font = UI.FontBlack })
-	self.countryInfo = UI.Label(panel, "", UI.px(20, 40), UI.px(1392, 24), { textSize = 15, color = T.sub, rich = true })
-	-- venue type filter
-	self.venueFilter = "ALL"
-	self.filterBar = UI.New("Frame", { Parent = panel, Position = UI.px(660, 8), Size = UI.px(716, 32), BackgroundTransparency = 1 })
-	UI.List(false, 6, Enum.HorizontalAlignment.Right).Parent = self.filterBar
-	self.venueList = UI.Scroll(panel, UI.px(12, 70), UI.px(1408, 238))
-	UI.List(true, 6).Parent = self.venueList
+------------------------------------------------------------------ step 2: dates
+-- Left: the world map (pick a country) and its venues (pick one). Right: the calendar. With a venue picked,
+-- every day shows if that venue is free; a click on a free day books the show there. A click on one of your
+-- shows removes it. Shows of your other artists are on the calendar too.
+local MAP_W, MAP_H = 760, 500
+function MapScreen:buildMap()
+	local view = UI.New("Frame", { Parent = self.routeView, Position = UI.px(20, 72), Size = UI.px(MAP_W, MAP_H), BackgroundTransparency = 1, Name = "MapView" })
+	self.mapView = view
+	local bar = UI.Panel(view, UI.px(0, 0), UI.px(MAP_W, 86), T.panel)
+	bar.BackgroundTransparency = 0.15
+	self.mapBar = bar
+	UI.Label(bar, "1. WHERE?", UI.px(14, 6), UI.px(200, 30), { textSize = 20, font = UI.FontBlack, color = T.accent })
+	UI.Label(bar, "Click a country. Drag = move, wheel = zoom.", UI.px(170, 6), UI.px(580, 30), { textSize = 14, color = T.sub, alignX = Enum.TextXAlignment.Right })
+	local x = 10
+	for _, v in ipairs(VIEWS) do
+		local w = #v[1] * 8 + 24
+		UI.Button(bar, v[1], UI.px(x, 44), UI.px(w, 32), { textSize = 13 }, function()
+			WorldMap3D.flyTo(v[2], v[3], v[4] * 1.7)
+		end)
+		x = x + w + 6
+	end
+	local legendBox = UI.Panel(view, UI.px(0, MAP_H - 34), UI.px(MAP_W, 34), T.panel)
+	legendBox.BackgroundTransparency = 0.15
+	self.legendBox = legendBox
+	self.legend = UI.Label(legendBox, "", UI.px(10, 0), UI.px(MAP_W - 20, 34), { textSize = 13, color = T.sub, rich = true })
+	self.hoverBox = UI.New("TextLabel", {
+		Parent = view,
+		Position = UI.px(10, 96),
+		Size = UI.px(440, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundColor3 = T.panel,
+		BackgroundTransparency = 0.1,
+		Text = "",
+		RichText = true,
+		TextWrapped = true,
+		TextColor3 = T.text,
+		TextSize = 15,
+		Font = UI.Font,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Visible = false,
+		UI.Corner(8),
+		UI.Padding(12, 12, 8, 8),
+		UI.Stroke(T.gold, 1, 0.2),
+	})
+	-- covers the 3D map everywhere except the map window
+	self.venuePanel = UI.Panel(self.routeView, UI.px(20, MAP_H + 84), UI.px(MAP_W, 1000 - MAP_H - 84))
+	self.calPanel = UI.Panel(self.routeView, UI.px(MAP_W + 40, 72), UI.px(1880 - MAP_W - 20, 928))
 end
 
-function MapScreen:refreshCountry()
-	local c = self.selected and Countries.byId[self.selected]
-	UI.ClearChildren(self.venueList)
-	-- the venue list only covers the map while a country is open
-	self.countryPanel.Visible = c ~= nil
-	self.legendBox.Position = c and UI.px(0, 566) or UI.px(0, 890)
-	if not c then
-		self.countryTitle.Text = "Pick a country"
-		self.countryInfo.Text = "Click a pin on the map. Pin colours show how many fans " .. (self.draft.artistId and Artists.byId[self.draft.artistId].name or "your artist") .. " has there."
+-- the 3D map only reacts inside its window
+function MapScreen:overUI()
+	if self.app.modalOpen then
+		return true
+	end
+	local m = UserInputService:GetMouseLocation()
+	local a, sz = self.mapView.AbsolutePosition, self.mapView.AbsoluteSize
+	if m.X < a.X or m.X > a.X + sz.X or m.Y < a.Y or m.Y > a.Y + sz.Y then
+		return true
+	end
+	for _, p in ipairs({ self.mapBar, self.legendBox, self.hoverBox }) do
+		if p and p.Visible then
+			local pa, ps = p.AbsolutePosition, p.AbsoluteSize
+			if m.X >= pa.X and m.X <= pa.X + ps.X and m.Y >= pa.Y and m.Y <= pa.Y + ps.Y then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+function MapScreen:activateMap()
+	if self.app.mode ~= "menu" then
 		return
 	end
-	local state = self.app.state
-	local aid = self.draft.artistId
-	local tip, pool = Sim.recommendation(state, aid, c.id)
-	self.countryTitle.Text = string.upper(c.name)
-	local info = Regions.byId[c.region].name .. "   |   Price level x" .. string.format("%.2f", c.priceLevel)
-		.. string.format("   |   <b>Promoter tip:</b> %s should play <b>%s</b> here (~%s interested fans)", Artists.byId[aid].name, tip, Util.short(pool))
-	local last = state.artists[aid].lastPlayed[c.id]
-	if last and state.day - last < 180 then
-		info = info .. "  <font color='#ffc107'>(played here recently)</font>"
+	self.app.backdrop.Visible = false
+	WorldMap3D.activate({
+		isOverUI = function()
+			return self:overUI()
+		end,
+		onClick = function(cid)
+			self.selected = cid
+			self:refresh()
+		end,
+		onHover = function(cid)
+			self:hoverCountry(cid)
+		end,
+		maxDist = 1000,
+		screenCenter = function()
+			local a, sz = self.mapView.AbsolutePosition, self.mapView.AbsoluteSize
+			return a.X + sz.X / 2, a.Y + sz.Y / 2 + 20
+		end,
+	})
+	if not self.mapOpened then
+		self.mapOpened = true
+		WorldMap3D.flyTo(VIEWS[2][2], VIEWS[2][3], VIEWS[2][4] * 1.7)
 	end
-	self.countryInfo.Text = info
+end
 
+-- venues of the chosen country (left, below the map)
+function MapScreen:refreshCountry()
+	local p = self.venuePanel
+	UI.ClearChildren(p)
+	local c = self.selected and Countries.byId[self.selected]
+	local state, aid = self.app.state, self.draft.artistId
+	if not c then
+		UI.Label(p, "2. WHICH VENUE?", UI.px(16, 10), UI.px(500, 30), { textSize = 20, font = UI.FontBlack, color = T.accent })
+		UI.Label(p, "Click a country on the map. Colours show how many fans " .. Artists.byId[aid].name .. " has there.", UI.px(16, 46), UI.px(MAP_W - 32, 60), { textSize = 16, color = T.sub, wrap = true })
+		return
+	end
+	local tip, pool = Sim.recommendation(state, aid, c.id)
+	UI.Label(p, string.upper(c.name), UI.px(16, 8), UI.px(400, 30), { textSize = 22, font = UI.FontBlack })
+	local last = state.artists[aid].lastPlayed[c.id]
+	UI.Label(p, "Promoter tip: <b>" .. tip .. "</b>  (~" .. Util.short(pool) .. " fans)" .. ((last and state.day - last < 180) and "  <font color='#ffc107'>played here recently</font>" or ""), UI.px(16, 38), UI.px(MAP_W - 32, 22), { textSize = 14, color = T.sub, rich = true })
 	-- filter chips
-	UI.ClearChildren(self.filterBar)
-	local FILTERS = { { "ALL", nil }, { "CLUBS", { Club = true } }, { "THEATRES & HALLS", { Theatre = true, Hall = true } }, { "ARENAS", { Arena = true, Amphitheatre = true } }, { "STADIUMS", { Stadium = true } } }
-	local allowed = nil
-	for i, f in ipairs(FILTERS) do
+	local FILTERS = { { "ALL", nil }, { "CLUBS", { Club = true } }, { "THEATRES", { Theatre = true, Hall = true } }, { "ARENAS", { Arena = true, Amphitheatre = true } }, { "STADIUMS", { Stadium = true } } }
+	local allowed, x = nil, 16
+	for _, f in ipairs(FILTERS) do
 		local n = 0
 		for _, v in ipairs(c.venues) do
 			if not f[2] or f[2][v.type] then
 				n = n + 1
 			end
 		end
-		local on = self.venueFilter == f[1]
+		local on = (self.venueFilter or "ALL") == f[1]
 		if on then
 			allowed = f[2]
 		end
-		UI.Button(self.filterBar, f[1] .. " (" .. n .. ")", nil, UI.px(#f[1] * 9 + 58, 32), { order = i, textSize = 13, color = on and T.accent2 or T.panel3, textColor = on and Color3.new(0, 0, 0) or T.text, disabled = n == 0 }, function()
+		local w = #f[1] * 9 + 46
+		UI.Button(p, f[1] .. " " .. n, UI.px(x, 66), UI.px(w, 30), { textSize = 13, color = on and T.accent2 or T.panel3, textColor = on and Color3.new(0, 0, 0) or T.text, disabled = n == 0 }, function()
 			self.venueFilter = f[1]
 			self:refreshCountry()
 		end)
+		x = x + w + 6
 	end
+	local list = UI.Scroll(p, UI.px(10, 104), UI.px(MAP_W - 20, 1000 - MAP_H - 84 - 114))
+	UI.List(true, 6).Parent = list
 	local shown = 0
 	for i, v in ipairs(c.venues) do
 		if not allowed or allowed[v.type] then
 			shown = shown + 1
-		local vt = Countries.VENUE_TYPES[v.type]
-		local row = UI.New("Frame", { Parent = self.venueList, Size = UI.px(1386, 56), BackgroundColor3 = T.panel2, BorderSizePixel = 0, LayoutOrder = i, UI.Corner(8) })
-		UI.Pill(row, vt.label, UI.px(12, 16), UI.px(92, 24), UI.rgb(vt.color), 13)
-		UI.Label(row, v.name, UI.px(118, 6), UI.px(420, 26), { textSize = 20, font = UI.FontBold })
-		UI.Label(row, v.city, UI.px(118, 30), UI.px(420, 20), { textSize = 15, color = T.sub })
-		UI.Label(row, Util.number(v.cap), UI.px(550, 6), UI.px(150, 26), { textSize = 20, font = UI.FontBold })
-		UI.Label(row, "capacity", UI.px(550, 30), UI.px(150, 20), { textSize = 14, color = T.sub })
-		UI.Label(row, Util.moneyShort(Sim.venueRent(v)), UI.px(710, 6), UI.px(130, 26), { textSize = 20, font = UI.FontBold })
-		UI.Label(row, "rent / show", UI.px(710, 30), UI.px(130, 20), { textSize = 14, color = T.sub })
-		-- promoter estimate (a range, not a promise)
-		local shows = {}
-		for _, s in ipairs(self.draft.shows) do
-			local sv = Countries.venueById[s.venueId]
-			if sv.countryId == c.id then
-				table.insert(shows, { venueId = s.venueId, price = Sim.avgPrice(Sim.lookOf(sv), self:pricesFor(Sim.lookOf(sv))) })
+			local vt = Countries.VENUE_TYPES[v.type]
+			local picked = self.picked == v.id
+			local row = UI.New("Frame", { Parent = list, Size = UI.px(MAP_W - 44, 58), BackgroundColor3 = picked and UI.shade(T.accent, 0.5) or T.panel2, BorderSizePixel = 0, LayoutOrder = i, UI.Corner(8) })
+			UI.Pill(row, vt.label, UI.px(10, 17), UI.px(84, 24), UI.rgb(vt.color), 12)
+			UI.Label(row, v.name, UI.px(104, 6), UI.px(290, 24), { textSize = 17, font = UI.FontBold })
+			UI.Label(row, v.city .. "  |  " .. Util.number(v.cap) .. " seats  |  rent " .. Util.moneyShort(Sim.venueRent(v)), UI.px(104, 30), UI.px(330, 20), { textSize = 13, color = T.sub })
+			-- promoter estimate (a range, not a promise)
+			local shows = {}
+			for _, s in ipairs(self.draft.shows) do
+				local sv = Countries.venueById[s.venueId]
+				if sv.countryId == c.id then
+					table.insert(shows, { venueId = s.venueId, price = Sim.avgPrice(Sim.lookOf(sv), self:pricesFor(Sim.lookOf(sv))) })
+				end
 			end
-		end
-		table.insert(shows, { venueId = v.id, price = Sim.avgPrice(Sim.lookOf(v), self:pricesFor(Sim.lookOf(v))) })
-		local d = Sim.demands(state, aid, shows, 1)[#shows]
-		local n = Config.DEMAND_NOISE
-		local lo, hi = math.min(1, d * (1 - n) / v.cap), math.min(1, d * (1 + n) / v.cap)
-		local col = rangeColor(lo, hi)
-		UI.Label(row, "Promoter estimate", UI.px(860, 6), UI.px(260, 22), { textSize = 13, color = T.sub })
-		UI.Label(row, rangeText(lo, hi) .. (lo < 0.999 and " full" or ""), UI.px(860, 26), UI.px(260, 24), { textSize = 17, color = col, font = UI.FontBold })
-		UI.Button(row, "+ ADD", UI.px(1260, 8), UI.px(110, 40), { color = T.accent, disabled = #self.draft.shows >= Config.MAX_SHOWS_PER_TOUR }, function()
-			self:addShow(v.id)
-		end)
+			table.insert(shows, { venueId = v.id, price = Sim.avgPrice(Sim.lookOf(v), self:pricesFor(Sim.lookOf(v))) })
+			local d = Sim.demands(state, aid, shows, 1)[#shows]
+			local n = Config.DEMAND_NOISE
+			local lo, hi = math.min(1, d * (1 - n) / v.cap), math.min(1, d * (1 + n) / v.cap)
+			UI.Label(row, rangeText(lo, hi) .. (lo < 0.999 and " full" or ""), UI.px(440, 6), UI.px(150, 46), { textSize = 14, color = rangeColor(lo, hi), font = UI.FontBold, wrap = true })
+			UI.Button(row, picked and "PICKED" or "PICK", UI.px(MAP_W - 150, 10), UI.px(96, 38), { color = picked and T.gold or T.accent, textColor = picked and Color3.new(0, 0, 0) or nil, textSize = 15 }, function()
+				self.picked = picked and nil or v.id
+				-- jump to the month where the next show would fit
+				if self.picked then
+					local lastS = self.draft.shows[#self.draft.shows]
+					local from = lastS and lastS.day or (state.day + 21)
+					local y, m = Util.ymd(from, Config.START_YEAR)
+					self.calMonth = { y, m }
+				end
+				self:refresh()
+			end)
 		end
 	end
 	if shown == 0 then
-		UI.Label(self.venueList, "No venues of this type here.", nil, UI.px(600, 40), { textSize = 16, color = T.sub })
+		UI.Label(list, "No venues of this type here.", nil, UI.px(600, 40), { textSize = 16, color = T.sub })
 	end
 end
 
--- consecutive shows in the same venue = one residency with several nights
-function MapScreen:routeGroups()
-	local groups = {}
-	for i, s in ipairs(self.draft.shows) do
-		local g = groups[#groups]
-		if g and g.venueId == s.venueId then
-			g.n = g.n + 1
-			g.last = i
-		else
-			table.insert(groups, { venueId = s.venueId, first = i, last = i, n = 1 })
+-- what a day means for the picked venue: "ok", or the reason why not
+function MapScreen:dayState(day)
+	local state, draft = self.app.state, self.draft
+	if day < state.day + 3 then
+		return "past"
+	end
+	for _, s in ipairs(draft.shows) do
+		if s.day == day then
+			return "mine"
 		end
 	end
-	return groups
+	if not self.picked then
+		return "none"
+	end
+	local busy = GS.venueBusy(state, self.picked, day)
+	if busy then
+		return "busy", busy
+	end
+	-- travel: enough days to and from the neighbouring shows
+	local new = { venueId = self.picked }
+	for _, s in ipairs(draft.shows) do
+		local gap = math.abs(s.day - day)
+		if gap < GS.travelGap(s, new) then
+			return "travel"
+		end
+	end
+	return "ok"
 end
 
 function MapScreen:showDays()
@@ -458,161 +461,155 @@ function MapScreen:showDays()
 	return out
 end
 
-function MapScreen:refreshRoutePanel()
-	local p = self.routePanel
-	UI.ClearChildren(p)
+-- click on a day: book the picked venue, or remove your show from that day
+function MapScreen:dayClicked(day)
 	local draft = self.draft
-	UI.Label(p, "YOUR DATES", UI.px(20, 12), UI.px(300, 32), { textSize = 24, font = UI.FontBlack, color = T.accent })
-	UI.Label(p, #draft.shows .. " show" .. (#draft.shows == 1 and "" or "s"), UI.px(250, 12), UI.px(164, 32), { textSize = 16, color = T.sub, alignX = Enum.TextXAlignment.Right })
-	local list = UI.Scroll(p, UI.px(10, 52), UI.px(414, 776))
-	UI.List(true, 6).Parent = list
-	if #draft.shows == 0 then
-		UI.Label(list, "Click a country on the map, then + ADD a venue. Every show gets the next free date; change it in the calendar. Add the same venue again for more nights.", nil, UI.px(396, 110), { textSize = 15, color = T.sub, wrap = true })
-	end
-	local groups = self:routeGroups()
-	for gi, g in ipairs(groups) do
-		local v = Countries.venueById[g.venueId]
-		local first, lastS = draft.shows[g.first], draft.shows[g.last]
-		local row = UI.New("Frame", { Parent = list, Size = UI.px(396, 92), BackgroundColor3 = T.panel2, BorderSizePixel = 0, LayoutOrder = gi, UI.Corner(8) })
-		local _, d1 = Util.date(first.day, Config.START_YEAR)
-		local _, d2 = Util.date(lastS.day, Config.START_YEAR)
-		local wait = ""
-		local prevS = draft.shows[g.first - 1]
-		if prevS then
-			local gap = first.day - prevS.day
-			wait = (gap > 3) and ("  (" .. gap .. " days after the last show)") or ""
+	for i, s in ipairs(draft.shows) do
+		if s.day == day then
+			table.remove(draft.shows, i)
+			self:refresh()
+			return
 		end
-		UI.Label(row, gi .. ".  " .. v.name, UI.px(10, 4), UI.px(330, 24), { textSize = 17, font = UI.FontBold })
-		UI.Label(row, (g.n > 1 and (d1 .. " - " .. d2) or d1) .. "  |  " .. v.city .. wait, UI.px(10, 28), UI.px(380, 20), { textSize = 13, color = T.sub })
-		UI.Button(row, "CALENDAR", UI.px(184, 54), UI.px(120, 30), { textSize = 13, color = T.accent2, textColor = Color3.new(0, 0, 0) }, function()
-			self:openCalendar(g)
-		end)
-		UI.Button(row, "-", UI.px(10, 54), UI.px(32, 30), { textSize = 16 }, function()
-			table.remove(draft.shows, g.last)
-			self:refresh()
-		end)
-		UI.Label(row, g.n .. (g.n == 1 and " night" or " nights"), UI.px(46, 54), UI.px(90, 30), { textSize = 15, font = UI.FontBold, alignX = Enum.TextXAlignment.Center, color = g.n > 1 and T.gold or T.text })
-		UI.Button(row, "+", UI.px(140, 54), UI.px(32, 30), { textSize = 16, disabled = #draft.shows >= Config.MAX_SHOWS_PER_TOUR }, function()
-			local d = GS.nextFreeDay(self.app.state, g.venueId, lastS.day + 1, self:takenDays())
-			table.insert(draft.shows, { venueId = g.venueId, day = d })
-			self:sortShows()
-			self:refresh()
-		end)
-		UI.Button(row, "X", UI.px(356, 14), UI.px(30, 30), { textSize = 14, color = UI.shade(T.bad, 0.7) }, function()
-			for i = g.last, g.first, -1 do
-				table.remove(draft.shows, i)
-			end
-			self:refresh()
-		end)
 	end
-	UI.Button(p, "< Back", UI.px(16, 848), UI.px(110, 60), {}, function()
-		self:setStep(1)
-	end)
-	UI.Button(p, "NEXT: STAGE >", UI.px(134, 848), UI.px(282, 60), { color = T.accent, textSize = 18, disabled = #draft.shows == 0 }, function()
-		self:setStep(3)
-	end)
+	if self:dayState(day) == "ok" and #draft.shows < Config.MAX_SHOWS_PER_TOUR then
+		table.insert(draft.shows, { venueId = self.picked, day = day })
+		self:sortShows()
+		self:refresh()
+	end
 end
 
--- calendar for one venue: free days, days taken by other events or your other artists, your own dates
-function MapScreen:openCalendar(g)
+-- shows of all your tours on a day: { "Juno Park: Paris" }
+function MapScreen:otherShows(day)
+	local out = {}
+	for _, t in ipairs(self.app.state.tours or {}) do
+		for _, s in ipairs(t.shows) do
+			if s.day == day and not s.done then
+				table.insert(out, Artists.byId[t.artistId].name .. ": " .. Countries.venueById[s.venueId].city)
+			end
+		end
+	end
+	return out
+end
+
+function MapScreen:refreshRoutePanel()
+	local p = self.calPanel
+	UI.ClearChildren(p)
 	local state, draft = self.app.state, self.draft
-	if self.calendar then
-		self.calendar:Destroy()
+	local W = 1880 - MAP_W - 20
+	if not self.calMonth then
+		local first = draft.shows[1]
+		local y, m = Util.ymd(first and first.day or (state.day + 21), Config.START_YEAR)
+		self.calMonth = { y, m }
 	end
-	local v = Countries.venueById[g.venueId]
-	local first = draft.shows[g.first]
-	local y, m = Util.ymd(first.day, Config.START_YEAR)
-	local shade = UI.New("TextButton", { Parent = self.routeView, Size = UI.px(1920, 1008), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, Text = "", AutoButtonColor = false, ZIndex = 20 })
-	self.calendar = shade
-	local panel = UI.Panel(shade, UI.px(330, 110), UI.px(1260, 780))
-	panel.ZIndex = 21
-	local function close()
-		shade:Destroy()
-		self.calendar = nil
-	end
-	local function draw()
-		UI.ClearChildren(panel)
-		UI.Label(panel, "CALENDAR  -  " .. string.upper(v.name), UI.px(28, 16), UI.px(900, 34), { textSize = 24, font = UI.FontBlack, color = T.accent })
-		UI.Label(panel, "Click a free day to move " .. (g.n > 1 and ("these " .. g.n .. " nights (from that day on)") or "this show") .. ". Red days are taken by other events or by your other artists. Your other dates on this route are purple.", UI.px(28, 52), UI.px(1200, 40), { textSize = 15, color = T.sub, wrap = true })
-		UI.Button(panel, "X", UI.px(1206, 14), UI.px(40, 36), { color = T.panel3 }, close)
-		local mine = {}
-		for i, s in ipairs(draft.shows) do
-			if i < g.first or i > g.last then
-				mine[s.day] = true
-			end
+	local y, m = self.calMonth[1], self.calMonth[2]
+	UI.Label(p, "3. WHEN?", UI.px(20, 12), UI.px(200, 32), { textSize = 22, font = UI.FontBlack, color = T.accent })
+	UI.Button(p, "<", UI.px(260, 10), UI.px(48, 40), { textSize = 20 }, function()
+		m = m - 1
+		if m < 1 then
+			m, y = 12, y - 1
 		end
-		local soon = state.day + 3
-		for k = 0, 1 do
-			local my, mm = y, m + k
-			if mm > 12 then
-				mm, my = mm - 12, my + 1
-			end
-			local ox = 28 + k * 616
-			UI.Label(panel, Util.monthName(mm) .. " " .. my, UI.px(ox, 100), UI.px(300, 30), { textSize = 22, font = UI.FontBold })
-			for wd, nm in ipairs({ "Mo", "Tu", "We", "Th", "Fr", "Sa", "Su" }) do
-				UI.Label(panel, nm, UI.px(ox + (wd - 1) * 84, 136), UI.px(80, 22), { textSize = 14, color = T.sub, alignX = Enum.TextXAlignment.Center })
-			end
-			local d0 = Util.dayOf(my, mm, 1, Config.START_YEAR)
-			local _, _, _, wd0 = Util.ymd(d0, Config.START_YEAR)
-			for dd = 1, Util.monthLength(my, mm) do
-				local day = d0 + dd - 1
-				local cell = wd0 - 1 + dd - 1
-				local cx, cy = ox + (cell % 7) * 84, 164 + math.floor(cell / 7) * 70
-				local busy = GS.venueBusy(state, g.venueId, day)
-				local isMine = day >= first.day and day <= draft.shows[g.last].day and draft.shows[g.first].venueId == g.venueId
-				local color, txt, ok = T.panel2, tostring(dd), true
-				if day < soon then
-					color, ok = T.panel, false
-				elseif isMine then
-					color = T.gold
-				elseif mine[day] then
-					color, ok = UI.shade(T.accent, 0.8), false
-				elseif busy then
-					color, txt, ok = UI.shade(T.bad, 0.55), dd .. "\n" .. busy, false
+		self.calMonth = { y, m }
+		self:refreshRoutePanel()
+	end)
+	UI.Label(p, Util.monthName(m) .. " " .. y, UI.px(314, 10), UI.px(220, 40), { textSize = 24, font = UI.FontBlack, alignX = Enum.TextXAlignment.Center })
+	UI.Button(p, ">", UI.px(540, 10), UI.px(48, 40), { textSize = 20 }, function()
+		m = m + 1
+		if m > 12 then
+			m, y = 1, y + 1
+		end
+		self.calMonth = { y, m }
+		self:refreshRoutePanel()
+	end)
+	local pv = self.picked and Countries.venueById[self.picked]
+	local hint = pv and ("<b>" .. pv.name .. ", " .. pv.city .. "</b>: click a green day to play there (click several days for more nights). Click one of your shows to remove it.")
+		or "Pick a venue on the left, then click the days you want to play there."
+	UI.Label(p, hint, UI.px(610, 8), UI.px(W - 630, 46), { textSize = 14, color = pv and T.text or T.sub, rich = true, wrap = true })
+	-- weekday header and the month grid
+	local cw, ch, gap = math.floor((W - 30) / 7) - 6, 104, 6
+	for i, nm in ipairs({ "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" }) do
+		UI.Label(p, nm, UI.px(15 + (i - 1) * (cw + gap), 60), UI.px(cw, 22), { textSize = 14, color = T.sub, font = UI.FontBold, alignX = Enum.TextXAlignment.Center })
+	end
+	local d0 = Util.dayOf(y, m, 1, Config.START_YEAR)
+	local _, _, _, wd0 = Util.ymd(d0, Config.START_YEAR)
+	for dd = 1, Util.monthLength(y, m) do
+		local day = d0 + dd - 1
+		local cell = wd0 - 1 + dd - 1
+		local cx, cy = 15 + (cell % 7) * (cw + gap), 86 + math.floor(cell / 7) * (ch + gap)
+		local st, why = self:dayState(day)
+		local color = T.panel2
+		if st == "past" then
+			color = T.panel
+		elseif st == "mine" then
+			color = UI.shade(T.accent, 0.75)
+		elseif st == "ok" then
+			color = UI.shade(T.good, 0.42)
+		elseif st == "busy" then
+			color = UI.shade(T.bad, 0.42)
+		elseif st == "travel" then
+			color = T.panel3
+		end
+		local b = UI.Button(p, "", UI.px(cx, cy), UI.px(cw, ch), { color = color, disabled = st == "past" }, function()
+			self:dayClicked(day)
+		end)
+		b.Name = "Day" .. day
+		UI.Label(b, tostring(dd), UI.px(8, 4), UI.px(40, 22), { textSize = 17, font = UI.FontBold, color = (st == "past") and T.sub or T.text })
+		local lines = {}
+		if st == "mine" then
+			for i, s in ipairs(draft.shows) do
+				if s.day == day then
+					local v = Countries.venueById[s.venueId]
+					table.insert(lines, "<b>#" .. i .. " " .. v.city .. "</b>")
+					table.insert(lines, v.name)
 				end
-				local b = UI.Button(panel, txt, UI.px(cx, cy), UI.px(80, 64), { color = color, textSize = busy and 12 or 18, disabled = not ok, textColor = (isMine and Color3.new(0, 0, 0)) or nil }, function()
-					-- move the nights of this venue to the clicked day (next free days for the other nights)
-					local taken = {}
-					for i, s in ipairs(draft.shows) do
-						if i < g.first or i > g.last then
-							taken[s.day] = true
-						end
-					end
-					local dday = day
-					for i = g.first, g.last do
-						dday = GS.nextFreeDay(state, g.venueId, dday, taken)
-						draft.shows[i].day = dday
-						taken[dday] = true
-						dday = dday + 1
-					end
-					self:sortShows()
-					close()
-					self:refresh()
-				end)
-				b.ZIndex = 22
 			end
+		elseif st == "busy" then
+			table.insert(lines, "taken: " .. why)
+		elseif st == "travel" then
+			table.insert(lines, "travel day")
+		elseif st == "ok" then
+			table.insert(lines, "free")
 		end
-		UI.Button(panel, "< Earlier", UI.px(28, 712), UI.px(160, 48), {}, function()
-			m = m - 1
-			if m < 1 then
-				m, y = 12, y - 1
-			end
-			draw()
-		end)
-		UI.Button(panel, "Later >", UI.px(1072, 712), UI.px(160, 48), {}, function()
-			m = m + 1
-			if m > 12 then
-				m, y = 1, y + 1
-			end
-			draw()
-		end)
-		for _, d in ipairs(panel:GetDescendants()) do
-			if d:IsA("GuiObject") then
-				d.ZIndex = math.max(d.ZIndex, 22)
-			end
+		for _, o in ipairs(self:otherShows(day)) do
+			table.insert(lines, "<font color='#9696b2'>" .. o .. "</font>")
+		end
+		if #lines > 0 then
+			UI.Label(b, table.concat(lines, "\n"), UI.px(8, 26), UI.px(cw - 12, ch - 30), { textSize = 12, rich = true, wrap = true, alignY = Enum.TextYAlignment.Top })
 		end
 	end
-	draw()
+	-- the route in date order and the way on
+	local strip = UI.Scroll(p, UI.px(15, 750), UI.px(W - 30, 84))
+	strip.AutomaticCanvasSize = Enum.AutomaticSize.X
+	strip.ScrollingDirection = Enum.ScrollingDirection.X
+	UI.List(false, 6).Parent = strip
+	if #draft.shows == 0 then
+		UI.Label(strip, "No shows yet.", nil, UI.px(400, 70), { textSize = 16, color = T.sub })
+	end
+	for i, s in ipairs(draft.shows) do
+		local v = Countries.venueById[s.venueId]
+		local _, dshort = Util.date(s.day, Config.START_YEAR)
+		local chip = UI.Button(strip, "", nil, UI.px(170, 70), { order = i, color = T.panel3 }, function()
+			local yy, mm = Util.ymd(s.day, Config.START_YEAR)
+			self.calMonth = { yy, mm }
+			self:refreshRoutePanel()
+		end)
+		UI.Label(chip, i .. ". " .. dshort, UI.px(8, 4), UI.px(156, 22), { textSize = 14, font = UI.FontBold })
+		UI.Label(chip, v.city, UI.px(8, 26), UI.px(156, 20), { textSize = 13 })
+		UI.Label(chip, v.name, UI.px(8, 46), UI.px(156, 18), { textSize = 11, color = T.sub })
+	end
+	UI.Label(p, #draft.shows .. " show" .. (#draft.shows == 1 and "" or "s"), UI.px(15, 846), UI.px(130, 60), { textSize = 18, font = UI.FontBold })
+	-- colour legend
+	local lx = 150
+	for _, k in ipairs({ { "your show", UI.shade(T.accent, 0.75) }, { "free", UI.shade(T.good, 0.42) }, { "taken", UI.shade(T.bad, 0.42) }, { "travel day", T.panel3 } }) do
+		UI.New("Frame", { Parent = p, Position = UI.px(lx, 866), Size = UI.px(20, 20), BackgroundColor3 = k[2], BorderSizePixel = 0, UI.Corner(4) })
+		UI.Label(p, k[1], UI.px(lx + 26, 864), UI.px(110, 24), { textSize = 14, color = T.sub })
+		lx = lx + 34 + #k[1] * 9
+	end
+	UI.Button(p, "< Back", UI.px(W - 440, 846), UI.px(130, 60), {}, function()
+		self:setStep(1)
+	end)
+	UI.Button(p, "NEXT: STAGE >", UI.px(W - 300, 846), UI.px(280, 60), { color = T.accent, textSize = 18, disabled = #draft.shows == 0 }, function()
+		self:setStep(3)
+	end)
 end
 
 ------------------------------------------------------------------ step bar
@@ -1034,6 +1031,7 @@ function MapScreen:refresh()
 	self:refreshStepBar()
 	UI.ClearChildren(self.body)
 	self.routeView.Visible = self.step == 2
+	self.mapMask.Visible = self.step == 2
 	if self.step ~= 2 then
 		self:deactivateMap()
 	end
@@ -1068,7 +1066,7 @@ function MapScreen:refreshRoute()
 	WorldMap3D.setSelected(self.selected)
 	WorldMap3D.setRoute(route, counts)
 	self:activateMap()
-	self.legend.Text = "Hover a country to highlight it, click it to see its venues.   Colour = fans of <b>" .. Artists.byId[aid].name .. "</b> who want tickets:  <font color='#9646af'>very few</font>  <font color='#eb4646'>few</font>  <font color='#ff9628'>some</font>  <font color='#ffe13c'>good</font>  <font color='#a0eb5a'>many</font>  <font color='#28dc78'>huge</font>"
+	self.legend.Text = "Fans of <b>" .. Artists.byId[aid].name .. "</b>:  <font color='#9646af'>very few</font>  <font color='#eb4646'>few</font>  <font color='#ff9628'>some</font>  <font color='#ffe13c'>good</font>  <font color='#a0eb5a'>many</font>  <font color='#28dc78'>huge</font>"
 	self:refreshCountry()
 	self:refreshRoutePanel()
 end
