@@ -22,7 +22,7 @@ MOCK.clickExact("NEXT >")
 MOCK.clickExact("SIGN", 1)
 MOCK.clickExact("Let's go!")
 if HUB_SANDBOX then shared.HeadlinerServer.sessions[MOCK.player].state.stats.shows = 9 app:applyDelta(app:call("resync").delta) app.world.refresh() end
-for _ = 1, 3 do MOCK.step(1 / 30) end
+for _ = 1, 90 do MOCK.step(1 / 30) end
 local function num(x) return string.format("%.2f", x) end
 local function cfs(c)
 	local r = c._r
@@ -48,7 +48,7 @@ local zl = {}
 for _, folder in ipairs({ workspace.StarlightRecords, workspace.HubClient }) do
 	for _, d in ipairs(folder:GetDescendants()) do
 		local cls = d.ClassName
-		if (cls == "Part" or cls == "Seat" or cls == "SpawnLocation") and d.Transparency < 0.99 and not d:FindFirstAncestor("People") then
+		if (cls == "Part" or cls == "Seat" or cls == "SpawnLocation") and d.Transparency < 0.99 and not d:FindFirstAncestor("People") and not d:FindFirstAncestor("Traffic") and not d:FindFirstAncestor("GuideArrow") then
 			local shape = (rawget(d, "__props") and d.__props.Shape and d.__props.Shape.Name) or "Block"
 			local c = d.CFrame
 			local t = { "hub", d.Name, shape, string.format("%.3f", d.Size.X), string.format("%.3f", d.Size.Y), string.format("%.3f", d.Size.Z), string.format("%.3f", c._p.X), string.format("%.3f", c._p.Y), string.format("%.3f", c._p.Z) }
@@ -58,6 +58,35 @@ for _, folder in ipairs({ workspace.StarlightRecords, workspace.HubClient }) do
 	end
 end
 WRITEFILE(OUT_DIR .. "/parts.txt", table.concat(zl, "\n"))
+-- people must not walk through things: sample every walking path against the parts of the building
+local FLAT = { Floor = true, HallFloor = true, Sidewalk = true, SidewalkFar = true, Road = true, Curb = true, CurbFar = true, Ground = true, Crosswalk = true, LaneMark = true, OfficeRug = true, LoungeRug = true, MeetingCarpet = true, DoorMat = true, EntranceSill = true, TreePit = true, Spawn = true, Boundary = true }
+local hits = {}
+for wi, path in ipairs(Hub.WALKS) do
+	for i = 2, #path do
+		local a0, a1 = path[i - 1], path[i]
+		local n = math.ceil((a1 - a0).Magnitude / 1)
+		for k = 0, n do
+			local pt = Hub.ORIGIN + a0:Lerp(a1, k / n)
+			for _, d in ipairs(workspace.StarlightRecords:GetDescendants()) do
+				if (d.ClassName == "Part" or d.ClassName == "Seat") and not FLAT[d.Name] and not d.Name:find("^Arc") and not d.Name:find("^Cont") then
+					local cf, sz = d.CFrame, d.Size
+					if cf.Position.Y - sz.Y / 2 < 6 and cf.Position.Y + sz.Y / 2 > 0.3 then
+						for _, h in ipairs({ 1, 3, 5 }) do
+							local lp = cf:PointToObjectSpace(pt + Vector3.new(0, h, 0))
+							if math.abs(lp.X) < sz.X / 2 + 0.9 and math.abs(lp.Y) < sz.Y / 2 and math.abs(lp.Z) < sz.Z / 2 + 0.9 then
+								hits[d.Name .. " (path " .. wi .. ")"] = true
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+end
+local hl = {}
+for k in pairs(hits) do hl[#hl + 1] = k end
+table.sort(hl)
+print("walk path blocked by:", #hl == 0 and "nothing" or table.concat(hl, ", "))
 local O = Hub.ORIGIN
 local function P(x, y, z) return O + Vector3.new(x, y, z) end
 local cams = {
@@ -69,6 +98,13 @@ local cams = {
 	CFrame.lookAt(P(40, 26, 96), P(0, 12, 46)), -- outside, from across the street
 	CFrame.lookAt(P(-30, 9, 40), P(-70, 5, 25)), -- lounge
 	CFrame.lookAt(P(0, 120, 30), P(10, 0, 0)), -- top
+	CFrame.lookAt(P(-100, 8, 76), P(-160, 6, 110)), -- 8 the western bend
+	CFrame.lookAt(P(40, 8, 84), P(56, 5, 108)), -- 9 the pizza place
+	CFrame.lookAt(P(-70, 7, 88), P(-78, 3, 102)), -- 10 cafe guests
+	CFrame.lookAt(P(28, 7, 4), P(28, 3, -14)), -- 11 staff at their desks
+	CFrame.lookAt(P(-63, 6, 28), P(-63, 3, 38)), -- 12 lounge sofa
+	CFrame.lookAt(P(58, 7, -14), P(58, 4.5, -24)), -- 13 stage design workstation
+	CFrame.lookAt(P(140, 8, 76), P(200, 6, 110)), -- 14 the eastern bend
 }
 local cs = {}
 for _, c in ipairs(cams) do cs[#cs + 1] = cfs(c) end

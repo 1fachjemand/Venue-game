@@ -8,7 +8,8 @@ groups = collections.defaultdict(list)
 for r in rows:
     if flt and flt not in r[0]: continue
     if r[2] not in ("Block",): continue
-    if r[1].startswith("Fan") or r[1] in ("Phone", "Wristband", "Windows", "LaneDash"): continue  # crowd figures never overlap each other  # balls, cylinders, meshes, wedges are skipped (curved / sloped)
+    if r[1].startswith("Fan") or r[1] in ("Phone", "Wristband", "Windows", "LaneDash"): continue
+    if r[1].startswith("Arc") or r[1].startswith("Cont"): continue  # the street bends: pieces of one colour overlapping on purpose  # crowd figures never overlap each other  # balls, cylinders, meshes, wedges are skipped (curved / sloped)
     size = np.array(list(map(float, r[3:6])))
     pos = np.array(list(map(float, r[6:9])))
     R = np.array(list(map(float, r[9:18]))).reshape(3, 3)

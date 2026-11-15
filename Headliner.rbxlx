@@ -1,10 +1,10 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
 <External>null</External>
 <External>nil</External>
-<Item class="Workspace" referent="RBX6F12F849740649D798208D7477619DE0"><Properties><string name="Name">Workspace</string><bool name="StreamingEnabled">false</bool></Properties></Item>
-<Item class="Lighting" referent="RBXC8A74C8605DC41639E7261EC80CD3BA2"><Properties><string name="Name">Lighting</string><token name="Technology">4</token><bool name="GlobalShadows">false</bool></Properties></Item>
-<Item class="Players" referent="RBX3D8381C986004BC1A0668F2AF32DB336"><Properties><string name="Name">Players</string><bool name="CharacterAutoLoads">false</bool></Properties></Item>
-<Item class="ReplicatedStorage" referent="RBX6E396B16DF3D400B89A201B2070BA8AE"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="Folder" referent="RBXF8676A41996F43A7AFEF1875F7BF1DDA"><Properties><string name="Name">Headliner</string></Properties><Item class="Folder" referent="RBX1EFF7BBAC8E94A9F999A1825F94A1B7F"><Properties><string name="Name">Client</string></Properties><Item class="ModuleScript" referent="RBXA88A813E14274BEFBFC01F2B96919E6F"><Properties><string name="Name">App</string><ProtectedString name="Source"><![CDATA[-- Main client controller: talks to the server, HUD, the station screens, popups, shows.
+<Item class="Workspace" referent="RBX13E9FA34640249D085A14149B53BC7DB"><Properties><string name="Name">Workspace</string><bool name="StreamingEnabled">false</bool></Properties></Item>
+<Item class="Lighting" referent="RBX1C30EF2D9FA84A3286EB1EA1F5C0FB45"><Properties><string name="Name">Lighting</string><token name="Technology">4</token><bool name="GlobalShadows">false</bool></Properties></Item>
+<Item class="Players" referent="RBX82DD7C3500C54EAD9EEB31318D32592E"><Properties><string name="Name">Players</string><bool name="CharacterAutoLoads">false</bool></Properties></Item>
+<Item class="ReplicatedStorage" referent="RBXAE5D4FB5158C4057BB23CEB59FD60C3B"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="Folder" referent="RBX90B46CF652144BE3BDCD7FF48209FA83"><Properties><string name="Name">Headliner</string></Properties><Item class="Folder" referent="RBXA0CC9F42B82C44BEB0583A284C356EFA"><Properties><string name="Name">Client</string></Properties><Item class="ModuleScript" referent="RBXA206C530B86F47F5A8EDB295E71DE57F"><Properties><string name="Name">App</string><ProtectedString name="Source"><![CDATA[-- Main client controller: talks to the server, HUD, the station screens, popups, shows.
 -- The game state lives on the server (src/server/GameServer). `app.state` is a copy that the
 -- server keeps up to date; every change goes through app:act(name, args).
 local Players = game:GetService("Players")
@@ -1239,7 +1239,7 @@ end
 
 return App
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXE154AB3914644DFE9526D994D5114501"><Properties><string name="Name">Builder</string><ProtectedString name="Source"><![CDATA[-- Builds 3D models for stage items and animates them during shows.
+<Item class="ModuleScript" referent="RBXEB26242AD880487C8FEF117F92D9EBA3"><Properties><string name="Name">Builder</string><ProtectedString name="Source"><![CDATA[-- Builds 3D models for stage items and animates them during shows.
 -- Every item is built around the local origin (bottom centre for floor items, hanging point for rig items)
 -- and then moved into place with Builder.place().
 local TweenService = game:GetService("TweenService")
@@ -2826,7 +2826,12 @@ function B.scissor(m, r)
 	r.edge = part(m, "Edge", Vector3.new(8.4, 0.2, 9.4), CFrame.new(0, 1.25, 0), r.color, Enum.Material.Neon)
 	r.rails = {}
 	for _, c in ipairs({ { 0, -4.4, 7.6, 0.15 }, { -3.9, 0, 0.15, 8.6 }, { 3.9, 0, 0.15, 8.6 } }) do
-		table.insert(r.rails, { p = part(m, "Railing", Vector3.new(c[3], 0.15, c[4]), CFrame.new(c[1], 4.2, c[2]), Color3.fromRGB(240, 190, 20), Enum.Material.Metal), x = c[1], z = c[2] })
+		table.insert(r.rails, { p = part(m, "Railing", Vector3.new(c[3], 0.15, c[4]), CFrame.new(c[1], 4.2, c[2]), Color3.fromRGB(240, 190, 20), Enum.Material.Metal), x = c[1], z = c[2], y = 4.2 })
+		table.insert(r.rails, { p = part(m, "MidRail", Vector3.new(c[3], 0.12, c[4]), CFrame.new(c[1], 2.8, c[2]), Color3.fromRGB(240, 190, 20), Enum.Material.Metal), x = c[1], z = c[2], y = 2.8 })
+	end
+	-- posts hold the railings on the platform (they rise with it)
+	for _, pp in ipairs({ { -3.9, -4.4 }, { 3.9, -4.4 }, { -3.9, 4.3 }, { 3.9, 4.3 }, { -3.9, 0 }, { 3.9, 0 }, { 0, -4.4 } }) do
+		table.insert(r.rails, { p = part(m, "RailPost", Vector3.new(0.18, 3, 0.18), CFrame.new(pp[1], 2.7, pp[2]), Color3.fromRGB(240, 190, 20), Enum.Material.Metal), x = pp[1], z = pp[2], y = 2.7 })
 	end
 	r.scissorH = 0
 end
@@ -3831,7 +3836,7 @@ function Builder.animate(refs, ctx)
 			a.p.CFrame = CFrame.lookAt((p0 + p1) / 2, p1)
 		end
 		for _, rl in ipairs(refs.rails) do
-			rl.p.CFrame = refs.cf * CFrame.new(rl.x, 4.2 + h, rl.z)
+			rl.p.CFrame = refs.cf * CFrame.new(rl.x, (rl.y or 4.2) + h, rl.z)
 		end
 	elseif k == "swing" then
 		Builder.swingPose(refs, math.sin(t * 1.3 + refs.phase) * (0.12 + 0.2 * (ctx.intensity or 0.5)))
@@ -4175,7 +4180,7 @@ end
 
 return Builder
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX3719BFD683734E7095C76C3D2025368F"><Properties><string name="Name">Designer</string><ProtectedString name="Source"><![CDATA[-- STAGE BUILDER: build a stage in 3D.
+<Item class="ModuleScript" referent="RBX856DC8F8CFD94B88932DBF3BDCE0FBC7"><Properties><string name="Name">Designer</string><ProtectedString name="Source"><![CDATA[-- STAGE BUILDER: build a stage in 3D.
 -- Works like park builder games: pick an item in the catalog at the bottom, click into the world to put it down,
 -- line it up with the coloured gizmo (red = X, green = height, blue = Z, orange ring = turn, gold cubes = size)
 -- and confirm with the green tick. Click a placed item to select and change it.
@@ -5670,7 +5675,7 @@ end
 
 return Designer
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX6370264D167749F8BA33F5AAC1FDE3A7"><Properties><string name="Name">LiveFeed</string><ProtectedString name="Source"><![CDATA[-- Live camera pictures for LED screens ("Live: artist" / "Live: crowd").
+<Item class="ModuleScript" referent="RBX3637202EAAF941EB8C71619895C9A5AC"><Properties><string name="Name">LiveFeed</string><ProtectedString name="Source"><![CDATA[-- Live camera pictures for LED screens ("Live: artist" / "Live: crowd").
 -- Every screen face gets its own little 3D scene inside its ViewportFrame:
 --   artist: copies of the performers (synced every frame) in front of a glowing LED wall, the camera slowly circles them
 --   crowd:  a crowd of fans with raised arms, light sticks and phone lights, the camera pans along the rows
@@ -5962,7 +5967,7 @@ end
 
 return LiveFeed
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX6EB0D023A4B249288E44A32707D01841"><Properties><string name="Name">LiveShow</string><ProtectedString name="Source"><![CDATA[-- Plays a concert in 3D: venue + crowd + your stage design + the artist.
+<Item class="ModuleScript" referent="RBX31432183947C47DFA67D143F77933668"><Properties><string name="Name">LiveShow</string><ProtectedString name="Source"><![CDATA[-- Plays a concert in 3D: venue + crowd + your stage design + the artist.
 -- Every show gets its own running order: the songs, the ballad position, effects and colours change.
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -6856,7 +6861,7 @@ end
 
 return LiveShow
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXAC57960F4BCF4FD1B58BF3A184FF8FBB"><Properties><string name="Name">MainMenu</string><ProtectedString name="Source"><![CDATA[-- Title screen: menu on the left, a famous venue at night on the right (see MenuScene).
+<Item class="ModuleScript" referent="RBX108D382EF7244DF4B5AA391010EB436B"><Properties><string name="Name">MainMenu</string><ProtectedString name="Source"><![CDATA[-- Title screen: menu on the left, a famous venue at night on the right (see MenuScene).
 -- New game: name your label, then pick your first artist.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
@@ -7143,7 +7148,7 @@ end
 
 return MainMenu
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXE204DCA34C2E46F3B4E970296D2266D8"><Properties><string name="Name">MenuScene</string><ProtectedString name="Source"><![CDATA[-- Main menu background: detailed parody versions of famous venues at night.
+<Item class="ModuleScript" referent="RBX45F4996856C943519178B1FDACCCFF35"><Properties><string name="Name">MenuScene</string><ProtectedString name="Source"><![CDATA[-- Main menu background: detailed parody versions of famous venues at night.
 -- Every scene is a whole city district built from parts. The camera flies through the streets
 -- (Catmull-Rom spline through key points) and ends at the venue. Between scenes the 3D view
 -- fades to black (ColorCorrection, so the menu UI stays visible) while the next district is built.
@@ -9200,7 +9205,7 @@ end
 
 return MenuScene
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXA8385EDC196E43FEBFF4F711A40F6F80"><Properties><string name="Name">People</string><ProtectedString name="Source"><![CDATA[-- Blocky performer figures (no external assets needed). Figures face +Z (towards the crowd) at yaw 0.
+<Item class="ModuleScript" referent="RBX99D015A69AEF4487A97DE88F527E8CA6"><Properties><string name="Name">People</string><ProtectedString name="Source"><![CDATA[-- Blocky performer figures (no external assets needed). Figures face +Z (towards the crowd) at yaw 0.
 local Root = script:FindFirstAncestor("Headliner")
 local UI = require(Root.Client.UI)
 local New = UI.New
@@ -9285,7 +9290,8 @@ function People.new(parent, outfit, scale, role, seed, look)
 		return p
 	end
 	local style = look.hair or ((rng:NextNumber() < 0.5) and "short" or "messy")
-	if style ~= "buzz" and style ~= "afro" and style ~= "mohawk" then
+	local hat = look.acc == "cap" or look.acc == "beanie" or look.acc == "cowboy"
+	if style ~= "buzz" and style ~= "afro" and style ~= "mohawk" and not hat then
 		extra("Hair", Vector3.new(1.3, 0.45, 1.3), "head", CFrame.new(0, 0.7, -0.05), hair)
 	end
 	if style == "buzz" then
@@ -9329,6 +9335,8 @@ function People.new(parent, outfit, scale, role, seed, look)
 	elseif acc == "earrings" then
 		extra("Earring", Vector3.new(0.18, 0.3, 0.18), "head", CFrame.new(-0.64, -0.25, 0), Color3.fromRGB(255, 215, 90), Enum.Material.Metal)
 		extra("Earring", Vector3.new(0.18, 0.3, 0.18), "head", CFrame.new(0.64, -0.25, 0), Color3.fromRGB(255, 215, 90), Enum.Material.Metal)
+	elseif acc == "backpack" then
+		extra("Backpack", Vector3.new(1.5, 1.6, 0.7), "torso", CFrame.new(0, 0, -0.86), (look.bag and c3(look.bag)) or Color3.fromRGB(60, 70, 90), Enum.Material.Fabric)
 	elseif acc == "sparkle" then
 		extra("Sparkles", Vector3.new(2.05, 0.6, 1.06), "torso", CFrame.new(0, -0.2, 0), Color3.fromRGB(255, 235, 250), Enum.Material.Neon)
 	end
@@ -9566,7 +9574,7 @@ end
 
 return People
 ]]></ProtectedString></Properties></Item>
-<Item class="Folder" referent="RBX93AFD3E3DE5B4B429DF359E0EB4085C7"><Properties><string name="Name">Screens</string></Properties><Item class="ModuleScript" referent="RBXEFD256080B7949FEAC352CE36465AD10"><Properties><string name="Name">ArtistsScreen</string><ProtectedString name="Source"><![CDATA[-- ARTISTS screen: your roster and the talent scout.
+<Item class="Folder" referent="RBX7AD1676ED4B64290B4B45FA4C37DBA4B"><Properties><string name="Name">Screens</string></Properties><Item class="ModuleScript" referent="RBX92B9CC04668A42D9A3C6785D0C66F344"><Properties><string name="Name">ArtistsScreen</string><ProtectedString name="Source"><![CDATA[-- ARTISTS screen: your roster and the talent scout.
 local Root = script:FindFirstAncestor("Headliner")
 local Achievements = require(Root.Data.Achievements)
 local Config = require(Root.Config)
@@ -9692,7 +9700,7 @@ end
 
 return ArtistsScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX3FE4891BEAF84B388A9E2E525A8DEB6D"><Properties><string name="Name">ChartsScreen</string><ProtectedString name="Source"><![CDATA[-- CHARTS screen: Top grossing tours of all time + achievements + records.
+<Item class="ModuleScript" referent="RBX44C887A5CBB74B888952D09A74E88C69"><Properties><string name="Name">ChartsScreen</string><ProtectedString name="Source"><![CDATA[-- CHARTS screen: Top grossing tours of all time + achievements + records.
 local Root = script:FindFirstAncestor("Headliner")
 local Achievements = require(Root.Data.Achievements)
 local Util = require(Root.Logic.Util)
@@ -9774,7 +9782,7 @@ end
 
 return ChartsScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXD82398E7516D4B79A4D718B13192CD95"><Properties><string name="Name">OfficeScreen</string><ProtectedString name="Source"><![CDATA[-- OFFICE: the home screen. Shows what happens next, upcoming shows, what fans post and the news.
+<Item class="ModuleScript" referent="RBX76CA052151864932933BC4293BCD894C"><Properties><string name="Name">OfficeScreen</string><ProtectedString name="Source"><![CDATA[-- OFFICE: the home screen. Shows what happens next, upcoming shows, what fans post and the news.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local Countries = require(Root.Data.Countries)
@@ -9945,7 +9953,7 @@ end
 
 return OfficeScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX594E65BC8DD146F093B334BF100B8786"><Properties><string name="Name">PhoneScreen</string><ProtectedString name="Source"><![CDATA[-- The phone (SOCIAL): opens from the phone button at any time while walking around.
+<Item class="ModuleScript" referent="RBX94D8FA659B7A44ECBAC477458A4623C4"><Properties><string name="Name">PhoneScreen</string><ProtectedString name="Source"><![CDATA[-- The phone (SOCIAL): opens from the phone button at any time while walking around.
 -- A smartphone on the right side of the screen with the fan feed, the fan mood and trending hashtags.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
@@ -10062,7 +10070,7 @@ end
 
 return PhoneScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX85BABD6C110C4116BED3A87815974592"><Properties><string name="Name">PlannerScreen</string><ProtectedString name="Source"><![CDATA[-- PLAN A TOUR (at the world map table): one clean screen per step:
+<Item class="ModuleScript" referent="RBX1BC7D9293B3E4AECA6B0BBE874A0EE07"><Properties><string name="Name">PlannerScreen</string><ProtectedString name="Source"><![CDATA[-- PLAN A TOUR (at the world map table): one clean screen per step:
 -- 1 artist -> 2 country (world map) -> 3 venue -> 4 date (calendar) -> 5 ticket prices -> 6 confirm.
 -- A tour can have many shows: after a date, "+ ADD ANOTHER SHOW" goes back to the map.
 local UserInputService = game:GetService("UserInputService")
@@ -11140,7 +11148,7 @@ end
 
 return MapScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXA2753399DF074AC6B7876CA7EF584FA5"><Properties><string name="Name">SocialScreen</string><ProtectedString name="Source"><![CDATA[-- SOCIAL: what fans post about your artists. Good shows get love, bad shows and high prices get criticism.
+<Item class="ModuleScript" referent="RBX6A5CA0ED16D94F8C9423CE0D7B457D45"><Properties><string name="Name">SocialScreen</string><ProtectedString name="Source"><![CDATA[-- SOCIAL: what fans post about your artists. Good shows get love, bad shows and high prices get criticism.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local Artists = require(Root.Data.Artists)
@@ -11578,7 +11586,7 @@ end
 
 return SocialScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX0F5DE38CA6764D9483813DF6B0BE7E03"><Properties><string name="Name">StagesScreen</string><ProtectedString name="Source"><![CDATA[-- MY STAGES: all your stage designs in one place. Edit, copy, delete or start a new one.
+<Item class="ModuleScript" referent="RBX4A2AF87B82FB448DB25E1D2E20B46B5A"><Properties><string name="Name">StagesScreen</string><ProtectedString name="Source"><![CDATA[-- MY STAGES: all your stage designs in one place. Edit, copy, delete or start a new one.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local StageItems = require(Root.Data.StageItems)
@@ -11797,7 +11805,7 @@ end
 
 return StagesScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXE3BC3FFED4F8455FAE20D788B17C8C06"><Properties><string name="Name">ToursScreen</string><ProtectedString name="Source"><![CDATA[-- TOURS screen: ticket sales, prices, marketing and results of your tours.
+<Item class="ModuleScript" referent="RBX541EAB7D25F9468FAB0F9B4E07593137"><Properties><string name="Name">ToursScreen</string><ProtectedString name="Source"><![CDATA[-- TOURS screen: ticket sales, prices, marketing and results of your tours.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local Countries = require(Root.Data.Countries)
@@ -11998,7 +12006,7 @@ end
 return ToursScreen
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="ModuleScript" referent="RBXE6AA45E3936945A9AEDB66DC2EB4AE9A"><Properties><string name="Name">ShowTasks</string><ProtectedString name="Source"><![CDATA[-- Mini tasks during a live show (planned for a later update: fix a spotlight, refill the merch stand ...).
+<Item class="ModuleScript" referent="RBX024BAD51BD51406092D086D5EFCD2D3E"><Properties><string name="Name">ShowTasks</string><ProtectedString name="Source"><![CDATA[-- Mini tasks during a live show (planned for a later update: fix a spotlight, refill the merch stand ...).
 -- The live show calls start / update / stop; every task registered here gets the show context:
 --   ctx = { app, venue, look, crowd (Venue.build info), items (stage items), overlay (UI frame),
 --           character, t (show time), seg (current part of the show), timeScale }
@@ -12037,7 +12045,7 @@ end
 
 return ShowTasks
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX299F39CEAB4B453E8618323A86E6C01B"><Properties><string name="Name">SoundFX</string><ProtectedString name="Source"><![CDATA[-- Music and sound effects. Every sound is a part (PlaybackRegion) of a few uploaded files, see Data/Audio.lua.
+<Item class="ModuleScript" referent="RBXDE65D37E239C4CF7A1E48CD9AB466D14"><Properties><string name="Name">SoundFX</string><ProtectedString name="Source"><![CDATA[-- Music and sound effects. Every sound is a part (PlaybackRegion) of a few uploaded files, see Data/Audio.lua.
 -- Without uploaded IDs every function quietly does nothing.
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
@@ -12217,7 +12225,7 @@ end
 
 return SoundFX
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX7AE55C73411B46288DBC62D6315D6CEE"><Properties><string name="Name">Stage3D</string><ProtectedString name="Source"><![CDATA[-- The 3D world: ground, the build area of the current stage design, and the placed design items.
+<Item class="ModuleScript" referent="RBX62C8FA8729CD4F1A92F3AF2DB9270501"><Properties><string name="Name">Stage3D</string><ProtectedString name="Source"><![CDATA[-- The 3D world: ground, the build area of the current stage design, and the placed design items.
 -- There is no fixed stage: everything (decks, catwalks, center stages) is built from items.
 local Lighting = game:GetService("Lighting")
 local Root = script:FindFirstAncestor("Headliner")
@@ -12567,7 +12575,7 @@ end
 
 return Stage3D
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXAE0B043CE123491E9E8FF7F792E7DFA2"><Properties><string name="Name">UI</string><ProtectedString name="Source"><![CDATA[-- Tiny UI toolkit. All layouts are designed for a 1920x1080 canvas that gets scaled to the screen.
+<Item class="ModuleScript" referent="RBX680A6C46936A4A54A4FBC34F1C1D008A"><Properties><string name="Name">UI</string><ProtectedString name="Source"><![CDATA[-- Tiny UI toolkit. All layouts are designed for a 1920x1080 canvas that gets scaled to the screen.
 local TweenService = game:GetService("TweenService")
 
 local UI = {}
@@ -12823,7 +12831,7 @@ end
 
 return UI
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX5B9B111FC7EC41ED8211F562A82AE83C"><Properties><string name="Name">Venue</string><ProtectedString name="Source"><![CDATA[-- Builds the inside of a venue around the stage and fills it with a crowd.
+<Item class="ModuleScript" referent="RBXA8F2105FF0E446C5B425C74DB696E6BA"><Properties><string name="Name">Venue</string><ProtectedString name="Source"><![CDATA[-- Builds the inside of a venue around the stage and fills it with a crowd.
 --   arena:   oval bowl with lower and upper tier, sections with stairs, concourse, suites, LED ribbon, roof rig,
 --            black drapes behind an end stage (or a full bowl around a center stage)
 --   stadium: football stadium with pitch and floor cover, two tiers all around, roof with floodlights
@@ -13661,7 +13669,7 @@ end
 
 return Venue
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXF060D03A0B944414A86965F2B23F5A83"><Properties><string name="Name">World</string><ProtectedString name="Source"><![CDATA[-- The label building on the client: the player's character, the stations (ProximityPrompts),
+<Item class="ModuleScript" referent="RBXFA5684D019E64F2EB30DFD680F7F1690"><Properties><string name="Name">World</string><ProtectedString name="Source"><![CDATA[-- The label building on the client: the player's character, the stations (ProximityPrompts),
 -- name tags over the stations, the guide arrow, the world map on the table, the charts wall and
 -- the stage hall door. The building itself is built by the server (World/Hub.lua).
 local Players = game:GetService("Players")
@@ -13677,6 +13685,7 @@ local UI = require(Root.Client.UI)
 local Hub = require(Root.World.Hub)
 local Stage3D = require(Root.Client.Stage3D)
 local People = require(Root.Client.People)
+local Config = require(Root.Config)
 
 local T = UI.Theme
 local New = UI.New
@@ -13924,8 +13933,36 @@ local function refreshChartsWall(unlocked)
 end
 
 ------------------------------------------------------------------ posters of the artists (on walls, bus stop, billboard)
--- signed artists first (with "ON TOUR" when a tour runs), then the stars you can still sign
+-- signed artists first (with "ON TOUR" when a tour runs), then the stars you can still sign.
+-- Each poster shows the artist as a 3D picture (ViewportFrame: the SurfaceGui lives in the PlayerGui,
+-- Roblox does not draw ViewportFrames on SurfaceGuis in the Workspace) and has its own layout.
 local FACES = { Back = Enum.NormalId.Back, Front = Enum.NormalId.Front, Left = Enum.NormalId.Left, Right = Enum.NormalId.Right }
+local GENRE_FONT = {
+	Pop = Enum.Font.FredokaOne, ["K-Pop"] = Enum.Font.FredokaOne, Rock = Enum.Font.Bangers, Metal = Enum.Font.Fantasy,
+	EDM = Enum.Font.Arcade, Indie = Enum.Font.Antique, Country = Enum.Font.Antique, ["R&B"] = Enum.Font.Garamond,
+	["Hip-Hop"] = Enum.Font.GothamBlack, Latin = Enum.Font.Bangers,
+}
+local POSES = { "point", "wave", "micout", "dance", "jump", "idle" }
+local function posterPicture(parent, ad, pos, size, idx, bg)
+	local vp = New("ViewportFrame", { Parent = parent, Position = pos, Size = size, BackgroundColor3 = bg or Color3.new(0, 0, 0), BackgroundTransparency = bg and 0 or 1, BorderSizePixel = 0, Ambient = Color3.fromRGB(200, 196, 210), LightColor = Color3.new(1, 1, 1), LightDirection = Vector3.new(-0.5, -1, -0.9) })
+	local col = UI.rgb(ad.color)
+	local role = (ad.genre == "Rock" or ad.genre == "Metal" or ad.genre == "Country") and "guitar" or "lead"
+	local fig = People.new(vp, col, 1, role, idx * 3 + 1, ad.look)
+	fig:update(Vector3.new(0, 0, 0), math.rad(((idx % 2 == 0) and 1 or -1) * 22), { t = idx * 0.7, beat = 0.3, energy = 0.6, walking = false, move = POSES[idx % #POSES + 1] })
+	-- bands: two more members behind
+	if ad.members > 1 then
+		for k = 1, math.min(2, ad.members - 1) do
+			local m = People.new(vp, col, 0.95, (k == 1) and "bass" or "dancer", idx * 7 + k, People.bandLook(ad, k, Artists.BAND_STYLE))
+			m:update(Vector3.new((k == 1) and -2.6 or 2.6, 0, -2), math.rad((k == 1) and 20 or -20), { t = 0, beat = 0, energy = 0.4, walking = false, move = "idle" })
+		end
+	end
+	local cam = New("Camera", { FieldOfView = 34, Parent = vp })
+	local close = idx % 3 == 1 -- every third poster is a close-up
+	cam.CFrame = close and CFrame.lookAt(Vector3.new(0, 6.6, 7.5), Vector3.new(0, 5.6, 0)) or CFrame.lookAt(Vector3.new(0, 4.4, 13), Vector3.new(0, 3.4, 0))
+	vp.CurrentCamera = cam
+	return vp
+end
+
 function World.refreshPosters()
 	local state = World.app.state
 	local order = {}
@@ -13939,7 +13976,7 @@ function World.refreshPosters()
 			table.insert(order, ad)
 		end
 	end
-	local key = ""
+	local key = state.labelName
 	for _, ad in ipairs(order) do
 		key = key .. ad.id .. (state.artists[ad.id].signed and "1" or "0") .. (GS.activeTour(state, ad.id) and "t" or "")
 	end
@@ -13947,64 +13984,173 @@ function World.refreshPosters()
 		return
 	end
 	World.posterKey = key
+	for _, g in ipairs(World.posterGuis or {}) do
+		g:Destroy()
+	end
+	World.posterGuis = {}
+	local pg = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
 	for _, p in ipairs(World.posters or {}) do
 		local idx = p:GetAttribute("Poster")
 		local ad = order[(idx - 1) % #order + 1]
-		local old = p:FindFirstChild("PosterGui")
-		if old then
-			old:Destroy()
-		end
-		local g = New("SurfaceGui", { Name = "PosterGui", Parent = p, Face = FACES[p:GetAttribute("Face")] or Enum.NormalId.Back, SizingMode = Enum.SurfaceGuiSizingMode.FixedSize, CanvasSize = Vector2.new(420, 600), LightInfluence = 0.3 })
+		local wide = math.max(p.Size.X, p.Size.Z) > p.Size.Y * 1.2
+		local g = New("SurfaceGui", { Name = "Poster", Parent = pg, Adornee = p, Face = FACES[p:GetAttribute("Face")] or Enum.NormalId.Back, SizingMode = Enum.SurfaceGuiSizingMode.FixedSize, CanvasSize = wide and Vector2.new(840, 600) or Vector2.new(420, 600), LightInfluence = 0.2, ResetOnSpawn = false })
+		table.insert(World.posterGuis, g)
+		local W = wide and 840 or 420
 		local col = UI.rgb(ad.color)
-		local bg = New("Frame", { Parent = g, Size = UDim2.fromScale(1, 1), BackgroundColor3 = col, BorderSizePixel = 0, UI.New("UIGradient", { Color = ColorSequence.new(col, Color3.fromRGB(24, 22, 40)), Rotation = 90 }) })
-		-- spotlight + a silhouette of the artist
-		New("Frame", { Parent = bg, Position = UDim2.fromOffset(60, 40), Size = UDim2.fromOffset(300, 300), BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.75, BorderSizePixel = 0, UI.Corner(150) })
-		New("Frame", { Parent = bg, Position = UDim2.fromOffset(165, 110), Size = UDim2.fromOffset(90, 90), BackgroundColor3 = Color3.fromRGB(26, 22, 40), BorderSizePixel = 0, UI.Corner(45) })
-		New("Frame", { Parent = bg, Position = UDim2.fromOffset(130, 205), Size = UDim2.fromOffset(160, 190), BackgroundColor3 = Color3.fromRGB(26, 22, 40), BorderSizePixel = 0, UI.Corner(40) })
-		New("Frame", { Parent = bg, Position = UDim2.fromOffset(90, 150), Size = UDim2.fromOffset(40, 140), Rotation = -25, BackgroundColor3 = Color3.fromRGB(26, 22, 40), BorderSizePixel = 0, UI.Corner(20) })
-		New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(16, 410), Size = UDim2.fromOffset(388, 90), BackgroundTransparency = 1, Text = string.upper(ad.name), TextScaled = true, TextColor3 = Color3.new(1, 1, 1), Font = UI.FontBlack })
+		local dark = Color3.fromRGB(22, 20, 36)
+		local font = GENRE_FONT[ad.genre] or UI.FontBlack
 		local signed = state.artists[ad.id].signed
 		local onTour = GS.activeTour(state, ad.id) ~= nil
-		local line = onTour and "ON TOUR NOW" or (signed and (ad.genre .. "  ·  " .. string.upper(state.labelName)) or (ad.genre .. "  ·  COMING SOON"))
-		New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(16, 504), Size = UDim2.fromOffset(388, 40), BackgroundTransparency = 1, Text = line, TextScaled = true, TextColor3 = onTour and T.gold or Color3.fromRGB(230, 230, 240), Font = UI.FontBold })
-		New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(16, 552), Size = UDim2.fromOffset(388, 30), BackgroundTransparency = 1, Text = "LIVE  ·  WORLD TOUR  ·  TICKETS SOON", TextScaled = true, TextColor3 = Color3.fromRGB(200, 200, 220), Font = UI.FontBold })
+		local layout = idx % 4
+		local bg = New("Frame", { Parent = g, Size = UDim2.fromScale(1, 1), BackgroundColor3 = col, BorderSizePixel = 0 })
+		local line = onTour and "ON TOUR NOW" or (signed and string.upper(state.labelName) or "COMING SOON")
+		if wide then
+			-- billboard: picture left, big name right
+			New("UIGradient", { Parent = bg, Color = ColorSequence.new(col, dark), Rotation = 0 })
+			posterPicture(bg, ad, UDim2.fromOffset(0, 0), UDim2.fromOffset(420, 600), idx)
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(420, 120), Size = UDim2.fromOffset(400, 160), BackgroundTransparency = 1, Text = string.upper(ad.name), TextScaled = true, TextColor3 = Color3.new(1, 1, 1), Font = font })
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(420, 300), Size = UDim2.fromOffset(400, 60), BackgroundTransparency = 1, Text = onTour and "WORLD TOUR · ON SALE NOW" or "NEW ALBUM OUT NOW", TextScaled = true, TextColor3 = T.gold, Font = UI.FontBlack })
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(420, 380), Size = UDim2.fromOffset(400, 40), BackgroundTransparency = 1, Text = ad.genre .. "  ·  " .. line, TextScaled = true, TextColor3 = Color3.fromRGB(230, 230, 240), Font = UI.FontBold })
+		elseif layout == 0 then
+			-- tour poster: gradient, the artist full figure, name on top, dates below
+			New("UIGradient", { Parent = bg, Color = ColorSequence.new(col, dark), Rotation = 90 })
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(14, 14), Size = UDim2.fromOffset(392, 80), BackgroundTransparency = 1, Text = string.upper(ad.name), TextScaled = true, TextColor3 = Color3.new(1, 1, 1), Font = font })
+			posterPicture(bg, ad, UDim2.fromOffset(10, 96), UDim2.fromOffset(400, 380), idx)
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(14, 486), Size = UDim2.fromOffset(392, 46), BackgroundTransparency = 1, Text = onTour and "WORLD TOUR · ON SALE NOW" or "LIVE " .. (Config.START_YEAR + 1), TextScaled = true, TextColor3 = T.gold, Font = UI.FontBlack })
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(14, 540), Size = UDim2.fromOffset(392, 34), BackgroundTransparency = 1, Text = "LONDON · PARIS · BERLIN · NEW YORK", TextScaled = true, TextColor3 = Color3.fromRGB(230, 230, 240), Font = UI.FontBold })
+		elseif layout == 1 then
+			-- album cover: a big sun behind a close-up, title at the bottom
+			bg.BackgroundColor3 = Color3.fromRGB(246, 236, 220)
+			New("Frame", { Parent = bg, Position = UDim2.fromOffset(40, 60), Size = UDim2.fromOffset(340, 340), BackgroundColor3 = col, BorderSizePixel = 0, UI.Corner(170) })
+			posterPicture(bg, ad, UDim2.fromOffset(10, 30), UDim2.fromOffset(400, 420), idx)
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(20, 456), Size = UDim2.fromOffset(380, 70), BackgroundTransparency = 1, Text = ad.name, TextScaled = true, TextColor3 = dark, Font = font })
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(20, 530), Size = UDim2.fromOffset(380, 40), BackgroundTransparency = 1, Text = "THE NEW ALBUM · " .. line, TextScaled = true, TextColor3 = col:Lerp(dark, 0.4), Font = UI.FontBold })
+		elseif layout == 2 then
+			-- festival / club night: dark with stripes
+			bg.BackgroundColor3 = dark
+			for k = 0, 5 do
+				New("Frame", { Parent = bg, Position = UDim2.fromOffset(-80 + k * 110, -40), Size = UDim2.fromOffset(40, 720), Rotation = 20, BackgroundColor3 = col, BackgroundTransparency = 0.6, BorderSizePixel = 0 })
+			end
+			posterPicture(bg, ad, UDim2.fromOffset(10, 20), UDim2.fromOffset(400, 400), idx)
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(14, 420), Size = UDim2.fromOffset(392, 90), BackgroundTransparency = 1, Text = string.upper(ad.name), TextScaled = true, TextColor3 = col:Lerp(Color3.new(1, 1, 1), 0.4), Font = font })
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(14, 516), Size = UDim2.fromOffset(392, 40), BackgroundTransparency = 1, Text = ad.genre .. " NIGHT · " .. line, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), Font = UI.FontBold })
+		else
+			-- minimal: white with a coloured frame
+			bg.BackgroundColor3 = Color3.new(1, 1, 1)
+			New("Frame", { Parent = bg, Position = UDim2.fromOffset(20, 20), Size = UDim2.fromOffset(380, 400), BackgroundColor3 = col, BorderSizePixel = 0 })
+			posterPicture(bg, ad, UDim2.fromOffset(20, 20), UDim2.fromOffset(380, 400), idx)
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(20, 436), Size = UDim2.fromOffset(380, 80), BackgroundTransparency = 1, Text = ad.name, TextScaled = true, TextColor3 = Color3.new(0.1, 0.1, 0.12), Font = font })
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(20, 524), Size = UDim2.fromOffset(380, 40), BackgroundTransparency = 1, Text = line, TextScaled = true, TextColor3 = col, Font = UI.FontBlack })
+		end
 	end
 end
 
 ------------------------------------------------------------------ people: staff at work, people in the street, at the cafe
-local LOOK_TOPS = { { 240, 120, 100 }, { 110, 160, 230 }, { 250, 210, 90 }, { 120, 200, 170 }, { 236, 236, 240 }, { 150, 120, 220 }, { 60, 64, 80 } }
-local HAIRS = { "short", "long", "bun", "pony", "afro", "buzz", "messy" }
+local TOPS = { { 240, 120, 100 }, { 110, 160, 230 }, { 250, 210, 90 }, { 120, 200, 170 }, { 236, 236, 240 }, { 150, 120, 220 }, { 60, 64, 80 }, { 200, 60, 70 }, { 80, 140, 90 }, { 240, 170, 200 }, { 30, 30, 34 }, { 170, 120, 80 } }
+local PANTS = { { 40, 50, 80 }, { 50, 50, 56 }, { 170, 150, 120 }, { 30, 30, 34 }, { 90, 110, 150 }, { 120, 70, 60 }, { 220, 220, 214 } }
+local HAIRS = { "short", "long", "bun", "pony", "afro", "buzz", "messy", "pigtails", "mohawk" }
+local HAIR_COL = { { 30, 24, 20 }, { 90, 60, 30 }, { 230, 200, 120 }, { 200, 60, 60 }, { 180, 120, 255 }, { 240, 240, 250 }, { 150, 90, 50 }, { 60, 40, 30 } }
+local ACCS = { "none", "none", "none", "cap", "beanie", "sunglasses", "headphones", "earrings", "chain", "backpack", "backpack" }
 local function randomLook(i)
 	local rng = Random.new(i * 7919 + 13)
-	return {
+	local function pick(list)
+		return list[rng:NextInteger(1, #list)]
+	end
+	local look = {
 		skin = rng:NextInteger(1, #People.SKINS),
-		hair = HAIRS[rng:NextInteger(1, #HAIRS)],
-		top = LOOK_TOPS[rng:NextInteger(1, #LOOK_TOPS)],
-		pants = ({ { 40, 50, 80 }, { 50, 50, 56 }, { 170, 150, 120 } })[rng:NextInteger(1, 3)],
-		shoes = { 30, 30, 34 },
+		hair = pick(HAIRS),
+		hairColor = pick(HAIR_COL),
+		top = pick(TOPS),
+		pants = pick(PANTS),
+		shoes = pick({ { 30, 30, 34 }, { 240, 240, 240 }, { 120, 70, 40 }, { 200, 50, 60 } }),
+		acc = pick(ACCS),
+		bag = pick(TOPS),
 	}
+	if rng:NextNumber() < 0.3 then
+		look.jacket = pick({ { 40, 40, 46 }, { 60, 80, 130 }, { 120, 90, 60 }, { 150, 40, 50 } })
+	end
+	return look
+end
+
+local function c3(t)
+	return Color3.fromRGB(t[1], t[2], t[3])
+end
+
+-- a sitting person, built once (thighs on the seat, knees bent, feet on the floor). yaw = the way they face
+local function seatedFigure(f, data, look, n)
+	local cf = CFrame.new(O + data.pos) * CFrame.Angles(0, data.yaw, 0)
+	local seatY = data.seatY or 2.3
+	local hipY = seatY + 0.4
+	local skin = People.SKINS[look.skin]
+	local m = New("Model", { Name = "Sitter", Parent = f })
+	local function p(name, size, off, color, material, shape)
+		local pp = cpart(m, name, size, cf * off, color, material)
+		if shape then
+			pp.Shape = shape
+		end
+		return pp
+	end
+	local pants, top = c3(look.pants), c3(look.top)
+	for _, sx in ipairs({ -0.48, 0.48 }) do
+		p("Thigh", Vector3.new(0.86, 0.8, 1.9), CFrame.new(sx, hipY, 0.65), pants)
+		p("Shin", Vector3.new(0.8, hipY - 0.35, 0.8), CFrame.new(sx, (hipY - 0.35) / 2 + 0.3, 1.18), pants)
+		p("Shoe", Vector3.new(0.9, 0.32, 1.1), CFrame.new(sx, 0.16, 1.32), c3(look.shoes))
+	end
+	local torsoY = hipY + 0.4 + 1
+	p("Torso", Vector3.new(2, 2, 1), CFrame.new(0, torsoY, -0.3), top)
+	local armCol = look.jacket and c3(look.jacket) or top
+	for _, sx in ipairs({ -1.43, 1.43 }) do
+		if data.work then
+			-- typing: forearms forward on the desk
+			p("Arm", Vector3.new(0.8, 2, 0.8), CFrame.new(sx * 0.92, torsoY + 0.7, -0.3) * CFrame.Angles(math.rad(-75), 0, 0) * CFrame.new(0, -1, 0), armCol)
+		else
+			p("Arm", Vector3.new(0.8, 2, 0.8), CFrame.new(sx, torsoY + 0.1, -0.2) * CFrame.Angles(math.rad(-25), 0, 0), armCol)
+		end
+	end
+	local headCF = CFrame.new(0, torsoY + 1.6, -0.3)
+	p("Head", Vector3.new(1.2, 1.2, 1.2), headCF, skin)
+	p("Eye", Vector3.new(0.18, 0.22, 0.05), headCF * CFrame.new(-0.25, 0.1, 0.61), Color3.new(0, 0, 0))
+	p("Eye", Vector3.new(0.18, 0.22, 0.05), headCF * CFrame.new(0.25, 0.1, 0.61), Color3.new(0, 0, 0))
+	local hairC = c3(look.hairColor)
+	if look.acc == "cap" then
+		p("Cap", Vector3.new(1.36, 0.36, 1.36), headCF * CFrame.new(0, 0.72, 0), top)
+		p("CapBrim", Vector3.new(1.2, 0.1, 0.7), headCF * CFrame.new(0, 0.58, 0.85), top)
+	elseif look.acc == "beanie" then
+		p("Beanie", Vector3.new(1.38, 0.6, 1.38), headCF * CFrame.new(0, 0.72, 0), c3(look.bag), Enum.Material.Fabric)
+	elseif look.hair ~= "buzz" then
+		p("Hair", Vector3.new(1.3, 0.45, 1.3), headCF * CFrame.new(0, 0.7, -0.05), hairC)
+		if look.hair == "long" or look.hair == "pigtails" then
+			p("HairBack", Vector3.new(1.26, 1.6, 0.36), headCF * CFrame.new(0, -0.15, -0.6), hairC)
+		elseif look.hair == "bun" then
+			p("Bun", Vector3.new(0.7, 0.7, 0.7), headCF * CFrame.new(0, 1.05, -0.35), hairC, nil, Enum.PartType.Ball)
+		end
+	end
+	if look.acc == "sunglasses" then
+		p("Shades", Vector3.new(1, 0.24, 0.08), headCF * CFrame.new(0, 0.1, 0.64), Color3.fromRGB(10, 10, 12), Enum.Material.Glass)
+	end
+	local _ = n
+	return m
 end
 
 local function buildPeople()
 	local f = New("Folder", { Name = "People", Parent = World.folder })
 	World.npcs = {}
 	local n = 0
-	local function add(kind, data)
-		n = n + 1
-		local look = randomLook(n)
-		local fig = People.new(f, UI.rgb(look.top), 1, "dancer", n, look)
-		table.insert(World.npcs, { fig = fig, kind = kind, data = data, ph = n * 1.7, seg = 1, t = 0 })
-	end
 	for _, st in ipairs(Hub.STAFF) do
-		add("sit", { pos = st.pos, yaw = st.yaw, work = st.desk })
+		n = n + 1
+		seatedFigure(f, { pos = st.pos, yaw = st.yaw, seatY = st.seatY, work = st.desk ~= nil }, randomLook(n), n)
 	end
 	for _, st in ipairs(Hub.SITTERS) do
-		add("sit", { pos = st.pos, yaw = st.yaw })
+		n = n + 1
+		seatedFigure(f, st, randomLook(n), n)
 	end
 	for i, path in ipairs(Hub.WALKS) do
-		add("walk", { path = path, speed = 6 + (i % 3) * 1.5 })
-		if i <= 4 then
-			add("walk", { path = path, speed = 5 + (i % 2) * 2, offset = 0.5 })
+		local count = (i <= 4) and 3 or 1
+		for k = 1, count do
+			n = n + 1
+			local look = randomLook(n)
+			local fig = People.new(f, c3(look.top), 1, "dancer", n, look)
+			table.insert(World.npcs, { fig = fig, data = { path = path, speed = 5 + ((n * 37) % 30) / 10, offset = (k - 1) / count }, ph = n * 1.7 })
 		end
 	end
 end
@@ -14017,38 +14163,183 @@ local function pathLength(path)
 	return len
 end
 
+-- a point at distance `dist` along a path (and the direction there)
+local function alongPath(path, dist)
+	for i = 2, #path do
+		local segLen = (path[i] - path[i - 1]).Magnitude
+		if dist <= segLen or i == #path then
+			local f = math.clamp(dist / math.max(0.01, segLen), 0, 1)
+			return path[i - 1]:Lerp(path[i], f), path[i] - path[i - 1]
+		end
+		dist = dist - segLen
+	end
+	return path[#path], path[#path] - path[#path - 1]
+end
+World.alongPath = alongPath
+
 local function animatePeople(t)
 	for _, npc in ipairs(World.npcs or {}) do
 		local d = npc.data
-		if npc.kind == "sit" then
-			-- sitting; office staff type on the keyboard
-			npc.fig:update(O + d.pos, d.yaw, { t = t + npc.ph, beat = 0, energy = 0, walking = false, move = "piano" })
-		else
-			local path = d.path
-			local len = d.len or pathLength(path)
-			d.len = len
-			-- walk the path forward and back
-			local dist = ((t * d.speed) + (d.offset or 0) * len) % (len * 2)
-			local back = dist > len
-			if back then
-				dist = len * 2 - dist
-			end
-			local pos, dir = path[1], path[2] - path[1]
-			local acc = 0
-			for i = 2, #path do
-				local segLen = (path[i] - path[i - 1]).Magnitude
-				if acc + segLen >= dist then
-					local f = (dist - acc) / math.max(0.01, segLen)
-					pos = path[i - 1]:Lerp(path[i], f)
-					dir = path[i] - path[i - 1]
-					break
+		local len = d.len or pathLength(d.path)
+		d.len = len
+		-- walk the path forward and back
+		local dist = ((t * d.speed) + (d.offset or 0) * len * 2) % (len * 2)
+		local back = dist > len
+		if back then
+			dist = len * 2 - dist
+		end
+		local pos, dir = alongPath(d.path, dist)
+		if back then
+			dir = -dir
+		end
+		npc.fig:update(O + pos, math.atan2(dir.X, dir.Z), { t = t + npc.ph, beat = 0, energy = 0, walking = true })
+	end
+end
+
+------------------------------------------------------------------ traffic: cars, city buses and tour buses drive along the street and around both bends
+local ST = Hub.STREET
+-- the lane as a path: down the side street, around the bend, along the straight, around the other bend, away
+local function lanePath(z, eastbound)
+	local pts = {}
+	local rw, re = ST.cw.Z - z, ST.ce.Z - z
+	table.insert(pts, Vector3.new(ST.cw.X - rw, -0.5, ST.cw.Z + 180))
+	for k = 0, 12 do
+		local a = (math.pi / 2) * (1 - k / 12)
+		table.insert(pts, Vector3.new(ST.cw.X - math.sin(a) * rw, -0.5, ST.cw.Z - math.cos(a) * rw))
+	end
+	for k = 0, 12 do
+		local a = (math.pi / 2) * (k / 12)
+		table.insert(pts, Vector3.new(ST.ce.X + math.sin(a) * re, -0.5, ST.ce.Z - math.cos(a) * re))
+	end
+	table.insert(pts, Vector3.new(ST.ce.X + re, -0.5, ST.ce.Z + 180))
+	if not eastbound then
+		local rev = {}
+		for i = #pts, 1, -1 do
+			table.insert(rev, pts[i])
+		end
+		pts = rev
+	end
+	return pts
+end
+
+local function vehicle(f, kind, color, label)
+	local m = New("Model", { Name = "Vehicle", Parent = f })
+	local parts = {}
+	local function p(name, size, off, col, mat, shape)
+		local pp = cpart(m, name, size, CFrame.new(), col, mat)
+		if shape then
+			pp.Shape = shape
+		end
+		table.insert(parts, { pp, off })
+		return pp
+	end
+	local L = (kind == "bus" or kind == "tourbus") and 34 or ((kind == "van") and 15 or 13)
+	local Hh = (kind == "bus" or kind == "tourbus") and 10 or ((kind == "van") and 6.5 or 3)
+	-- the vehicle drives along its local -Z (LookVector)
+	p("Body", Vector3.new(6.2, Hh, L), CFrame.new(0, 1.2 + Hh / 2, 0), color)
+	if kind == "car" or kind == "taxi" then
+		p("Cabin", Vector3.new(5.6, 2.3, 7), CFrame.new(0, 1.2 + Hh + 1.15, 0.6), color)
+		p("Glass", Vector3.new(5.7, 1.7, 7.1), CFrame.new(0, 1.2 + Hh + 1.2, 0.6), Color3.fromRGB(120, 150, 175), Enum.Material.Glass)
+		if kind == "taxi" then
+			p("TaxiSign", Vector3.new(1.6, 0.6, 0.8), CFrame.new(0, 1.2 + Hh + 2.6, 0.6), Color3.fromRGB(255, 240, 160))
+		end
+	else
+		p("WindowBand", Vector3.new(6.3, 2.6, L - 3), CFrame.new(0, 1.2 + Hh * 0.68, 0.5), Color3.fromRGB(70, 90, 120), Enum.Material.Glass)
+		p("Windshield", Vector3.new(5.6, Hh * 0.45, 0.1), CFrame.new(0, 1.2 + Hh * 0.68, -L / 2 - 0.05), Color3.fromRGB(110, 140, 170), Enum.Material.Glass)
+	end
+	for _, z in ipairs({ -L / 2 + 2.6, L / 2 - 2.6 }) do
+		for _, x in ipairs({ -3.1, 3.1 }) do
+			p("Wheel", Vector3.new(1, 2.6, 2.6), CFrame.new(x, 1.3, z) * CFrame.Angles(0, math.pi / 2, 0) * CFrame.Angles(0, math.pi / 2, 0), Color3.fromRGB(26, 26, 30), nil, Enum.PartType.Cylinder)
+		end
+	end
+	p("HeadLight", Vector3.new(1.2, 0.6, 0.1), CFrame.new(-2.2, 2.4, -L / 2 - 0.06), Color3.fromRGB(255, 250, 230), Enum.Material.Neon)
+	p("HeadLight", Vector3.new(1.2, 0.6, 0.1), CFrame.new(2.2, 2.4, -L / 2 - 0.06), Color3.fromRGB(255, 250, 230), Enum.Material.Neon)
+	p("TailLight", Vector3.new(1.2, 0.6, 0.1), CFrame.new(-2.2, 2.4, L / 2 + 0.06), Color3.fromRGB(220, 30, 30))
+	p("TailLight", Vector3.new(1.2, 0.6, 0.1), CFrame.new(2.2, 2.4, L / 2 + 0.06), Color3.fromRGB(220, 30, 30))
+	if label then
+		for _, side in ipairs({ -1, 1 }) do
+			local sp = p("Label", Vector3.new(0.1, 1.8, L - 8), CFrame.new(side * 3.16, 1.2 + Hh * 0.28, 0), Color3.new(1, 1, 1))
+			local g = New("SurfaceGui", { Parent = sp, Face = (side < 0) and Enum.NormalId.Left or Enum.NormalId.Right, SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud, PixelsPerStud = 30, LightInfluence = 0.3 })
+			New("TextLabel", { Parent = g, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = label, TextScaled = true, Font = UI.FontBlack, TextColor3 = (kind == "tourbus") and color or Color3.fromRGB(30, 60, 140) })
+		end
+	end
+	return { model = m, parts = parts, len = L }
+end
+
+local function buildTraffic()
+	local f = New("Folder", { Name = "Traffic", Parent = World.folder })
+	World.traffic = {}
+	local lanes = { { lanePath(ST.laneEast, true) }, { lanePath(ST.laneWest, false) } }
+	for _, lane in ipairs(lanes) do
+		lane.len = pathLength(lane[1])
+	end
+	local CAR_COLORS = { Color3.fromRGB(200, 60, 60), Color3.fromRGB(60, 110, 200), Color3.fromRGB(230, 230, 230), Color3.fromRGB(40, 40, 46), Color3.fromRGB(80, 160, 110), Color3.fromRGB(150, 150, 160) }
+	local fleet = {
+		{ "car" }, { "taxi" }, { "bus" }, { "car" }, { "van" }, { "tourbus" }, { "car" }, { "taxi" },
+	}
+	for i, v in ipairs(fleet) do
+		local kind = v[1]
+		local color, label = CAR_COLORS[i % #CAR_COLORS + 1], nil
+		if kind == "taxi" then
+			color = Color3.fromRGB(250, 200, 40)
+		elseif kind == "bus" then
+			color, label = Color3.fromRGB(220, 230, 240), "CITY LINE 7"
+		elseif kind == "van" then
+			color = Color3.fromRGB(240, 240, 236)
+		end
+		local veh = vehicle(f, kind, color, label)
+		veh.kind = kind
+		veh.lane = lanes[(i % 2) + 1]
+		veh.offset = (i - 1) / #fleet
+		veh.speed = (kind == "bus" or kind == "tourbus") and 18 or (24 + (i % 3) * 4)
+		table.insert(World.traffic, veh)
+	end
+	World.trafficFolder = f
+end
+
+-- the tour bus shows a tour of the label (or a famous rival)
+local function tourBusLabel()
+	local state = World.app.state
+	for _, t in ipairs(state.tours) do
+		if t.status ~= "done" then
+			return string.upper(Artists.byId[t.artistId].name) .. " · " .. string.upper(t.name), UI.rgb(Artists.byId[t.artistId].color)
+		end
+	end
+	return "NOVA RAY · STARDUST WORLD TOUR", Color3.fromRGB(255, 120, 180)
+end
+
+local function animateTraffic(t)
+	for _, v in ipairs(World.traffic or {}) do
+		local lane = v.lane
+		local dist = (t * v.speed + v.offset * lane.len) % lane.len
+		if v.kind == "tourbus" and (not v.labelled or math.floor(t) % 20 == 0) then
+			-- (re)paint the tour bus now and then
+			local txt, col = tourBusLabel()
+			if v.labelText ~= txt then
+				v.labelText = txt
+				if v.label then
+					v.label:Destroy()
 				end
-				acc = acc + segLen
+				for _, pp in ipairs(v.parts) do
+					if pp[1].Name == "Body" then
+						pp[1].Color = Color3.fromRGB(26, 26, 32)
+					end
+				end
+				local lab = vehicle(World.trafficFolder, "tourbus", col, txt)
+				v.model:Destroy()
+				v.model, v.parts = lab.model, lab.parts
+				for _, pp in ipairs(v.parts) do
+					if pp[1].Name == "Body" then
+						pp[1].Color = Color3.fromRGB(26, 26, 32)
+					end
+				end
 			end
-			if back then
-				dir = -dir
-			end
-			npc.fig:update(O + pos, math.atan2(dir.X, dir.Z), { t = t + npc.ph, beat = 0, energy = 0, walking = true })
+			v.labelled = true
+		end
+		local pos, dir = alongPath(lane[1], dist)
+		local cf = CFrame.lookAt(O + pos, O + pos + Vector3.new(dir.X, 0, dir.Z))
+		for _, pp in ipairs(v.parts) do
+			pp[1].CFrame = cf * pp[2]
 		end
 	end
 end
@@ -14300,6 +14591,7 @@ function World.start(app)
 	buildArrow()
 	buildTableMap()
 	buildPeople()
+	buildTraffic()
 	World.posters = {}
 	if World.root then
 		for _, d in ipairs(World.root:GetDescendants()) do
@@ -14329,12 +14621,20 @@ function World.start(app)
 	local peopleT = 0
 	RunService.RenderStepped:Connect(function(dt)
 		t = t + dt
+		local showTags = app.mode == "world"
+		if World.tagsShown ~= showTags then
+			World.tagsShown = showTags
+			for _, mk in pairs(World.markers) do
+				mk.gui.Enabled = showTags
+			end
+		end
 		if app.mode == "world" then
 			placeArrow(t)
 			peopleT = peopleT + dt
 			if peopleT > 1 / 30 then
 				peopleT = 0
 				animatePeople(t)
+				animateTraffic(t)
 			end
 			-- the meeting prompt only shows while sitting
 			local pr = World.prompts.meeting
@@ -14352,7 +14652,7 @@ end
 
 return World
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXA584908B961340FF9AC9D7C06FD37248"><Properties><string name="Name">WorldMap3D</string><ProtectedString name="Source"><![CDATA[-- 3D world map table used by the tour planner. Countries light up on hover and can be clicked.
+<Item class="ModuleScript" referent="RBXF2D82B7D138A49ABBE7584476D5EFA70"><Properties><string name="Name">WorldMap3D</string><ProtectedString name="Source"><![CDATA[-- 3D world map table used by the tour planner. Countries light up on hover and can be clicked.
 -- Built from Natural Earth borders (see Data/WorldMap.lua). It lives far away from the stage area.
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -14754,7 +15054,7 @@ end
 return WM
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="ModuleScript" referent="RBX18A1ACF7BB7148B4B27B61129328E5CC"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[-- HEADLINER :: global tuning values
+<Item class="ModuleScript" referent="RBXC9B9034921A34AD3AECE6C8C71AB4A98"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[-- HEADLINER :: global tuning values
 local Config = {}
 
 Config.GAME_TITLE = "HEADLINER"
@@ -14844,7 +15144,7 @@ Config.MARKETING = {
 
 return Config
 ]]></ProtectedString></Properties></Item>
-<Item class="Folder" referent="RBXEE7FFFEB7CC8496CB10A0C09FEFA93C8"><Properties><string name="Name">Data</string></Properties><Item class="ModuleScript" referent="RBX98CBD7E270B443D7B9C9C8D980969523"><Properties><string name="Name">Achievements</string><ProtectedString name="Source"><![CDATA[-- Goals. Checked after every show / tour.
+<Item class="Folder" referent="RBXCD07760E511C4A85BAED13224677F512"><Properties><string name="Name">Data</string></Properties><Item class="ModuleScript" referent="RBX7F2C5D1E1F134B1AB20E9E82B707070F"><Properties><string name="Name">Achievements</string><ProtectedString name="Source"><![CDATA[-- Goals. Checked after every show / tour.
 local Achievements = {
 	list = {
 		{ id = "first_show", name = "Opening Night", desc = "Play your first show." },
@@ -14872,7 +15172,7 @@ for _, a in ipairs(Achievements.list) do
 end
 return Achievements
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX1A07E1F59C81459396C0CDEEADFB0477"><Properties><string name="Name">Artists</string><ProtectedString name="Source"><![CDATA[-- Fictional artists. fans = starting fan count per region.
+<Item class="ModuleScript" referent="RBX417FC7F61B5E4D59ADD5BACFE55CD40E"><Properties><string name="Name">Artists</string><ProtectedString name="Source"><![CDATA[-- Fictional artists. fans = starting fan count per region.
 -- skill (0-100) = live performance quality. pricePower = how much fans pay compared to an average act.
 -- members: 1 = solo, 2+ = band/group. level = label level needed to sign. starter = can be picked for free at game start.
 
@@ -15009,7 +15309,7 @@ end
 
 return Artists
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXEB4E9CA3C8E54339BB297CA155249F6C"><Properties><string name="Name">Audio</string><ProtectedString name="Source"><![CDATA[-- Roblox asset IDs of the uploaded audio files (folder audio/ in the project, made by tools/music/make_audio.py).
+<Item class="ModuleScript" referent="RBXD3A19DEB25FA41368722B88922ECFA1D"><Properties><string name="Name">Audio</string><ProtectedString name="Source"><![CDATA[-- Roblox asset IDs of the uploaded audio files (folder audio/ in the project, made by tools/music/make_audio.py).
 -- 0 = not uploaded yet: the game simply stays silent for that part.
 -- Every artist file holds 12 songs of 30 s (song n starts at (n - 1) * 30 s), see Data/AudioMap.lua.
 local Audio = {}
@@ -15033,7 +15333,7 @@ Audio.IDS = {
 
 return Audio
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX94FB016EECC94FEABCB8D0C61387CE50"><Properties><string name="Name">AudioMap</string><ProtectedString name="Source"><![CDATA[-- Generated by tools/music/make_audio.py: where each sound sits inside the uploaded files (seconds).
+<Item class="ModuleScript" referent="RBX8463CC1F94F74CE1824D175F33647189"><Properties><string name="Name">AudioMap</string><ProtectedString name="Source"><![CDATA[-- Generated by tools/music/make_audio.py: where each sound sits inside the uploaded files (seconds).
 local AudioMap = {}
 AudioMap.SONG_LEN = 30
 AudioMap.BALLAD_INDEX = 4
@@ -15059,7 +15359,7 @@ AudioMap.SFX = {
 }
 return AudioMap
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX575F0CAC058440568526E79911A22707"><Properties><string name="Name">Countries</string><ProtectedString name="Source"><![CDATA[-- Countries and venues.
+<Item class="ModuleScript" referent="RBX0D1F8FFDEFEA4A93A3BAB0FE4086DE60"><Properties><string name="Name">Countries</string><ProtectedString name="Source"><![CDATA[-- Countries and venues.
 -- Venue names are parody names inspired by real venues. Capacities follow the real venues'
 -- concert capacities (source: Wikipedia infoboxes, checked Nov 2026). Venues marked "fictional" are made up.
 --
@@ -15548,7 +15848,7 @@ end
 
 return Countries
 ]]></ProtectedString></Properties></Item>
-<Item class="Folder" referent="RBX3375393224234750A6491427E9825CF1"><Properties><string name="Name">MenuCity</string></Properties><Item class="ModuleScript" referent="RBX43C7D28D76F349ACA8265F1220D925B0"><Properties><string name="Name">lanxus</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="Folder" referent="RBX19624CA78FF84BD19907BE6D5FF59694"><Properties><string name="Name">MenuCity</string></Properties><Item class="ModuleScript" referent="RBXCD6A6EF6E8604C8599AE49D70CE4D60A"><Properties><string name="Name">lanxus</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -16501,7 +16801,7 @@ return {
 	A = { dom = { -3472, -646 }, bridge = { -2455, -424 } },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXA9F5AC5C231F44D7B16B15EE8880CA63"><Properties><string name="Name">madrid</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBXEEE638A309334650A185453253AF56DA"><Properties><string name="Name">madrid</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -17010,7 +17310,7 @@ return {
 	A = {  },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX541B65F83F254539B4ADC577C332C2B1"><Properties><string name="Name">msg</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBX8A9B50AC77EA44C8AE213993779F7983"><Properties><string name="Name">msg</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z (map turned -29 deg)
 return {
@@ -17611,7 +17911,7 @@ return {
 	A = { empire = { 1365, -233 }, penn = { -238, 159 } },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX7AAADCB0384449E09B0FDED1EDA3419B"><Properties><string name="Name">o3</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBX2DD1299100F24A3DBD020DB9D23B5D03"><Properties><string name="Name">o3</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -18201,7 +18501,7 @@ return {
 	A = {  },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX03AF6280FE074E6D9A5D817B08EB1D82"><Properties><string name="Name">paris</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBX10A4A5A02E0A4CE4A82B296680BB05B0"><Properties><string name="Name">paris</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -18889,7 +19189,7 @@ return {
 	A = {  },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX91D67F22F8FA430FB7B9D16379AF2ECE"><Properties><string name="Name">wembley</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBXA62B806CCA6C4D84A04064DBFE892386"><Properties><string name="Name">wembley</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -19309,7 +19609,7 @@ return {
 	A = { station = { 12, -1636 } },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX4AFB0DFE958340569E7E4E931B634068"><Properties><string name="Name">zurich</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBX43D61D2BD8A74F259CE6B0FDF6910E89"><Properties><string name="Name">zurich</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -19945,7 +20245,7 @@ return {
 }
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="ModuleScript" referent="RBX4040FA8845C044E3A0C8164621C14F9D"><Properties><string name="Name">Regions</string><ProtectedString name="Source"><![CDATA[-- World regions. Artists have a fan count per region.
+<Item class="ModuleScript" referent="RBX91C6A83058E64EAF8507BD5BE41A448F"><Properties><string name="Name">Regions</string><ProtectedString name="Source"><![CDATA[-- World regions. Artists have a fan count per region.
 local Regions = {
 	list = {
 		{ id = "EU", name = "Europe" },
@@ -19964,7 +20264,7 @@ end
 
 return Regions
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX761D361E17B64A339D34F32456220E5A"><Properties><string name="Name">Reviews</string><ProtectedString name="Source"><![CDATA[-- Review quotes by star rating. {artist} {venue} {city} are replaced.
+<Item class="ModuleScript" referent="RBX2C9A10333A6A4D99BD11438F0B5B1ADF"><Properties><string name="Name">Reviews</string><ProtectedString name="Source"><![CDATA[-- Review quotes by star rating. {artist} {venue} {city} are replaced.
 return {
 	[1] = {
 		"\"A night to forget. {artist} looked lost at {venue}.\"",
@@ -19989,7 +20289,7 @@ return {
 	},
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX63CA0B7217804C1F8283332206FF9047"><Properties><string name="Name">Rivals</string><ProtectedString name="Source"><![CDATA[-- Fictional rival tours for the "Top Grossing Tours" chart. Beat them all!
+<Item class="ModuleScript" referent="RBXDDF24BE190594BA7B52C76BD16E64962"><Properties><string name="Name">Rivals</string><ProtectedString name="Source"><![CDATA[-- Fictional rival tours for the "Top Grossing Tours" chart. Beat them all!
 return {
 	{ artist = "Aurora Vale", tour = "The Celestial Tour", gross = 520000000, shows = 120, attendance = 6100000 },
 	{ artist = "The Midnight Kings", tour = "Crown & Glory Tour", gross = 410000000, shows = 88, attendance = 4200000 },
@@ -20006,7 +20306,7 @@ return {
 	{ artist = "The Weekend Plans", tour = "Small Rooms Tour", gross = 600000, shows = 24, attendance = 30000 },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXA47A9557AEE74A30A1C874A56162C08E"><Properties><string name="Name">Social</string><ProtectedString name="Source"><![CDATA[-- Fan posts for the SOCIAL feed. Placeholders: {artist} {venue} {city} {country} {tour} {song} {price} {tag} {item} {label}
+<Item class="ModuleScript" referent="RBX112F119956734D668F457539BCE0FCDF"><Properties><string name="Name">Social</string><ProtectedString name="Source"><![CDATA[-- Fan posts for the SOCIAL feed. Placeholders: {artist} {venue} {city} {country} {tour} {song} {price} {tag} {item} {label}
 -- mood: 1 = positive, 0 = neutral, -1 = negative. photo = the post shows a concert photo.
 local Social = {}
 
@@ -20235,7 +20535,7 @@ Social.ITEM_NAMES = {
 
 return Social
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX7E24A2A1F1D54F21B0AC8A65AAE66698"><Properties><string name="Name">StageItems</string><ProtectedString name="Source"><![CDATA[-- Stage design catalog.
+<Item class="ModuleScript" referent="RBX1FC76CEBEE7E4967BD9FC73D89BF8A5D"><Properties><string name="Name">StageItems</string><ProtectedString name="Source"><![CDATA[-- Stage design catalog.
 -- cost  = production cost per show (crew, transport, power)
 -- pts   = production value points (more points = more impressive show)
 -- tags  = used for genre bonuses
@@ -20529,7 +20829,7 @@ end
 
 return StageItems
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX60C12B7623614BCDA337A05F18AA70FC"><Properties><string name="Name">WorldMap</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/gen_worldmap.py from Natural Earth borders (world-atlas 2.0.2, public domain).
+<Item class="ModuleScript" referent="RBX3F7F86E45DA748C6A96F030F9D4F8960"><Properties><string name="Name">WorldMap</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/gen_worldmap.py from Natural Earth borders (world-atlas 2.0.2, public domain).
 -- land: 1 degree grid (W x H). countries: 0.5 degree grid (CW x CH). Latitude 80N..58S.
 -- rects = { row, col, width, height } in grid cells (0-based).
 return {
@@ -20578,7 +20878,7 @@ return {
 }
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="Folder" referent="RBX01FBC2AEEE7842DAA46D35405F9C0BE6"><Properties><string name="Name">Logic</string></Properties><Item class="ModuleScript" referent="RBX26225501DDE64F5C9B445BA12F9DD94F"><Properties><string name="Name">Actions</string><ProtectedString name="Source"><![CDATA[-- Everything that changes the game state, by name. The server runs these on the real game state
+<Item class="Folder" referent="RBXBEACD14C68F343C5AD4E34EB271E8B58"><Properties><string name="Name">Logic</string></Properties><Item class="ModuleScript" referent="RBXF776B1C3F9004697B555BCD4DC3153E6"><Properties><string name="Name">Actions</string><ProtectedString name="Source"><![CDATA[-- Everything that changes the game state, by name. The server runs these on the real game state
 -- (the client only asks for them). Pure Lua (no Roblox APIs), so the logic tests can run it too.
 -- Actions.run(state, name, args) -> ok, message, data
 local Root = script:FindFirstAncestor("Headliner")
@@ -20974,7 +21274,7 @@ end
 local _ = Artists
 return Actions
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX0BBBE40D76084503A3EE6CC0921D38C6"><Properties><string name="Name">GameState</string><ProtectedString name="Source"><![CDATA[-- Game state: everything that gets saved. Pure Lua (no Roblox APIs).
+<Item class="ModuleScript" referent="RBX5E9923A1D31E41ABBCC420EFCB08E81F"><Properties><string name="Name">GameState</string><ProtectedString name="Source"><![CDATA[-- Game state: everything that gets saved. Pure Lua (no Roblox APIs).
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local Countries = require(Root.Data.Countries)
@@ -21970,7 +22270,7 @@ end
 
 return GS
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXA215B48467FB48D8860E83DF45FD5F81"><Properties><string name="Name">Sim</string><ProtectedString name="Source"><![CDATA[-- Simulation formulas: demand, ticket sales, production value, show results.
+<Item class="ModuleScript" referent="RBXC1958F06D7DD4BE58ED1A84A102FFD64"><Properties><string name="Name">Sim</string><ProtectedString name="Source"><![CDATA[-- Simulation formulas: demand, ticket sales, production value, show results.
 -- Pure Lua (no Roblox APIs) so it can be unit tested outside of Roblox.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
@@ -22495,7 +22795,7 @@ end
 
 return Sim
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXED8DE307145D428FBB0F2B06132D4FCB"><Properties><string name="Name">Social</string><ProtectedString name="Source"><![CDATA[-- Generates fan posts for the SOCIAL feed. Pure Lua (no Roblox APIs).
+<Item class="ModuleScript" referent="RBX9A5E13E02B7A4E22B12C2EEF8036C2D5"><Properties><string name="Name">Social</string><ProtectedString name="Source"><![CDATA[-- Generates fan posts for the SOCIAL feed. Pure Lua (no Roblox APIs).
 local Root = script:FindFirstAncestor("Headliner")
 local Data = require(Root.Data.Social)
 local Countries = require(Root.Data.Countries)
@@ -22696,7 +22996,7 @@ end
 
 return Social
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX3314C8A338C149BBB9C29368F7F85190"><Properties><string name="Name">Util</string><ProtectedString name="Source"><![CDATA[-- Small helpers (pure Lua, no Roblox APIs)
+<Item class="ModuleScript" referent="RBX51BF23AD4AD0436DB8806410E31DD6DE"><Properties><string name="Name">Util</string><ProtectedString name="Source"><![CDATA[-- Small helpers (pure Lua, no Roblox APIs)
 local Util = {}
 
 function Util.clamp(x, a, b)
@@ -22953,7 +23253,7 @@ end
 return Util
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="Folder" referent="RBXD622AFDBCDF643FA9E0D12476971622B"><Properties><string name="Name">World</string></Properties><Item class="ModuleScript" referent="RBX4B0C64EE56F04904A9B7FF0D2FC8AC13"><Properties><string name="Name">Hub</string><ProtectedString name="Source"><![CDATA[-- The label building "Starlight Records" and its little street: the walkable hub.
+<Item class="Folder" referent="RBXF1DFD2AB71D04A33A7AF8768787A3685"><Properties><string name="Name">World</string></Properties><Item class="ModuleScript" referent="RBX4AE09562A1C548C880C682C8B6707AA1"><Properties><string name="Name">Hub</string><ProtectedString name="Source"><![CDATA[-- The label building "Starlight Records" and its little street: the walkable hub.
 -- Built once by the server (so seats and prompts work); the client adds name tags, posters, people,
 -- the table map and the charts screen (Client/World.lua).
 -- Style: bright and friendly (daylight, light wood, white walls, painted colour accents, no neon strips).
@@ -22976,26 +23276,34 @@ Hub.STATIONS = {
 
 -- people (the client builds and animates them): staff at their desks, walkers, people at the cafe
 Hub.STAFF = {
-	{ pos = Vector3.new(24, 0, -15.4), yaw = math.pi, desk = true },
-	{ pos = Vector3.new(32, 0, -15.4), yaw = math.pi, desk = true },
-	{ pos = Vector3.new(24, 0, -3.4), yaw = math.pi, desk = true },
-	{ pos = Vector3.new(32, 0, -3.4), yaw = math.pi, desk = true },
-	{ pos = Vector3.new(-22, 0, 25.2), yaw = 0 }, -- reception
+	{ pos = Vector3.new(24, 0, -14.2), yaw = math.pi, desk = Vector3.new(24, 0, -18), seatY = 2.3 },
+	{ pos = Vector3.new(32, 0, -14.2), yaw = math.pi, desk = Vector3.new(32, 0, -18), seatY = 2.3 },
+	{ pos = Vector3.new(24, 0, -2.2), yaw = math.pi, desk = Vector3.new(24, 0, -6), seatY = 2.3 },
+	{ pos = Vector3.new(32, 0, -2.2), yaw = math.pi, desk = Vector3.new(32, 0, -6), seatY = 2.3 },
+	{ pos = Vector3.new(-22, 0, 25.2), yaw = 0, seatY = 2.3 }, -- reception
 }
+-- the street: straight from XW to XE, bends away around the corners CW / CE (radius 20 inner sidewalk .. 76)
+Hub.STREET = { xw = -130, xe = 170, cw = Vector3.new(-130, 0, 124), ce = Vector3.new(170, 0, 124), laneEast = 80, laneWest = 74.5 }
+-- walking paths stay in the free lanes of the sidewalks (trees, lamps, benches and tables are elsewhere)
 Hub.WALKS = {
-	{ Vector3.new(-140, 0, 54), Vector3.new(180, 0, 54) },
-	{ Vector3.new(180, 0, 57), Vector3.new(-140, 0, 57) },
-	{ Vector3.new(-140, 0, 96), Vector3.new(180, 0, 96) },
-	{ Vector3.new(180, 0, 99), Vector3.new(-140, 0, 99) },
-	{ Vector3.new(-6, 0, 22), Vector3.new(30, 0, 22), Vector3.new(30, 0, 27), Vector3.new(-6, 0, 22) }, -- office: to the coffee bar
-	{ Vector3.new(-70, 0, 12), Vector3.new(-60, 0, 18), Vector3.new(-46, 0, 20) }, -- lounge
+	{ Vector3.new(-124, 0, 52.4), Vector3.new(164, 0, 52.4) },
+	{ Vector3.new(164, 0, 55.2), Vector3.new(-124, 0, 55.2) },
+	{ Vector3.new(-124, 0, 96), Vector3.new(164, 0, 96) },
+	{ Vector3.new(164, 0, 98.2), Vector3.new(-124, 0, 98.2) },
+	{ Vector3.new(-6, 0, 22), Vector3.new(28, 0, 22), Vector3.new(28, 0, 25.4) }, -- office: to the coffee bar
+	{ Vector3.new(-70, 0, 12.5), Vector3.new(-62, 0, 18), Vector3.new(-48, 0, 19.5) }, -- lounge
 }
+Hub.CAFE_TABLES = { -84, -72, -60 }
 Hub.SITTERS = {
-	{ pos = Vector3.new(-100, 0, 100.6), yaw = math.pi },
-	{ pos = Vector3.new(-88, 0, 95.4), yaw = 0 },
-	{ pos = Vector3.new(-76, 0, 100.6), yaw = math.pi },
-	{ pos = Vector3.new(-63, 0, 37.6), yaw = math.pi, sofa = true },
+	{ pos = Vector3.new(-63, 0, 36.9), yaw = math.pi, seatY = 2.4 }, -- lounge sofa
+	{ pos = Vector3.new(-40, 0, 58.4), yaw = 0, seatY = 2.1 }, -- bus stop
 }
+for i, x in ipairs(Hub.CAFE_TABLES) do
+	table.insert(Hub.SITTERS, { pos = Vector3.new(x - 2.9, 0, 101.8), yaw = math.pi / 2, seatY = 2.3, kind = "chair" })
+	if i ~= 2 then
+		table.insert(Hub.SITTERS, { pos = Vector3.new(x + 2.9, 0, 101.8), yaw = -math.pi / 2, seatY = 2.3, kind = "chair" })
+	end
+end
 
 local C = {
 	wall = Color3.fromRGB(240, 236, 228),
@@ -23226,27 +23534,168 @@ local function car(parent, pos, yaw, color)
 	end
 end
 
--- a shop across the street: facade, shop window, door, awning, sign
-local function shop(parent, x0, x1, h, color, name, signColor, awning)
-	local z0 = 104
-	box(parent, "Shop", x0, -0.5, z0, x1, h, 150, color, Enum.Material.SmoothPlastic)
-	local w = x1 - x0
-	-- shop window and door (in front of the facade)
-	box(parent, "ShopWindow", x0 + 3, 1.2, z0 - 0.3, x0 + w * 0.62, 9, z0 - 0.06, C.glass, Enum.Material.Glass, { transparency = 0.25 })
-	box(parent, "ShopDoor", x0 + w * 0.68, 0, z0 - 0.3, x0 + w * 0.68 + 4, 8.6, z0 - 0.06, C.woodDark, Enum.Material.Wood)
-	-- upper windows
-	for fl = 1, math.floor((h - 16) / 9) do
-		for k = 0, math.floor((w - 6) / 8) - 1 do
-			box(parent, "Window", x0 + 4 + k * 8, 16 + (fl - 1) * 9, z0 - 0.3, x0 + 8.5 + k * 8, 21 + (fl - 1) * 9, z0 - 0.06, Color3.fromRGB(170, 196, 220), Enum.Material.Glass)
+-- a shop across the street: own front, shop window with a room behind it (you look into it),
+-- door, sign, maybe an awning, upper floors with windows and balconies
+local SHOP_Z = 104 -- facade line
+local function shop(parent, x0, x1, o)
+	local h, col, mat = o.h, o.color, o.mat or Enum.Material.SmoothPlastic
+	local z0, depth = SHOP_Z, 12 -- the shop room is 12 deep
+	local inner = Color3.fromRGB(236, 230, 220)
+	-- the building above and behind the shop room
+	box(parent, "ShopUpper", x0, 12, z0, x1, h, 150, col, mat)
+	box(parent, "ShopBack", x0, -0.5, z0 + depth, x1, 12, 150, col, mat)
+	box(parent, "ShopCornice", x0, h, z0 - 0.6, x1, h + 1, z0 + 8, C.white)
+	-- the room: floor, side walls, back wall, ceiling light
+	box(parent, "ShopFloor", x0 + 0.6, -0.5, z0 + 0.6, x1 - 0.6, 0.1, z0 + depth, Color3.fromRGB(196, 170, 140), Enum.Material.WoodPlanks)
+	box(parent, "ShopSide", x0, -0.5, z0 + 0.6, x0 + 0.6, 12, z0 + depth, inner)
+	box(parent, "ShopSide", x1 - 0.6, -0.5, z0 + 0.6, x1, 12, z0 + depth, inner)
+	box(parent, "ShopBackWall", x0 + 0.6, 0.1, z0 + depth - 0.06, x1 - 0.6, 12, z0 + depth, inner)
+	local lamp = box(parent, "ShopLamp", (x0 + x1) / 2 - 4, 11.6, z0 + 4, (x0 + x1) / 2 + 4, 11.9, z0 + 6, C.lamp, Enum.Material.Neon, { collide = false })
+	new("PointLight", { Range = 16, Brightness = 0.8, Color = Color3.fromRGB(255, 236, 210), Shadows = false }, lamp)
+	-- ground floor front: piers, sill, lintel, glass, door
+	local doorX = x1 - 7
+	box(parent, "ShopPier", x0, 0, z0, x0 + 2, 12, z0 + 0.6, col, mat)
+	box(parent, "ShopPier", x1 - 2, 0, z0, x1, 12, z0 + 0.6, col, mat)
+	box(parent, "ShopPier", doorX - 1, 0, z0, doorX, 9.6, z0 + 0.6, col, mat)
+	box(parent, "ShopSill", x0 + 2, 0, z0, doorX - 1, 1.4, z0 + 0.6, col, mat)
+	box(parent, "ShopLintel", x0 + 2, 9.6, z0, x1 - 2, 12, z0 + 0.6, col, mat)
+	box(parent, "ShopGlass", x0 + 2, 1.4, z0 + 0.2, doorX - 1, 9.6, z0 + 0.4, C.glass, Enum.Material.Glass, { transparency = 0.55 })
+	box(parent, "ShopDoorTop", doorX, 8.6, z0, x1 - 2, 9.6, z0 + 0.6, col, mat)
+	box(parent, "ShopDoor", doorX, 0, z0 + 0.15, x1 - 2, 8.6, z0 + 0.45, C.woodDark, Enum.Material.Wood)
+	box(parent, "ShopDoorGlass", doorX + 1, 3, z0 + 0.1, x1 - 3, 7.6, z0 + 0.15, C.glass, Enum.Material.Glass)
+	box(parent, "DoorHandle", doorX + 0.6, 4, z0 - 0.15, doorX + 0.8, 5.4, z0 + 0.1, C.grey, Enum.Material.Metal)
+	-- name board over the window
+	local s = box(parent, "ShopSign", x0 + 2.5, 12.4, z0 - 0.5, x1 - 2.5, 14.6, z0 - 0.06, C.white)
+	sign(s, Enum.NormalId.Front, o.name, o.signColor)
+	if o.awning then
+		for k = 0, math.floor((doorX - 1 - x0 - 2) / 2) - 1 do
+			part(parent, "Awning", Vector3.new(1.96, 0.3, 4.6), CFrame.new(Vector3.new(x0 + 3.1 + k * 2, 10.6, z0 - 2.1)) * CFrame.Angles(math.rad(-20), 0, 0), (k % 2 == 0) and o.awning or C.white, Enum.Material.Fabric, { collide = false })
 		end
 	end
-	-- awning (stripes)
-	for k = 0, math.floor(w / 2) - 1 do
-		local p = part(parent, "Awning", Vector3.new(2, 0.3, 5), CFrame.new(Vector3.new(x0 + 1 + k * 2, 10.4, z0 - 2.4)) * CFrame.Angles(math.rad(-18), 0, 0), (k % 2 == 0) and awning or C.white, Enum.Material.Fabric, { collide = false })
-		local _ = p
+	-- upper floors: windows with sills, sometimes a balcony
+	local floors = math.floor((h - 16) / 9)
+	for fl = 0, floors - 1 do
+		local y = 17 + fl * 9
+		for k = 0, math.floor((x1 - x0 - 6) / 8) - 1 do
+			local wx = x0 + 4 + k * 8
+			box(parent, "Window", wx, y, z0 - 0.3, wx + 4.5, y + 5, z0 - 0.06, Color3.fromRGB(170, 196, 220), Enum.Material.Glass)
+			box(parent, "WindowSill", wx - 0.3, y - 0.5, z0 - 0.7, wx + 4.8, y - 0.1, z0 - 0.06, C.white)
+			if o.balcony and fl == 0 and k % 2 == 1 then
+				box(parent, "BalconySlab", wx - 1, y - 0.9, z0 - 3, wx + 5.5, y - 0.5, z0 - 0.06, C.white)
+				box(parent, "BalconyRail", wx - 1, y + 2.4, z0 - 3, wx + 5.5, y + 2.7, z0 - 2.8, C.dark, Enum.Material.Metal, { collide = false })
+				for bx = wx - 0.9, wx + 5.4, 1.3 do
+					box(parent, "BalconyBar", bx, y - 0.5, z0 - 2.98, bx + 0.12, y + 2.4, z0 - 2.86, C.dark, Enum.Material.Metal, { collide = false })
+				end
+				part(parent, "BalconyPlant", Vector3.new(1.6, 1.6, 1.6), Vector3.new(wx + 4.6, y + 0.3, z0 - 1.4), C.plant, Enum.Material.Grass, { shape = Enum.PartType.Ball, collide = false })
+			end
+		end
 	end
-	local s = box(parent, "ShopSign", x0 + 2, 11.6, z0 - 0.6, x1 - 2, 14.2, z0 - 0.06, C.white)
-	sign(s, Enum.NormalId.Front, name, signColor)
+	-- inside (seen through the shop window)
+	local cx, iz = (x0 + x1) / 2, z0 + depth
+	local kind = o.kind
+	if kind == "pizza" then
+		box(parent, "Oven", cx - 5, 0.1, iz - 4, cx + 5, 8, iz - 0.06, Color3.fromRGB(170, 90, 60), Enum.Material.Brick)
+		box(parent, "OvenMouth", cx - 2.5, 3, iz - 4.04, cx + 2.5, 5.5, iz - 4, Color3.fromRGB(30, 20, 16), nil, { collide = false })
+		local fire = box(parent, "OvenFire", cx - 1.5, 3.1, iz - 4.08, cx + 1.5, 4.2, iz - 4.04, Color3.fromRGB(255, 140, 40), Enum.Material.Neon, { collide = false })
+		new("PointLight", { Range = 10, Brightness = 1, Color = Color3.fromRGB(255, 150, 60), Shadows = false }, fire)
+		for i, tx in ipairs({ x0 + 7, x0 + 17 }) do
+			box(parent, "PizzaTable", tx - 2, 2.8, z0 + 3, tx + 2, 3.1, z0 + 6.5, (i == 1) and Color3.fromRGB(200, 60, 50) or C.white)
+			box(parent, "PizzaTableLeg", tx - 0.2, 0.1, z0 + 4.55, tx + 0.2, 2.8, z0 + 4.95, C.dark)
+			chair(parent, Vector3.new(tx - 3.4, 0.1, z0 + 4.75), math.pi / 2, Color3.fromRGB(46, 140, 70))
+			chair(parent, Vector3.new(tx + 3.4, 0.1, z0 + 4.75), -math.pi / 2, Color3.fromRGB(46, 140, 70))
+			part(parent, "Pizza", Vector3.new(0.12, 2.4, 2.4), CFrame.new(Vector3.new(tx, 3.16, z0 + 4.75)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(240, 170, 70), nil, { shape = Enum.PartType.Cylinder, collide = false })
+		end
+		-- a big round pizza sign sticking out over the sidewalk
+		box(parent, "PizzaSignArm", x1 - 4.2, 18.6, z0 - 5, x1 - 3.8, 19, z0 - 0.06, C.dark, Enum.Material.Metal)
+		part(parent, "PizzaSign", Vector3.new(0.5, 6, 6), CFrame.new(Vector3.new(x1 - 4, 15, z0 - 3.4)), Color3.fromRGB(240, 170, 70), nil, { shape = Enum.PartType.Cylinder, collide = false })
+		part(parent, "PizzaCrust", Vector3.new(0.4, 6.6, 6.6), CFrame.new(Vector3.new(x1 - 4, 15, z0 - 3.4)), Color3.fromRGB(196, 120, 50), nil, { shape = Enum.PartType.Cylinder, collide = false })
+		for k = 0, 5 do
+			local a = k * 1.05
+			part(parent, "Pepperoni", Vector3.new(0.6, 1, 1), CFrame.new(Vector3.new(x1 - 4, 15 + math.sin(a) * 1.7, z0 - 3.4 + math.cos(a) * 1.7)), Color3.fromRGB(200, 40, 40), nil, { shape = Enum.PartType.Cylinder, collide = false })
+		end
+	elseif kind == "cafe" then
+		box(parent, "Counter", x0 + 3, 0.1, iz - 4, x1 - 9, 3.6, iz - 1.5, C.wood, Enum.Material.Wood)
+		box(parent, "CoffeeMachine", x0 + 5, 3.6, iz - 3.4, x0 + 8, 6, iz - 1.8, C.dark, Enum.Material.Metal)
+		for k = 0, 3 do
+			box(parent, "CakeStand", x0 + 12 + k * 3.2, 3.6, iz - 3.2, x0 + 14 + k * 3.2, 4.6, iz - 2.2, (k % 2 == 0) and C.coral or Color3.fromRGB(240, 220, 170), nil, { collide = false })
+		end
+		local board = box(parent, "Chalkboard", x0 + 4, 6, iz - 0.12, x0 + 16, 10, iz - 0.06, Color3.fromRGB(40, 50, 44), nil, { collide = false })
+		sign(board, Enum.NormalId.Front, "LATTE · CAKE · TOUR SPECIAL", C.white, Enum.Font.Antique)
+		box(parent, "CafeTableIn", x0 + 8, 2.6, z0 + 3.5, x0 + 11, 2.9, z0 + 6, C.white)
+		box(parent, "CafeTableInLeg", x0 + 9.3, 0.1, z0 + 4.5, x0 + 9.7, 2.6, z0 + 5, C.dark)
+		plant(parent, Vector3.new(x1 - 4, 0.1, iz - 3), false)
+	elseif kind == "records" then
+		for r = 0, 2 do
+			local rx = x0 + 5 + r * 9
+			box(parent, "Crate", rx, 0.1, z0 + 3, rx + 6, 3, z0 + 7, C.woodDark, Enum.Material.Wood)
+			for k = 0, 9 do
+				local c = ({ C.purple, C.teal, C.coral, C.yellow, C.dark, C.white })[(k + r) % 6 + 1]
+				box(parent, "Record", rx + 0.3 + k * 0.55, 3, z0 + 3.4, rx + 0.7 + k * 0.55, 5.6, z0 + 6.6, c, nil, { collide = false })
+			end
+		end
+		for k = 0, 11 do
+			local c = ({ C.purple, C.teal, C.coral, C.yellow, Color3.fromRGB(90, 140, 220), C.dark })[k % 6 + 1]
+			local col = k % 6
+			local row = math.floor(k / 6)
+			box(parent, "AlbumCover", x0 + 4 + col * 5, 5 + row * 3.4, iz - 0.12, x0 + 7 + col * 5, 8 + row * 3.4, iz - 0.06, c, nil, { collide = false })
+		end
+	elseif kind == "music" then
+		for k = 0, 4 do
+			local gx = x0 + 5 + k * 5
+			local c = ({ Color3.fromRGB(200, 40, 40), C.white, Color3.fromRGB(30, 30, 34), Color3.fromRGB(230, 150, 40), Color3.fromRGB(60, 110, 200) })[k + 1]
+			part(parent, "GuitarBody", Vector3.new(2.4, 3, 0.5), Vector3.new(gx, 4.4, iz - 0.4), c, nil, { shape = Enum.PartType.Ball, collide = false })
+			box(parent, "GuitarNeck", gx - 0.18, 5.6, iz - 0.45, gx + 0.18, 9.6, iz - 0.25, C.woodDark, Enum.Material.Wood, { collide = false })
+		end
+		box(parent, "Amp", x0 + 4, 0.1, z0 + 3, x0 + 8, 4, z0 + 5.4, C.dark, Enum.Material.Leather)
+		box(parent, "Amp", x0 + 9, 0.1, z0 + 3, x0 + 13, 5.5, z0 + 5.4, C.dark, Enum.Material.Leather)
+		box(parent, "AmpGrille", x0 + 9.4, 0.6, z0 + 2.96, x0 + 12.6, 4.8, z0 + 3, Color3.fromRGB(90, 76, 60), Enum.Material.Fabric, { collide = false })
+		part(parent, "DrumKick", Vector3.new(2, 3, 3), CFrame.new(Vector3.new(x0 + 20, 1.6, z0 + 5)) * CFrame.Angles(0, math.pi / 2, 0), C.white, nil, { shape = Enum.PartType.Cylinder })
+		part(parent, "Cymbal", Vector3.new(0.1, 2.4, 2.4), CFrame.new(Vector3.new(x0 + 22.4, 5, z0 + 4.6)) * CFrame.Angles(0, 0, math.pi / 2), C.yellow, Enum.Material.Metal, { shape = Enum.PartType.Cylinder, collide = false })
+	elseif kind == "bakery" then
+		box(parent, "Display", x0 + 3, 0.1, z0 + 3, x1 - 9, 3.2, z0 + 6, C.white)
+		box(parent, "DisplayGlass", x0 + 3, 3.2, z0 + 3, x1 - 9, 4.6, z0 + 3.2, C.glass, Enum.Material.Glass, { transparency = 0.4, collide = false })
+		for k = 0, 9 do
+			part(parent, "Bread", Vector3.new(1.6, 0.9, 0.9), Vector3.new(x0 + 4.5 + k * 2.4, 3.65, z0 + 4.5 + (k % 2) * 0.6), Color3.fromRGB(200, 140, 70), nil, { shape = Enum.PartType.Ball, collide = false })
+		end
+		for r = 0, 2 do
+			box(parent, "BreadShelf", x0 + 3, 4 + r * 2.6, iz - 1.6, x1 - 3, 4.3 + r * 2.6, iz - 0.06, C.wood, Enum.Material.Wood)
+			for k = 0, 7 do
+				part(parent, "Loaf", Vector3.new(2, 1, 1), Vector3.new(x0 + 5 + k * 4, 4.8 + r * 2.6, iz - 0.9), Color3.fromRGB(180, 120, 60), nil, { shape = Enum.PartType.Ball, collide = false })
+			end
+		end
+	elseif kind == "bar" then
+		box(parent, "BarCounter", x0 + 3, 0.1, iz - 5, x1 - 9, 3.8, iz - 3, C.woodDark, Enum.Material.Wood)
+		box(parent, "BarTop", x0 + 2.8, 3.8, iz - 5.2, x1 - 8.8, 4.1, iz - 2.8, C.dark)
+		for r = 0, 1 do
+			box(parent, "BottleShelf", x0 + 3, 5 + r * 2.6, iz - 1.2, x1 - 3, 5.2 + r * 2.6, iz - 0.06, C.wood, Enum.Material.Wood)
+			for k = 0, 14 do
+				local c = ({ Color3.fromRGB(60, 140, 70), Color3.fromRGB(150, 90, 40), Color3.fromRGB(200, 200, 220), Color3.fromRGB(150, 40, 60) })[k % 4 + 1]
+				box(parent, "Bottle", x0 + 3.6 + k * 2.4, 5.2 + r * 2.6, iz - 0.9, x0 + 4.2 + k * 2.4, 6.9 + r * 2.6, iz - 0.3, c, Enum.Material.Glass, { collide = false })
+			end
+		end
+		for k = 0, 3 do
+			part(parent, "BarStool", Vector3.new(0.5, 2, 2), CFrame.new(Vector3.new(x0 + 6 + k * 5, 2.9, iz - 6.5)) * CFrame.Angles(0, 0, math.pi / 2), C.purple, nil, { shape = Enum.PartType.Cylinder })
+			box(parent, "StoolLeg", x0 + 5.8 + k * 5, 0.1, iz - 6.7, x0 + 6.2 + k * 5, 2.65, iz - 6.3, C.dark, Enum.Material.Metal)
+		end
+		local ls = box(parent, "LiveSign", x0 + 4, 8.6, z0 + 0.5, x0 + 14, 9.4, z0 + 0.56, C.dark, nil, { collide = false })
+		sign(ls, Enum.NormalId.Front, "LIVE MUSIC TONIGHT", C.yellow)
+	elseif kind == "fashion" then
+		for r = 0, 1 do
+			local ry = z0 + 3.5 + r * 4
+			box(parent, "Rack", x0 + 4, 7, ry - 0.1, x1 - 12, 7.2, ry + 0.1, C.grey, Enum.Material.Metal, { collide = false })
+			box(parent, "RackLeg", x0 + 4, 0.1, ry - 0.1, x0 + 4.2, 7, ry + 0.1, C.grey, Enum.Material.Metal)
+			for k = 0, 9 do
+				local c = ({ C.purple, C.teal, C.coral, C.yellow, C.white, C.dark })[(k + r) % 6 + 1]
+				box(parent, "Shirt", x0 + 5 + k * 2.6, 3.6, ry - 0.9, x0 + 6.8 + k * 2.6, 6.8, ry + 0.9, c, Enum.Material.Fabric, { collide = false })
+			end
+		end
+		for k = 0, 1 do
+			local mx = x1 - 10 + k * 4
+			box(parent, "Mannequin", mx - 0.9, 3.4, z0 + 4, mx + 0.9, 7, z0 + 5, (k == 0) and C.coral or C.dark, Enum.Material.Fabric)
+			box(parent, "MannequinLegs", mx - 0.7, 0.1, z0 + 4.1, mx + 0.7, 3.4, z0 + 4.9, C.white)
+			part(parent, "MannequinHead", Vector3.new(1.2, 1.2, 1.2), Vector3.new(mx, 7.7, z0 + 4.5), C.white, nil, { shape = Enum.PartType.Ball })
+		end
+	end
 end
 
 ------------------------------------------------------------------ the building
@@ -23417,7 +23866,7 @@ function Hub.build(parentFolder)
 	local staff = new("Folder", { Name = "StaffDesks" }, deco)
 	for _, st in ipairs(Hub.STAFF) do
 		if st.desk then
-			desk(staff, st.pos + Vector3.new(0, 0, -2.6), 0, true)
+			desk(staff, st.desk, 0, true)
 			chair(staff, st.pos, 0, C.dark)
 		end
 	end
@@ -23426,7 +23875,7 @@ function Hub.build(parentFolder)
 	end
 	chair(deco, Vector3.new(-22, 0, 25.2), math.pi, C.coral)
 	plant(deco, Vector3.new(36, 0, -24), true)
-	plant(deco, Vector3.new(36, 0, 6), false)
+	plant(deco, Vector3.new(37, 0, 22), false)
 
 	------------------------------------------------------------ OFFICE: coffee bar (front right)
 	local cb = new("Folder", { Name = "CoffeeBar" }, deco)
@@ -23545,13 +23994,30 @@ function Hub.build(parentFolder)
 		local y = math.floor(i / 3) * 4
 		box(hall, "RoadCase", x - 2.5, y, 28, x + 2.5, y + 4, 32, (i % 2 == 0) and Color3.fromRGB(40, 40, 46) or Color3.fromRGB(60, 60, 68), Enum.Material.DiamondPlate)
 	end
-	-- the build console (opens My Stages / the stage builder)
+	-- the stage design workstation (opens My Stages / the stage builder): desk, three monitors, PC, chair
 	local cp = Vector3.new(58, 0, -24)
-	box(hall, "Console", cp.X - 5, 0, cp.Z - 2, cp.X + 5, 3.4, cp.Z + 2, C.white)
-	local consoleTop = part(hall, "ConsoleTop", Vector3.new(10.4, 0.4, 4.6), CFrame.new(cp + Vector3.new(0, 3.7, 0)) * CFrame.Angles(math.rad(-10), 0, 0), C.dark, Enum.Material.SmoothPlastic)
-	for i = -1, 1 do
-		part(hall, "ConsoleScreen", Vector3.new(3, 2, 0.2), CFrame.new(cp + Vector3.new(i * 3.2, 5.6, -1.7)) * CFrame.Angles(0, i * -0.25, 0), (i == 0) and Color3.fromRGB(110, 200, 190) or Color3.fromRGB(160, 150, 240), Enum.Material.SmoothPlastic, { collide = false })
+	box(hall, "WorkDesk", cp.X - 6, 3, cp.Z - 2.4, cp.X + 6, 3.4, cp.Z + 2.4, C.woodDark, Enum.Material.Wood)
+	for _, dx in ipairs({ -5.6, 5.6 }) do
+		box(hall, "WorkDeskLeg", cp.X + dx - 0.2, 0, cp.Z - 2.2, cp.X + dx + 0.2, 3, cp.Z + 2.2, C.grey, Enum.Material.Metal)
 	end
+	box(hall, "WorkDeskPanel", cp.X - 5.4, 0.8, cp.Z - 2.2, cp.X + 5.4, 3, cp.Z - 2, C.dark)
+	local monitorCol = { Color3.fromRGB(110, 200, 190), Color3.fromRGB(160, 150, 240), Color3.fromRGB(250, 200, 110) }
+	for i = -1, 1 do
+		local mcf = CFrame.new(cp + Vector3.new(i * 3.8, 0, -1.2)) * CFrame.Angles(0, i * -0.3, 0)
+		part(hall, "MonitorFoot", Vector3.new(1.4, 0.12, 1), mcf * CFrame.new(0, 3.46, 0), C.dark)
+		part(hall, "MonitorStand", Vector3.new(0.35, 1.3, 0.35), mcf * CFrame.new(0, 4.1, -0.1), C.dark)
+		part(hall, "Monitor", Vector3.new(3.6, 2.3, 0.3), mcf * CFrame.new(0, 5.8, -0.1), C.dark)
+		part(hall, "MonitorScreen", Vector3.new(3.3, 2, 0.05), mcf * CFrame.new(0, 5.8, 0.075), monitorCol[i + 2], Enum.Material.SmoothPlastic, { collide = false })
+	end
+	local consoleTop = box(hall, "Keyboard", cp.X - 1.4, 3.4, cp.Z + 0.6, cp.X + 1.4, 3.55, cp.Z + 1.5, C.white)
+	box(hall, "Mouse", cp.X + 2.2, 3.4, cp.Z + 0.8, cp.X + 2.7, 3.6, cp.Z + 1.4, C.white)
+	box(hall, "Tablet", cp.X - 4.6, 3.4, cp.Z + 0.4, cp.X - 2.6, 3.5, cp.Z + 1.8, C.dark)
+	box(hall, "PCTower", cp.X + 6.4, 0, cp.Z - 1.5, cp.X + 8, 4, cp.Z + 1.5, C.dark)
+	box(hall, "PCLight", cp.X + 6.6, 3.2, cp.Z + 1.5, cp.X + 7.8, 3.4, cp.Z + 1.54, C.teal, nil, { collide = false })
+	chair(hall, cp + Vector3.new(0, 0, 4.2), 0, C.purple)
+	local ws = box(hall, "WorkSign", cp.X - 5, 9, cp.Z - 2.6, cp.X + 5, 10.6, cp.Z - 2.44, C.dark, nil, { collide = false })
+	sign(ws, Enum.NormalId.Back, "STAGE DESIGN", C.yellow)
+	box(hall, "WorkSignPole", cp.X - 0.15, 3.4, cp.Z - 2.4, cp.X + 0.15, 9, cp.Z - 2.1, C.grey, Enum.Material.Metal)
 	prompt(consoleTop, "stagehall", "Build stages", "Stage Hall", 10)
 	box(hall, "FloorTape", 48, 0, -12, 116, 0.04, -11.6, C.yellow, nil, { collide = false })
 	for _, z in ipairs({ -20, 10, 36 }) do
@@ -23561,118 +24027,187 @@ function Hub.build(parentFolder)
 		end
 	end
 
-	------------------------------------------------------------ OUTSIDE: one short street, closed at both ends
-	-- sidewalk in front of the label, the road, the sidewalk across, the shops
-	box(out, "Sidewalk", -150, -1, 48, 190, 0, 62, C.sidewalk, Enum.Material.Concrete)
-	box(out, "Curb", -150, -1, 62, 190, 0.02, 63, Color3.fromRGB(150, 150, 150), Enum.Material.Concrete)
-	box(out, "Road", -150, -1.5, 63, 190, -0.5, 89, C.asphalt, Enum.Material.Asphalt)
-	box(out, "CurbFar", -150, -1, 89, 190, 0.02, 90, Color3.fromRGB(150, 150, 150), Enum.Material.Concrete)
-	box(out, "SidewalkFar", -150, -1, 90, 190, 0, 104, C.sidewalk, Enum.Material.Concrete)
-	for x = -140, 180, 16 do
+	------------------------------------------------------------ OUTSIDE: the street. Straight in front of the label,
+	-- at both ends it bends away around the corner (you see the city go on; an invisible wall stops you there)
+	local XW, XE = Hub.STREET.xw, Hub.STREET.xe
+	local CW, CE = Hub.STREET.cw, Hub.STREET.ce
+	local AS = C.asphalt
+	box(out, "Ground", -340, -2.2, -90, 380, -1.5, 330, Color3.fromRGB(86, 88, 92), Enum.Material.Concrete)
+	-- straight part
+	box(out, "Sidewalk", XW, -1, 48, XE, 0, 62, C.sidewalk, Enum.Material.Concrete)
+	box(out, "Curb", XW, -1, 62, XE, 0.02, 63, Color3.fromRGB(150, 150, 150), Enum.Material.Concrete)
+	box(out, "Road", XW, -1.5, 63, XE, -0.5, 89, AS, Enum.Material.Asphalt)
+	box(out, "CurbFar", XW, -1, 89, XE, 0.02, 90, Color3.fromRGB(150, 150, 150), Enum.Material.Concrete)
+	box(out, "SidewalkFar", XW, -1, 90, XE, 0, 104, C.sidewalk, Enum.Material.Concrete)
+	for x = XW + 6, XE - 10, 16 do
 		if x + 8 < -9 or x > 9 then
-			box(out, "LaneMark", x, -0.5, 75.75, x + 8, -0.46, 76.25, C.white, nil, { collide = false })
+			box(out, "LaneMark", x, -0.5, 77, x + 8, -0.46, 77.5, C.white, nil, { collide = false })
 		end
 	end
-	for i = 0, 6 do
-		box(out, "Crosswalk", -7 + i * 2.2, -0.5, 64, -5.6 + i * 2.2, -0.46, 88, C.white, nil, { collide = false })
+	-- zebra crossing: stripes parallel to the road, one after another across it
+	for z = 64.2, 87, 3.2 do
+		box(out, "Crosswalk", -6, -0.5, z, 6, -0.46, z + 1.6, C.white, nil, { collide = false })
 	end
-	-- the street is closed by buildings at both ends (and the label's neighbours)
-	box(out, "EndWest", -170, -1, -60, -150, 70, 150, Color3.fromRGB(200, 170, 140), Enum.Material.Brick)
-	box(out, "EndEast", 190, -1, -60, 210, 80, 150, Color3.fromRGB(176, 186, 200), Enum.Material.Concrete)
-	box(out, "NeighbourWest", -150, -1, -60, -90, 54, 48, Color3.fromRGB(212, 186, 150), Enum.Material.Brick)
-	box(out, "NeighbourEast", 124, -1, -60, 190, 64, 48, Color3.fromRGB(190, 200, 214), Enum.Material.Concrete)
-	for _, nb in ipairs({ { -150, -90, 54 }, { 124, 190, 64 } }) do
+	-- the two bends (ring pieces around a corner point) and the street going on behind them
+	local function ringPiece(name, ctr, dir, r0, r1, a0, a1, y0, y1, color, material)
+		local am = (a0 + a1) / 2
+		local rm = (r0 + r1) / 2
+		local chord = 2 * r1 * math.sin((a1 - a0) / 2) + 0.1
+		local pos = ctr + Vector3.new(dir * math.sin(am) * rm, (y0 + y1) / 2, -math.cos(am) * rm)
+		local yaw = math.atan2(math.cos(am), dir * math.sin(am))
+		return part(out, name, Vector3.new(r1 - r0, y1 - y0, chord), CFrame.new(pos) * CFrame.Angles(0, yaw, 0), color, material)
+	end
+	local LAYERS = {
+		{ "ArcSidewalkIn", 20, 34, -1, 0, C.sidewalk, Enum.Material.Concrete },
+		{ "ArcCurbIn", 34, 35, -1, 0.02, Color3.fromRGB(150, 150, 150), Enum.Material.Concrete },
+		{ "ArcRoad", 35, 61, -1.5, -0.5, AS, Enum.Material.Asphalt },
+		{ "ArcCurbOut", 61, 62, -1, 0.02, Color3.fromRGB(150, 150, 150), Enum.Material.Concrete },
+		{ "ArcSidewalkOut", 62, 76, -1, 0, C.sidewalk, Enum.Material.Concrete },
+	}
+	local rng = Random.new(21)
+	for _, side in ipairs({ { CW, -1 }, { CE, 1 } }) do
+		local ctr, dir = side[1], side[2]
+		local steps = 9
+		for k = 0, steps - 1 do
+			local a0, a1 = k * (math.pi / 2) / steps, (k + 1) * (math.pi / 2) / steps
+			for _, L in ipairs(LAYERS) do
+				ringPiece(L[1], ctr, dir, L[2], L[3], a0, a1, L[4], L[5], L[6], L[7])
+			end
+		end
+		-- outer buildings along the bend
+		for k = 0, 5 do
+			local a0, a1 = k * (math.pi / 12), (k + 1) * (math.pi / 12)
+			local h = 36 + ((k % 2 == 0) and 0 or 14) + k * 3 + rng:NextInteger(0, 2)
+			local col = Color3.fromRGB(rng:NextInteger(170, 230), rng:NextInteger(150, 210), rng:NextInteger(130, 200))
+			local b = ringPiece("ArcBuilding", ctr, dir, 77, 108, a0, a1, -1, h, col, (k % 2 == 0) and Enum.Material.Brick or Enum.Material.SmoothPlastic)
+			for fl = 0, math.floor((h - 10) / 10) do
+				local wnd = ringPiece("ArcWindows", ctr, dir, 76.9, 77, a0 + 0.03, a1 - 0.03, 5 + fl * 10, 10 + fl * 10, Color3.fromRGB(170, 196, 220), Enum.Material.Glass)
+				local _w = wnd
+			end
+			local _b = b
+		end
+		-- the street goes on after the bend
+		local xr = function(r)
+			return ctr.X + dir * r
+		end
+		local function strip(name, r0, r1, y0, y1, color, material)
+			local xa, xb = xr(r0), xr(r1)
+			box(out, name, math.min(xa, xb), y0, ctr.Z, math.max(xa, xb), y1, ctr.Z + 190, color, material)
+		end
+		for _, L in ipairs(LAYERS) do
+			strip(L[1]:gsub("Arc", "Cont"), L[2], L[3], L[4], L[5], L[6], L[7])
+		end
+		for i = 0, 4 do
+			local z0 = ctr.Z + i * 38
+			local h = rng:NextInteger(30, 64)
+			local xa, xb = xr(77), xr(108)
+			box(out, "ContBuilding", math.min(xa, xb), -1, z0, math.max(xa, xb), h, z0 + 36, Color3.fromRGB(rng:NextInteger(160, 220), rng:NextInteger(150, 200), rng:NextInteger(140, 200)), Enum.Material.Brick)
+		end
+		box(out, "ContEnd", math.min(xr(0), xr(110)), -1, ctr.Z + 190, math.max(xr(0), xr(110)), 70, ctr.Z + 220, Color3.fromRGB(190, 180, 170), Enum.Material.Concrete)
+		-- the inner corner: a round corner house and the block along the side street
+		part(out, "CornerTower", Vector3.new(52, 40, 40), CFrame.new(ctr + Vector3.new(0, 25, 0)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(214, 196, 172), Enum.Material.SmoothPlastic, { shape = Enum.PartType.Cylinder })
+		local xi0, xi1 = xr(0), xr(20)
+		box(out, "CornerBlock", math.min(xi0, xi1), -1, ctr.Z, math.max(xi0, xi1), 42, ctr.Z + 190, Color3.fromRGB(200, 186, 168), Enum.Material.Brick)
+		-- invisible wall where the bend starts: you can look around the corner, not walk there
+		local xw = (dir < 0) and XW or XE
+		box(out, "Boundary", xw - 0.5, -1, 48, xw + 0.5, 60, 104, C.white, nil, { transparency = 1 })
+	end
+
+	-- the label's neighbours (left and right) and the billboard
+	box(out, "NeighbourWest", XW, -1, -60, -90, 54, 48, Color3.fromRGB(212, 186, 150), Enum.Material.Brick)
+	box(out, "NeighbourEast", 124, -1, -60, XE, 64, 48, Color3.fromRGB(190, 200, 214), Enum.Material.Concrete)
+	for _, nb in ipairs({ { XW, -90, 54 }, { 124, XE, 64 } }) do
 		for fl = 0, math.floor((nb[3] - 8) / 10) do
 			for k = 0, math.floor((nb[2] - nb[1] - 8) / 9) do
 				local wx, wy = nb[1] + 5 + k * 9, 6 + fl * 10
-				local underBillboard = nb[1] > 0 and wx + 5 > 130 and wx < 184 and wy + 6 > 24 and wy < 54
+				local underBillboard = nb[1] > 0 and wx + 5 > 128 and wx < 168 and wy + 6 > 24 and wy < 54
 				if not underBillboard then
-					box(out, "Window", nb[1] + 5 + k * 9, 6 + fl * 10, 48.06, nb[1] + 10 + k * 9, 12 + fl * 10, 48.3, Color3.fromRGB(170, 196, 220), Enum.Material.Glass)
+					box(out, "Window", wx, wy, 48.06, wx + 5, wy + 6, 48.3, Color3.fromRGB(170, 196, 220), Enum.Material.Glass)
+					box(out, "WindowSill", wx - 0.3, wy - 0.4, 48.04, wx + 5.3, wy, 48.5, C.white)
 				end
 			end
 		end
 	end
-	-- the facade of the label: canopy over the door and the big name sign
+	box(out, "BillboardFrame", 130, 26, 48.06, 166, 52, 48.6, C.dark)
+	poster(out, Vector3.new(148, 39, 48.72), Enum.NormalId.Back, 34, 24)
+	-- the label's facade: canopy over the door and the big name sign on the roof
 	box(out, "Canopy", -12, 15.2, 48, 12, 15.8, 54, C.white)
 	local facade = box(out, "FacadeSign", -30, H + 2.4, 48.04, 30, H + 7.6, 48.6, C.purple)
 	sign(facade, Enum.NormalId.Back, "STARLIGHT RECORDS", C.white).Name = "LabelSign"
 	box(out, "FacadeSignBack", -30, H + 2, 46, 30, H + 8, 48.04, C.wall)
-	-- (stands on the roof: the roof top is at H + 2)
-	-- shops across the street
-	shop(out, -150, -108, 48, Color3.fromRGB(226, 200, 170), "BAKERY", C.coral, C.coral)
-	shop(out, -108, -60, 40, Color3.fromRGB(240, 214, 200), "MOONBEAM CAFE", C.purple, C.purple)
-	shop(out, -60, -18, 56, Color3.fromRGB(200, 214, 230), "VINYL VAULT", Color3.fromRGB(40, 90, 160), C.teal)
-	shop(out, -18, 24, 44, Color3.fromRGB(236, 224, 190), "AMP CITY", C.coral, C.yellow)
-	shop(out, 24, 66, 52, Color3.fromRGB(214, 226, 206), "SLICE PIZZA", Color3.fromRGB(200, 60, 50), Color3.fromRGB(200, 60, 50))
-	shop(out, 66, 120, 60, Color3.fromRGB(228, 210, 226), "BACKSTAGE BAR", C.purple, C.purple)
-	shop(out, 120, 190, 46, Color3.fromRGB(222, 206, 184), "GUITAR & CO", Color3.fromRGB(120, 70, 40), C.teal)
-	-- cafe tables on the far sidewalk
-	for i, x in ipairs({ -100, -88, -76 }) do
-		box(out, "CafeTable", x - 1.6, 2.6, 96.4, x + 1.6, 2.9, 99.6, C.white)
-		box(out, "CafeTableLeg", x - 0.2, 0, 97.8, x + 0.2, 2.6, 98.2, C.dark, Enum.Material.Metal)
-		box(out, "UmbrellaPole", x - 0.15, 2.9, 97.85, x + 0.15, 9, 98.15, C.white)
-		part(out, "Umbrella", Vector3.new(0.6, 8, 8), CFrame.new(Vector3.new(x, 9.2, 98)) * CFrame.Angles(0, 0, math.pi / 2), (i % 2 == 0) and C.purple or C.coral, Enum.Material.Fabric, { shape = Enum.PartType.Cylinder, collide = false })
+
+	-- shops across the street (each with its own front, a shop window and something to see inside)
+	shop(out, -130, -90, { h = 38, color = Color3.fromRGB(226, 200, 170), name = "BAKERY", signColor = C.coral, awning = C.coral, kind = "bakery", mat = Enum.Material.Brick })
+	shop(out, -90, -46, { h = 30, color = Color3.fromRGB(240, 214, 200), name = "MOONBEAM CAFE", signColor = C.purple, awning = C.purple, kind = "cafe", balcony = true })
+	shop(out, -46, -6, { h = 52, color = Color3.fromRGB(200, 214, 230), name = "VINYL VAULT", signColor = Color3.fromRGB(40, 90, 160), kind = "records" })
+	shop(out, -6, 34, { h = 44, color = Color3.fromRGB(150, 70, 56), name = "AMP CITY", signColor = C.yellow, awning = C.dark, kind = "music", mat = Enum.Material.Brick })
+	shop(out, 34, 76, { h = 36, color = Color3.fromRGB(214, 226, 206), name = "SLICE PIZZA", signColor = Color3.fromRGB(200, 60, 50), awning = Color3.fromRGB(46, 140, 70), kind = "pizza", balcony = true })
+	shop(out, 76, 120, { h = 58, color = Color3.fromRGB(110, 84, 120), name = "BACKSTAGE BAR", signColor = C.yellow, kind = "bar" })
+	shop(out, 120, XE, { h = 46, color = Color3.fromRGB(236, 230, 214), name = "STAGE WEAR", signColor = C.dark, awning = Color3.fromRGB(30, 30, 36), kind = "fashion", balcony = true })
+
+	-- far sidewalk: trees and lamps at the curb, cafe tables at the cafe front (people walk in between)
+	for _, x in ipairs({ -112, -40, 46, 100, 150 }) do
+		tree(out, Vector3.new(x, 0, 92.5))
+	end
+	for _, x in ipairs({ -70, 14, 76, 128 }) do
+		streetLamp(out, Vector3.new(x, 0, 90.9), -1)
+	end
+	for i, x in ipairs(Hub.CAFE_TABLES) do
+		box(out, "CafeTable", x - 1.4, 2.6, 100.4, x + 1.4, 2.9, 103.2, C.white)
+		box(out, "CafeTableLeg", x - 0.2, 0, 101.6, x + 0.2, 2.6, 102, C.dark, Enum.Material.Metal)
+		box(out, "UmbrellaPole", x - 0.15, 2.9, 101.65, x + 0.15, 9, 101.95, C.white)
+		part(out, "Umbrella", Vector3.new(0.6, 8, 8), CFrame.new(Vector3.new(x, 9.2, 101.8)) * CFrame.Angles(0, 0, math.pi / 2), (i % 2 == 0) and C.purple or C.coral, Enum.Material.Fabric, { shape = Enum.PartType.Cylinder, collide = false })
 	end
 	for _, st in ipairs(Hub.SITTERS) do
-		if not st.sofa then
+		if st.kind == "chair" then
 			chair(out, st.pos, st.yaw + math.pi, C.white)
 		end
 	end
-	-- trees, benches, lamps, bus stop, parked cars, the tour bus
-	for _, x in ipairs({ -130, -96, -54, 28, 70, 140, 176 }) do
-		tree(out, Vector3.new(x, 0, 58))
+	-- front sidewalk: trees, lamps, the bus stop and benches in the strip at the curb
+	for _, x in ipairs({ -115, -75, 26, 118, 158 }) do
+		tree(out, Vector3.new(x, 0, 59.5))
 	end
-	for _, x in ipairs({ -130, -40, 40, 100, 160 }) do
-		tree(out, Vector3.new(x, 0, 94))
+	for _, x in ipairs({ -95, -20, 50, 100, 140 }) do
+		streetLamp(out, Vector3.new(x, 0, 60.8), 1)
 	end
-	for _, x in ipairs({ -110, -20, 54, 120, 170 }) do
-		streetLamp(out, Vector3.new(x, 0, 60.5), 1)
-	end
-	bench(out, Vector3.new(-74, 0, 52), math.pi)
-	bench(out, Vector3.new(148, 0, 52), math.pi)
-	-- bus stop with a poster
-	box(out, "BusStopRoof", -46, 10, 50, -30, 10.4, 56, C.white)
-	box(out, "BusStopPost", -45.7, 0, 50.3, -45.3, 10, 50.7, C.grey, Enum.Material.Metal)
-	box(out, "BusStopPost", -30.7, 0, 50.3, -30.3, 10, 50.7, C.grey, Enum.Material.Metal)
-	box(out, "BusStopBack", -45.3, 1, 50.3, -30.7, 9, 50.6, C.glass, Enum.Material.Glass, { transparency = 0.5 })
-	bench(out, Vector3.new(-38, 0, 52.4), math.pi)
-	poster(out, Vector3.new(-38, 5, 50.2), Enum.NormalId.Front, 6, 7.6)
-	-- billboard on the eastern neighbour (big poster)
-	box(out, "BillboardFrame", 132, 26, 48.06, 182, 52, 48.6, C.dark)
-	poster(out, Vector3.new(157, 39, 48.72), Enum.NormalId.Back, 48, 24)
-	car(out, Vector3.new(-120, -0.5, 67), 0, Color3.fromRGB(210, 70, 70))
-	car(out, Vector3.new(-80, -0.5, 67), 0, Color3.fromRGB(70, 120, 210))
-	car(out, Vector3.new(110, -0.5, 85), math.pi, Color3.fromRGB(240, 210, 90))
-	car(out, Vector3.new(150, -0.5, 85), math.pi, Color3.fromRGB(240, 240, 240))
-	-- the tour bus in front of the stage hall
-	local bp = Vector3.new(80, -0.5, 69)
-	box(out, "BusBody", bp.X - 20, bp.Y + 1.2, bp.Z - 4.5, bp.X + 20, bp.Y + 12, bp.Z + 4.5, C.white)
-	box(out, "BusStripe", bp.X - 20.04, bp.Y + 3.4, bp.Z - 4.54, bp.X + 20.04, bp.Y + 5, bp.Z + 4.54, C.purple, nil, { collide = false })
-	box(out, "BusWindows", bp.X - 18, bp.Y + 6.6, bp.Z - 4.56, bp.X + 18, bp.Y + 9.6, bp.Z + 4.56, Color3.fromRGB(70, 90, 120), Enum.Material.Glass, { collide = false })
-	local busName = box(out, "BusName", bp.X - 14, bp.Y + 9.8, bp.Z - 4.6, bp.X + 14, bp.Y + 11.6, bp.Z - 4.56, C.white, nil, { collide = false })
+	box(out, "BusStopRoof", -48, 10, 56.8, -32, 10.4, 62, C.white)
+	box(out, "BusStopPost", -47.7, 0, 61.2, -47.3, 10, 61.6, C.grey, Enum.Material.Metal)
+	box(out, "BusStopPost", -32.7, 0, 61.2, -32.3, 10, 61.6, C.grey, Enum.Material.Metal)
+	box(out, "BusStopBack", -47.3, 1, 56.9, -32.7, 9, 57.2, C.glass, Enum.Material.Glass, { transparency = 0.5 })
+	box(out, "BusStopSign", -47.8, 10.4, 61.2, -45.8, 12.4, 61.6, Color3.fromRGB(40, 110, 200))
+	bench(out, Vector3.new(-40, 0, 58.6), math.pi)
+	poster(out, Vector3.new(-40, 5, 56.8), Enum.NormalId.Front, 6, 7.6)
+	bench(out, Vector3.new(-58, 0, 59), math.pi)
+	bench(out, Vector3.new(130, 0, 59), math.pi)
+	-- parked cars in the parking strips, the label's tour bus in front of the stage hall
+	car(out, Vector3.new(-110, -0.5, 66.4), 0, Color3.fromRGB(210, 70, 70))
+	car(out, Vector3.new(-82, -0.5, 66.4), 0, Color3.fromRGB(70, 120, 210))
+	car(out, Vector3.new(20, -0.5, 86.6), math.pi, Color3.fromRGB(240, 210, 90))
+	car(out, Vector3.new(110, -0.5, 86.6), math.pi, Color3.fromRGB(240, 240, 240))
+	car(out, Vector3.new(150, -0.5, 86.6), math.pi, Color3.fromRGB(60, 160, 120))
+	local bp = Vector3.new(80, -0.5, 67.25)
+	box(out, "BusBody", bp.X - 20, bp.Y + 1.2, bp.Z - 3.75, bp.X + 20, bp.Y + 12, bp.Z + 3.75, C.white)
+	box(out, "BusStripe", bp.X - 20.04, bp.Y + 3.4, bp.Z - 3.79, bp.X + 20.04, bp.Y + 5, bp.Z + 3.79, C.purple, nil, { collide = false })
+	box(out, "BusWindows", bp.X - 18, bp.Y + 6.6, bp.Z - 3.81, bp.X + 18, bp.Y + 9.6, bp.Z + 3.81, Color3.fromRGB(70, 90, 120), Enum.Material.Glass, { collide = false })
+	local busName = box(out, "BusName", bp.X - 14, bp.Y + 9.8, bp.Z - 3.85, bp.X + 14, bp.Y + 11.6, bp.Z - 3.81, C.white, nil, { collide = false })
 	sign(busName, Enum.NormalId.Front, "STARLIGHT RECORDS ON TOUR", C.purple).Name = "LabelSign"
 	for _, wx in ipairs({ -14, 12, 16 }) do
-		for _, wz in ipairs({ -4.6, 4.6 }) do
+		for _, wz in ipairs({ -3.8, 3.8 }) do
 			part(out, "Wheel", Vector3.new(1.2, 3.6, 3.6), CFrame.new(bp + Vector3.new(wx, 1.6, wz)) * CFrame.Angles(0, math.pi / 2, 0), C.dark, nil, { shape = Enum.PartType.Cylinder })
 		end
 	end
-	-- invisible walls: nobody walks out of the street or onto the roofs
-	box(out, "Boundary", -150, -1, 48, -149, 60, 104, C.white, nil, { transparency = 1 })
-	box(out, "Boundary", 189, -1, 48, 190, 60, 104, C.white, nil, { transparency = 1 })
-	box(out, "Boundary", -150, 40, 48, 190, 41, 104, C.white, nil, { transparency = 1 })
-
-	local _sp = spots
+	box(out, "Boundary", XW, 40, 48, XE, 41, 104, C.white, nil, { transparency = 1 })
 	return root
 end
 
 return Hub
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="Folder" referent="RBX7D9F701C746D49C38941C0B5BB76647A"><Properties><string name="Name">Remotes</string></Properties><Item class="RemoteFunction" referent="RBX9CF1331880144FE9AA592CB77A8ABDDF"><Properties><string name="Name">Action</string></Properties></Item>
+<Item class="Folder" referent="RBX38232CBAAA2147C897D504DD45688DB7"><Properties><string name="Name">Remotes</string></Properties><Item class="RemoteFunction" referent="RBX0049BD97F9A24C98864A716C5AEB2441"><Properties><string name="Name">Action</string></Properties></Item>
 </Item>
 </Item>
 </Item>
-<Item class="ServerScriptService" referent="RBXB5207A56B31A42B99A83AD6F586636C5"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBX92A5E8CF9965454AA73A05A42BA638C4"><Properties><string name="Name">GameServer</string><bool name="Disabled">false</bool><ProtectedString name="Source"><![CDATA[-- HEADLINER server: owns the game state of every player, runs all actions (Logic/Actions.lua),
+<Item class="ServerScriptService" referent="RBXA153FEAB55564381B6CCD540E283E37A"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBXFC9994BA1F4D4537ACC9BE783C8E11E8"><Properties><string name="Name">GameServer</string><bool name="Disabled">false</bool><ProtectedString name="Source"><![CDATA[-- HEADLINER server: owns the game state of every player, runs all actions (Logic/Actions.lua),
 -- saves to the DataStore (only works in a published place) and builds the label building.
 -- The client only shows the state: after every action the server sends the parts that changed.
 local Players = game:GetService("Players")
@@ -23941,7 +24476,7 @@ Remotes.Action.OnServerInvoke = function(player, name, args)
 end
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="StarterPlayer" referent="RBXF0359707DCE84860A375AF17935B16EB"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX153958DDC93248A18D817F8652159AFE"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBXB8A012F709974BD4A983265C6EE8E0AD"><Properties><string name="Name">Main</string><bool name="Disabled">false</bool><ProtectedString name="Source"><![CDATA[-- HEADLINER client entry point
+<Item class="StarterPlayer" referent="RBXA599DF2B0324460EAB8E70102E5998B1"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX2D7728C230664053924D64BC3803D4DC"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBXA6A3905E6F39439B974EFE6B813F6898"><Properties><string name="Name">Main</string><bool name="Disabled">false</bool><ProtectedString name="Source"><![CDATA[-- HEADLINER client entry point
 if not game:IsLoaded() then
 	game.Loaded:Wait()
 end

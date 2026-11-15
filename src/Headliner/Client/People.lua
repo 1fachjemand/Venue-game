@@ -83,7 +83,8 @@ function People.new(parent, outfit, scale, role, seed, look)
 		return p
 	end
 	local style = look.hair or ((rng:NextNumber() < 0.5) and "short" or "messy")
-	if style ~= "buzz" and style ~= "afro" and style ~= "mohawk" then
+	local hat = look.acc == "cap" or look.acc == "beanie" or look.acc == "cowboy"
+	if style ~= "buzz" and style ~= "afro" and style ~= "mohawk" and not hat then
 		extra("Hair", Vector3.new(1.3, 0.45, 1.3), "head", CFrame.new(0, 0.7, -0.05), hair)
 	end
 	if style == "buzz" then
@@ -127,6 +128,8 @@ function People.new(parent, outfit, scale, role, seed, look)
 	elseif acc == "earrings" then
 		extra("Earring", Vector3.new(0.18, 0.3, 0.18), "head", CFrame.new(-0.64, -0.25, 0), Color3.fromRGB(255, 215, 90), Enum.Material.Metal)
 		extra("Earring", Vector3.new(0.18, 0.3, 0.18), "head", CFrame.new(0.64, -0.25, 0), Color3.fromRGB(255, 215, 90), Enum.Material.Metal)
+	elseif acc == "backpack" then
+		extra("Backpack", Vector3.new(1.5, 1.6, 0.7), "torso", CFrame.new(0, 0, -0.86), (look.bag and c3(look.bag)) or Color3.fromRGB(60, 70, 90), Enum.Material.Fabric)
 	elseif acc == "sparkle" then
 		extra("Sparkles", Vector3.new(2.05, 0.6, 1.06), "torso", CFrame.new(0, -0.2, 0), Color3.fromRGB(255, 235, 250), Enum.Material.Neon)
 	end

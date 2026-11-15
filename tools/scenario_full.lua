@@ -447,7 +447,7 @@ MOCK.clickExact("◀  MY STAGES")
 log("money after the builder: client", app.state.money, "server", SRV().money, "items on server", #GS.getDesign(SRV(), design.id).items)
 assert(#GS.getDesign(SRV(), design.id).items == #design.items, "the server did not get the edited stage")
 local leftover = 0
-for _, d in ipairs(MOCK.playerGui:GetChildren()) do if d:IsA("SurfaceGui") then leftover = leftover + 1 end end
+for _, d in ipairs(MOCK.playerGui:GetChildren()) do if d:IsA("SurfaceGui") and d.Name ~= "Poster" then leftover = leftover + 1 end end
 log("screen guis left in PlayerGui after closing the builder", leftover)
 assert(leftover == 0, "screen guis must be removed with their screens")
 assert(app.current == "stages" and app.mode == "menu", "library")

@@ -1585,7 +1585,12 @@ function B.scissor(m, r)
 	r.edge = part(m, "Edge", Vector3.new(8.4, 0.2, 9.4), CFrame.new(0, 1.25, 0), r.color, Enum.Material.Neon)
 	r.rails = {}
 	for _, c in ipairs({ { 0, -4.4, 7.6, 0.15 }, { -3.9, 0, 0.15, 8.6 }, { 3.9, 0, 0.15, 8.6 } }) do
-		table.insert(r.rails, { p = part(m, "Railing", Vector3.new(c[3], 0.15, c[4]), CFrame.new(c[1], 4.2, c[2]), Color3.fromRGB(240, 190, 20), Enum.Material.Metal), x = c[1], z = c[2] })
+		table.insert(r.rails, { p = part(m, "Railing", Vector3.new(c[3], 0.15, c[4]), CFrame.new(c[1], 4.2, c[2]), Color3.fromRGB(240, 190, 20), Enum.Material.Metal), x = c[1], z = c[2], y = 4.2 })
+		table.insert(r.rails, { p = part(m, "MidRail", Vector3.new(c[3], 0.12, c[4]), CFrame.new(c[1], 2.8, c[2]), Color3.fromRGB(240, 190, 20), Enum.Material.Metal), x = c[1], z = c[2], y = 2.8 })
+	end
+	-- posts hold the railings on the platform (they rise with it)
+	for _, pp in ipairs({ { -3.9, -4.4 }, { 3.9, -4.4 }, { -3.9, 4.3 }, { 3.9, 4.3 }, { -3.9, 0 }, { 3.9, 0 }, { 0, -4.4 } }) do
+		table.insert(r.rails, { p = part(m, "RailPost", Vector3.new(0.18, 3, 0.18), CFrame.new(pp[1], 2.7, pp[2]), Color3.fromRGB(240, 190, 20), Enum.Material.Metal), x = pp[1], z = pp[2], y = 2.7 })
 	end
 	r.scissorH = 0
 end
@@ -2590,7 +2595,7 @@ function Builder.animate(refs, ctx)
 			a.p.CFrame = CFrame.lookAt((p0 + p1) / 2, p1)
 		end
 		for _, rl in ipairs(refs.rails) do
-			rl.p.CFrame = refs.cf * CFrame.new(rl.x, 4.2 + h, rl.z)
+			rl.p.CFrame = refs.cf * CFrame.new(rl.x, (rl.y or 4.2) + h, rl.z)
 		end
 	elseif k == "swing" then
 		Builder.swingPose(refs, math.sin(t * 1.3 + refs.phase) * (0.12 + 0.2 * (ctx.intensity or 0.5)))

@@ -14,6 +14,7 @@ local UI = require(Root.Client.UI)
 local Hub = require(Root.World.Hub)
 local Stage3D = require(Root.Client.Stage3D)
 local People = require(Root.Client.People)
+local Config = require(Root.Config)
 
 local T = UI.Theme
 local New = UI.New
@@ -261,8 +262,36 @@ local function refreshChartsWall(unlocked)
 end
 
 ------------------------------------------------------------------ posters of the artists (on walls, bus stop, billboard)
--- signed artists first (with "ON TOUR" when a tour runs), then the stars you can still sign
+-- signed artists first (with "ON TOUR" when a tour runs), then the stars you can still sign.
+-- Each poster shows the artist as a 3D picture (ViewportFrame: the SurfaceGui lives in the PlayerGui,
+-- Roblox does not draw ViewportFrames on SurfaceGuis in the Workspace) and has its own layout.
 local FACES = { Back = Enum.NormalId.Back, Front = Enum.NormalId.Front, Left = Enum.NormalId.Left, Right = Enum.NormalId.Right }
+local GENRE_FONT = {
+	Pop = Enum.Font.FredokaOne, ["K-Pop"] = Enum.Font.FredokaOne, Rock = Enum.Font.Bangers, Metal = Enum.Font.Fantasy,
+	EDM = Enum.Font.Arcade, Indie = Enum.Font.Antique, Country = Enum.Font.Antique, ["R&B"] = Enum.Font.Garamond,
+	["Hip-Hop"] = Enum.Font.GothamBlack, Latin = Enum.Font.Bangers,
+}
+local POSES = { "point", "wave", "micout", "dance", "jump", "idle" }
+local function posterPicture(parent, ad, pos, size, idx, bg)
+	local vp = New("ViewportFrame", { Parent = parent, Position = pos, Size = size, BackgroundColor3 = bg or Color3.new(0, 0, 0), BackgroundTransparency = bg and 0 or 1, BorderSizePixel = 0, Ambient = Color3.fromRGB(200, 196, 210), LightColor = Color3.new(1, 1, 1), LightDirection = Vector3.new(-0.5, -1, -0.9) })
+	local col = UI.rgb(ad.color)
+	local role = (ad.genre == "Rock" or ad.genre == "Metal" or ad.genre == "Country") and "guitar" or "lead"
+	local fig = People.new(vp, col, 1, role, idx * 3 + 1, ad.look)
+	fig:update(Vector3.new(0, 0, 0), math.rad(((idx % 2 == 0) and 1 or -1) * 22), { t = idx * 0.7, beat = 0.3, energy = 0.6, walking = false, move = POSES[idx % #POSES + 1] })
+	-- bands: two more members behind
+	if ad.members > 1 then
+		for k = 1, math.min(2, ad.members - 1) do
+			local m = People.new(vp, col, 0.95, (k == 1) and "bass" or "dancer", idx * 7 + k, People.bandLook(ad, k, Artists.BAND_STYLE))
+			m:update(Vector3.new((k == 1) and -2.6 or 2.6, 0, -2), math.rad((k == 1) and 20 or -20), { t = 0, beat = 0, energy = 0.4, walking = false, move = "idle" })
+		end
+	end
+	local cam = New("Camera", { FieldOfView = 34, Parent = vp })
+	local close = idx % 3 == 1 -- every third poster is a close-up
+	cam.CFrame = close and CFrame.lookAt(Vector3.new(0, 6.6, 7.5), Vector3.new(0, 5.6, 0)) or CFrame.lookAt(Vector3.new(0, 4.4, 13), Vector3.new(0, 3.4, 0))
+	vp.CurrentCamera = cam
+	return vp
+end
+
 function World.refreshPosters()
 	local state = World.app.state
 	local order = {}
@@ -276,7 +305,7 @@ function World.refreshPosters()
 			table.insert(order, ad)
 		end
 	end
-	local key = ""
+	local key = state.labelName
 	for _, ad in ipairs(order) do
 		key = key .. ad.id .. (state.artists[ad.id].signed and "1" or "0") .. (GS.activeTour(state, ad.id) and "t" or "")
 	end
@@ -284,64 +313,173 @@ function World.refreshPosters()
 		return
 	end
 	World.posterKey = key
+	for _, g in ipairs(World.posterGuis or {}) do
+		g:Destroy()
+	end
+	World.posterGuis = {}
+	local pg = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
 	for _, p in ipairs(World.posters or {}) do
 		local idx = p:GetAttribute("Poster")
 		local ad = order[(idx - 1) % #order + 1]
-		local old = p:FindFirstChild("PosterGui")
-		if old then
-			old:Destroy()
-		end
-		local g = New("SurfaceGui", { Name = "PosterGui", Parent = p, Face = FACES[p:GetAttribute("Face")] or Enum.NormalId.Back, SizingMode = Enum.SurfaceGuiSizingMode.FixedSize, CanvasSize = Vector2.new(420, 600), LightInfluence = 0.3 })
+		local wide = math.max(p.Size.X, p.Size.Z) > p.Size.Y * 1.2
+		local g = New("SurfaceGui", { Name = "Poster", Parent = pg, Adornee = p, Face = FACES[p:GetAttribute("Face")] or Enum.NormalId.Back, SizingMode = Enum.SurfaceGuiSizingMode.FixedSize, CanvasSize = wide and Vector2.new(840, 600) or Vector2.new(420, 600), LightInfluence = 0.2, ResetOnSpawn = false })
+		table.insert(World.posterGuis, g)
+		local W = wide and 840 or 420
 		local col = UI.rgb(ad.color)
-		local bg = New("Frame", { Parent = g, Size = UDim2.fromScale(1, 1), BackgroundColor3 = col, BorderSizePixel = 0, UI.New("UIGradient", { Color = ColorSequence.new(col, Color3.fromRGB(24, 22, 40)), Rotation = 90 }) })
-		-- spotlight + a silhouette of the artist
-		New("Frame", { Parent = bg, Position = UDim2.fromOffset(60, 40), Size = UDim2.fromOffset(300, 300), BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.75, BorderSizePixel = 0, UI.Corner(150) })
-		New("Frame", { Parent = bg, Position = UDim2.fromOffset(165, 110), Size = UDim2.fromOffset(90, 90), BackgroundColor3 = Color3.fromRGB(26, 22, 40), BorderSizePixel = 0, UI.Corner(45) })
-		New("Frame", { Parent = bg, Position = UDim2.fromOffset(130, 205), Size = UDim2.fromOffset(160, 190), BackgroundColor3 = Color3.fromRGB(26, 22, 40), BorderSizePixel = 0, UI.Corner(40) })
-		New("Frame", { Parent = bg, Position = UDim2.fromOffset(90, 150), Size = UDim2.fromOffset(40, 140), Rotation = -25, BackgroundColor3 = Color3.fromRGB(26, 22, 40), BorderSizePixel = 0, UI.Corner(20) })
-		New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(16, 410), Size = UDim2.fromOffset(388, 90), BackgroundTransparency = 1, Text = string.upper(ad.name), TextScaled = true, TextColor3 = Color3.new(1, 1, 1), Font = UI.FontBlack })
+		local dark = Color3.fromRGB(22, 20, 36)
+		local font = GENRE_FONT[ad.genre] or UI.FontBlack
 		local signed = state.artists[ad.id].signed
 		local onTour = GS.activeTour(state, ad.id) ~= nil
-		local line = onTour and "ON TOUR NOW" or (signed and (ad.genre .. "  ·  " .. string.upper(state.labelName)) or (ad.genre .. "  ·  COMING SOON"))
-		New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(16, 504), Size = UDim2.fromOffset(388, 40), BackgroundTransparency = 1, Text = line, TextScaled = true, TextColor3 = onTour and T.gold or Color3.fromRGB(230, 230, 240), Font = UI.FontBold })
-		New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(16, 552), Size = UDim2.fromOffset(388, 30), BackgroundTransparency = 1, Text = "LIVE  ·  WORLD TOUR  ·  TICKETS SOON", TextScaled = true, TextColor3 = Color3.fromRGB(200, 200, 220), Font = UI.FontBold })
+		local layout = idx % 4
+		local bg = New("Frame", { Parent = g, Size = UDim2.fromScale(1, 1), BackgroundColor3 = col, BorderSizePixel = 0 })
+		local line = onTour and "ON TOUR NOW" or (signed and string.upper(state.labelName) or "COMING SOON")
+		if wide then
+			-- billboard: picture left, big name right
+			New("UIGradient", { Parent = bg, Color = ColorSequence.new(col, dark), Rotation = 0 })
+			posterPicture(bg, ad, UDim2.fromOffset(0, 0), UDim2.fromOffset(420, 600), idx)
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(420, 120), Size = UDim2.fromOffset(400, 160), BackgroundTransparency = 1, Text = string.upper(ad.name), TextScaled = true, TextColor3 = Color3.new(1, 1, 1), Font = font })
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(420, 300), Size = UDim2.fromOffset(400, 60), BackgroundTransparency = 1, Text = onTour and "WORLD TOUR · ON SALE NOW" or "NEW ALBUM OUT NOW", TextScaled = true, TextColor3 = T.gold, Font = UI.FontBlack })
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(420, 380), Size = UDim2.fromOffset(400, 40), BackgroundTransparency = 1, Text = ad.genre .. "  ·  " .. line, TextScaled = true, TextColor3 = Color3.fromRGB(230, 230, 240), Font = UI.FontBold })
+		elseif layout == 0 then
+			-- tour poster: gradient, the artist full figure, name on top, dates below
+			New("UIGradient", { Parent = bg, Color = ColorSequence.new(col, dark), Rotation = 90 })
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(14, 14), Size = UDim2.fromOffset(392, 80), BackgroundTransparency = 1, Text = string.upper(ad.name), TextScaled = true, TextColor3 = Color3.new(1, 1, 1), Font = font })
+			posterPicture(bg, ad, UDim2.fromOffset(10, 96), UDim2.fromOffset(400, 380), idx)
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(14, 486), Size = UDim2.fromOffset(392, 46), BackgroundTransparency = 1, Text = onTour and "WORLD TOUR · ON SALE NOW" or "LIVE " .. (Config.START_YEAR + 1), TextScaled = true, TextColor3 = T.gold, Font = UI.FontBlack })
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(14, 540), Size = UDim2.fromOffset(392, 34), BackgroundTransparency = 1, Text = "LONDON · PARIS · BERLIN · NEW YORK", TextScaled = true, TextColor3 = Color3.fromRGB(230, 230, 240), Font = UI.FontBold })
+		elseif layout == 1 then
+			-- album cover: a big sun behind a close-up, title at the bottom
+			bg.BackgroundColor3 = Color3.fromRGB(246, 236, 220)
+			New("Frame", { Parent = bg, Position = UDim2.fromOffset(40, 60), Size = UDim2.fromOffset(340, 340), BackgroundColor3 = col, BorderSizePixel = 0, UI.Corner(170) })
+			posterPicture(bg, ad, UDim2.fromOffset(10, 30), UDim2.fromOffset(400, 420), idx)
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(20, 456), Size = UDim2.fromOffset(380, 70), BackgroundTransparency = 1, Text = ad.name, TextScaled = true, TextColor3 = dark, Font = font })
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(20, 530), Size = UDim2.fromOffset(380, 40), BackgroundTransparency = 1, Text = "THE NEW ALBUM · " .. line, TextScaled = true, TextColor3 = col:Lerp(dark, 0.4), Font = UI.FontBold })
+		elseif layout == 2 then
+			-- festival / club night: dark with stripes
+			bg.BackgroundColor3 = dark
+			for k = 0, 5 do
+				New("Frame", { Parent = bg, Position = UDim2.fromOffset(-80 + k * 110, -40), Size = UDim2.fromOffset(40, 720), Rotation = 20, BackgroundColor3 = col, BackgroundTransparency = 0.6, BorderSizePixel = 0 })
+			end
+			posterPicture(bg, ad, UDim2.fromOffset(10, 20), UDim2.fromOffset(400, 400), idx)
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(14, 420), Size = UDim2.fromOffset(392, 90), BackgroundTransparency = 1, Text = string.upper(ad.name), TextScaled = true, TextColor3 = col:Lerp(Color3.new(1, 1, 1), 0.4), Font = font })
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(14, 516), Size = UDim2.fromOffset(392, 40), BackgroundTransparency = 1, Text = ad.genre .. " NIGHT · " .. line, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), Font = UI.FontBold })
+		else
+			-- minimal: white with a coloured frame
+			bg.BackgroundColor3 = Color3.new(1, 1, 1)
+			New("Frame", { Parent = bg, Position = UDim2.fromOffset(20, 20), Size = UDim2.fromOffset(380, 400), BackgroundColor3 = col, BorderSizePixel = 0 })
+			posterPicture(bg, ad, UDim2.fromOffset(20, 20), UDim2.fromOffset(380, 400), idx)
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(20, 436), Size = UDim2.fromOffset(380, 80), BackgroundTransparency = 1, Text = ad.name, TextScaled = true, TextColor3 = Color3.new(0.1, 0.1, 0.12), Font = font })
+			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(20, 524), Size = UDim2.fromOffset(380, 40), BackgroundTransparency = 1, Text = line, TextScaled = true, TextColor3 = col, Font = UI.FontBlack })
+		end
 	end
 end
 
 ------------------------------------------------------------------ people: staff at work, people in the street, at the cafe
-local LOOK_TOPS = { { 240, 120, 100 }, { 110, 160, 230 }, { 250, 210, 90 }, { 120, 200, 170 }, { 236, 236, 240 }, { 150, 120, 220 }, { 60, 64, 80 } }
-local HAIRS = { "short", "long", "bun", "pony", "afro", "buzz", "messy" }
+local TOPS = { { 240, 120, 100 }, { 110, 160, 230 }, { 250, 210, 90 }, { 120, 200, 170 }, { 236, 236, 240 }, { 150, 120, 220 }, { 60, 64, 80 }, { 200, 60, 70 }, { 80, 140, 90 }, { 240, 170, 200 }, { 30, 30, 34 }, { 170, 120, 80 } }
+local PANTS = { { 40, 50, 80 }, { 50, 50, 56 }, { 170, 150, 120 }, { 30, 30, 34 }, { 90, 110, 150 }, { 120, 70, 60 }, { 220, 220, 214 } }
+local HAIRS = { "short", "long", "bun", "pony", "afro", "buzz", "messy", "pigtails", "mohawk" }
+local HAIR_COL = { { 30, 24, 20 }, { 90, 60, 30 }, { 230, 200, 120 }, { 200, 60, 60 }, { 180, 120, 255 }, { 240, 240, 250 }, { 150, 90, 50 }, { 60, 40, 30 } }
+local ACCS = { "none", "none", "none", "cap", "beanie", "sunglasses", "headphones", "earrings", "chain", "backpack", "backpack" }
 local function randomLook(i)
 	local rng = Random.new(i * 7919 + 13)
-	return {
+	local function pick(list)
+		return list[rng:NextInteger(1, #list)]
+	end
+	local look = {
 		skin = rng:NextInteger(1, #People.SKINS),
-		hair = HAIRS[rng:NextInteger(1, #HAIRS)],
-		top = LOOK_TOPS[rng:NextInteger(1, #LOOK_TOPS)],
-		pants = ({ { 40, 50, 80 }, { 50, 50, 56 }, { 170, 150, 120 } })[rng:NextInteger(1, 3)],
-		shoes = { 30, 30, 34 },
+		hair = pick(HAIRS),
+		hairColor = pick(HAIR_COL),
+		top = pick(TOPS),
+		pants = pick(PANTS),
+		shoes = pick({ { 30, 30, 34 }, { 240, 240, 240 }, { 120, 70, 40 }, { 200, 50, 60 } }),
+		acc = pick(ACCS),
+		bag = pick(TOPS),
 	}
+	if rng:NextNumber() < 0.3 then
+		look.jacket = pick({ { 40, 40, 46 }, { 60, 80, 130 }, { 120, 90, 60 }, { 150, 40, 50 } })
+	end
+	return look
+end
+
+local function c3(t)
+	return Color3.fromRGB(t[1], t[2], t[3])
+end
+
+-- a sitting person, built once (thighs on the seat, knees bent, feet on the floor). yaw = the way they face
+local function seatedFigure(f, data, look, n)
+	local cf = CFrame.new(O + data.pos) * CFrame.Angles(0, data.yaw, 0)
+	local seatY = data.seatY or 2.3
+	local hipY = seatY + 0.4
+	local skin = People.SKINS[look.skin]
+	local m = New("Model", { Name = "Sitter", Parent = f })
+	local function p(name, size, off, color, material, shape)
+		local pp = cpart(m, name, size, cf * off, color, material)
+		if shape then
+			pp.Shape = shape
+		end
+		return pp
+	end
+	local pants, top = c3(look.pants), c3(look.top)
+	for _, sx in ipairs({ -0.48, 0.48 }) do
+		p("Thigh", Vector3.new(0.86, 0.8, 1.9), CFrame.new(sx, hipY, 0.65), pants)
+		p("Shin", Vector3.new(0.8, hipY - 0.35, 0.8), CFrame.new(sx, (hipY - 0.35) / 2 + 0.3, 1.18), pants)
+		p("Shoe", Vector3.new(0.9, 0.32, 1.1), CFrame.new(sx, 0.16, 1.32), c3(look.shoes))
+	end
+	local torsoY = hipY + 0.4 + 1
+	p("Torso", Vector3.new(2, 2, 1), CFrame.new(0, torsoY, -0.3), top)
+	local armCol = look.jacket and c3(look.jacket) or top
+	for _, sx in ipairs({ -1.43, 1.43 }) do
+		if data.work then
+			-- typing: forearms forward on the desk
+			p("Arm", Vector3.new(0.8, 2, 0.8), CFrame.new(sx * 0.92, torsoY + 0.7, -0.3) * CFrame.Angles(math.rad(-75), 0, 0) * CFrame.new(0, -1, 0), armCol)
+		else
+			p("Arm", Vector3.new(0.8, 2, 0.8), CFrame.new(sx, torsoY + 0.1, -0.2) * CFrame.Angles(math.rad(-25), 0, 0), armCol)
+		end
+	end
+	local headCF = CFrame.new(0, torsoY + 1.6, -0.3)
+	p("Head", Vector3.new(1.2, 1.2, 1.2), headCF, skin)
+	p("Eye", Vector3.new(0.18, 0.22, 0.05), headCF * CFrame.new(-0.25, 0.1, 0.61), Color3.new(0, 0, 0))
+	p("Eye", Vector3.new(0.18, 0.22, 0.05), headCF * CFrame.new(0.25, 0.1, 0.61), Color3.new(0, 0, 0))
+	local hairC = c3(look.hairColor)
+	if look.acc == "cap" then
+		p("Cap", Vector3.new(1.36, 0.36, 1.36), headCF * CFrame.new(0, 0.72, 0), top)
+		p("CapBrim", Vector3.new(1.2, 0.1, 0.7), headCF * CFrame.new(0, 0.58, 0.85), top)
+	elseif look.acc == "beanie" then
+		p("Beanie", Vector3.new(1.38, 0.6, 1.38), headCF * CFrame.new(0, 0.72, 0), c3(look.bag), Enum.Material.Fabric)
+	elseif look.hair ~= "buzz" then
+		p("Hair", Vector3.new(1.3, 0.45, 1.3), headCF * CFrame.new(0, 0.7, -0.05), hairC)
+		if look.hair == "long" or look.hair == "pigtails" then
+			p("HairBack", Vector3.new(1.26, 1.6, 0.36), headCF * CFrame.new(0, -0.15, -0.6), hairC)
+		elseif look.hair == "bun" then
+			p("Bun", Vector3.new(0.7, 0.7, 0.7), headCF * CFrame.new(0, 1.05, -0.35), hairC, nil, Enum.PartType.Ball)
+		end
+	end
+	if look.acc == "sunglasses" then
+		p("Shades", Vector3.new(1, 0.24, 0.08), headCF * CFrame.new(0, 0.1, 0.64), Color3.fromRGB(10, 10, 12), Enum.Material.Glass)
+	end
+	local _ = n
+	return m
 end
 
 local function buildPeople()
 	local f = New("Folder", { Name = "People", Parent = World.folder })
 	World.npcs = {}
 	local n = 0
-	local function add(kind, data)
-		n = n + 1
-		local look = randomLook(n)
-		local fig = People.new(f, UI.rgb(look.top), 1, "dancer", n, look)
-		table.insert(World.npcs, { fig = fig, kind = kind, data = data, ph = n * 1.7, seg = 1, t = 0 })
-	end
 	for _, st in ipairs(Hub.STAFF) do
-		add("sit", { pos = st.pos, yaw = st.yaw, work = st.desk })
+		n = n + 1
+		seatedFigure(f, { pos = st.pos, yaw = st.yaw, seatY = st.seatY, work = st.desk ~= nil }, randomLook(n), n)
 	end
 	for _, st in ipairs(Hub.SITTERS) do
-		add("sit", { pos = st.pos, yaw = st.yaw })
+		n = n + 1
+		seatedFigure(f, st, randomLook(n), n)
 	end
 	for i, path in ipairs(Hub.WALKS) do
-		add("walk", { path = path, speed = 6 + (i % 3) * 1.5 })
-		if i <= 4 then
-			add("walk", { path = path, speed = 5 + (i % 2) * 2, offset = 0.5 })
+		local count = (i <= 4) and 3 or 1
+		for k = 1, count do
+			n = n + 1
+			local look = randomLook(n)
+			local fig = People.new(f, c3(look.top), 1, "dancer", n, look)
+			table.insert(World.npcs, { fig = fig, data = { path = path, speed = 5 + ((n * 37) % 30) / 10, offset = (k - 1) / count }, ph = n * 1.7 })
 		end
 	end
 end
@@ -354,38 +492,183 @@ local function pathLength(path)
 	return len
 end
 
+-- a point at distance `dist` along a path (and the direction there)
+local function alongPath(path, dist)
+	for i = 2, #path do
+		local segLen = (path[i] - path[i - 1]).Magnitude
+		if dist <= segLen or i == #path then
+			local f = math.clamp(dist / math.max(0.01, segLen), 0, 1)
+			return path[i - 1]:Lerp(path[i], f), path[i] - path[i - 1]
+		end
+		dist = dist - segLen
+	end
+	return path[#path], path[#path] - path[#path - 1]
+end
+World.alongPath = alongPath
+
 local function animatePeople(t)
 	for _, npc in ipairs(World.npcs or {}) do
 		local d = npc.data
-		if npc.kind == "sit" then
-			-- sitting; office staff type on the keyboard
-			npc.fig:update(O + d.pos, d.yaw, { t = t + npc.ph, beat = 0, energy = 0, walking = false, move = "piano" })
-		else
-			local path = d.path
-			local len = d.len or pathLength(path)
-			d.len = len
-			-- walk the path forward and back
-			local dist = ((t * d.speed) + (d.offset or 0) * len) % (len * 2)
-			local back = dist > len
-			if back then
-				dist = len * 2 - dist
-			end
-			local pos, dir = path[1], path[2] - path[1]
-			local acc = 0
-			for i = 2, #path do
-				local segLen = (path[i] - path[i - 1]).Magnitude
-				if acc + segLen >= dist then
-					local f = (dist - acc) / math.max(0.01, segLen)
-					pos = path[i - 1]:Lerp(path[i], f)
-					dir = path[i] - path[i - 1]
-					break
+		local len = d.len or pathLength(d.path)
+		d.len = len
+		-- walk the path forward and back
+		local dist = ((t * d.speed) + (d.offset or 0) * len * 2) % (len * 2)
+		local back = dist > len
+		if back then
+			dist = len * 2 - dist
+		end
+		local pos, dir = alongPath(d.path, dist)
+		if back then
+			dir = -dir
+		end
+		npc.fig:update(O + pos, math.atan2(dir.X, dir.Z), { t = t + npc.ph, beat = 0, energy = 0, walking = true })
+	end
+end
+
+------------------------------------------------------------------ traffic: cars, city buses and tour buses drive along the street and around both bends
+local ST = Hub.STREET
+-- the lane as a path: down the side street, around the bend, along the straight, around the other bend, away
+local function lanePath(z, eastbound)
+	local pts = {}
+	local rw, re = ST.cw.Z - z, ST.ce.Z - z
+	table.insert(pts, Vector3.new(ST.cw.X - rw, -0.5, ST.cw.Z + 180))
+	for k = 0, 12 do
+		local a = (math.pi / 2) * (1 - k / 12)
+		table.insert(pts, Vector3.new(ST.cw.X - math.sin(a) * rw, -0.5, ST.cw.Z - math.cos(a) * rw))
+	end
+	for k = 0, 12 do
+		local a = (math.pi / 2) * (k / 12)
+		table.insert(pts, Vector3.new(ST.ce.X + math.sin(a) * re, -0.5, ST.ce.Z - math.cos(a) * re))
+	end
+	table.insert(pts, Vector3.new(ST.ce.X + re, -0.5, ST.ce.Z + 180))
+	if not eastbound then
+		local rev = {}
+		for i = #pts, 1, -1 do
+			table.insert(rev, pts[i])
+		end
+		pts = rev
+	end
+	return pts
+end
+
+local function vehicle(f, kind, color, label)
+	local m = New("Model", { Name = "Vehicle", Parent = f })
+	local parts = {}
+	local function p(name, size, off, col, mat, shape)
+		local pp = cpart(m, name, size, CFrame.new(), col, mat)
+		if shape then
+			pp.Shape = shape
+		end
+		table.insert(parts, { pp, off })
+		return pp
+	end
+	local L = (kind == "bus" or kind == "tourbus") and 34 or ((kind == "van") and 15 or 13)
+	local Hh = (kind == "bus" or kind == "tourbus") and 10 or ((kind == "van") and 6.5 or 3)
+	-- the vehicle drives along its local -Z (LookVector)
+	p("Body", Vector3.new(6.2, Hh, L), CFrame.new(0, 1.2 + Hh / 2, 0), color)
+	if kind == "car" or kind == "taxi" then
+		p("Cabin", Vector3.new(5.6, 2.3, 7), CFrame.new(0, 1.2 + Hh + 1.15, 0.6), color)
+		p("Glass", Vector3.new(5.7, 1.7, 7.1), CFrame.new(0, 1.2 + Hh + 1.2, 0.6), Color3.fromRGB(120, 150, 175), Enum.Material.Glass)
+		if kind == "taxi" then
+			p("TaxiSign", Vector3.new(1.6, 0.6, 0.8), CFrame.new(0, 1.2 + Hh + 2.6, 0.6), Color3.fromRGB(255, 240, 160))
+		end
+	else
+		p("WindowBand", Vector3.new(6.3, 2.6, L - 3), CFrame.new(0, 1.2 + Hh * 0.68, 0.5), Color3.fromRGB(70, 90, 120), Enum.Material.Glass)
+		p("Windshield", Vector3.new(5.6, Hh * 0.45, 0.1), CFrame.new(0, 1.2 + Hh * 0.68, -L / 2 - 0.05), Color3.fromRGB(110, 140, 170), Enum.Material.Glass)
+	end
+	for _, z in ipairs({ -L / 2 + 2.6, L / 2 - 2.6 }) do
+		for _, x in ipairs({ -3.1, 3.1 }) do
+			p("Wheel", Vector3.new(1, 2.6, 2.6), CFrame.new(x, 1.3, z) * CFrame.Angles(0, math.pi / 2, 0) * CFrame.Angles(0, math.pi / 2, 0), Color3.fromRGB(26, 26, 30), nil, Enum.PartType.Cylinder)
+		end
+	end
+	p("HeadLight", Vector3.new(1.2, 0.6, 0.1), CFrame.new(-2.2, 2.4, -L / 2 - 0.06), Color3.fromRGB(255, 250, 230), Enum.Material.Neon)
+	p("HeadLight", Vector3.new(1.2, 0.6, 0.1), CFrame.new(2.2, 2.4, -L / 2 - 0.06), Color3.fromRGB(255, 250, 230), Enum.Material.Neon)
+	p("TailLight", Vector3.new(1.2, 0.6, 0.1), CFrame.new(-2.2, 2.4, L / 2 + 0.06), Color3.fromRGB(220, 30, 30))
+	p("TailLight", Vector3.new(1.2, 0.6, 0.1), CFrame.new(2.2, 2.4, L / 2 + 0.06), Color3.fromRGB(220, 30, 30))
+	if label then
+		for _, side in ipairs({ -1, 1 }) do
+			local sp = p("Label", Vector3.new(0.1, 1.8, L - 8), CFrame.new(side * 3.16, 1.2 + Hh * 0.28, 0), Color3.new(1, 1, 1))
+			local g = New("SurfaceGui", { Parent = sp, Face = (side < 0) and Enum.NormalId.Left or Enum.NormalId.Right, SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud, PixelsPerStud = 30, LightInfluence = 0.3 })
+			New("TextLabel", { Parent = g, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = label, TextScaled = true, Font = UI.FontBlack, TextColor3 = (kind == "tourbus") and color or Color3.fromRGB(30, 60, 140) })
+		end
+	end
+	return { model = m, parts = parts, len = L }
+end
+
+local function buildTraffic()
+	local f = New("Folder", { Name = "Traffic", Parent = World.folder })
+	World.traffic = {}
+	local lanes = { { lanePath(ST.laneEast, true) }, { lanePath(ST.laneWest, false) } }
+	for _, lane in ipairs(lanes) do
+		lane.len = pathLength(lane[1])
+	end
+	local CAR_COLORS = { Color3.fromRGB(200, 60, 60), Color3.fromRGB(60, 110, 200), Color3.fromRGB(230, 230, 230), Color3.fromRGB(40, 40, 46), Color3.fromRGB(80, 160, 110), Color3.fromRGB(150, 150, 160) }
+	local fleet = {
+		{ "car" }, { "taxi" }, { "bus" }, { "car" }, { "van" }, { "tourbus" }, { "car" }, { "taxi" },
+	}
+	for i, v in ipairs(fleet) do
+		local kind = v[1]
+		local color, label = CAR_COLORS[i % #CAR_COLORS + 1], nil
+		if kind == "taxi" then
+			color = Color3.fromRGB(250, 200, 40)
+		elseif kind == "bus" then
+			color, label = Color3.fromRGB(220, 230, 240), "CITY LINE 7"
+		elseif kind == "van" then
+			color = Color3.fromRGB(240, 240, 236)
+		end
+		local veh = vehicle(f, kind, color, label)
+		veh.kind = kind
+		veh.lane = lanes[(i % 2) + 1]
+		veh.offset = (i - 1) / #fleet
+		veh.speed = (kind == "bus" or kind == "tourbus") and 18 or (24 + (i % 3) * 4)
+		table.insert(World.traffic, veh)
+	end
+	World.trafficFolder = f
+end
+
+-- the tour bus shows a tour of the label (or a famous rival)
+local function tourBusLabel()
+	local state = World.app.state
+	for _, t in ipairs(state.tours) do
+		if t.status ~= "done" then
+			return string.upper(Artists.byId[t.artistId].name) .. " · " .. string.upper(t.name), UI.rgb(Artists.byId[t.artistId].color)
+		end
+	end
+	return "NOVA RAY · STARDUST WORLD TOUR", Color3.fromRGB(255, 120, 180)
+end
+
+local function animateTraffic(t)
+	for _, v in ipairs(World.traffic or {}) do
+		local lane = v.lane
+		local dist = (t * v.speed + v.offset * lane.len) % lane.len
+		if v.kind == "tourbus" and (not v.labelled or math.floor(t) % 20 == 0) then
+			-- (re)paint the tour bus now and then
+			local txt, col = tourBusLabel()
+			if v.labelText ~= txt then
+				v.labelText = txt
+				if v.label then
+					v.label:Destroy()
 				end
-				acc = acc + segLen
+				for _, pp in ipairs(v.parts) do
+					if pp[1].Name == "Body" then
+						pp[1].Color = Color3.fromRGB(26, 26, 32)
+					end
+				end
+				local lab = vehicle(World.trafficFolder, "tourbus", col, txt)
+				v.model:Destroy()
+				v.model, v.parts = lab.model, lab.parts
+				for _, pp in ipairs(v.parts) do
+					if pp[1].Name == "Body" then
+						pp[1].Color = Color3.fromRGB(26, 26, 32)
+					end
+				end
 			end
-			if back then
-				dir = -dir
-			end
-			npc.fig:update(O + pos, math.atan2(dir.X, dir.Z), { t = t + npc.ph, beat = 0, energy = 0, walking = true })
+			v.labelled = true
+		end
+		local pos, dir = alongPath(lane[1], dist)
+		local cf = CFrame.lookAt(O + pos, O + pos + Vector3.new(dir.X, 0, dir.Z))
+		for _, pp in ipairs(v.parts) do
+			pp[1].CFrame = cf * pp[2]
 		end
 	end
 end
@@ -637,6 +920,7 @@ function World.start(app)
 	buildArrow()
 	buildTableMap()
 	buildPeople()
+	buildTraffic()
 	World.posters = {}
 	if World.root then
 		for _, d in ipairs(World.root:GetDescendants()) do
@@ -666,12 +950,20 @@ function World.start(app)
 	local peopleT = 0
 	RunService.RenderStepped:Connect(function(dt)
 		t = t + dt
+		local showTags = app.mode == "world"
+		if World.tagsShown ~= showTags then
+			World.tagsShown = showTags
+			for _, mk in pairs(World.markers) do
+				mk.gui.Enabled = showTags
+			end
+		end
 		if app.mode == "world" then
 			placeArrow(t)
 			peopleT = peopleT + dt
 			if peopleT > 1 / 30 then
 				peopleT = 0
 				animatePeople(t)
+				animateTraffic(t)
 			end
 			-- the meeting prompt only shows while sitting
 			local pr = World.prompts.meeting
