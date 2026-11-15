@@ -172,6 +172,37 @@ function Stage3D.snapToTruss(x, z)
 	return x, z, false
 end
 
+-- side mounts: the closest Truss Tower within reach. Returns x, z (on the side of the tower that faces the
+-- point), r (the item looks away from the tower), the tower's base height - or nil if no tower is near
+Stage3D.TOWER_HALF = 1.05
+function Stage3D.snapToTower(x, z, except)
+	local best, bestD = nil, 9
+	for _, t in ipairs(Stage3D.items) do
+		if t.kind == "truss" and t ~= except then
+			local p = t.cf.Position
+			local d = math.sqrt((x - p.X) ^ 2 + (z - p.Z) ^ 2)
+			if d < bestD then
+				best, bestD = t, d
+			end
+		end
+	end
+	if not best then
+		return nil
+	end
+	-- which side: the one of the four faces that points to the mouse (in the tower's own turn)
+	local lp = best.cf:PointToObjectSpace(Vector3.new(x, best.cf.Position.Y, z))
+	local dir
+	if math.abs(lp.X) > math.abs(lp.Z) then
+		dir = Vector3.new(lp.X >= 0 and 1 or -1, 0, 0)
+	else
+		dir = Vector3.new(0, 0, lp.Z >= 0 and 1 or -1)
+	end
+	local wp = best.cf * (dir * Stage3D.TOWER_HALF)
+	local wd = best.cf:VectorToWorldSpace(dir)
+	local r = math.floor(math.deg(math.atan2(wd.X, wd.Z)) + 0.5) % 360
+	return wp.X, wp.Z, r, best.cf.Position.Y - (best.rec and best.rec.yo or 0)
+end
+
 -- Lines a new truss beam up with the nearest other beam: same direction (or square to it), on one line,
 -- end to end or parallel at whole studs. returns x, z, r
 function Stage3D.alignTruss(x, z, r, w, except)

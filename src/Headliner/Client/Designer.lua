@@ -47,7 +47,8 @@ local HELP = table.concat({
 	"<b>Place</b>   pick an item below, point at the spot and press  <b>Q</b>  (or click, then Q / Enter)",
 	"<b>Line up</b>   drag the arrows: <font color='#eb463c'>red</font> / <font color='#3c8cff'>blue</font> move, <font color='#5ad250'>green</font> lifts it up",
 	"<b>Turn</b>   drag the <font color='#ff9628'>orange ring</font> or press R (E = other way)      <b>Size</b>   drag the <font color='#ffcd3c'>gold cubes</font>",
-	"<b>Select</b>   click a placed item      <b>Copy</b>  C      <b>Delete</b>  X      <b>Cancel</b>  Esc / F",
+	"<b>Select</b>   click a placed item, <b>Shift + click</b> more items (a group)      <b>Copy</b>  C (same place)      <b>Mirror</b>  M      <b>Delete</b>  X",
+	"<b>Size</b>   pulls one side; hold <b>Shift</b> to grow both sides      <b>Cancel</b>  Esc / F      Side lights and hanging speakers clamp onto Truss Towers",
 	"<b>Camera</b>   right mouse = turn, wheel = zoom, WASD = move, T = top view, H = hide menus",
 	"<b>Two steps</b>   1. build the stage   2. SETLIST & SHOW: artist spots, what screens show, effects per song",
 }, "\n")
@@ -75,6 +76,8 @@ function Designer.open(app, designId)
 	local placeDef, ghostRec, ghost, ghostKey = nil, nil, nil, nil
 	local pending = nil -- refs of a piece that is not bought yet
 	local selected = nil -- refs of a bought piece
+	local group = nil -- 2+ bought pieces chosen with Shift + click (moved, copied, mirrored, deleted together)
+	local groupBoxes = {}
 	local lastSettings = {}
 	local gridIndex, turnIndex = 1, 1
 	local focus = Vector3.new(0, 6, 0)
@@ -105,17 +108,27 @@ function Designer.open(app, designId)
 
 	local Venue = require(Root.Client.Venue)
 	local venuePreview = nil
+	local setGroup
 	local function render()
 		local keepRec = selected and selected.rec
+		local keepGroup = {}
+		for _, g in ipairs(group or {}) do
+			keepGroup[g.rec] = true
+		end
 		Stage3D.renderDesign(self.design, itemOpts())
 		Stage3D.showGrid(true)
 		selected = nil
-		if keepRec then
-			for _, r in ipairs(Stage3D.items) do
-				if r.rec == keepRec then
-					selected = r
-				end
+		local newGroup = {}
+		for _, r in ipairs(Stage3D.items) do
+			if keepRec and r.rec == keepRec then
+				selected = r
 			end
+			if keepGroup[r.rec] then
+				table.insert(newGroup, r)
+			end
+		end
+		if group and setGroup then
+			setGroup(newGroup)
 		end
 		-- an empty venue of this size around the stage, so you can see where the fans stand
 		local sig = self.design.class .. self.design.layout
@@ -186,9 +199,9 @@ function Designer.open(app, designId)
 	UI.List(true, 8).Parent = inspScroll
 
 	-- help popup + price tag at the mouse
-	local helpBox = UI.Panel(root, UI.px(20, 112), UI.px(760, 170), T.panel)
+	local helpBox = UI.Panel(root, UI.px(20, 112), UI.px(900, 236), T.panel)
 	helpBox.Visible = false
-	UI.Label(helpBox, HELP, UI.px(18, 10), UI.px(724, 150), { textSize = 15, rich = true, wrap = true, alignY = Enum.TextYAlignment.Top })
+	UI.Label(helpBox, HELP, UI.px(18, 10), UI.px(864, 216), { textSize = 15, rich = true, wrap = true, alignY = Enum.TextYAlignment.Top })
 	local priceTag = UI.New("TextLabel", {
 		Parent = root,
 		Size = UI.px(150, 26),
@@ -229,6 +242,9 @@ function Designer.open(app, designId)
 		end
 		if def.heights then
 			rec.h = def.h
+		end
+		if def.mount == "side" then
+			rec.yo = 14 -- up on the tower
 		end
 		return rec
 	end
@@ -306,6 +322,15 @@ function Designer.open(app, designId)
 			end
 			x, z = snapG(hit.Position.X), snapG(hit.Position.Z)
 		end
+		if def and def.mount == "side" then
+			-- side mounts clamp onto the closest Truss Tower (returns nil when there is none)
+			local hit = Stage3D.raycast(ray.Origin, ray.Direction * 3000, except)
+			local sx, sz, sr, sy = Stage3D.snapToTower(hit and hit.Position.X or x, hit and hit.Position.Z or z, except)
+			if not sx then
+				return x, z, nil, nil, false
+			end
+			return sx, sz, sr, sy, true
+		end
 		if def and def.mount == "rig" and def.id ~= "truss_beam" then
 			x, z = Stage3D.snapToTruss(x, z) -- lights click onto truss beams
 		elseif def and def.id == "truss_beam" and rec then
@@ -375,7 +400,18 @@ function Designer.open(app, designId)
 
 	------------------------------------------------------------ pending piece (put down, not bought yet)
 	local function floorY(rec, def)
-		if def.mount ~= "rig" then
+		if def.mount == "side" then
+			-- on a tower: the height is the tower's foot (+ "Lift up")
+			local sx, sz, sr, sy = Stage3D.snapToTower(rec.x, rec.z)
+			if sx then
+				rec.x, rec.z, rec.y = sx, sz, sy
+				if rec.r == nil then
+					rec.r = sr
+				end
+			elseif rec.y == nil then
+				rec.y = Stage3D.surfaceY(rec.x, rec.z)
+			end
+		elseif def.mount ~= "rig" then
 			rec.y = Stage3D.surfaceY(rec.x, rec.z)
 		end
 	end
@@ -426,11 +462,152 @@ function Designer.open(app, designId)
 		overHandle = false
 		clearGhost()
 		clearPending()
+		if group then
+			setGroup({})
+		end
 		selected = refs
 		placeDef = nil
 		mode = refs and "selected" or "idle"
 		screenSong = 0
 		refreshList()
+		refreshInspector()
+		refreshToolbar()
+	end
+
+	------------------------------------------------------------ groups (Shift + click)
+	setGroup = function(list)
+		for _, b in ipairs(groupBoxes) do
+			b:Destroy()
+		end
+		groupBoxes = {}
+		group = (#list >= 2) and list or nil
+		for _, r in ipairs(group or {}) do
+			table.insert(groupBoxes, UI.New("SelectionBox", { Adornee = r.model, Color3 = T.gold, LineThickness = 0.1, SurfaceColor3 = T.gold, SurfaceTransparency = 0.85, Parent = Stage3D.world }))
+		end
+	end
+	local function toggleInGroup(hit)
+		local list = {}
+		for _, r in ipairs(group or (selected and { selected } or {})) do
+			if r ~= hit then
+				table.insert(list, r)
+			end
+		end
+		local was = false
+		for _, r in ipairs(group or (selected and { selected } or {})) do
+			if r == hit then
+				was = true
+			end
+		end
+		if not was then
+			table.insert(list, hit)
+		end
+		if #list == 0 then
+			select(nil)
+		elseif #list == 1 then
+			select(list[1])
+		else
+			clearPending()
+			clearGhost()
+			placeDef = nil
+			mode = "selected"
+			selected = list[#list]
+			setGroup(list)
+			refreshList()
+			refreshInspector()
+			refreshToolbar()
+		end
+	end
+	-- the pieces a tool works on: the group, or the one selected piece
+	local function chosen()
+		if group then
+			return group
+		end
+		return selected and { selected } or {}
+	end
+
+	-- buys copies of recs (already moved where they go) and selects them
+	local function buyCopies(recs, what)
+		local total, made = 0, {}
+		for _, rec in ipairs(recs) do
+			if #self.design.items >= cls().maxItems then
+				app:toast("This " .. self.design.class .. " stage is full (" .. cls().maxItems .. " items).", T.warn)
+				break
+			end
+			local def = StageItems.byId[rec.t]
+			local ok, msg = GS.buyItem(state, self.design, rec)
+			if not ok then
+				app:toast(msg, T.bad)
+				break
+			end
+			total = total + Sim.itemPrice(def, rec)
+			made[rec] = true
+		end
+		if next(made) == nil then
+			return
+		end
+		SoundFX.sfx("place", 0.7)
+		selected = nil
+		setGroup({})
+		render()
+		local list = {}
+		for _, r in ipairs(Stage3D.items) do
+			if made[r.rec] then
+				table.insert(list, r)
+			end
+		end
+		if #list == 1 then
+			select(list[1])
+		else
+			mode = "selected"
+			selected = list[#list]
+			setGroup(list)
+		end
+		refreshStats()
+		refreshInspector()
+		refreshToolbar()
+		app:toast(what .. ": " .. #list .. (#list == 1 and " item" or " items") .. (total > 0 and (" for " .. Util.money(total)) or "") .. ". Drag the arrows to move them.", T.good)
+	end
+	local function freshCopy(rec)
+		local c = Util.deepCopy(rec)
+		c.uid = nil
+		return c
+	end
+	-- copies of the chosen pieces in the same place (pull them out with an arrow: they stay in line)
+	local function copyGroup()
+		local recs = {}
+		for _, r in ipairs(chosen()) do
+			table.insert(recs, freshCopy(r.rec))
+		end
+		buyCopies(recs, "Copied")
+	end
+	-- copies on the other side of the stage's centre line (x = 0), turned the other way round
+	local function mirrorChosen()
+		local recs = {}
+		for _, r in ipairs(chosen()) do
+			if math.abs(r.rec.x) >= 0.5 then
+				local c = freshCopy(r.rec)
+				c.x = -c.x
+				c.r = (360 - (c.r or 0)) % 360
+				table.insert(recs, c)
+			end
+		end
+		if #recs == 0 then
+			app:toast("These items are on the centre line already: nothing to mirror.", T.warn)
+			return
+		end
+		buyCopies(recs, "Mirrored to the other side")
+	end
+	local function deleteGroup()
+		local list = group
+		setGroup({})
+		selected = nil
+		for _, r in ipairs(list) do
+			GS.sellItem(state, self.design, r.rec)
+		end
+		SoundFX.sfx("delete", 0.6)
+		render()
+		mode = "idle"
+		refreshStats()
 		refreshInspector()
 		refreshToolbar()
 	end
@@ -564,6 +741,30 @@ function Designer.open(app, designId)
 	end
 
 	local function rotate(delta)
+		if group and not pending then
+			-- turn the group around its middle
+			local cx, cz, n = 0, 0, #group
+			for _, r in ipairs(group) do
+				cx, cz = cx + r.rec.x / n, cz + r.rec.z / n
+			end
+			local turn = CFrame.Angles(0, math.rad(delta), 0)
+			for _, r in ipairs(group) do
+				local off = turn * Vector3.new(r.rec.x - cx, 0, r.rec.z - cz)
+				r.rec.x, r.rec.z = snapG(cx + off.X), snapG(cz + off.Z)
+				r.rec.r = ((r.rec.r or 0) + delta) % 360
+				if r.def.mount ~= "rig" and r.def.mount ~= "side" then
+					r.rec.y = nil
+				end
+			end
+			render()
+			for _, r in ipairs(group or {}) do
+				if r.def.mount ~= "rig" and r.def.mount ~= "side" then
+					r.rec.y = Stage3D.surfaceY(r.rec.x, r.rec.z, r)
+				end
+			end
+			render()
+			return
+		end
 		local cur = (pending and pending.rec.r) or (mode == "place" and ghostRec and ghostRec.r) or (selected and selected.rec.r)
 		if cur == nil then
 			return
@@ -574,6 +775,10 @@ function Designer.open(app, designId)
 	local function deleteSelected()
 		if pending then
 			cancel()
+			return
+		end
+		if group then
+			deleteGroup()
 			return
 		end
 		if not selected then
@@ -592,20 +797,20 @@ function Designer.open(app, designId)
 		refreshStats()
 	end
 
-	-- copy: a new (not yet bought) piece right next to the original
+	-- copy: a new (not yet bought) piece in exactly the same place - pull it out with one arrow and it stays
+	-- in line with the original (a group is copied and bought at once)
 	local function copySelected()
+		if group then
+			copyGroup()
+			return
+		end
 		local src = selected or pending
 		if not src then
 			return
 		end
 		local rec = Util.deepCopy(src.rec)
-		local d = src.def
-		local off = ((d.size and d.size.d) and (rec.d or d.size.d) or 6) + 2
-		local o = CFrame.Angles(0, math.rad(rec.r or 0), 0) * Vector3.new(0, 0, off)
-		rec.x, rec.z = snapG(rec.x + o.X), snapG(rec.z + o.Z)
-		if not Stage3D.inBounds(rec.x, rec.z) then
-			rec.x, rec.z = snapG(src.rec.x - o.X), snapG(src.rec.z - o.Z)
-		end
+		rec.uid = nil
+		app:toast("Copy made in the same place: pull it out with an arrow, then press Q.", T.accent2, 4)
 		local def = src.def
 		selected = nil
 		placeDef = def
@@ -697,13 +902,14 @@ function Designer.open(app, designId)
 			rotate(TURNS[turnIndex])
 		end, not (tgt or mode == "place")).LayoutOrder = 3
 		toolButton("Copy (C)", 100, nil, nil, copySelected, not tgt).LayoutOrder = 4
+		toolButton("Mirror (M)", 110, nil, nil, mirrorChosen, not (selected or group) or pending ~= nil).LayoutOrder = 4
 		toolButton("Delete (X)", 110, UI.shade(T.bad, 0.7), nil, deleteSelected, not tgt).LayoutOrder = 5
 		toolButton("X", 56, T.panel2, T.bad, cancel, not (tgt or mode == "place")).LayoutOrder = 6
 		local price = pending and Sim.itemPrice(pending.def, pending.rec) or nil
 		local okBtn = toolButton(pending and ("PLACE (Q)  " .. (price > 0 and Util.moneyShort(price) or "")) or "PLACE (Q)", pending and 180 or 120, pending and T.good or T.panel2, pending and BLACK or T.sub, confirm, not pending)
 		okBtn.LayoutOrder = 7
-		toolbar.Size = UI.px(pending and 880 or 820, 58)
-		toolbar.Position = UI.px(960 - (pending and 440 or 410), 800)
+		toolbar.Size = UI.px(pending and 990 or 930, 58)
+		toolbar.Position = UI.px(960 - (pending and 495 or 465), 800)
 		toolbar.Visible = phase == "build" and catalog.Visible
 	end
 
@@ -755,6 +961,19 @@ function Designer.open(app, designId)
 			def, rec = placeDef, ghostRec
 		elseif selected then
 			def, rec = selected.def, selected.rec
+		end
+		if group and not pending then
+			inspector.Visible = true
+			nextOrder(UI.Label(inspScroll, "GROUP", nil, UI.px(296, 18), { textSize = 13, color = T.gold, font = UI.FontBold }))
+			nextOrder(UI.Label(inspScroll, #group .. " items selected", nil, UI.px(296, 30), { textSize = 22, font = UI.FontBlack }))
+			nextOrder(UI.Label(inspScroll, "The arrows in the middle move them together, the orange ring turns them around the middle. Shift + click adds or removes items.", nil, UI.px(296, 0), { textSize = 13, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
+			nextOrder(UI.Button(inspScroll, "Copy in place (C)", nil, UI.px(296, 36), { textSize = 15, color = T.accent2, textColor = BLACK }, copyGroup))
+			nextOrder(UI.Button(inspScroll, "Mirror to the other side (M)", nil, UI.px(296, 36), { textSize = 15 }, mirrorChosen))
+			nextOrder(UI.Button(inspScroll, "Delete all (X)", nil, UI.px(296, 36), { textSize = 15, color = UI.shade(T.bad, 0.7) }, deleteGroup))
+			nextOrder(UI.Button(inspScroll, "Clear selection", nil, UI.px(296, 32), { textSize = 13 }, function()
+				select(nil)
+			end))
+			return
 		end
 		inspector.Visible = def ~= nil
 		if not def then
@@ -1262,15 +1481,15 @@ function Designer.open(app, designId)
 			return
 		end
 		local def, rec = placeDef, ghostRec
-		local x, z, rr = mousePoint(nil, def, rec)
+		local x, z, rr, sy, onTower = mousePoint(nil, def, rec)
 		if rr then
-			rec.r = rr -- a truss beam turns to line up with its neighbour
+			rec.r = rr -- a truss beam turns to line up with its neighbour, a side mount looks away from its tower
 		end
 		if not x then
 			clearGhost()
 			return
 		end
-		local ok = Stage3D.inBounds(x, z) and #self.design.items < cls().maxItems and state.money >= Sim.itemPrice(def, rec)
+		local ok = Stage3D.inBounds(x, z) and #self.design.items < cls().maxItems and state.money >= Sim.itemPrice(def, rec) and (def.mount ~= "side" or onTower == true)
 		local key = def.id .. tostring(ok) .. tostring(rec.w) .. tostring(rec.d) .. tostring(rec.h) .. tostring(rec.skin)
 		if not ghost or ghostKey ~= key then
 			clearGhost()
@@ -1279,9 +1498,10 @@ function Designer.open(app, designId)
 			ghost.model.Parent = Stage3D.world
 			ghostKey = key
 		end
-		local tmp = { x = x, z = z, r = rec.r, yo = rec.yo }
+		local tmp = { x = x, z = z, r = rec.r, yo = rec.yo, y = sy }
 		Builder.place(ghost, Stage3D.itemCFrame(def, tmp))
-		ghost.ok, ghost.x, ghost.z = ok, x, z
+		ghost.ok, ghost.x, ghost.z, ghost.y = ok, x, z, sy
+		ghost.noTower = def.mount == "side" and not onTower
 	end
 
 	local function updateHover()
@@ -1292,7 +1512,7 @@ function Designer.open(app, designId)
 		hoverHighlight.Adornee = (hovered and hovered ~= selected) and hovered.model or nil
 		hoverHighlight.Enabled = hovered ~= nil and hovered ~= selected
 		selHighlight.Adornee = selected and selected.model or nil
-		selHighlight.Enabled = selected ~= nil
+		selHighlight.Enabled = selected ~= nil and group == nil
 	end
 
 	-- price tag next to the mouse while placing
@@ -1323,11 +1543,27 @@ function Designer.open(app, designId)
 	local rotH = UI.New("ArcHandles", { Adornee = moveBox, Axes = Axes.new(Enum.Axis.Y), Color3 = AXIS.rot, Visible = false, Parent = app.gui })
 	self.handles = { moveX = moveX, moveY = moveY, moveZ = moveZ, size = sizeH, rotate = rotH }
 
+	-- a group: one box around all of its pieces, the arrows sit in its middle
+	local function groupBox()
+		local lo, hi = Vector3.new(math.huge, math.huge, math.huge), Vector3.new(-math.huge, -math.huge, -math.huge)
+		for _, r in ipairs(group) do
+			local cf, size = r.model:GetBoundingBox()
+			local h = size / 2
+			lo = Vector3.new(math.min(lo.X, cf.Position.X - h.X), math.min(lo.Y, cf.Position.Y - h.Y), math.min(lo.Z, cf.Position.Z - h.Z))
+			hi = Vector3.new(math.max(hi.X, cf.Position.X + h.X), math.max(hi.Y, cf.Position.Y + h.Y), math.max(hi.Z, cf.Position.Z + h.Z))
+		end
+		return CFrame.new((lo + hi) / 2), hi - lo
+	end
 	local function updateGizmo()
 		local tgt = target()
 		local show = tgt ~= nil and dialog == nil and tgt.model.Parent ~= nil and (phase == "build" or tgt == pending)
 		if show and not drag then
-			local cf, size = tgt.model:GetBoundingBox()
+			local cf, size
+			if group then
+				cf, size = groupBox()
+			else
+				cf, size = tgt.model:GetBoundingBox()
+			end
 			sizeBox.CFrame = cf
 			sizeBox.Size = Vector3.new(math.max(2, size.X), math.max(2, size.Y), math.max(2, size.Z))
 			moveBox.CFrame = cf
@@ -1337,7 +1573,7 @@ function Designer.open(app, designId)
 		moveY.Visible = show
 		moveZ.Visible = show
 		rotH.Visible = show
-		sizeH.Visible = show and tgt.def.size ~= nil
+		sizeH.Visible = show and tgt.def.size ~= nil and group == nil
 		if not show then
 			-- hidden handles never send MouseLeave: forget the hover, or every click would be ignored
 			overHandle = false
@@ -1364,6 +1600,17 @@ function Designer.open(app, designId)
 		if not tgt then
 			return
 		end
+		if group and not pending then
+			if kind == "size" then
+				return
+			end
+			local members = {}
+			for _, r in ipairs(group) do
+				table.insert(members, { refs = r, x = r.rec.x, z = r.rec.z, yo = r.rec.yo or 0, r = r.rec.r or 0 })
+			end
+			drag = { kind = kind, group = members, refs = tgt, boxCF = moveBox.CFrame, cx = moveBox.CFrame.Position.X, cz = moveBox.CFrame.Position.Z }
+			return
+		end
 		local rec = tgt.rec
 		drag = { kind = kind, refs = tgt, rec = rec, x = rec.x, z = rec.z, y = rec.y or tgt.cf.Position.Y, yo = rec.yo or 0, r = rec.r or 0, w = rec.w, d = rec.d, boxCF = moveBox.CFrame, riders = (tgt == selected and tgt.def.deck) and itemsOnDeck(tgt) or {} }
 	end
@@ -1374,6 +1621,24 @@ function Designer.open(app, designId)
 		end
 		local d = drag
 		drag = nil
+		if d.group then
+			-- decks first, then what stands on them: every floor piece finds its new floor
+			table.sort(d.group, function(a, b)
+				return (a.refs.def.deck and 0 or 1) < (b.refs.def.deck and 0 or 1)
+			end)
+			for _, m in ipairs(d.group) do
+				local def = m.refs.def
+				if def.mount == "side" then
+					floorY(m.refs.rec, def)
+				elseif def.mount ~= "rig" then
+					m.refs.rec.y = Stage3D.surfaceY(m.refs.rec.x, m.refs.rec.z, m.refs)
+				end
+			end
+			render()
+			refreshStats()
+			refreshInspector()
+			return
+		end
 		local tgt, rec, def = d.refs, d.rec, d.refs.def
 		if tgt == pending then
 			floorY(rec, def)
@@ -1393,6 +1658,8 @@ function Designer.open(app, designId)
 			if not ok then
 				app:toast(msg, T.bad)
 			end
+		elseif d.kind == "move" and def.mount == "side" then
+			floorY(rec, def) -- back onto the closest tower
 		elseif d.kind == "move" and def.mount ~= "rig" then
 			local newY = Stage3D.surfaceY(rec.x, rec.z, tgt)
 			local dy = newY - d.y + ((rec.yo or 0) - d.yo)
@@ -1431,6 +1698,27 @@ function Designer.open(app, designId)
 		if not drag then
 			return
 		end
+		if drag.group then
+			local dx, dz, dy = 0, 0, 0
+			if face == Enum.NormalId.Top or face == Enum.NormalId.Bottom then
+				dy = math.floor(((face == Enum.NormalId.Top) and 1 or -1) * distance / grid() + 0.5) * grid()
+			else
+				local dir = drag.boxCF:VectorToWorldSpace(Vector3.FromNormalId(face))
+				dx, dz = snapG(dir.X * distance), snapG(dir.Z * distance)
+			end
+			for _, m in ipairs(drag.group) do
+				if not Stage3D.inBounds(m.x + dx, m.z + dz) then
+					return
+				end
+			end
+			for _, m in ipairs(drag.group) do
+				local rec, def = m.refs.rec, m.refs.def
+				rec.x, rec.z = m.x + dx, m.z + dz
+				rec.yo = math.clamp(m.yo + dy, (def.mount == "rig") and -20 or 0, 40)
+				Builder.place(m.refs, Stage3D.itemCFrame(def, rec, m.refs))
+			end
+			return
+		end
 		local tgt, rec = drag.refs, drag.rec
 		if face == Enum.NormalId.Top or face == Enum.NormalId.Bottom then
 			local sign = (face == Enum.NormalId.Top) and 1 or -1
@@ -1458,16 +1746,20 @@ function Designer.open(app, designId)
 		local n = Vector3.FromNormalId(face)
 		local step = math.floor(distance / grid() + 0.5) * grid()
 		local rec = drag.rec
-		if def.shape == "round" or not sz.d then
-			rec.w = math.clamp((drag.w or sz.w) + step * ((def.shape == "round") and 2 or 1), sz.minW, sz.maxW)
-		elseif math.abs(n.X) > 0.5 then
-			local w = math.clamp((drag.w or sz.w) + step, sz.minW, sz.maxW)
-			local shift = (w - (drag.w or sz.w)) / 2 * n.X
-			local world = drag.boxCF:VectorToWorldSpace(Vector3.new(shift, 0, 0))
-			rec.w, rec.x, rec.z = w, drag.x + world.X, drag.z + world.Z
+		-- the side you pull grows, the other side stays where it is. Hold Shift: both sides grow (centre stays)
+		local both = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
+		if def.shape == "round" then
+			rec.w = math.clamp((drag.w or sz.w) + step * 2, sz.minW, sz.maxW)
+		elseif not sz.d or math.abs(n.X) > 0.5 then
+			if math.abs(n.X) > 0.5 then
+				local w = math.clamp((drag.w or sz.w) + step * (both and 2 or 1), sz.minW, sz.maxW)
+				local shift = both and 0 or (w - (drag.w or sz.w)) / 2 * n.X
+				local world = drag.boxCF:VectorToWorldSpace(Vector3.new(shift, 0, 0))
+				rec.w, rec.x, rec.z = w, drag.x + world.X, drag.z + world.Z
+			end
 		else
-			local dd = math.clamp((drag.d or sz.d) + step, sz.minD, sz.maxD)
-			local shift = (dd - (drag.d or sz.d)) / 2 * n.Z
+			local dd = math.clamp((drag.d or sz.d) + step * (both and 2 or 1), sz.minD, sz.maxD)
+			local shift = both and 0 or (dd - (drag.d or sz.d)) / 2 * n.Z
 			local world = drag.boxCF:VectorToWorldSpace(Vector3.new(0, 0, shift))
 			rec.d, rec.x, rec.z = dd, drag.x + world.X, drag.z + world.Z
 		end
@@ -1479,6 +1771,19 @@ function Designer.open(app, designId)
 			return
 		end
 		local step = TURNS[turnIndex]
+		if drag.group then
+			-- the whole group turns around its middle
+			local a = math.floor(math.deg(relativeAngle) / step + 0.5) * step
+			local turn = CFrame.Angles(0, math.rad(a), 0)
+			for _, m in ipairs(drag.group) do
+				local off = turn * Vector3.new(m.x - drag.cx, 0, m.z - drag.cz)
+				local rec = m.refs.rec
+				rec.x, rec.z = snapG(drag.cx + off.X), snapG(drag.cz + off.Z)
+				rec.r = (m.r + a) % 360
+				Builder.place(m.refs, Stage3D.itemCFrame(m.refs.def, rec, m.refs))
+			end
+			return
+		end
 		local r = math.floor((drag.r + math.deg(relativeAngle)) / step + 0.5) * step
 		drag.rec.r = r % 360
 		Builder.place(drag.refs, Stage3D.itemCFrame(drag.refs.def, drag.rec, drag.refs))
@@ -1491,7 +1796,9 @@ function Designer.open(app, designId)
 			return false
 		end
 		if not ghost.ok then
-			if #self.design.items >= cls().maxItems then
+			if ghost.noTower then
+				app:toast("Point at a Truss Tower (Stage category): side mounts clamp onto a tower.", T.warn)
+			elseif #self.design.items >= cls().maxItems then
 				app:toast("This " .. self.design.class .. " stage is full (" .. cls().maxItems .. " items).", T.warn)
 			elseif state.money < Sim.itemPrice(placeDef, ghostRec) then
 				app:toast("Not enough money for " .. placeDef.name .. ".", T.bad)
@@ -1502,6 +1809,9 @@ function Designer.open(app, designId)
 		end
 		local rec = Util.deepCopy(ghostRec)
 		rec.x, rec.z = ghost.x, ghost.z
+		if placeDef.mount == "side" then
+			rec.y = ghost.y
+		end
 		floorY(rec, placeDef)
 		clearGhost()
 		mode = "pending"
@@ -1536,7 +1846,13 @@ function Designer.open(app, designId)
 					placePending()
 				end
 			else
-				select(itemUnderMouse())
+				local hit = itemUnderMouse()
+				local shift = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
+				if shift and hit and phase == "build" then
+					toggleInGroup(hit) -- Shift + click: add to / remove from the group
+				elseif not shift then
+					select(hit)
+				end
 			end
 		elseif input.UserInputType == Enum.UserInputType.Keyboard then
 			local k = input.KeyCode
@@ -1556,6 +1872,8 @@ function Designer.open(app, designId)
 				confirm()
 			elseif k == Enum.KeyCode.C and building then
 				copySelected()
+			elseif k == Enum.KeyCode.M and building and (selected or group) and not pending then
+				mirrorChosen()
 			elseif k == Enum.KeyCode.X or k == Enum.KeyCode.Delete then
 				if building or pending or (selected and selected.def.id == "spot") then
 					deleteSelected()
@@ -1633,6 +1951,9 @@ function Designer.open(app, designId)
 			Venue.destroy(venuePreview)
 			venuePreview = nil
 		end
+		for _, b in ipairs(groupBoxes) do
+			b:Destroy()
+		end
 		for _, inst in ipairs({ selHighlight, hoverHighlight, pendingHighlight, moveX, moveY, moveZ, sizeH, rotH, moveBox, sizeBox }) do
 			inst:Destroy()
 		end
@@ -1643,6 +1964,10 @@ function Designer.open(app, designId)
 	end
 	self.previewArtist = previewArtist
 	self.select = select
+	self.toggleInGroup = toggleInGroup
+	self.group = function()
+		return group
+	end
 	self.setMode = setMode
 	self.confirm = confirm
 	self.cancel = cancel

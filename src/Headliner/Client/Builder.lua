@@ -391,6 +391,56 @@ function B.moving(m, r)
 	r.light = New("SpotLight", { Face = Enum.NormalId.Bottom, Angle = 25, Range = 60, Brightness = 1.2, Color = r.color, Shadows = false, Parent = r.head })
 end
 
+------------------------------------------------------------------ side mounts (on a vertical truss tower)
+-- The item's origin is on the side of the tower (rec.x/z, see Stage3D.snapToTower), +Z points away from it.
+-- A bracket clamps onto the tower; the fixture is the normal rig / floor version turned by `turn`.
+local function sideMount(m, r, build, turn)
+	build(m, r)
+	for _, p in ipairs(m:GetChildren()) do
+		if p:IsA("BasePart") and p.Name ~= "Pivot" and p.Name ~= "SafetyCable" then
+			p.CFrame = turn * p.CFrame
+		elseif p:IsA("BasePart") and p.Name == "SafetyCable" then
+			p:Destroy()
+		end
+	end
+	if r.headLocal then
+		r.headLocal = turn * r.headLocal
+	end
+	-- the bracket: two clamps around the tower post and an arm out to the fixture
+	part(m, "SideClamp", Vector3.new(2.6, 0.5, 0.5), CFrame.new(0, 0.6, 0.25), METAL, Enum.Material.Metal)
+	part(m, "SideClamp", Vector3.new(2.6, 0.5, 0.5), CFrame.new(0, -0.6, 0.25), METAL, Enum.Material.Metal)
+	part(m, "SideArm", Vector3.new(0.4, 0.4, 1.0), CFrame.new(0, 0, 0.75), DARK, Enum.Material.Metal)
+end
+function B.sidewash(m, r)
+	-- a PAR can looking out from the tower, a little down
+	sideMount(m, r, B.par, CFrame.new(0, 0.9, 1.1) * CFrame.Angles(math.rad(-75), 0, 0))
+end
+function B.sidebeam(m, r)
+	-- a beam light lying on its side: the beam shoots out over the crowd and sweeps
+	sideMount(m, r, B.beambar, CFrame.new(0, -1.1, 1.2) * CFrame.Angles(math.rad(80), 0, 0))
+end
+function B.sideblinder(m, r)
+	sideMount(m, r, B.blinder, CFrame.new(0, 2.9, 1.6))
+end
+function B.sidestrobe(m, r)
+	sideMount(m, r, B.strobe, CFrame.new(0, 1.6, 1.4))
+end
+function B.sidespeaker(m, r)
+	-- a line array hanging from a bar on the side of the tower, curved at the bottom
+	part(m, "SideClamp", Vector3.new(2.6, 0.5, 0.5), CFrame.new(0, 1.2, 0.25), METAL, Enum.Material.Metal)
+	part(m, "SideClamp", Vector3.new(2.6, 0.5, 0.5), CFrame.new(0, -0.4, 0.25), METAL, Enum.Material.Metal)
+	part(m, "SideArm", Vector3.new(0.4, 0.4, 2.6), CFrame.new(0, 1.2, 1.5), DARK, Enum.Material.Metal)
+	part(m, "HangBar", Vector3.new(4.4, 0.4, 2.2), CFrame.new(0, 0.9, 2.8), DARK, Enum.Material.Metal)
+	local y = 0.1
+	for i = 0, 5 do
+		local tilt = math.rad(i * i * 0.8)
+		local cf = CFrame.new(0, y - i * 1.2, 2.8 + i * 0.05) * CFrame.Angles(-tilt, 0, 0)
+		part(m, "Line", Vector3.new(4.2, 1.12, 2.4), cf, Color3.fromRGB(22, 22, 25))
+		part(m, "Grille", Vector3.new(4.0, 0.88, 0.08), cf * CFrame.new(0, 0, 1.23), Color3.fromRGB(45, 45, 50), Enum.Material.Fabric)
+	end
+	part(m, "Logo", Vector3.new(1.0, 0.22, 0.06), CFrame.new(0, -6.25, 4.12), r.color, Enum.Material.Neon)
+end
+
 function B.speakers(m, r)
 	-- two subwoofers on the floor, a slightly curved column of line-array boxes on top
 	for i = 0, 1 do
@@ -2657,8 +2707,11 @@ local function launchShell(refs)
 end
 
 -- Called every frame during a show. ctx: see LiveShow.lua
+-- side-mounted lights move like their rig / floor versions
+local SIDE_ANIM = { sidewash = "par", sidebeam = "beambar", sideblinder = "blinder", sidestrobe = "strobe" }
+
 function Builder.animate(refs, ctx)
-	local k = refs.kind
+	local k = SIDE_ANIM[refs.kind] or refs.kind
 	local t = ctx.t
 	local c1, c2 = ctx.c1, ctx.c2
 	local hit = ctx.hit

@@ -347,7 +347,7 @@ local i = 0
 for _, cat in ipairs(StageItems.CATEGORIES) do
 	MOCK.clickExact(cat.name)
 	for _, def in ipairs(StageItems.list) do
-		if def.cat == cat.id and not def.hidden and def.id ~= "spot" then -- spots are placed in step 2
+		if def.cat == cat.id and not def.hidden and def.id ~= "spot" and def.mount ~= "side" then -- spots: step 2, side mounts: on a tower (tested below)
 			i = i + 1
 			MOCK.clickExact(def.name)
 			MOCK.mouse = Vector2.new(700 + (i % 12) * 45, 420 + math.floor(i / 12) * 6)
@@ -364,7 +364,7 @@ for _, cat in ipairs(StageItems.CATEGORIES) do
 end
 log("designer items", before, "->", #design.items, "money spent", 5000000 - app.state.money)
 local visible = 0
-for _, def in ipairs(StageItems.list) do if not def.hidden and def.id ~= "spot" then visible = visible + 1 end end
+for _, def in ipairs(StageItems.list) do if not def.hidden and def.id ~= "spot" and def.mount ~= "side" then visible = visible + 1 end end
 assert(#design.items == before + visible, "not every item was placed")
 -- cancel placing, select a deck and edit it
 key(Enum.KeyCode.F)
@@ -397,10 +397,21 @@ H.moveY.MouseButton1Up:Fire(Enum.NormalId.Top)
 log("lifted deck yo", selRec.yo)
 for _, r in ipairs(Stage3D.items) do if r.rec == selRec then Designer.current.select(r) end end
 local w0 = selRec.w
+local xs0 = selRec.x
 H.size.MouseButton1Down:Fire(Enum.NormalId.Right)
 H.size.MouseDrag:Fire(Enum.NormalId.Right, 4)
 H.size.MouseButton1Up:Fire(Enum.NormalId.Right)
-log("resized deck w", w0, "->", selRec.w)
+log("resized deck w", w0, "->", selRec.w, "x", xs0, "->", selRec.x)
+assert(selRec.w == w0 + 4 and math.abs(math.abs(selRec.x - xs0) - 2) < 0.01, "resize grows one side only")
+for _, r in ipairs(Stage3D.items) do if r.rec == selRec then Designer.current.select(r) end end
+local w1, xs1 = selRec.w, selRec.x
+MOCK.keys = { [Enum.KeyCode.LeftShift] = true }
+H.size.MouseButton1Down:Fire(Enum.NormalId.Right)
+H.size.MouseDrag:Fire(Enum.NormalId.Right, 2)
+H.size.MouseButton1Up:Fire(Enum.NormalId.Right)
+MOCK.keys = {}
+log("shift resize w", w1, "->", selRec.w, "x", xs1, "->", selRec.x)
+assert(selRec.w == w1 + 4 and math.abs(selRec.x - xs1) < 0.01, "Shift: both sides grow")
 for _, r in ipairs(Stage3D.items) do if r.rec == selRec then Designer.current.select(r) end end
 H.rotate.MouseButton1Down:Fire(Enum.Axis.Y)
 H.rotate.MouseDrag:Fire(Enum.Axis.Y, 0.8, 0)
@@ -451,6 +462,55 @@ steps(2)
 click3D()
 assert(Designer.current.target() ~= nil, "still clickable after the second delete")
 key(Enum.KeyCode.F)
+-- side mounts clamp onto a truss tower
+do
+	local design0 = Designer.current.design
+	local tower = { t = "truss", x = 60, z = -18, r = 0 }
+	GS.buyItem(app.state, design0, tower)
+	Designer.current.switchDesign(design0)
+	MOCK.clickExact("Lights")
+	MOCK.clickExact("Side Wash")
+	MOCK.mouse = Vector2.new(960 + math.floor(61.6 / 1.0526 * 10), 500)
+	steps(2)
+	local n1 = #design0.items
+	key(Enum.KeyCode.Q)
+	local sw = design0.items[#design0.items]
+	log("side wash", #design0.items - n1, sw.t, sw.x, sw.z, sw.r, sw.yo)
+	assert(#design0.items == n1 + 1 and sw.t == "sidewash" and math.abs(sw.x - 61.05) < 0.1 and sw.r == 90, "side wash clamps onto the tower")
+	key(Enum.KeyCode.F)
+	key(Enum.KeyCode.F)
+	-- groups: Shift + click, copy in place, mirror, move together, delete
+	local a, b
+	for _, r in ipairs(Stage3D.items) do
+		if r.kind == "truss_beam" or r.kind == "speakers" then
+			if not a then a = r elseif not b and r.rec.x ~= a.rec.x then b = r end
+		end
+	end
+	Designer.current.select(a)
+	Designer.current.toggleInGroup(b)
+	assert(#(Designer.current.group() or {}) == 2, "Shift + click makes a group")
+	local n2 = #design0.items
+	key(Enum.KeyCode.C)
+	log("group copied", n2, "->", #design0.items)
+	assert(#design0.items == n2 + 2, "group copy")
+	local g = Designer.current.group()
+	assert(g and #g == 2, "the copies are the new group")
+	local gx = { g[1].rec.x, g[2].rec.x }
+	steps(2)
+	H.moveX.MouseButton1Down:Fire(Enum.NormalId.Right)
+	H.moveX.MouseDrag:Fire(Enum.NormalId.Right, 6)
+	H.moveX.MouseButton1Up:Fire(Enum.NormalId.Right)
+	g = Designer.current.group()
+	log("group moved", gx[1], "->", g[1].rec.x, gx[2], "->", g[2].rec.x)
+	local n3 = #design0.items
+	key(Enum.KeyCode.M)
+	log("mirrored", n3, "->", #design0.items)
+	assert(#design0.items > n3, "mirror makes copies")
+	local n4 = #design0.items
+	key(Enum.KeyCode.X)
+	log("group deleted", n4, "->", #design0.items)
+	assert(#design0.items < n4, "group delete")
+end
 -- Q places an item in one go (build step)
 MOCK.clickExact("Decor")
 MOCK.clickExact("Velvet Drapes")

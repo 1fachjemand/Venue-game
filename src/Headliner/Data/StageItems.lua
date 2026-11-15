@@ -34,6 +34,7 @@ StageItems.list = {
 	{ id = "stadiumroof", name = "Stadium Structure", cat = "Stage", cost = 25000, pts = 22, tags = { "spectacle" }, mount = "floor", deck = false, size = { w = 140, d = 64, minW = 60, maxW = 240, minD = 40, maxD = 95, dLabel = "Height" }, desc = "The giant scaffold of a stadium tour: two towers with PA hangs, a roof and covered wings. Place it over the stage." },
 	{ id = "delaytower", name = "Delay Tower", cat = "Stage", cost = 3000, pts = 4, tags = {}, mount = "floor", deck = false, desc = "Speaker and follow-spot tower in the crowd, so the back rows of a stadium hear the show too." },
 	{ id = "truss", name = "Truss Tower", cat = "Stage", cost = 400, pts = 1, tags = {}, mount = "floor", deck = false, desc = "Vertical truss tower." },
+	{ id = "sidespeaker", name = "Hanging Speakers", cat = "Stage", cost = 900, pts = 3, tags = {}, mount = "side", deck = false, desc = "Line array hanging on the side of a Truss Tower, like at big shows. Put it on a tower and lift it up." },
 	{ id = "speakers", name = "Speaker Stack", cat = "Stage", cost = 400, pts = 2, tags = {}, mount = "floor", deck = false, desc = "Subwoofers with a line array on top." },
 	-- Artist: where the artist performs and what they play
 	{ id = "spot", name = "Artist Spot", cat = "Artist", cost = 0, pts = 0, tags = {}, mount = "floor", deck = false, desc = "One spot = one song. The artist walks to spot 1 for the first song, spot 2 for the second, and so on. More spots = longer setlist (up to 12)." },
@@ -62,6 +63,11 @@ StageItems.list = {
 	{ id = "par", name = "PAR Wash", cat = "Lights", cost = 150, pts = 2, tags = { "lights" }, mount = "rig", deck = false, desc = "Coloured wash light." },
 	{ id = "moving", name = "Moving Head", cat = "Lights", cost = 900, pts = 4, tags = { "lights" }, mount = "rig", deck = false, desc = "Sweeping beam light." },
 	{ id = "beambar", name = "Beam Light", cat = "Lights", cost = 800, pts = 4, tags = { "lights" }, mount = "floor", deck = false, desc = "Floor beam shooting up into the sky." },
+	-- side mounts: they clamp onto a Truss Tower (Stage category) at any height
+	{ id = "sidewash", name = "Side Wash", cat = "Lights", cost = 220, pts = 2, tags = { "lights" }, mount = "side", deck = false, desc = "PAR can on a side clamp. Put it on a Truss Tower: it lights the stage and the crowd from the side." },
+	{ id = "sidebeam", name = "Side Beam", cat = "Lights", cost = 900, pts = 4, tags = { "lights" }, mount = "side", deck = false, desc = "Beam light clamped to the side of a Truss Tower. Its beam sweeps out over the crowd." },
+	{ id = "sideblinder", name = "Side Blinder", cat = "Lights", cost = 550, pts = 3, tags = { "lights", "energy" }, mount = "side", deck = false, desc = "Audience blinder for the side of a Truss Tower." },
+	{ id = "sidestrobe", name = "Side Strobe", cat = "Lights", cost = 500, pts = 3, tags = { "lights", "energy" }, mount = "side", deck = false, desc = "Strobe on a side clamp of a Truss Tower." },
 	{ id = "strobe", name = "Strobe", cat = "Lights", cost = 450, pts = 3, tags = { "lights", "energy" }, mount = "rig", deck = false, desc = "Flashes on the beat." },
 	{ id = "blinder", name = "Audience Blinder", cat = "Lights", cost = 500, pts = 3, tags = { "lights", "energy" }, mount = "rig", deck = false, desc = "Warm flash towards the crowd on big moments." },
 	{ id = "followspot", name = "Follow Spot", cat = "Lights", cost = 1100, pts = 3, tags = { "lights", "intimate" }, mount = "floor", deck = false, desc = "Follows the artist everywhere." },
