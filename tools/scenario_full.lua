@@ -27,6 +27,7 @@ local StageItems = require(root.Data.StageItems)
 local app = App.instance
 assert(app, "App did not start")
 local function log(...) print("[test]", ...) end
+local Laptop
 local function steps(n, dt) for _ = 1, n do MOCK.step(dt or 1 / 30) end end
 -- test cheats change the state on the server, then the client gets the new state
 local function resync() app:applyDelta(app:call("resync").delta) app:refreshCurrent() end
@@ -75,34 +76,62 @@ assert(#MOCK.buttons("^2x$") >= 1, "speed buttons in the HUD")
 assert(not W.prompts.meeting.Enabled, "meeting prompt only while sitting")
 steps(30)
 log("hub parts", #workspace.StarlightRecords:GetDescendants(), "client parts", #workspace.HubClient:GetDescendants())
--- laptop
+-- laptop: power on -> login -> desktop with apps in windows
+Laptop = require(root.Client.Laptop)
 MOCK.prompt("laptop")
-assert(app.current == "office" and app.mode == "menu", "laptop opens the overview")
-MOCK.clickExact("TOURS")
-assert(app.current == "tours")
-MOCK.clickExact("CLOSE")
+assert(app.mode == "laptop" and Laptop.isOpen(app), "the laptop opens")
+steps(60, 0.05)
+MOCK.clickExact("LOG IN")
+assert(app.laptop.power == "on", "logged in")
+local function dbl(id)
+	local ic = app.laptop.iconLayer:FindFirstChild("Icon_" .. id)
+	ic.MouseButton1Click:Fire() ic.MouseButton1Click:Fire() MOCK.runTasks()
+end
+dbl("tours")
+assert(#app.laptop.windows == 1 and app.laptop.windows[1].id == "tours", "double click opens My Tours in a window")
+local win = app.laptop.windows[1]
+win.frame:FindFirstChild("Maximize", true).MouseButton1Click:Fire() MOCK.runTasks()
+assert(win.max == false, "window restored from full screen")
+dbl("stats")
+assert(#app.laptop.windows == 2 and #MOCK.texts("^Statistics$") >= 1, "a second window: statistics")
+app.laptop.windows[2].frame:FindFirstChild("Minimize", true).MouseButton1Click:Fire() MOCK.runTasks()
+assert(not app.laptop.windows[2].frame.Visible, "minimised")
+app.laptop.tasks:FindFirstChild("Task_stats").MouseButton1Click:Fire() MOCK.runTasks()
+assert(app.laptop.windows[2].frame.Visible, "back from the taskbar")
+dbl("settings")
+for i = #app.laptop.windows, 1, -1 do app.laptop.windows[i].frame:FindFirstChild("CloseWindow", true).MouseButton1Click:Fire() MOCK.runTasks() end
+assert(#app.laptop.windows == 0 and app.screens.tours.frame.Parent == app.content, "windows closed, pages back")
+MOCK.clickExact("Close laptop")
 assert(app.mode == "world", "close returns to walking")
--- book a show: country on the map -> n-th open venue -> first free day after the last show
+local function openPlanner()
+	MOCK.prompt("laptop")
+	if app.laptop.power ~= "on" then steps(60, 0.05) MOCK.clickExact("LOG IN") end
+	Laptop.openApp(app, "planner")
+	assert(app.screens.planner.frame.Visible, "tour planner window")
+end
+-- book a show: a country on the map -> SELECT on the n-th open venue -> first free day after the last show
 local function book(cid, n)
-	local map = app.screens.planner
-	if map.step ~= 2 then map:setStep(2) end
-	map:pickCountry(cid)
-	assert(map.step == 3, "venue step after picking a country")
-	local picks = MOCK.buttons("^PICK")
-	local btn = ((n or 1) < 0) and picks[#picks] or picks[n or 1]
-	assert(btn, "no PICK button")
-	btn.MouseButton1Click:Fire()
-	MOCK.runTasks()
-	assert(map.step == 4 and map.picked, "date step after picking a venue")
-	local last = map.draft.shows[#map.draft.shows]
+	local tp = app.screens.planner
+	if tp.step ~= 2 then tp:go(2) end
+	tp.map.chips[cid].chip.MouseButton1Click:Fire() MOCK.runTasks()
+	assert(tp.sub == "country" and tp.selected == cid, "country page after the click")
+	local sel = MOCK.buttons("^SELECT$")
+	local btn = ((n or 1) < 0) and sel[#sel] or sel[n or 1]
+	assert(btn, "no SELECT button")
+	btn.MouseButton1Click:Fire() MOCK.runTasks()
+	assert(tp.picked and tp.overlay.Visible, "calendar after SELECT")
+	local last = tp.draft.shows[#tp.draft.shows]
 	local d = last and (last.day + 1) or (app.state.day + 21)
-	while map:dayState(d) ~= "ok" do d = d + 1 end
-	local before = #map.draft.shows
-	map:dayClicked(d)
-	assert(#map.draft.shows == before + 1, "day click did not add a show")
+	while tp:dayState(d) ~= "ok" do d = d + 1 end
+	local before = #tp.draft.shows
+	tp:dayClicked(d)
+	assert(#tp.draft.shows == before + 1, "day click did not add a show")
+	MOCK.clickExact("Done")
+	tp.sub = "map"
+	tp:refresh()
 end
 
--- the meeting room board: PLAN A TOUR for an artist (stands up, the arrow goes to the world map)
+-- the meeting room board: PLAN A TOUR for an artist (stands up, the laptop is next)
 local function planArtist(artistId)
 	local seat = workspace.StarlightRecords:FindFirstChild("MeetingSeat3", true)
 	MOCK.sit(seat)
@@ -125,99 +154,82 @@ local function planArtist(artistId)
 	MOCK.sit(nil)
 	steps(2)
 	assert(app.state.draft.artistId == artistId and SRV().draft.artistId == artistId, "plan not started for " .. artistId)
-	assert(app.world.target == "maptable", "arrow should point to the world map")
 end
--- the laptop: ticket prices, (stage hall), announce
-local function pricesAndAnnounce(withStageHall)
-	MOCK.prompt("laptop")
-	MOCK.clickExact("TOUR PLAN")
-	assert(app.current == "tourplan", "tour plan page")
-	MOCK.clickExact("SET PRICES")
+-- tickets -> stage -> announce (in the planner window)
+local function pricesAndAnnounce()
+	local tp = app.screens.planner
+	tp:go(3)
+	assert(tp.step == 3, "ticket step")
 	MOCK.clickExact("+5", 1)
-	MOCK.clickExact("SAVE PRICES >")
-	assert(SRV().draft.pricesSet, "prices not saved")
-	MOCK.clickExact("CLOSE")
-	-- the stage: select one in the stage hall
-	assert(GS.objective(app.state).target == "stagehall", "next: the stage hall")
-	MOCK.prompt("stagehall")
-	log("select buttons", #MOCK.buttons("^SELECT FOR TOUR"))
-	for _, d in ipairs(app.state.designs) do
-		if d.class == "Club" then app.screens.stages:selectForTour(d) break end
+	MOCK.clickExact("Next: choose the stage  >")
+	assert(SRV().draft.pricesSet and tp.step == 4, "prices saved, stage step")
+	if #MOCK.buttons("^SELECT$") > 0 then MOCK.clickExact("SELECT", 1) end
+	for _, need in ipairs(tp:classesNeeded()) do
+		if not tp:chosenDesign(need.class) then tp.draft.designs[need.class] = tp:fittingDesigns(need.class)[1].id end
 	end
-	assert(SRV().draft.stageSet, "stage not selected")
-	MOCK.clickExact("CLOSE")
-	assert(GS.objective(app.state).target == "laptop", "next: announce on the laptop")
-	MOCK.prompt("laptop")
-	MOCK.clickExact("TOUR PLAN")
-	log("plan page:", MOCK.texts("Estimated gross")[1])
+	tp:saveDraft()
+	tp:refresh()
+	log("stage step selected", #MOCK.buttons("^SELECTED$"))
+	MOCK.clickExact("Next: check & announce  >")
+	assert(SRV().draft.stageSet and tp.step == 5, "stage set, announce step")
 	MOCK.clickExact("ANNOUNCE TOUR")
 end
 
--- 2) plan a tour room by room: meeting room (artist) -> world map (dates) -> laptop (prices, announce)
+-- 2) plan a tour: meeting room (PLAN A TOUR) -> laptop: Tour Planner (shows, tickets, stage, announce)
 MOCK.prompt("maptable")
-local map = app.screens.planner
-assert(#MOCK.texts("^Which artist goes on tour") == 1, "map table without an artist asks for the meeting room")
-MOCK.clickExact("GO TO THE MEETING ROOM")
-assert(app.mode == "world" and app.world.target == "meeting", "guided to the meeting room")
+local tp = app.screens.planner
+assert(app.current == "planner" and tp.step == 1, "the map table opens the planner at the artist step")
+assert(#MOCK.buttons("^Next: plan the shows") == 1, "next button")
+MOCK.clickExact("CLOSE")
 planArtist("lila")
-MOCK.prompt("maptable")
-assert(map.step == 2 and map.draft.artistId == "lila", "the map shows the countries")
-assert(#MOCK.texts("STEP 2 OF 5") == 1, "plan progress shown")
-local WM3 = require(root.Client.WorldMap3D)
-log("3D map active", WM3.active, "country parts", #WM3.queryParts)
-MOCK.clickExact("Europe")
-steps(5)
-MOCK.mouse = Vector2.new(700, 300)
-steps(3)
-UIS0 = game:GetService("UserInputService")
-UIS0.InputChanged:Fire(MOCK.input(Enum.UserInputType.MouseWheel, { Position = Vector3.new(0, 0, 1) }), false)
-steps(3)
-map:hoverCountry("ch")
-log("hover text", MOCK.texts("Switzerland")[1])
--- venue step: only clubs are open at level 1
-map:pickCountry("uk")
-local locked = #MOCK.texts("^LOCKED  ")
-log("uk venues: open", #MOCK.buttons("^PICK"), "locked", locked)
-assert(locked > 0 and #MOCK.buttons("^PICK") >= 1, "theatres/arenas locked at level 1")
-MOCK.clickExact("<  BACK")
-assert(map.step == 2, "back from venues to the map")
+assert(app.world.target == "laptop", "the arrow points to the laptop")
+openPlanner()
+assert(tp.step == 2 and tp.draft.artistId == "lila", "planner opens at the shows")
+assert(tp.map and tp.map.chips.uk and tp.map.chips.br, "the flat map has every country")
+tp.map.chips.uk.chip.MouseButton1Click:Fire() MOCK.runTasks()
+local locked = #MOCK.buttons("^LOCKED$")
+log("uk venues: open", #MOCK.buttons("^SELECT$"), "locked", locked, "sections", #MOCK.texts("^CLUBS$"), #MOCK.texts("^STADIUMS$"))
+assert(locked > 0 and #MOCK.buttons("^SELECT$") >= 1, "theatres/arenas locked at level 1")
+MOCK.click("STADIUMS")
+assert(tp.filter.Stadium == false and #MOCK.texts("^STADIUMS$") == 0, "filter hides the stadiums")
+MOCK.clickExact("Show all")
+MOCK.clickExact("< World map")
+assert(tp.sub == "map", "back to the map")
 book("uk", 1)
--- calendar alone on its screen
-local m0 = map.calMonth[2]
+-- calendar
+tp:openCalendar(tp.draft.shows[1].venueId)
+local m0 = tp.calMonth[2]
 MOCK.clickExact("<")
-assert(map.calMonth[2] ~= m0, "month navigation failed")
-map.calMonth = { 2027, m0 }
-map:refresh()
+assert(tp.calMonth[2] ~= m0, "month navigation failed")
 log("calendar month", MOCK.texts("^%a+ 20%d%d$")[1], "free days", #MOCK.texts("^free$"), "taken", #MOCK.texts("^taken:"))
--- a second night in the same club, then remove it again
-local first = map.draft.shows[1]
+local first = tp.draft.shows[1]
 local d2 = first.day + 1
-while map:dayState(d2) ~= "ok" do d2 = d2 + 1 end
-map:dayClicked(d2)
-assert(#map.draft.shows == 2, "second night")
-map:dayClicked(d2)
-assert(#map.draft.shows == 1, "click on own show did not remove it")
-MOCK.clickExact("+ ADD ANOTHER SHOW")
-assert(map.step == 2, "add another show -> map")
-assert(map.routeBox.Visible, "booked shows listed on the map")
+while tp:dayState(d2) ~= "ok" do d2 = d2 + 1 end
+tp:dayClicked(d2)
+assert(#tp.draft.shows == 2, "second night")
+tp:dayClicked(d2)
+assert(#tp.draft.shows == 1, "click on own show did not remove it")
+MOCK.clickExact("Done")
 for _, cid in ipairs({ "fr", "de", "nl" }) do book(cid, 1) end
-log("draft shows", #map.draft.shows)
-for i = 2, #map.draft.shows do assert(map.draft.shows[i].day > map.draft.shows[i - 1].day, "dates not sorted") end
-MOCK.clickExact("DONE: PRICES ON THE LAPTOP >")
-assert(app.mode == "world" and app.world.target == "laptop", "after the dates: to the laptop")
-assert(#SRV().draft.shows == #map.draft.shows, "dates are on the server")
-pricesAndAnnounce(false)
-if app.current ~= "tours" then for _, d in ipairs(app.toastFrame:GetDescendants()) do if d:IsA("TextLabel") then log("toast:", d.Text) end end end
-assert(app.current == "tours", "not on tours screen after announce")
+log("draft shows", #tp.draft.shows)
+for i = 2, #tp.draft.shows do assert(tp.draft.shows[i].day > tp.draft.shows[i - 1].day, "dates not sorted") end
+assert(#SRV().draft.shows == #tp.draft.shows, "dates are on the server")
+-- the stage hall can select a stage for the plan too
+MOCK.clickExact("Close laptop")
+MOCK.prompt("stagehall")
+for _, d in ipairs(app.state.designs) do
+	if d.class == "Club" then app.screens.stages:selectForTour(d) break end
+end
+MOCK.clickExact("CLOSE")
+openPlanner()
+pricesAndAnnounce()
 local tour = app.state.tours[1]
+assert(tour and app.laptop.windows[#app.laptop.windows].id == "tours", "My Tours opens after the announcement")
 log("tour", tour.name, "#shows", #tour.shows, "price", tour.price, tour.shows[2].price, "presale sold", tour.shows[1].sold)
 MOCK.click("^Social Ads")
 MOCK.clickExact("+")
 log("tour price after +", tour.price, tour.shows[3].price)
-MOCK.clickExact("OVERVIEW")
-assert(app.current == "office")
-log("upcoming:", #MOCK.texts("@"))
-MOCK.clickExact("CLOSE")
+MOCK.clickExact("Close laptop")
 assert(SRV().tours[1] and SRV().tours[1].id == tour.id, "the tour is not on the server")
 
 
@@ -319,10 +331,10 @@ log("kai signed", app.state.artists.kai.signed, SRV().artists.kai.signed, "money
 assert(SRV().artists.kai.signed, "signing did not reach the server")
 MOCK.sit(nil)
 steps(2)
--- a link to another room: the arrow points there
+-- "Our Artists" is an app on the laptop
 app:go("artists")
-log("guide after a link to the meeting room:", W.target)
-assert(W.target == "meeting", "a link to another room points the arrow there")
+assert(app.mode == "laptop" and app.screens.artists.frame.Visible, "artists open on the laptop")
+MOCK.clickExact("Close laptop")
 
 -- 6) stage builder: place every item type the new way (card -> click into the world -> tick)
 MOCK.prompt("stagehall")
@@ -665,17 +677,15 @@ cheat(function(s) s.money = 60000000 s.stats.tickets = 2000000 end)
 log("sign nova", app:act("sign", { artistId = "nova" }))
 clearModals()
 planArtist("nova")
-MOCK.prompt("maptable")
-assert(map.step == 2, "planner for nova")
+openPlanner()
+assert(tp.step == 2, "planner for nova")
 book("uk", -1) -- the last (biggest) venue: the stadium
 book("uk", 1) -- and a club: needs a smaller stage too
-log("nova draft", #map.draft.shows, map.draft.artistId)
-MOCK.clickExact("DONE: PRICES ON THE LAPTOP >")
-pricesAndAnnounce(true)
-log("stages:", table.concat(MOCK.texts("^%a+: .+"), " | "))
+log("nova draft", #tp.draft.shows, tp.draft.artistId)
+pricesAndAnnounce()
 local nt = app.state.tours[1]
 log("nova tour", nt.name, nt.shows[1].venueId, nt.shows[1].sold)
-MOCK.clickExact("CLOSE")
+MOCK.clickExact("Close laptop")
 found = false
 for _ = 1, 200 do
 	clearModals()
@@ -704,16 +714,15 @@ log("best chart rank", best)
 
 -- 9) cancel a tour (laptop > tours)
 planArtist("kai")
-MOCK.prompt("maptable")
+openPlanner()
 book("us", 1)
-MOCK.clickExact("DONE: PRICES ON THE LAPTOP >")
-pricesAndAnnounce(true)
+pricesAndAnnounce()
 local nTours = #app.state.tours
 MOCK.clickExact("Cancel tour")
 MOCK.clickExact("Yes")
 log("tours after cancel", nTours, "->", #app.state.tours, "server", #SRV().tours)
 assert(#SRV().tours == nTours - 1, "cancel did not reach the server")
-MOCK.clickExact("CLOSE")
+MOCK.clickExact("Close laptop")
 
 -- 10) leave and come back: the server saved, the next session continues
 local money = SRV().money

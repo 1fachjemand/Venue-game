@@ -104,6 +104,8 @@ local function thumbnail(parent, design, pos, size)
 	return vp
 end
 
+StagesScreen.thumbnail = thumbnail
+
 local function usedBy(state, id)
 	for _, t in ipairs(state.tours) do
 		if t.status ~= "done" then

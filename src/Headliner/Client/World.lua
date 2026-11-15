@@ -761,7 +761,7 @@ end
 ------------------------------------------------------------------ stations
 local OPEN = {
 	laptop = function(app)
-		app:openStation("laptop", "office")
+		app:openLaptop()
 	end,
 	maptable = function(app)
 		app:openStation("maptable", "planner")
@@ -890,8 +890,8 @@ function World.planTour(artistId)
 			app:act("setDraft", { draft = { artistId = artistId } })
 		end
 		World.standUp()
-		World.guide("maptable")
-		app:toast("<b>" .. Artists.byId[artistId].name .. "</b> goes on tour! Next: plan the dates at the <b>WORLD MAP</b> table.", T.accent2, 7)
+		World.guide("laptop")
+		app:toast("<b>" .. Artists.byId[artistId].name .. "</b> goes on tour! Plan it on the <b>LAPTOP</b>: Tour Planner.", T.accent2, 7)
 	end
 	if d.artistId and d.artistId ~= artistId and #(d.shows or {}) > 0 then
 		app:confirm("New tour plan?", "The plan for <b>" .. Artists.byId[d.artistId].name .. "</b> (" .. #d.shows .. " shows) will be dropped.", go)

@@ -27,55 +27,69 @@ dump("04_welcome")
 for _ = 1, 80 do MOCK.step(0.05) end
 MOCK.clickExact("Let's go!")
 dump("04b_world_hud")
+local Laptop = require(root.Client.Laptop)
 MOCK.prompt("laptop")
-dump("04c_laptop")
-MOCK.clickExact("CLOSE")
+dump("04c_laptop_boot")
+for _ = 1, 40 do MOCK.step(0.05) end
+dump("04d_laptop_login")
+MOCK.clickExact("LOG IN")
+dump("04e_desktop")
+Laptop.openApp(app, "stats")
+Laptop.openApp(app, "tours")
+app.laptop.windows[2].max = false
+app.laptop.windows[2].rect = { x = 300, y = 120, w = 1200, h = 720 }
+Laptop.layout(app, app.laptop.windows[2])
+dump("04f_two_windows")
+for i = #app.laptop.windows, 1, -1 do Laptop.closeWindow(app, app.laptop.windows[i]) end
+MOCK.clickExact("Close laptop")
 MOCK.prompt("maptable")
-dump("05a_plan_no_artist")
+dump("05a_plan_artist")
 MOCK.clickExact("CLOSE")
+SRV().money = 5000000 SRV().stats.tickets = 250000 app:applyDelta(app:call("resync").delta)
 app:act("setDraft", { draft = { artistId = "juno" } })
-MOCK.prompt("maptable")
-local map = app.screens.planner
+MOCK.prompt("laptop")
+Laptop.openApp(app, "planner")
+local tp = app.screens.planner
 dump("05_plan_map")
 local function book(cid, n)
-	map:pickCountry(cid)
-	local picks = MOCK.buttons("^PICK")
-	local b = (n < 0) and picks[#picks] or picks[n]
+	tp.selected, tp.sub = cid, "country"
+	tp:refresh()
+	local sel = MOCK.buttons("^SELECT$")
+	local b = (n < 0) and sel[#sel] or sel[n]
 	b.MouseButton1Click:Fire() MOCK.runTasks()
-	local last = map.draft.shows[#map.draft.shows]
+	local last = tp.draft.shows[#tp.draft.shows]
 	local d = last and (last.day + 1) or (app.state.day + 21)
-	while map:dayState(d) ~= "ok" do d = d + 1 end
-	map:dayClicked(d)
+	while tp:dayState(d) ~= "ok" do d = d + 1 end
+	tp:dayClicked(d)
 end
-map:pickCountry("uk")
-dump("06_plan_venue_locked")
-SRV().money = 5000000 SRV().stats.tickets = 250000 app:applyDelta(app:call("resync").delta)
+tp.selected, tp.sub = "uk", "country"
+tp:refresh()
+dump("06_plan_venues")
 book("uk", 1)
 dump("06b_calendar")
+MOCK.clickExact("Done")
 book("fr", 1)
+MOCK.clickExact("Done")
 book("de", 1)
-book("uk", -2)
-map:setStep(2)
+MOCK.clickExact("Done")
+tp.sub = "map" tp:refresh()
 dump("06c_plan_map_route")
-map:pickCountry("uk")
-dump("06d_plan_venue_open")
-map.picked = map.draft.shows[1].venueId map:setStep(4)
-MOCK.clickExact("DONE: PRICES ON THE LAPTOP >")
-MOCK.prompt("laptop")
-MOCK.clickExact("TOUR PLAN")
-dump("08_plan_laptop")
-MOCK.clickExact("SET PRICES")
+tp:go(3)
 dump("07b_plan_tickets")
-MOCK.clickExact("SAVE PRICES >")
+MOCK.clickExact("Next: choose the stage  >")
+dump("07c_plan_stage")
+for _, need in ipairs(tp:classesNeeded()) do tp.draft.designs[need.class] = tp:fittingDesigns(need.class)[1].id end
+tp:saveDraft()
+tp:refresh()
+MOCK.clickExact("Next: check & announce  >")
+dump("08_plan_announce")
 MOCK.clickExact("ANNOUNCE TOUR")
 for _ = 1, 6 do
 	app:nextDay()
 	if #MOCK.buttons("^Nice!$") > 0 then MOCK.clickExact("Nice!") end
 end
 dump("09_tours")
-MOCK.clickExact("OVERVIEW")
-dump("11_office_after")
-MOCK.clickExact("CLOSE")
+MOCK.clickExact("Close laptop")
 dump("11b_world_after")
 local seat = workspace.StarlightRecords:FindFirstChild("MeetingSeat1", true)
 MOCK.sit(seat)

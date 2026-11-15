@@ -198,9 +198,23 @@ function App:beginGame(isNew)
 	self.content = UI.New("Frame", { Parent = self.canvas, Name = "Content", Position = UI.px(0, 72), Size = UI.px(1920, 1008), BackgroundTransparency = 1, Visible = false })
 	self:buildScreenBar()
 	local Screens = Root.Client.Screens
-	self.screens.office = require(Screens.OfficeScreen).new(self)
-	self.screens.planner = require(Screens.PlannerScreen).new(self, "map")
-	self.screens.tourplan = require(Screens.PlannerScreen).new(self, "plan")
+	self.screens.planner = require(Screens.TourPlanner).new(self)
+	self.screens.planner.onAnnounced = function(tour)
+		local Laptop = require(Root.Client.Laptop)
+		if Laptop.isOpen(self) then
+			local lt = self.laptop
+			for _, w in ipairs(lt.windows) do
+				if w.id == "planner" then
+					Laptop.closeWindow(self, w)
+				end
+			end
+			Laptop.openApp(self, "tours", { tourId = tour.id })
+		else
+			self:closeScreen()
+			self:toast("Follow the ticket sales on the LAPTOP: My Tours.", T.accent2, 6)
+		end
+	end
+	self.screens.stats = require(Screens.StatsScreen).new(self)
 	self.screens.artists = require(Screens.ArtistsScreen).new(self)
 	self.screens.tours = require(Screens.ToursScreen).new(self)
 	self.screens.charts = require(Screens.ChartsScreen).new(self)
@@ -448,13 +462,7 @@ function App:buildScreenBar()
 	UI.New("Frame", { Parent = bar, Position = UI.px(0, 63), Size = UI.px(1920, 2), BackgroundColor3 = T.accent, BorderSizePixel = 0 })
 	self.screenBar = bar
 	self.barTitle = UI.Label(bar, "", UI.px(24, 0), UI.px(520, 64), { textSize = 24, font = UI.FontBlack, color = T.accent })
-	-- laptop: two pages
 	self.barTabs = {}
-	for i, tab in ipairs({ { "office", "OVERVIEW" }, { "tours", "TOURS" }, { "tourplan", "TOUR PLAN" } }) do
-		self.barTabs[tab[1]] = UI.Button(bar, tab[2], UI.px(300 + (i - 1) * 166, 10), UI.px(156, 44), { textSize = 16 }, function()
-			self:go(tab[1])
-		end)
-	end
 	self.barMoney = UI.Label(bar, "", UI.px(1200, 4), UI.px(250, 32), { textSize = 26, font = UI.FontBlack, color = T.good, alignX = Enum.TextXAlignment.Right })
 	self.barDate = UI.Label(bar, "", UI.px(1200, 34), UI.px(250, 24), { textSize = 16, color = T.sub, alignX = Enum.TextXAlignment.Right })
 	self.barSpeedBtns = {}
@@ -471,12 +479,13 @@ end
 
 -- which pages a station shows; any other page is a different place in the building
 local STATION_PAGES = {
-	laptop = { office = true, tours = true, tourplan = true },
 	maptable = { planner = true },
 	stagehall = { stages = true },
 	charts = { charts = true },
 }
-local PAGE_STATION = { office = "laptop", tours = "laptop", tourplan = "laptop", planner = "maptable", artists = "meeting", stages = "stagehall", charts = "charts" }
+local PAGE_STATION = { stages = "stagehall", charts = "charts" }
+-- pages that are apps on the laptop
+local LAPTOP_APP = { office = true, tours = "tours", tourplan = "planner", planner = "planner", artists = "artists", stats = "stats" }
 local STATION_NAME = { laptop = "LAPTOP", maptable = "WORLD MAP table", meeting = "MEETING ROOM (sit down)", stagehall = "STAGE HALL", charts = "CHARTS screen" }
 
 function App:openStation(station, page, args)
@@ -484,12 +493,26 @@ function App:openStation(station, page, args)
 	self:showPage(page, args)
 end
 
--- a page of another station: walk there (the arrow shows the way)
+-- a page of another station: walk there (the arrow shows the way); laptop pages open as apps
 function App:go(name, args)
 	if name == "social" then
+		if self.mode == "laptop" then
+			self:openLaptop("social")
+			return
+		end
 		self:closeScreen()
 		self:openPhone()
 		return
+	end
+	if LAPTOP_APP[name] and not (name == "planner" and self.station == "maptable") then
+		local appId = (LAPTOP_APP[name] == true) and nil or LAPTOP_APP[name]
+		if self.mode == "laptop" or self.mode == "menu" or self.mode == "world" then
+			if self.mode == "menu" then
+				self:closeScreen()
+			end
+			self:openLaptop(appId, args)
+			return
+		end
 	end
 	local here = self.station and STATION_PAGES[self.station]
 	if here and here[name] then
@@ -524,33 +547,64 @@ function App:showPage(name, args)
 	self.content.Visible = true
 	self.screenBar.Visible = true
 	self.barTitle.Text = TITLES[name] or string.upper(name)
-	for key, b in pairs(self.barTabs) do
-		b.Visible = (name == "office" or name == "tours" or name == "tourplan")
-		b.BackgroundColor3 = (key == name) and T.accent or T.panel3
-	end
+
 	for key, scr in pairs(self.screens) do
-		if key ~= name and scr.hide and scr.frame.Visible then
-			scr:hide()
+		-- pages inside laptop windows stay as they are
+		if scr.frame.Parent == self.content or key == name then
+			if key ~= name and scr.hide and scr.frame.Visible then
+				scr:hide()
+			end
+			scr.frame.Visible = key == name
 		end
-		scr.frame.Visible = key == name
 	end
 	local scr = self.screens[name]
 	self.returnScreen = name
+	scr.frame.Parent = self.content
+	scr.frame.Position = UI.px(0, 0)
 	scr:show(args)
 	self:refreshHud()
+end
+
+------------------------------------------------------------------ the laptop (a little computer, see Laptop.lua)
+function App:openLaptop(appId, args)
+	local Laptop = require(Root.Client.Laptop)
+	if self.mode == "world" and self.world then
+		self.world.freeze(true)
+	end
+	if self.mode == "phone" then
+		self.phone:hide()
+	end
+	self.mode = "laptop"
+	self.station = "laptop"
+	Laptop.open(self, appId, args)
+	self:refreshHud()
+end
+
+function App:closeLaptop()
+	local Laptop = require(Root.Client.Laptop)
+	Laptop.close(self)
+	self.station = nil
+	self.mode = "world"
+	Stage3D.setLighting("hub")
+	if self.world then
+		self.world.freeze(false)
+		self.world.resetCamera()
+		self.world.refresh()
+	end
+	self:refreshHud()
+	self:processLiveQueue()
 end
 
 -- back to walking around in the building
 function App:closeScreen()
 	for _, scr in pairs(self.screens) do
-		if scr.frame.Visible then
+		if scr.frame.Visible and scr.frame.Parent == self.content then
 			if scr.hide then
 				scr:hide()
 			end
 			scr.frame.Visible = false
 		end
 	end
-	require(Root.Client.WorldMap3D).deactivate()
 	self.current = nil
 	self.station = nil
 	self.backdrop.Visible = false
@@ -606,6 +660,9 @@ function App:refreshCurrent()
 	if self.world and self.mode == "world" then
 		self.world.refresh()
 	end
+	if self.mode == "laptop" then
+		require(Root.Client.Laptop).refresh(self)
+	end
 	self:refreshHud()
 end
 
@@ -620,7 +677,6 @@ function App:enterMode(mode)
 		return
 	end
 	self.mode = mode
-	require(Root.Client.WorldMap3D).deactivate()
 	self.backdrop.Visible = false
 	self.content.Visible = false
 	self.screenBar.Visible = false
@@ -801,7 +857,7 @@ end
 -- time stands still in shows, the stage builder, popups and while a show of today waits
 function App:timeRuns()
 	local m = self.mode
-	return (m == "world" or m == "menu" or m == "phone" or m == "meeting") and not self.modalOpen and not self.homeOpen and #self.liveQueue == 0 and not self.dayBusy
+	return (m == "world" or m == "menu" or m == "phone" or m == "meeting" or m == "laptop") and not self.modalOpen and not self.homeOpen and #self.liveQueue == 0 and not self.dayBusy
 end
 
 ------------------------------------------------------------------ home button: save, settings, back to the main menu
@@ -930,6 +986,7 @@ function App:leaveToMenu()
 	if self.world then
 		self.world.stop()
 	end
+	require(Root.Client.Laptop).destroy(self)
 	for _, c in ipairs(self.canvas:GetChildren()) do
 		if not (self.baseChildren or {})[c] and not c:IsA("UIScale") then
 			c:Destroy()
