@@ -16,7 +16,14 @@ Das Spiel läuft jetzt mit Spielfigur in einer Welt. Die Menüs sind Orte (Stati
 - **Freischaltung** (`GS.unlocks`): Büro, Karte, Meeting von Anfang an; Bühnen-Halle nach der 1. Show; Charts nach der 1. fertigen Tour (oder 5 Shows).
 - **Sandbox (DEV)** im Hauptmenü nur in Studio / für den Place-Besitzer: Geld 1 Mrd. (wird nach jeder Aktion aufgefüllt), Level 5, alles offen, Knöpfe „SKIP TO NEXT SHOW“ / „+7 DAYS“.
 - Tests: `run_mock.py` startet jetzt Server + Client (Attrappe kann RemoteFunction, DataStore, LoadCharacter, Seats `MOCK.sit`, Prompts `MOCK.prompt`). Cheats im Test über `shared.HeadlinerServer.sessions[...]`.
-- **Offen / Feedback abwarten:** Look des neuen Büros im echten Roblox, Sitzen im Meetingraum, Laufen in der Halle (Kollisionen von Bühnenteilen), Mini-Aufgaben in der Show.
+- **Runde 2 (Feedback umgesetzt):**
+  - Straße biegt an beiden Enden in eine Kurve (`Hub.STREET`, Ring-Stücke, Seitenstraße), unsichtbare Wand am Kurvenbeginn. Zebrastreifen quer zur Fahrbahn. Läden mit Innenraum (Pizza mit Ofen + rundem Schild, Café, Plattenladen, Musikladen, Bäckerei, Bar, Mode), Balkone, Simse.
+  - Verkehr (Client): Autos, Taxis, Stadtbus, Tourbus mit dem Namen der laufenden Tour fahren durch Kurven und Straße (`World.lua` buildTraffic).
+  - NPCs: Laufwege in freien Gehweg-Spuren (Test in `tools/render3d/scenario_hub.lua` prüft Kollisionen mit Bäumen/Tischen), Sitzende als eigene Figuren mit Knie (seatedFigure), mehr Looks (Hüte ersetzen Haare, Rucksack, Jacken).
+  - Poster zeigen den Artist in 3D (ViewportFrame in SurfaceGui in der PlayerGui), 4 Layouts, Genre-Schriften.
+  - **Tourplanung als Weg durch die Räume** (`state.draft` auf dem Server, `GS.planStage`): Meetingraum (PLAN A TOUR auf der Tafel) → Weltkarte (Land, Venue, Datum) → Laptop TOUR PLAN (Ticketpreise) → Bühnen-Halle (Besuch = Bühne geprüft; erste Tour nutzt die Startbühne) → Laptop (Bühne wählen, ANNOUNCE TOUR). Aktionen `setDraft`, `announceTour`.
+  - Hallen: `Venue.makeWalkable` macht beim Laufen Wände, Ränge, Barrikaden und Bühnenteile fest (Fans nicht) + unsichtbare Begrenzung. Arena 176×140 (höher), Theater 124×90. Mehr Details: Dach-Traversen, Hauslicht, hängende Line-Arrays, Licht-Traversen, Banner, Bar + Merch, Verfolger (Arena); Rohre, Truss, Discokugel, Poster, Notausgang, Merch (Club); Säulen, Wandlampen, Kassettendecke, Exit-Schilder (Theater). Security-Weste nicht mehr Neon. Scissor-Lift-Geländer mit Pfosten.
+- **Offen / Feedback abwarten:** alles aus Runde 2 im echten Roblox, Mini-Aufgaben in der Show.
 
 ## 1. Was ist das Projekt?
 Ein Roblox-Spiel (PC, Spieltexte auf **Englisch**): **HEADLINER – Music Label Tour Manager**.

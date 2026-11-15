@@ -584,6 +584,7 @@ function LiveShow.run(app, opts)
 	-- the player stands at the back of the floor, looking at the stage
 	local W = app.world
 	if walkMode then
+		Venue.makeWalkable(crowd, { Stage3D.designFolder })
 		local _, char = W.humanoid()
 		if char and char.PrimaryPart then
 			local spawnZ = size.center and (size.floorEnd - 6) or math.max(deckCenter.Z + 30, size.floorEnd - 8)

@@ -234,6 +234,16 @@ local char = MOCK.player.Character
 log("player in the venue at", char.PrimaryPart.CFrame.Position, "camera", workspace.CurrentCamera.CameraType)
 assert(char.PrimaryPart.CFrame.Position.X < 1000, "the character was not brought into the venue")
 assert(workspace.CurrentCamera.CameraType == Enum.CameraType.Custom, "walk mode: normal camera")
+local solidWalls, bounds, solidDecks = 0, 0, 0
+for _, d in ipairs(workspace.HeadlinerWorld:GetDescendants()) do
+	if d:IsA("BasePart") then
+		if (d.Name == "Wall" or d.Name == "BackWall" or d.Name == "StageBackWall") and d.CanCollide then solidWalls = solidWalls + 1 end
+		if d.Name == "VenueBoundary" then bounds = bounds + 1 end
+		if d:FindFirstAncestor("Design") and d.CanCollide then solidDecks = solidDecks + 1 end
+	end
+end
+log("walk mode: solid walls", solidWalls, "boundaries", bounds, "solid stage parts", solidDecks)
+assert(solidWalls > 0 and bounds == 4 and solidDecks > 0, "the venue must be solid when you walk in it")
 MOCK.click("^Close")
 MOCK.click("^Speed")
 steps(300)

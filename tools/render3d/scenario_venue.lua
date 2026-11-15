@@ -2,6 +2,13 @@
 math.randomseed(7)
 local RS = game:GetService("ReplicatedStorage")
 local root = MOCK.buildTree(RS, TREE)
+local server = MOCK.newRaw("Script")
+server.__props.Name = "GameServer"
+rawset(server, "__path", SERVER_PATH)
+MOCK.runScript(server)
+MOCK.runTasks()
+game:GetService("Players").PlayerAdded:Fire(MOCK.player)
+MOCK.runTasks()
 local main = MOCK.newRaw("LocalScript")
 main.__props.Name = "Main"
 rawset(main, "__path", MAIN_PATH)
@@ -62,6 +69,8 @@ for k, v in ipairs(list) do
 		CFrame.lookAt(Vector3.new(-sz.halfW * 0.9, sz.height * 0.75, cz + 20), Vector3.new(sz.halfW * 0.3, 0, sz.center and 0 or -30)), -- from the side stands
 		CFrame.lookAt(Vector3.new(0, 30, sz.center and 70 or 60), Vector3.new(0, 10, sz.center and 0 or -40)), -- from the floor to the stage (or the drapes)
 		CFrame.lookAt(Vector3.new(o * 1.2, o * 1.4, cz + o * 1.6), Vector3.new(0, 0, cz)), -- outside view
+		CFrame.lookAt(Vector3.new(6, 6, sz.floorEnd - 8), Vector3.new(0, 14, sz.center and 0 or -10)), -- 4: standing at the back of the floor
+		CFrame.lookAt(Vector3.new(-sz.halfW * 0.5, 6, cz), Vector3.new(sz.halfW * 0.3, sz.height * 0.8, cz + 20)), -- 5: looking up at the roof
 	}
 	local cs = {}
 	for _, c in ipairs(cams) do cs[#cs + 1] = cfs(c) end
