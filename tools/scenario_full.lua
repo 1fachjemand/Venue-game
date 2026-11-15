@@ -579,9 +579,30 @@ log("walks", table.concat(kinds, ","))
 local towerWalk = false
 for _, w in ipairs(LiveShow.lastWalks) do if w.tower then towerWalk = true end end
 assert(towerWalk, "the tower lift must get its own song")
+log("band musicians in the preview", LiveShow.lastBand)
+assert(LiveShow.lastBand >= 5, "every Band item gets a musician")
 local barriers = 0
 for _, d in ipairs(workspace:GetDescendants()) do if d.Name == "Barrier" then barriers = barriers + 1 end end
+-- a lift in the last song is the exit: the artist goes down with it at the end; curtain opens in song 2
+do
+	local exitDesign = { id = "exit_test", name = "Exit", class = "Arena", layout = "end", items = {
+		{ t = "deck", x = 0, z = -14, r = 0, w = 40, d = 20, h = 6 },
+		{ t = "spot", x = -6, z = -10, r = 0 }, { t = "spot", x = 6, z = -10, r = 0 },
+		{ t = "lift", x = 0, z = -12, r = 0, play = 3 },
+		{ t = "curtain", x = 0, z = -2, r = 0, w = 40, d = 24, anim = "split", cs = 2, cc = "gold" },
+	} }
+	local doneExit = false
+	LiveShow.run(app, { artistId = app.state.tours[1] and app.state.tours[1].artistId or "lila", design = exitDesign, look = "arena", cap = 1000, sold = 900, tourName = "Exit", preview = true, onDone = function() doneExit = true end })
+	log("exit lift", LiveShow.lastExitLift and LiveShow.lastExitLift.kind or "none")
+	assert(LiveShow.lastExitLift ~= nil, "a lift in the last song is the exit lift")
+	MOCK.click("^Speed") MOCK.click("^Speed")
+	local f = 0
+	while not doneExit and f < 6000 do MOCK.step(1 / 30) f = f + 1 end
+	assert(doneExit, "exit-lift preview did not finish")
+	for _ = 1, 10 do MOCK.step(1 / 30) end
+end
 -- back to the library: copy and delete
+if app.mode ~= "designer" then app:openDesigner(design.id) end
 MOCK.clickExact("< MY STAGES")
 log("money after the builder: client", app.state.money, "server", SRV().money, "items on server", #GS.getDesign(SRV(), design.id).items)
 assert(#GS.getDesign(SRV(), design.id).items == #design.items, "the server did not get the edited stage")

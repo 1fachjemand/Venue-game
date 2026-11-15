@@ -391,6 +391,41 @@ function B.moving(m, r)
 	r.light = New("SpotLight", { Face = Enum.NormalId.Bottom, Angle = 25, Range = 60, Brightness = 1.2, Color = r.color, Shadows = false, Parent = r.head })
 end
 
+------------------------------------------------------------------ band (musicians play the whole show, see LiveShow)
+local function bandWedge(m, z)
+	part(m, "Wedge", Vector3.new(2.6, 1.2, 1.6), CFrame.new(0, 0.6, z) * CFrame.Angles(math.rad(-25), 0, 0), Color3.fromRGB(20, 20, 24))
+	part(m, "WedgeGrille", Vector3.new(2.3, 0.9, 0.06), CFrame.new(0, 0.66, z) * CFrame.Angles(math.rad(-25), 0, 0) * CFrame.new(0, 0, -0.82), Color3.fromRGB(46, 46, 52), Enum.Material.Fabric)
+end
+function B.band_drums(m, r)
+	B.drums(m, r)
+end
+function B.band_keys(m, r)
+	B.keys(m, r)
+end
+function B.band_guitar(m, r)
+	-- combo amp behind the player, pedals and a monitor in front
+	part(m, "Amp", Vector3.new(2.8, 2.4, 1.3), CFrame.new(1.4, 1.2, -2.6), Color3.fromRGB(26, 22, 20), Enum.Material.Fabric)
+	part(m, "AmpPanel", Vector3.new(2.6, 0.4, 0.08), CFrame.new(1.4, 2.15, -1.92), Color3.fromRGB(200, 170, 110), Enum.Material.Metal)
+	part(m, "Pedalboard", Vector3.new(2.0, 0.2, 0.8), CFrame.new(0, 0.1, 1.0), Color3.fromRGB(30, 30, 34))
+	for k = 0, 3 do
+		part(m, "Pedal", Vector3.new(0.4, 0.2, 0.55), CFrame.new(-0.7 + k * 0.46, 0.3, 1.0), ({ Color3.fromRGB(230, 60, 60), Color3.fromRGB(250, 200, 60), Color3.fromRGB(60, 160, 230), Color3.fromRGB(90, 200, 120) })[k + 1])
+	end
+	bandWedge(m, 2.4)
+end
+function B.band_bass(m, r)
+	-- a tall bass cabinet with the amp head on top
+	part(m, "BassCab", Vector3.new(2.8, 4.4, 1.7), CFrame.new(-1.4, 2.2, -2.8), Color3.fromRGB(20, 20, 22), Enum.Material.Fabric)
+	part(m, "BassHead", Vector3.new(2.8, 0.9, 1.5), CFrame.new(-1.4, 4.85, -2.8), Color3.fromRGB(34, 34, 38))
+	part(m, "HeadPanel", Vector3.new(2.5, 0.3, 0.06), CFrame.new(-1.4, 4.9, -2.02), Color3.fromRGB(200, 200, 210), Enum.Material.Metal)
+	bandWedge(m, 2.4)
+end
+function B.band_backing(m, r)
+	-- a small round riser and a monitor
+	cyl(m, "BackingRiser", 0.4, 4.2, CFrame.new(0, 0.2, 0), Color3.fromRGB(30, 30, 36))
+	cyl(m, "RiserRing", 0.14, 4.3, CFrame.new(0, 0.34, 0), r.color, Enum.Material.Neon)
+	bandWedge(m, 2.8)
+end
+
 ------------------------------------------------------------------ side mounts (on a vertical truss tower)
 -- The item's origin is on the side of the tower (rec.x/z, see Stage3D.snapToTower), +Z points away from it.
 -- A bracket clamps onto the tower; the fixture is the normal rig / floor version turned by `turn`.
@@ -1256,12 +1291,45 @@ function B.arch(m, r)
 		table.insert(r.ring, part(m, "ArchSeg", Vector3.new(seg, 1.2, 1.2), CFrame.new(math.cos(a) * R, math.sin(a) * R, 0) * CFrame.Angles(0, 0, a + math.pi / 2), r.color, Enum.Material.Neon, Enum.PartType.Cylinder))
 	end
 end
+-- Kabuki curtain: rec.cc = colour, rec.anim = "drop" (falls) | "rise" (pulled up) | "split" (opens to the sides),
+-- rec.cs = the song it opens in (nil = when the show starts)
+Builder.CURTAIN_COLORS = {
+	{ "red", "Red", Color3.fromRGB(160, 20, 30) },
+	{ "black", "Black", Color3.fromRGB(18, 18, 22) },
+	{ "white", "White", Color3.fromRGB(236, 236, 240) },
+	{ "gold", "Gold", Color3.fromRGB(200, 160, 60) },
+	{ "purple", "Purple", Color3.fromRGB(96, 30, 150) },
+	{ "blue", "Blue", Color3.fromRGB(30, 54, 150) },
+	{ "artist", "Artist colour", nil },
+}
+Builder.CURTAIN_ANIMS = { { "drop", "Drop" }, { "rise", "Pull up" }, { "split", "Open sideways" } }
 function B.curtain(m, r)
 	local w, h = dims(r, r.def)
+	local rec = r.rec or {}
+	local col = Color3.fromRGB(160, 20, 30)
+	for _, c in ipairs(Builder.CURTAIN_COLORS) do
+		if c[1] == rec.cc then
+			col = c[3] or r.color
+		end
+	end
+	r.curtainW, r.curtainH = w, h
+	r.anim = rec.anim or "drop"
 	part(m, "Track", Vector3.new(w + 2, 1, 1), CFrame.new(0, h + 1.5, 0), DARK, Enum.Material.Metal)
-	r.drapeHome = CFrame.new(0, h / 2 + 1, 0)
-	r.drape = part(m, "Drape", Vector3.new(w, h, 0.5), r.drapeHome, Color3.fromRGB(160, 20, 30), Enum.Material.Fabric)
-	r.drapeLabel = select(2, surfaceText(r.drape, Enum.NormalId.Back, r.artistName or "", Color3.fromRGB(255, 230, 200), nil))
+	local light = col:Lerp(Color3.new(1, 1, 1), 0.7)
+	if r.anim == "split" then
+		-- two halves that slide apart
+		r.halves = {}
+		for _, side in ipairs({ -1, 1 }) do
+			local home = CFrame.new(side * w / 4, h / 2 + 1, 0)
+			local p = part(m, "Drape", Vector3.new(w / 2, h, 0.5 + (side > 0 and 0.06 or 0)), home, col, Enum.Material.Fabric)
+			table.insert(r.halves, { p = p, home = home, side = side })
+		end
+		r.drapeLabel = select(2, surfaceText(r.halves[1].p, Enum.NormalId.Back, r.artistName or "", light, nil))
+	else
+		r.drapeHome = CFrame.new(0, h / 2 + 1, 0)
+		r.drape = part(m, "Drape", Vector3.new(w, h, 0.5), r.drapeHome, col, Enum.Material.Fabric)
+		r.drapeLabel = select(2, surfaceText(r.drape, Enum.NormalId.Back, r.artistName or "", light, nil))
+	end
 end
 function B.balls(m, r)
 	part(m, "Box", Vector3.new(5, 3, 4), CFrame.new(0, 1.5, 0), DARK)
@@ -2588,6 +2656,11 @@ local ARTIST_MARK = {
 	harp = { 0, 0, -2.2, false, true },
 	drums = { 0, 1, -1.8, false, true },
 	djbooth = { 0, 0, -3.2, false, false },
+	band_drums = { 0, 1, -1.8, false, true },
+	band_guitar = { 0, 0, 0, false, false },
+	band_bass = { 0, 0, 0, false, false },
+	band_keys = { 0, 0, -2.4, false, false },
+	band_backing = { 0, 0.4, 0, false, false },
 }
 Builder.ARTIST_MARK = ARTIST_MARK
 -- in the stage builder: a see-through figure and an arrow on the floor show where the artist stands
@@ -3054,17 +3127,45 @@ function Builder.animate(refs, ctx)
 		refs.beam.Color = ColorSequence.new(c1)
 		refs.beam.Enabled = (ctx.intensity or 0) > 0.3
 	elseif k == "curtain" then
+		-- time since the curtain opens: at the start of its song (rec.cs) or when the show starts
 		local dropT = ctx.curtainT or 0
-		if dropT <= 0 then
-			refs.drape.CFrame = refs.cf * refs.drapeHome
-			refs.drape.Transparency = 0
+		local cs = refs.rec and refs.rec.cs
+		if cs and ctx.songStart and ctx.songStart[cs] and ctx.t then
+			dropT = ctx.t - ctx.songStart[cs]
+		end
+		local w, h = refs.curtainW, refs.curtainH
+		local labelT = 0
+		if refs.anim == "split" then
+			local f = (dropT <= 0) and 0 or math.min(1, dropT / 2.2)
+			f = f * f * (3 - 2 * f)
+			for _, hv in ipairs(refs.halves) do
+				-- each half slides out and bunches up at its side
+				local hw = (w / 2) * (1 - 0.8 * f)
+				hv.p.Size = Vector3.new(math.max(0.5, hw), h, hv.p.Size.Z)
+				hv.p.CFrame = refs.cf * CFrame.new(hv.side * (w / 2 - hw / 2), h / 2 + 1, hv.home.Position.Z)
+			end
+			labelT = f
+		elseif refs.anim == "rise" then
+			-- pulled up into the track: the drape gets shorter from the bottom
+			local f = (dropT <= 0) and 0 or math.min(1, dropT / 2.5)
+			f = f * f * (3 - 2 * f)
+			local hh = math.max(0.3, h * (1 - f))
+			refs.drape.Size = Vector3.new(w, hh, 0.5)
+			refs.drape.CFrame = refs.cf * CFrame.new(0, h + 1 - hh / 2, 0)
+			refs.drape.Transparency = (f >= 0.99) and 1 or 0
+			labelT = math.min(1, f * 1.5)
 		else
-			local h = refs.drape.Size.Y
-			refs.drape.CFrame = refs.cf * refs.drapeHome * CFrame.new(0, -h * math.min(1, dropT * dropT * 2), 0)
-			refs.drape.Transparency = math.min(1, dropT * 1.2)
+			if dropT <= 0 then
+				refs.drape.CFrame = refs.cf * refs.drapeHome
+				refs.drape.Transparency = 0
+			else
+				refs.drape.CFrame = refs.cf * refs.drapeHome * CFrame.new(0, -h * math.min(1, dropT * dropT * 2), 0)
+				refs.drape.Transparency = math.min(1, dropT * 1.2)
+			end
+			labelT = refs.drape.Transparency
 		end
 		if refs.drapeLabel then
-			refs.drapeLabel.TextTransparency = refs.drape.Transparency
+			refs.drapeLabel.TextTransparency = labelT
 		end
 	elseif k == "balls" then
 		if hit.balls then

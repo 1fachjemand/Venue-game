@@ -10,6 +10,7 @@ local StageItems = {}
 StageItems.CATEGORIES = {
 	{ id = "Stage", name = "Stage" },
 	{ id = "Artist", name = "Artist" },
+	{ id = "Band", name = "Band" },
 	{ id = "Lights", name = "Lights" },
 	{ id = "Screens", name = "Screens" },
 	{ id = "FX", name = "Effects" },
@@ -52,6 +53,12 @@ StageItems.list = {
 	{ id = "strings", name = "String Section", cat = "Artist", cost = 2600, pts = 6, tags = { "intimate", "spectacle" }, mount = "floor", deck = false, desc = "Four chairs with music stands, violins and cellos." },
 	{ id = "horns", name = "Horn Section", cat = "Artist", cost = 2200, pts = 5, tags = { "band", "party" }, mount = "floor", deck = false, desc = "Trumpet, saxophone and trombone on stands with lit music desks." },
 	{ id = "choir", name = "Choir Risers", cat = "Artist", cost = 1800, pts = 4, tags = { "spectacle", "intimate" }, mount = "floor", deck = false, desc = "Curved three-step risers for a choir or dancers, with glowing edges." },
+	-- Band: live musicians who play the whole show next to the artist (the artist keeps their own instruments)
+	{ id = "band_drums", name = "Band Drummer", cat = "Band", cost = 1400, pts = 4, tags = { "band" }, mount = "floor", deck = false, desc = "A drummer on a riser who plays the whole show. The artist's own drum kit (Artist tab) stays free for the artist." },
+	{ id = "band_guitar", name = "Band Guitarist", cat = "Band", cost = 1000, pts = 3, tags = { "band" }, mount = "floor", deck = false, desc = "A guitarist with an amp and pedals, playing every song." },
+	{ id = "band_bass", name = "Band Bassist", cat = "Band", cost = 1000, pts = 3, tags = { "band" }, mount = "floor", deck = false, desc = "A bass player with a big bass cabinet." },
+	{ id = "band_keys", name = "Band Keyboarder", cat = "Band", cost = 1100, pts = 3, tags = { "band", "intimate" }, mount = "floor", deck = false, desc = "Keys player behind two keyboards." },
+	{ id = "band_backing", name = "Backing Singer", cat = "Band", cost = 700, pts = 2, tags = { "intimate" }, mount = "floor", deck = false, desc = "Backing vocals: sings and dances along to every song." },
 	{ id = "micstand", name = "Mic Stand", cat = "Artist", cost = 150, pts = 1, tags = { "intimate" }, mount = "floor", deck = false, desc = "Classic microphone stand." },
 	{ id = "amps", name = "Amp Stack", cat = "Artist", cost = 500, pts = 2, tags = { "band", "retro" }, mount = "floor", deck = false, desc = "Wall of guitar amps." },
 	{ id = "guitarstand", name = "Guitar Stand", cat = "Artist", cost = 200, pts = 1, tags = { "band" }, mount = "floor", deck = false, desc = "Spare guitar on a stand." },

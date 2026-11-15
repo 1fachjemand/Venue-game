@@ -169,6 +169,12 @@ function LiveShow.run(app, opts)
 	local plan = GS.songPlan(opts.design)
 	local songCount = plan.count
 	local segments, showLength = buildTimeline(ad, rng, songCount, hasRoof)
+	local songStart = {} -- when song n starts (curtains that open in a later song)
+	for _, sg in ipairs(segments) do
+		if sg.song then
+			songStart[sg.song] = sg.t0
+		end
+	end
 	local hits = {}
 	for _, seg in ipairs(segments) do
 		for _, h in ipairs(seg.hits) do
@@ -394,6 +400,12 @@ function LiveShow.run(app, opts)
 
 	local walks = {}
 	local cur = start
+	-- a lift set to the last song is the exit: the artist walks onto it for the finale, waves at the end
+	-- and is lowered down out of sight
+	local finaleLift = nil
+	local outroSeg = segments[#segments]
+	local exitT0 = outroSeg.t0 + 2.4
+	local EXIT_DUR = 2.4
 	for _, seg in ipairs(segments) do
 		if seg.song then
 			-- the place that belongs to this song (a song without a place: the artist stays where they are)
@@ -411,7 +423,11 @@ function LiveShow.run(app, opts)
 			if lf and lf.kind == "towerlift" then
 				w.tower = lf
 			end
-			if lf and not play and lf ~= lift and lf.kind ~= "towerlift" then
+			local isFinale = lf and not play and spotIdx == songCount and songCount > 1 and lf ~= lift and (lf.kind == "lift" or lf.kind == "poplift") and outroSeg.kind == "outro"
+			if isFinale then
+				finaleLift = lf
+			end
+			if lf and not play and lf ~= lift and lf.kind ~= "towerlift" and not isFinale then
 				w.kind, w.lift, w.dur = "lift", lf, liftDur(lf) -- disappear, come up on this lift
 			elseif (w[2] - cur).Magnitude < 1 then
 				w.kind, w.dur = "stay", 0
@@ -437,10 +453,29 @@ function LiveShow.run(app, opts)
 	end
 	local curWalk = nil
 	LiveShow.lastWalks = walks -- for the automated tests
+	LiveShow.lastExitLift = finaleLift
 
 	local lead = People.new(Stage3D.peopleFolder, artistColor, 1.5, leadRole, 7, ad.look)
 	local band = {}
-	if ad.members >= 4 and ad.genre ~= "K-Pop" then
+	-- the live band from the stage builder's Band tab: every musician plays the whole show at their place
+	local BAND_ITEMS = {
+		band_drums = { "drums", Vector3.new(0, 1, -1.8), "drumsolo" },
+		band_guitar = { "guitar", Vector3.new(0, 0, 0) },
+		band_bass = { "bass", Vector3.new(0, 0, 0) },
+		band_keys = { "dancer", Vector3.new(0, 0, -2.4), "keys" },
+		band_backing = { "lead", Vector3.new(0, 0.4, 0), "dance" },
+	}
+	local hasBand = false
+	for _, r in ipairs(items) do
+		local b = BAND_ITEMS[r.kind]
+		if b then
+			hasBand = true
+			local n = #band + 1
+			local fig = People.new(Stage3D.peopleFolder, Color3.fromRGB(30, 30, 36), 1.4, b[1], 40 + n, People.bandLook(ad, 20 + n, Artists.BAND_STYLE))
+			table.insert(band, { p = fig, pos = (r.cf * CFrame.new(b[2])).Position, yaw = math.rad((r.rec and r.rec.r) or 0), move = b[3] })
+		end
+	end
+	if ad.members >= 4 and ad.genre ~= "K-Pop" and not hasBand then
 		local drumPos = drums and (drums.cf * CFrame.new(0, 1, -1.6)).Position or onSurface(home + Vector3.new(0, 0, -10))
 		table.insert(band, { p = People.new(Stage3D.peopleFolder, Color3.fromRGB(30, 30, 36), 1.4, "guitar", 11, People.bandLook(ad, 1, Artists.BAND_STYLE)), pos = onSurface(home + Vector3.new(-14, 0, -4)) })
 		table.insert(band, { p = People.new(Stage3D.peopleFolder, Color3.fromRGB(30, 30, 36), 1.4, "bass", 12, People.bandLook(ad, 2, Artists.BAND_STYLE)), pos = onSurface(home + Vector3.new(14, 0, -4)) })
@@ -451,6 +486,7 @@ function LiveShow.run(app, opts)
 			table.insert(band, { p = People.new(Stage3D.peopleFolder, artistColor:Lerp(Color3.new(1, 1, 1), 0.35), 1.45, "dancer", 20 + i, People.bandLook(ad, 10 + i, Artists.BAND_STYLE)), follow = offs[i] })
 		end
 	end
+	LiveShow.lastBand = #band -- for the automated tests
 	local performers = { lead }
 	for _, b in ipairs(band) do
 		table.insert(performers, b.p)
@@ -486,6 +522,12 @@ function LiveShow.run(app, opts)
 			LiveShow.popping = lift.kind == "poplift" and t >= liftUp0
 			return start + Vector3.new(0, riseY(lift, liftUp0, t), 0), 0, false, t < liftUp0
 		end
+		if finaleLift and t >= exitT0 then
+			-- going down with the exit lift
+			local f = smooth(exitT0, exitT0 + EXIT_DUR, t)
+			curWalk = nil
+			return liftTop(finaleLift) - Vector3.new(0, f * LIFT_DEPTH, 0), centerStage and idleYaw(t) or 0, false, f >= 0.97
+		end
 		LiveShow.popping = false
 		local pos = start
 		curWalk = nil
@@ -518,6 +560,9 @@ function LiveShow.run(app, opts)
 	-- lift platform height (0 = down, 1 = up) for each lift
 	local function liftValue(r, t)
 		local d = liftDur(r)
+		if r == finaleLift and t >= exitT0 - 0.1 then
+			return 1 - smooth(exitT0, exitT0 + EXIT_DUR, t)
+		end
 		local up = (r.kind == "poplift") and 0.4 or 1 -- a pop-up lift is up after 40 % (then the artist flies)
 		if r == lift and t < liftUp0 + d then
 			return math.clamp((t - liftUp0) / (d * up), 0, 1)
@@ -820,7 +865,11 @@ function LiveShow.run(app, opts)
 			if b.follow then
 				pos = onSurface(leadPos + b.follow)
 			end
-			b.p:update(pos, 0, { t = t + 0.3, beat = beat, energy = energy, walking = false, armsUp = armsUp, move = (bandMove == "micout") and "point" or bandMove })
+			local bm = b.move or ((bandMove == "micout") and "point" or bandMove)
+			if b.move == "dance" and seg.bpm == 0 then
+				bm = "idle"
+			end
+			b.p:update(pos, b.yaw or 0, { t = t + 0.3, beat = beat, energy = energy, walking = false, armsUp = armsUp, move = bm })
 		end
 
 		ctx.t = t
@@ -857,6 +906,7 @@ function LiveShow.run(app, opts)
 		ctx.fog = seg.fog == true
 		ctx.phones = seg.phones == true
 		ctx.curtainT = math.max(0, t - segments[1].t1)
+		ctx.songStart = songStart
 		leadNow, yawNow = leadPos, leadYaw
 		-- effects set to fire in chosen songs (stage builder, step 2): they ignore the automatic hits and
 		-- fire at the start, in the middle and near the end of their songs

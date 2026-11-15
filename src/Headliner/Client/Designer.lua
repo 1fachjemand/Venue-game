@@ -36,9 +36,9 @@ local AXIS = {
 local GRIDS = { 1, 2, 4, 8 }
 local TURNS = { 15, 45, 90 }
 local BLACK = Color3.new(0, 0, 0)
-local GEOMETRY_KEYS = { w = true, d = true, h = true, skin = true, edge = true, scr = true }
+local GEOMETRY_KEYS = { w = true, d = true, h = true, skin = true, edge = true, scr = true, cc = true, anim = true }
 -- settings that only change the show (no new model needed)
-local SHOW_KEYS = { play = true, songs = true }
+local SHOW_KEYS = { play = true, songs = true, cs = true, anim = true }
 -- effects that can fire in chosen songs (rec.songs = { 1, 4, ... }; false / nil = automatic)
 local FX_SONG_KINDS = { pyro = true, sparks = true, confetti = true, streamers = true, co2 = true, fireworks = true, balls = true, laser = true, lowfog = true }
 Designer.FX_SONG_KINDS = FX_SONG_KINDS
@@ -725,7 +725,7 @@ function Designer.open(app, designId)
 			end
 		end
 		if onlyShow then
-			if changes.scr then
+			if changes.scr or changes.anim then
 				Stage3D.removeItem(selected)
 				selected = Stage3D.addItem(rec, itemOpts())
 			end
@@ -1053,7 +1053,31 @@ function Designer.open(app, designId)
 			end
 		end
 		local songs = GS.songCount(self.design)
-		local showThings = def.id == "spot" or GS.PLAY_ITEMS[def.id] or Builder.SCREEN_KINDS[def.id] or FX_SONG_KINDS[def.id]
+		local showThings = def.id == "spot" or GS.PLAY_ITEMS[def.id] or Builder.SCREEN_KINDS[def.id] or FX_SONG_KINDS[def.id] or def.id == "curtain"
+		if build and def.id == "curtain" then
+			nextOrder(section("CURTAIN COLOUR"))
+			chips(Builder.CURTAIN_COLORS, function(it)
+				return (rec.cc or "red") == it[1]
+			end, function(it)
+				applyChange({ cc = it[1] })
+			end, 3)
+		end
+		if not build and def.id == "curtain" then
+			nextOrder(section("HOW THE CURTAIN OPENS"))
+			chips(Builder.CURTAIN_ANIMS, function(it)
+				return (rec.anim or "drop") == it[1]
+			end, function(it)
+				applyChange({ anim = it[1] })
+			end, 3)
+			stepper("Opens", rec.cs and ("Song " .. rec.cs) or "At the start", function()
+				if rec.cs then
+					applyChange({ cs = (rec.cs > 1) and (rec.cs - 1) or false })
+				end
+			end, function()
+				applyChange({ cs = math.min(songs, (rec.cs or 0) + 1) })
+			end)
+			nextOrder(UI.Label(inspScroll, "Until then the curtain hides the stage. Watch it in PREVIEW SHOW.", nil, UI.px(296, 0), { textSize = 13, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
+		end
 		if build and showThings and def.id ~= "spot" then
 			nextOrder(UI.Label(inspScroll, "What it does in which song: set it up in STEP 2: SETLIST & SHOW (top bar).", nil, UI.px(296, 0), { textSize = 14, color = T.accent2, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
 		end
