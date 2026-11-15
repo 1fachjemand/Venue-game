@@ -74,6 +74,7 @@ function GS.new(labelName, starterId, opts)
 		levelSeen = 1,
 		sandbox = opts.sandbox == true,
 		visited = {},
+		tutorial = (opts.sandbox == true) and { done = true } or { step = 1 }, -- the guide (Client/Tutorial.lua): step reached, done = true when finished or skipped
 		-- the tour being planned, step by step in different rooms (see GS.planStage)
 		draft = {},
 		stats = {
@@ -114,6 +115,10 @@ function GS.sanitize(data)
 		return GS.new()
 	end
 	local fresh = GS.new()
+	-- saves from before the tutorial existed: no tutorial for a label that already played
+	if type(data.tutorial) ~= "table" then
+		data.tutorial = ((type(data.stats) == "table" and (data.stats.shows or 0) > 0) or (type(data.tours) == "table" and #data.tours > 0)) and { done = true } or { step = 1 }
+	end
 	for k, v in pairs(fresh) do
 		if type(data[k]) ~= type(v) then
 			data[k] = v

@@ -11,6 +11,13 @@ Hub.ORIGIN = Vector3.new(4000, 0, 0)
 local O = Hub.ORIGIN
 
 Hub.SPAWN = Vector3.new(0, 0, -16)
+-- where Sam (the guide of the tutorial) waits: free floor spots near the stations (checked by scenario_hub)
+Hub.GUIDE_SPOTS = {
+	start = Vector3.new(-8, 0, -10),
+	meeting = Vector3.new(-54, 0, -8),
+	laptop = Vector3.new(6, 0, -28),
+	stagehall = Vector3.new(32, 0, 10),
+}
 Hub.STATIONS = {
 	laptop = { pos = Vector3.new(14, 3.6, -37), name = "LAPTOP", sub = "Overview & tours", action = "Open laptop" },
 	maptable = { pos = Vector3.new(0, 3.4, 6), name = "WORLD MAP", sub = "Plan a tour", action = "Plan a tour" },
@@ -27,6 +34,26 @@ Hub.STAFF = {
 	{ pos = Vector3.new(32, 0, -2.2), yaw = math.pi, desk = Vector3.new(32, 0, -6), seatY = 2.3 },
 	{ pos = Vector3.new(-22, 0, 25.2), yaw = 0, seatY = 2.3 }, -- reception
 }
+-- office staff leave their desk now and then: the aisle behind the chair, then to the coffee bar
+function Hub.staffRoute(st, i)
+	local aisle = st.pos.Z + 3.4
+	local cx = 25 + (i % 4) * 2.6
+	return {
+		Vector3.new(st.pos.X, 0, aisle),
+		Vector3.new(18.9, 0, aisle),
+		Vector3.new(18.9, 0, 22),
+		Vector3.new(cx, 0, 22),
+		Vector3.new(cx, 0, 26.6),
+	}
+end
+-- stage hall: workers carry boxes from the racks to the rehearsal stage, a forklift drives along the racks
+Hub.HALL_WALKS = {
+	{ Vector3.new(110, 0, 8), Vector3.new(92, 0, 8), Vector3.new(92, 0, -15) },
+	{ Vector3.new(110, 0, 22), Vector3.new(80, 0, 22), Vector3.new(80, 0, -15) },
+	{ Vector3.new(52, 0, 30), Vector3.new(52, 0, 6), Vector3.new(66, 0, -8) },
+}
+-- its own lane in front of the front rack (nobody else walks there)
+Hub.FORKLIFT_PATH = { Vector3.new(68, 0, 37.4), Vector3.new(96, 0, 37.4) }
 -- the street: straight from XW to XE, bends away around the corners CW / CE (radius 20 inner sidewalk .. 76)
 Hub.STREET = { xw = -130, xe = 170, cw = Vector3.new(-130, 0, 124), ce = Vector3.new(170, 0, 124), laneEast = 80, laneWest = 74.5 }
 -- walking paths stay in the free lanes of the sidewalks (trees, lamps, benches and tables are elsewhere)
@@ -835,6 +862,7 @@ function Hub.build(parentFolder)
 			new("SurfaceLight", { Face = Enum.NormalId.Bottom, Range = 36, Brightness = 1, Angle = 110, Shadows = false }, l)
 		end
 	end
+	Hub.buildWarehouse(hall)
 
 	------------------------------------------------------------ OUTSIDE: the street. Straight in front of the label,
 	-- at both ends it bends away around the corner (you see the city go on; an invisible wall stops you there)
@@ -1042,7 +1070,282 @@ function Hub.build(parentFolder)
 		end
 	end
 	box(out, "Boundary", XW, 40, 48, XE, 41, 104, C.white, nil, { transparency = 1 })
+	Hub.buildGuide(root)
 	return root
+end
+
+------------------------------------------------------------------ the stage hall as a warehouse
+-- a black flight case on wheels: aluminium edges, corner caps, latches
+local function flightCase(parent, pos, size, yaw)
+	local cf = CFrame.new(pos) * CFrame.Angles(0, yaw or 0, 0)
+	local w, h, d = size.X, size.Y, size.Z
+	local body = part(parent, "FlightCase", Vector3.new(w, h - 0.5, d), cf * CFrame.new(0, 0.5 + (h - 0.5) / 2, 0), Color3.fromRGB(26, 26, 30), Enum.Material.SmoothPlastic)
+	local al = Color3.fromRGB(178, 182, 190)
+	for _, y in ipairs({ 0.5, h }) do
+		part(parent, "CaseRim", Vector3.new(w + 0.08, 0.16, d + 0.08), cf * CFrame.new(0, y, 0), al, Enum.Material.Metal, { collide = false })
+	end
+	part(parent, "CaseMid", Vector3.new(w + 0.06, 0.12, d + 0.06), cf * CFrame.new(0, 0.5 + (h - 0.5) * 0.62, 0), al, Enum.Material.Metal, { collide = false })
+	for _, sx in ipairs({ -1, 1 }) do
+		for _, sz in ipairs({ -1, 1 }) do
+			part(parent, "CaseCorner", Vector3.new(0.36, 0.36, 0.36), cf * CFrame.new(sx * (w / 2 - 0.1), h - 0.06, sz * (d / 2 - 0.1)), al, Enum.Material.Metal, { collide = false })
+			part(parent, "CaseWheel", Vector3.new(0.4, 0.5, 0.5), cf * CFrame.new(sx * (w / 2 - 0.5), 0.25, sz * (d / 2 - 0.5)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(40, 40, 44), nil, { shape = Enum.PartType.Cylinder, collide = false })
+		end
+		part(parent, "CaseLatch", Vector3.new(0.5, 0.36, 0.08), cf * CFrame.new(sx * w * 0.25, 0.5 + (h - 0.5) * 0.62, -d / 2 - 0.05), al, Enum.Material.Metal, { collide = false })
+	end
+	part(parent, "CaseLabel", Vector3.new(math.min(2, w * 0.4), 0.5, 0.04), cf * CFrame.new(0, 0.5 + (h - 0.5) * 0.3, -d / 2 - 0.02), Color3.fromRGB(250, 200, 40), nil, { collide = false })
+	return body
+end
+Hub.flightCase = flightCase
+
+-- a pallet rack: orange uprights, blue beams, pallets with cases and boxes on three levels
+local function rack(parent, x0, z0, x1, z1, levels)
+	local up, beam = Color3.fromRGB(235, 120, 30), Color3.fromRGB(40, 90, 170)
+	local alongX = (x1 - x0) > (z1 - z0)
+	local len = alongX and (x1 - x0) or (z1 - z0)
+	local bays = math.max(1, math.floor(len / 9))
+	local bay = len / bays
+	local rng = Random.new(math.floor(x0 * 7 + z0 * 3))
+	for b = 0, bays do
+		local u = b * bay
+		for _, side in ipairs({ 0, 1 }) do
+			local px = alongX and (x0 + u) or (side == 0 and x0 or x1)
+			local pz = alongX and (side == 0 and z0 or z1) or (z0 + u)
+			part(parent, "RackUpright", Vector3.new(0.4, levels * 5.6 + 0.6, 0.4), Vector3.new(px, (levels * 5.6 + 0.6) / 2, pz), up, Enum.Material.Metal)
+		end
+	end
+	for l = 1, levels do
+		local y = (l - 1) * 5.6 + 0.4
+		for _, side in ipairs({ 0, 1 }) do
+			if alongX then
+				part(parent, "RackBeam", Vector3.new(len, 0.4, 0.3), Vector3.new((x0 + x1) / 2, y + 0.2, side == 0 and z0 or z1), beam, Enum.Material.Metal)
+			else
+				part(parent, "RackBeam", Vector3.new(0.3, 0.4, len), Vector3.new(side == 0 and x0 or x1, y + 0.2, (z0 + z1) / 2), beam, Enum.Material.Metal)
+			end
+		end
+		for b = 0, bays - 1 do
+			local u = (b + 0.5) * bay
+			local cx = alongX and (x0 + u) or ((x0 + x1) / 2)
+			local cz = alongX and ((z0 + z1) / 2) or (z0 + u)
+			local depth = alongX and (z1 - z0 - 0.6) or (x1 - x0 - 0.6)
+			local pw = math.min(bay - 1.2, 7)
+			part(parent, "Pallet", alongX and Vector3.new(pw, 0.4, depth) or Vector3.new(depth, 0.4, pw), Vector3.new(cx, y + 0.6, cz), Color3.fromRGB(170, 130, 80), Enum.Material.WoodPlanks, { collide = false })
+			local kind = rng:NextInteger(1, 3)
+			if kind == 1 then
+				flightCase(parent, Vector3.new(cx, y + 0.8, cz), Vector3.new(math.min(pw - 0.4, 4.6), 3.4, depth - 0.6), alongX and 0 or math.pi / 2)
+			elseif kind == 2 then
+				for k = 0, 2 do
+					local bh = 1.5 + k * 0.1
+					part(parent, "Box", alongX and Vector3.new(1.9, bh, depth - 0.8) or Vector3.new(depth - 0.8, bh, 1.9), Vector3.new(cx + (alongX and (k - 1) * 2.1 or 0), y + 0.8 + bh / 2, cz + (alongX and 0 or (k - 1) * 2.1)), Color3.fromRGB(196, 160, 110), Enum.Material.Cardboard, { collide = false })
+				end
+			else
+				part(parent, "CableReel", Vector3.new(depth - 1, 2.8, 2.8), Vector3.new(cx, y + 2.2, cz) - Vector3.new(0, 0, 0), Color3.fromRGB(30, 30, 34), nil, { shape = Enum.PartType.Cylinder, collide = false }).CFrame = CFrame.new(O + Vector3.new(cx, y + 2.2, cz)) * CFrame.Angles(0, alongX and math.pi / 2 or 0, 0)
+			end
+		end
+	end
+end
+
+-- a yellow forklift (the client drives it along Hub.FORKLIFT_PATH)
+function Hub.buildForklift(parent)
+	local m = new("Model", { Name = "Forklift" }, parent)
+	local yellow, dark = Color3.fromRGB(245, 190, 30), Color3.fromRGB(30, 30, 34)
+	-- built facing -Z (the forks at the front), turned to drive along the lane (+X)
+	local cf = CFrame.new(Hub.FORKLIFT_PATH[1]) * CFrame.Angles(0, -math.pi / 2, 0)
+	local function p(name, size, off, color, mat, opts)
+		return part(m, name, size, cf * off, color, mat, opts)
+	end
+	local body = p("ForkliftBody", Vector3.new(4.4, 2.4, 6), CFrame.new(0, 1.9, 0.6), yellow)
+	p("Counterweight", Vector3.new(4.56, 2.6, 1.4), CFrame.new(0, 2, 3.8), dark)
+	p("Seat", Vector3.new(2, 0.6, 1.8), CFrame.new(0, 3.4, 1.4), dark)
+	p("SeatBack", Vector3.new(1.86, 1.8, 0.4), CFrame.new(0, 4.3, 2.3), dark)
+	p("Wheel", Vector3.new(0.9, 1.8, 1.8), CFrame.new(0, 1, -1.6) * CFrame.Angles(0, 0, 0), dark)
+	for _, sx in ipairs({ -1, 1 }) do
+		p("WheelL", Vector3.new(0.9, 1.9, 1.9), CFrame.new(sx * 2.35, 0.95, -1.6) * CFrame.Angles(0, 0, math.pi / 2), dark, nil, { shape = Enum.PartType.Cylinder, collide = false })
+		p("WheelR", Vector3.new(0.9, 1.6, 1.6), CFrame.new(sx * 2.35, 0.8, 2.8) * CFrame.Angles(0, 0, math.pi / 2), dark, nil, { shape = Enum.PartType.Cylinder, collide = false })
+		p("CabPost", Vector3.new(0.25, 4.4, 0.25), CFrame.new(sx * 2, 5.3, -0.6), dark, Enum.Material.Metal, { collide = false })
+		p("CabPost", Vector3.new(0.25, 4.4, 0.25), CFrame.new(sx * 2, 5.3, 3), dark, Enum.Material.Metal, { collide = false })
+		p("Mast", Vector3.new(0.4, 8, 0.5), CFrame.new(sx * 1.4, 4.6, -2.7), Color3.fromRGB(60, 60, 66), Enum.Material.Metal)
+		p("Fork", Vector3.new(0.4, 0.2, 4), CFrame.new(sx * 1.1, 0.5, -4.9), Color3.fromRGB(60, 60, 66), Enum.Material.Metal)
+		p("ForkBack", Vector3.new(0.5, 2.4, 0.2), CFrame.new(sx * 1.1, 1.6, -2.95), Color3.fromRGB(60, 60, 66), Enum.Material.Metal)
+	end
+	p("CabRoof", Vector3.new(4.4, 0.2, 4), CFrame.new(0, 7.6, 1.2), dark, Enum.Material.Metal, { collide = false })
+	p("Beacon", Vector3.new(0.5, 0.4, 0.5), CFrame.new(0, 7.9, 1.2), Color3.fromRGB(255, 140, 20), Enum.Material.Neon, { collide = false })
+	p("PalletOnForks", Vector3.new(3.6, 0.4, 3.6), CFrame.new(0, 0.85, -5), Color3.fromRGB(170, 130, 80), Enum.Material.WoodPlanks, { collide = false })
+	flightCase(m, (cf * CFrame.new(0, 1.05, -5)).Position, Vector3.new(3.2, 2.6, 3.2), 0)
+	m.PrimaryPart = body
+	return m
+end
+
+function Hub.buildWarehouse(hall)
+	local wh = new("Folder", { Name = "Warehouse" }, hall)
+	-- racks along the right wall and the front wall
+	rack(wh, 116, -6, 120, 42, 3)
+	rack(wh, 60, 40, 100, 44, 3)
+	-- flight cases by the door, some stacked
+	local cases = { { 46.5, 34, 4.5, 3.6, 3.4 }, { 51.5, 34, 4.5, 3.6, 3.4 }, { 46.5, 39, 4.5, 3.6, 3.4 }, { 51.5, 39.2, 4.5, 4.2, 3.4 } }
+	for _, c in ipairs(cases) do
+		flightCase(wh, Vector3.new(c[1], 0, c[2]), Vector3.new(c[3], c[4], c[5]), 0)
+	end
+	flightCase(wh, Vector3.new(46.5, 3.6, 34), Vector3.new(4.2, 3, 3.2), 0)
+	flightCase(wh, Vector3.new(46.5, 3.6, 39), Vector3.new(4.2, 2.6, 3.2), 0)
+	-- truss pieces lying on the floor, cable reels
+	for k = 0, 2 do
+		part(wh, "TrussPiece", Vector3.new(18, 1.6, 1.6), Vector3.new(74, 0.8 + k * 1.62, 31), C.grey, Enum.Material.DiamondPlate, { collide = true })
+	end
+	for _, x in ipairs({ 90, 94.5 }) do
+		part(wh, "CableReel", Vector3.new(2.4, 3.6, 3.6), CFrame.new(Vector3.new(x, 1.8, 33)) * CFrame.Angles(0, math.pi / 2, 0), Color3.fromRGB(120, 76, 40), Enum.Material.Wood, { shape = Enum.PartType.Cylinder })
+	end
+	Hub.buildForklift(wh)
+end
+
+------------------------------------------------------------------ Sam, the guide of the tutorial
+-- A real Roblox character (R15, made from a HumanoidDescription) in office clothes with hair, glasses,
+-- a lanyard and a clipboard. The client moves and animates it (Client/Tutorial.lua).
+local GUIDE = {
+	skin = Color3.fromRGB(205, 150, 110),
+	shirt = Color3.fromRGB(245, 245, 248),
+	jacket = Color3.fromRGB(40, 58, 102),
+	pants = Color3.fromRGB(46, 48, 58),
+	shoes = Color3.fromRGB(70, 44, 30),
+	hair = Color3.fromRGB(56, 36, 24),
+}
+local function weld(model, name, size, cf, color, base, material, shape)
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Size = size
+	p.CFrame = base.CFrame * cf
+	p.Color = color
+	p.Material = material or Enum.Material.SmoothPlastic
+	p.Anchored = false
+	p.CanCollide = false
+	p.CanTouch = false
+	p.CanQuery = false
+	p.Massless = true
+	p.CastShadow = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	if shape then
+		p.Shape = shape
+	end
+	p.Parent = model
+	local w = Instance.new("WeldConstraint")
+	w.Part0 = base
+	w.Part1 = p
+	w.Parent = p
+	return p
+end
+function Hub.buildGuide(root)
+	local model
+	local ok = pcall(function()
+		local desc = Instance.new("HumanoidDescription")
+		desc.HeadColor = GUIDE.skin
+		desc.TorsoColor = GUIDE.shirt
+		desc.LeftArmColor = GUIDE.jacket
+		desc.RightArmColor = GUIDE.jacket
+		desc.LeftLegColor = GUIDE.pants
+		desc.RightLegColor = GUIDE.pants
+		model = game:GetService("Players"):CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
+	end)
+	if ok and model then
+		model.Name = "Guide"
+		local hum = model:FindFirstChildOfClass("Humanoid")
+		if hum then
+			hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+			hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+		end
+		local function bp(n)
+			return model:FindFirstChild(n)
+		end
+		-- hands in skin colour, shoes, a jacket over the white shirt
+		for _, n in ipairs({ "LeftHand", "RightHand" }) do
+			if bp(n) then
+				bp(n).Color = GUIDE.skin
+			end
+		end
+		for _, n in ipairs({ "LeftFoot", "RightFoot" }) do
+			if bp(n) then
+				bp(n).Color = GUIDE.shoes
+			end
+		end
+		for _, n in ipairs({ "LowerTorso" }) do
+			if bp(n) then
+				bp(n).Color = GUIDE.pants
+			end
+		end
+		local head, torso = bp("Head"), bp("UpperTorso")
+		if head and not head:FindFirstChildOfClass("Decal") then
+			local face = Instance.new("Decal")
+			face.Name = "face"
+			face.Texture = "rbxasset://textures/face.png"
+			face.Face = Enum.NormalId.Front
+			face.Parent = head
+		end
+		if head then
+			-- hair: a short cut with a side part, glasses
+			weld(model, "Hair", Vector3.new(1.32, 0.42, 1.3), CFrame.new(0, 0.56, 0.02), GUIDE.hair, head)
+			weld(model, "HairBack", Vector3.new(1.3, 0.8, 0.3), CFrame.new(0, 0.18, 0.56), GUIDE.hair, head)
+			weld(model, "HairSide", Vector3.new(0.18, 0.55, 1.1), CFrame.new(-0.62, 0.3, 0.08), GUIDE.hair, head)
+			weld(model, "HairSide", Vector3.new(0.18, 0.55, 1.1), CFrame.new(0.62, 0.3, 0.08), GUIDE.hair, head)
+			weld(model, "HairFringe", Vector3.new(0.9, 0.22, 0.25), CFrame.new(-0.18, 0.42, -0.56) * CFrame.Angles(0, 0, math.rad(-8)), GUIDE.hair, head)
+			for _, sx in ipairs({ -0.24, 0.24 }) do
+				weld(model, "GlassRim", Vector3.new(0.36, 0.26, 0.04), CFrame.new(sx, 0.12, -0.62), Color3.fromRGB(20, 20, 24), head)
+			end
+			weld(model, "GlassBridge", Vector3.new(0.14, 0.05, 0.04), CFrame.new(0, 0.18, -0.63), Color3.fromRGB(20, 20, 24), head)
+		end
+		if torso then
+			-- jacket fronts (the white shirt shows in the middle), collar, lanyard and badge
+			local tw = torso.Size
+			for _, sx in ipairs({ -1, 1 }) do
+				weld(model, "Jacket", Vector3.new(tw.X * 0.36, tw.Y * 1.02, 0.12), CFrame.new(sx * tw.X * 0.33, 0, -tw.Z / 2 - 0.02), GUIDE.jacket, torso)
+				weld(model, "JacketSide", Vector3.new(0.12, tw.Y * 1.02, tw.Z * 1.02), CFrame.new(sx * (tw.X / 2 + 0.03), 0, 0), GUIDE.jacket, torso)
+			end
+			weld(model, "JacketBack", Vector3.new(tw.X * 1.02, tw.Y * 1.02, 0.12), CFrame.new(0, 0, tw.Z / 2 + 0.03), GUIDE.jacket, torso)
+			weld(model, "Collar", Vector3.new(tw.X * 0.5, 0.16, 0.5), CFrame.new(0, tw.Y / 2 + 0.02, -0.12), GUIDE.shirt, torso)
+			weld(model, "Lanyard", Vector3.new(0.08, tw.Y * 0.5, 0.04), CFrame.new(0, tw.Y * 0.18, -tw.Z / 2 - 0.1), Color3.fromRGB(37, 99, 235), torso)
+			weld(model, "Badge", Vector3.new(0.4, 0.5, 0.04), CFrame.new(0, -tw.Y * 0.12, -tw.Z / 2 - 0.11), Color3.fromRGB(250, 250, 252), torso)
+		end
+		local lh = bp("LeftHand")
+		if lh then
+			-- a clipboard with a sheet of paper
+			weld(model, "Clipboard", Vector3.new(0.9, 1.2, 0.08), CFrame.new(0, -0.1, -0.35) * CFrame.Angles(math.rad(-20), 0, 0), Color3.fromRGB(150, 110, 70), lh, Enum.Material.Wood)
+			weld(model, "Paper", Vector3.new(0.75, 0.95, 0.02), CFrame.new(0, -0.15, -0.41) * CFrame.Angles(math.rad(-20), 0, 0), Color3.fromRGB(250, 250, 252), lh)
+		end
+		local rh = bp("RightHand")
+		if rh then
+			weld(model, "Watch", Vector3.new(0.36, 0.14, 0.36), CFrame.new(0, 0.32, 0), Color3.fromRGB(30, 30, 34), rh)
+		end
+		local hrp = model:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			hrp.Anchored = true
+			model.PrimaryPart = hrp
+			local hh = (hum and hum.HipHeight or 2) + hrp.Size.Y / 2
+			model:SetAttribute("RootHeight", hh)
+			model:PivotTo(CFrame.new(O + Hub.GUIDE_SPOTS.start + Vector3.new(0, hh, 0)) * CFrame.Angles(0, math.rad(-120), 0))
+		end
+		for _, d in ipairs(model:GetDescendants()) do
+			if d:IsA("BasePart") then
+				d.CanCollide = false
+			end
+		end
+		model.Parent = root
+		return model
+	end
+	-- no character service (tests): a simple figure from parts
+	model = Instance.new("Model")
+	model.Name = "Guide"
+	local base = CFrame.new(O + Hub.GUIDE_SPOTS.start)
+	local function p(name, size, y, color)
+		local q = part(model, name, size, base * CFrame.new(0, y, 0) - O, color, nil, { collide = false })
+		return q
+	end
+	local hrp = p("HumanoidRootPart", Vector3.new(2, 2, 1), 3, GUIDE.shirt)
+	hrp.Transparency = 1
+	p("Torso", Vector3.new(2, 2, 1), 3, GUIDE.jacket)
+	p("Head", Vector3.new(1.2, 1.2, 1.2), 4.6, GUIDE.skin)
+	p("Legs", Vector3.new(2, 2, 1), 1, GUIDE.pants)
+	model.PrimaryPart = hrp
+	model:SetAttribute("RootHeight", 3)
+	model.Parent = root
+	return model
 end
 
 return Hub

@@ -20,7 +20,7 @@ local app = App.instance
 MOCK.clickExact("NEW GAME")
 MOCK.clickExact("NEXT >")
 MOCK.clickExact("SIGN", 1)
-MOCK.clickExact("Let's go!")
+for _ = 1, 40 do MOCK.step(0.05) end MOCK.clickExact("Skip tutorial")
 if HUB_SANDBOX then shared.HeadlinerServer.sessions[MOCK.player].state.stats.shows = 9 app:applyDelta(app:call("resync").delta) app.world.refresh() end
 for _ = 1, 90 do MOCK.step(1 / 30) end
 local function num(x) return string.format("%.2f", x) end
@@ -76,6 +76,26 @@ for _, a in ipairs(Hub.DOORS) do
 		end
 	end
 end
+-- stage hall workers, the forklift lane, office staff on their way to the coffee bar
+for _, w in ipairs(Hub.HALL_WALKS) do paths[#paths + 1] = w end
+-- the forklift is wide: its lane is checked as three lines (and as long as the forks reach)
+for _, dz in ipairs({ -1.5, 0, 1.5 }) do
+	local a, b = Hub.FORKLIFT_PATH[1], Hub.FORKLIFT_PATH[2]
+	paths[#paths + 1] = { a + Vector3.new(-4.5, 0, dz), b + Vector3.new(5.5, 0, dz) }
+end
+for i, st in ipairs(Hub.STAFF) do
+	if st.desk then
+		local r = Hub.staffRoute(st, i)
+		local q = {}
+		for k = 1, #r - 1 do q[k] = r[k] end -- the last step is at the counter (they stand in front of it)
+		q[#q + 1] = r[#r] - Vector3.new(0, 0, 1.2)
+		paths[#paths + 1] = q
+	end
+end
+-- the places where Sam (tutorial) waits must be free too
+for _, p in pairs(Hub.GUIDE_SPOTS) do
+	paths[#paths + 1] = { p, p + Vector3.new(0.2, 0, 0.2) }
+end
 print("checked walking paths", #paths)
 for wi, path in ipairs(paths) do
 	for i = 2, #path do
@@ -84,7 +104,7 @@ for wi, path in ipairs(paths) do
 		for k = 0, n do
 			local pt = Hub.ORIGIN + a0:Lerp(a1, k / n)
 			for _, d in ipairs(workspace.StarlightRecords:GetDescendants()) do
-				if (d.ClassName == "Part" or d.ClassName == "Seat") and not FLAT[d.Name] and not d.Name:find("^Arc") and not d.Name:find("^Cont") then
+				if (d.ClassName == "Part" or d.ClassName == "Seat") and not FLAT[d.Name] and not d.Name:find("^Arc") and not d.Name:find("^Cont") and not d:FindFirstAncestor("Guide") and not d:FindFirstAncestor("Forklift") then
 					local cf, sz = d.CFrame, d.Size
 					if cf.Position.Y - sz.Y / 2 < 6 and cf.Position.Y + sz.Y / 2 > 0.3 then
 						for _, h in ipairs({ 1, 3, 5 }) do

@@ -124,23 +124,11 @@ local function buildArrow()
 	local a = cpart(m, "ArmA", Vector3.new(0.8, 3.2, 0.8), CFrame.new(), T.gold, Enum.Material.SmoothPlastic)
 	local b = cpart(m, "ArmB", Vector3.new(0.8, 3.2, 0.74), CFrame.new(), T.gold, Enum.Material.SmoothPlastic)
 	local stem = cpart(m, "Stem", Vector3.new(0.68, 3.4, 0.68), CFrame.new(), T.gold, Enum.Material.SmoothPlastic)
-	local target = New("Attachment", { Name = "BeamTarget", Parent = stem })
-	World.arrow = { model = m, a = a, b = b, stem = stem, target = target }
-	local beam = New("Beam", {
-		Name = "GuideBeam",
-		Parent = m,
-		Attachment1 = target,
-		Color = ColorSequence.new(T.gold, T.accent2),
-		Transparency = NumberSequence.new(0.35, 0.7),
-		Width0 = 0.35,
-		Width1 = 0.35,
-		FaceCamera = true,
-		LightEmission = 1,
-		Segments = 12,
-		CurveSize0 = 4,
-		CurveSize1 = -4,
-	})
-	World.beam = beam
+	-- a small flat arrow above the player's head that points the way (no line through the walls)
+	local pa = cpart(m, "PointerShaft", Vector3.new(0.34, 0.14, 1.5), CFrame.new(), T.gold, Enum.Material.SmoothPlastic)
+	local pb = cpart(m, "PointerHeadL", Vector3.new(0.3, 0.14, 0.9), CFrame.new(), T.gold, Enum.Material.SmoothPlastic)
+	local pc = cpart(m, "PointerHeadR", Vector3.new(0.3, 0.14, 0.9), CFrame.new(), T.gold, Enum.Material.SmoothPlastic)
+	World.arrow = { model = m, a = a, b = b, stem = stem, pointer = { pa, pb, pc } }
 end
 
 local function placeArrow(t)
@@ -151,10 +139,9 @@ local function placeArrow(t)
 	local target = World.target and Hub.STATIONS[World.target]
 	local visible = target ~= nil and not World.frozen and World.app.mode == "world"
 	if not visible then
-		for _, p in ipairs({ ar.a, ar.b, ar.stem }) do
+		for _, p in ipairs({ ar.a, ar.b, ar.stem, ar.pointer[1], ar.pointer[2], ar.pointer[3] }) do
 			p.Transparency = 1
 		end
-		World.beam.Enabled = false
 		return
 	end
 	local base = O + target.pos + Vector3.new(0, ((World.target == "charts") and 3 or 9) + math.sin(t * 3) * 0.6, (World.target == "charts") and 3 or 0)
@@ -167,18 +154,20 @@ local function placeArrow(t)
 	for _, p in ipairs({ ar.a, ar.b, ar.stem }) do
 		p.Transparency = 0
 	end
-	-- the beam starts at the character's chest
+	-- the pointer above the head turns towards the target while it is far away
 	local _, char = hum()
 	local root = char and char:FindFirstChild("HumanoidRootPart")
-	if root then
-		local att = root:FindFirstChild("GuideFrom")
-		if not att then
-			att = New("Attachment", { Name = "GuideFrom", Parent = root })
-		end
-		World.beam.Attachment0 = att
-		World.beam.Enabled = (root.Position - base).Magnitude > 14
-	else
-		World.beam.Enabled = false
+	local far = root ~= nil and (Vector3.new(root.Position.X, 0, root.Position.Z) - Vector3.new(base.X, 0, base.Z)).Magnitude > 14
+	for _, p in ipairs(ar.pointer) do
+		p.Transparency = far and 0 or 1
+	end
+	if far then
+		local from = root.Position + Vector3.new(0, 4.2 + math.sin(t * 4) * 0.15, 0)
+		local dir = Vector3.new(base.X - from.X, 0, base.Z - from.Z).Unit
+		local pcf = CFrame.lookAt(from, from + dir)
+		ar.pointer[1].CFrame = pcf * CFrame.new(0, 0, 0.2)
+		ar.pointer[2].CFrame = pcf * CFrame.new(-0.3, 0, -0.62) * CFrame.Angles(0, math.rad(-38), 0)
+		ar.pointer[3].CFrame = pcf * CFrame.new(0.3, 0, -0.62) * CFrame.Angles(0, math.rad(38), 0)
 	end
 end
 
@@ -799,10 +788,13 @@ function World.trigger(id)
 	end
 end
 
--- send the player to a station (from a button somewhere else): the arrow points there
+-- send the player to a station: the arrow points there (only during the tutorial)
 function World.guide(id)
-	World.override = id
-	World.refresh()
+	local tut = World.app and World.app.state and World.app.state.tutorial
+	if type(tut) == "table" and not tut.done then
+		World.override = id
+		World.refresh()
+	end
 end
 
 ------------------------------------------------------------------ the meeting: sit down, the board shows your artists and new talent
@@ -1009,9 +1001,13 @@ function World.refresh()
 			end
 		end
 	end
-	-- the arrow is a tutorial: it guides until the first show; later only when a button sends you somewhere
-	local tutorial = state.stats.shows == 0
-	World.target = World.override or (tutorial and GS.objective(state).target or nil)
+	-- the arrow belongs to the tutorial (Client/Tutorial.lua sets World.tutorialTarget)
+	local tut = state.tutorial
+	local tutorial = type(tut) == "table" and not tut.done
+	if not tutorial then
+		World.override = nil
+	end
+	World.target = tutorial and (World.tutorialTarget or World.override) or nil
 	refreshChartsWall(un.charts)
 	refreshPins()
 	World.refreshPosters()

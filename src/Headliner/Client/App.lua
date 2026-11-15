@@ -240,8 +240,14 @@ function App:beginGame(isNew)
 		task.wait(0.8)
 		closeLoading()
 	end)
-	if isNew then
-		self:showWelcome()
+	local Tutorial = require(Root.Client.Tutorial)
+	if Tutorial.active(self) then
+		-- Sam explains the game (the tutorial) instead of a welcome window
+		task.delay(1.2, function()
+			if self.state then
+				Tutorial.start(self)
+			end
+		end)
 	elseif self.saveAvailable then
 		self:toast("Welcome back! Progress saves automatically.", T.good)
 	end
@@ -433,7 +439,7 @@ function App:refreshHud()
 	if self.homeButton then
 		self.homeButton.Visible = walking or self.mode == "phone"
 	end
-	self.objectiveFrame.Visible = walking
+	self.objectiveFrame.Visible = false
 	self.phoneButton.Visible = walking
 	if not self.meetingHint then
 		self.meetingHint = UI.Label(self.canvas, "MEETING  |  click SIGN on the board  |  press SPACE to stand up", UI.px(0, 1020), UI.px(1920, 40), { textSize = 22, font = UI.FontBold, alignX = Enum.TextXAlignment.Center })
@@ -529,7 +535,7 @@ function App:go(name, args)
 	end
 	if target and self.world then
 		self.world.guide(target)
-		self:toast("Walk to the <b>" .. STATION_NAME[target] .. "</b>, follow the arrow.", T.accent2)
+		self:toast("Go to the <b>" .. STATION_NAME[target] .. "</b>.", T.accent2)
 	end
 end
 
@@ -987,6 +993,7 @@ function App:leaveToMenu()
 		self.world.stop()
 	end
 	require(Root.Client.Laptop).destroy(self)
+	require(Root.Client.Tutorial).stop()
 	for _, c in ipairs(self.canvas:GetChildren()) do
 		if not (self.baseChildren or {})[c] and not c:IsA("UIScale") then
 			c:Destroy()

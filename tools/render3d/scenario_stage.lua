@@ -15,7 +15,7 @@ local app = App.instance
 MOCK.clickExact("NEW GAME")
 MOCK.clickExact("NEXT >")
 MOCK.clickExact("SIGN", 3)
-MOCK.clickExact("Let's go!")
+for _ = 1, 40 do MOCK.step(0.05) end MOCK.clickExact("Skip tutorial")
 local function num(x) return string.format("%.2f", x) end
 local function cfs(c)
 	local r = c._r

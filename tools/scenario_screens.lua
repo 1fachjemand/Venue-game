@@ -25,7 +25,7 @@ dump("03_starter")
 MOCK.clickExact("SIGN", 2)
 dump("04_welcome")
 for _ = 1, 80 do MOCK.step(0.05) end
-MOCK.clickExact("Let's go!")
+for _ = 1, 40 do MOCK.step(0.05) end MOCK.clickExact("Skip tutorial")
 dump("04b_world_hud")
 local Laptop = require(root.Client.Laptop)
 MOCK.prompt("laptop")

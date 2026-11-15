@@ -334,6 +334,17 @@ function A.copyDesign(state, a)
 	return true, nil, { designId = c.id }
 end
 
+-- the tutorial: the step the player reached, or done (finished / skipped)
+function A.tutorial(state, a)
+	state.tutorial = type(state.tutorial) == "table" and state.tutorial or {}
+	if a.done == true then
+		state.tutorial = { done = true }
+	elseif num(a.step) then
+		state.tutorial.step = Util.clamp(math.floor(a.step), 1, 99)
+	end
+	return true
+end
+
 function A.renameDesign(state, a)
 	local d = GS.getDesign(state, a.designId)
 	local name = str(a.name, 24)
