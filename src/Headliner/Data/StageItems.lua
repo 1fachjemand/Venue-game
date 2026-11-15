@@ -121,6 +121,8 @@ StageItems.list = {
 	{ id = "lighthouse", name = "Lighthouse", cat = "Set", cost = 4800, pts = 10, tags = { "spectacle", "lights" }, mount = "floor", deck = false, desc = "Striped lighthouse whose beam sweeps across the crowd." },
 	{ id = "cloud", name = "Floating Cloud", cat = "Set", cost = 2200, pts = 6, tags = { "intimate", "atmosphere" }, mount = "rig", deck = false, desc = "Fluffy cloud hanging in the rig, glowing from inside." },
 	{ id = "rainbow", name = "Rainbow Arch", cat = "Set", cost = 3400, pts = 8, tags = { "party", "spectacle" }, mount = "floor", deck = false, size = { w = 30, minW = 16, maxW = 80 }, desc = "Seven neon tubes in rainbow colours, standing on two clouds." },
+	{ id = "column", name = "Grand Column", cat = "Set", cost = 1200, pts = 4, tags = { "intimate", "spectacle" }, mount = "floor", deck = false, desc = "White column with a lit top. Line up a few for a temple or a palace set." },
+	{ id = "giantguitar", name = "Giant Guitar", cat = "Set", cost = 3800, pts = 9, tags = { "band", "retro", "spectacle" }, mount = "floor", deck = false, desc = "A guitar as tall as a house, leaning on its stand, with glowing strings." },
 	{ id = "palm", name = "Neon Palm", cat = "Set", cost = 800, pts = 3, tags = { "party", "retro" }, mount = "floor", deck = false, desc = "Glowing palm tree." },
 	-- Decor: small things that make a stage feel like a place
 	{ id = "sofa", name = "Sofa", cat = "Decor", cost = 500, pts = 2, tags = { "intimate" }, mount = "floor", deck = false, desc = "Cosy sofa for a living-room set." },
@@ -134,6 +136,11 @@ StageItems.list = {
 	{ id = "streetlamp", name = "Street Lamp", cat = "Decor", cost = 300, pts = 2, tags = { "retro" }, mount = "floor", deck = false, desc = "Old-style street lamp." },
 	{ id = "roadcase", name = "Road Cases", cat = "Decor", cost = 150, pts = 0, tags = { "band" }, mount = "floor", deck = false, desc = "Stacked flight cases, the rock'n'roll look." },
 	{ id = "balloonarch", name = "Balloon Arch", cat = "Decor", cost = 700, pts = 3, tags = { "party" }, mount = "floor", deck = false, size = { w = 16, minW = 8, maxW = 40 }, desc = "Arch of balloons." },
+	{ id = "drapes", name = "Velvet Drapes", cat = "Decor", cost = 600, pts = 2, tags = { "intimate", "retro" }, mount = "floor", deck = false, desc = "Red velvet curtains on a frame, tied back at the sides. A little theatre on the stage." },
+	{ id = "barrels", name = "Barrels and Crates", cat = "Decor", cost = 180, pts = 1, tags = { "band", "retro" }, mount = "floor", deck = false, desc = "Old wooden barrels and crates for a saloon or harbour look." },
+	{ id = "bookshelf", name = "Bookshelf", cat = "Decor", cost = 350, pts = 1, tags = { "intimate" }, mount = "floor", deck = false, desc = "Tall shelf with books, records and a lamp: a living-room set." },
+	{ id = "lanternline", name = "Lantern Line", cat = "Decor", cost = 450, pts = 2, tags = { "intimate", "party" }, mount = "floor", deck = false, desc = "Two poles with glowing paper lanterns on a line between them." },
+	{ id = "golddiscs", name = "Gold Disc Wall", cat = "Decor", cost = 800, pts = 2, tags = { "retro" }, mount = "floor", deck = false, desc = "Framed gold and platinum records on a stand: the artist's hits." },
 	{ id = "banner", name = "Logo Banner", cat = "Decor", cost = 500, pts = 2, tags = {}, mount = "rig", deck = false, desc = "Hanging fabric banner with the artist's name." },
 }
 

@@ -139,6 +139,19 @@ local function buildTimeline(ad, rng, songCount, hasRoof)
 	return segments, t
 end
 
+-- effect items and the hit that fires them (laser / low fog follow ctx.lasers / ctx.fog)
+local FX_HIT = { pyro = "pyro", sparks = "sparks", confetti = "confetti", streamers = "streamers", co2 = "co2", fireworks = "fireworks", balls = "balls", laser = "laser", lowfog = "fog" }
+
+-- the moves of the artist at an instrument (they change every 4 seconds)
+local PLAY_MOVES = {
+	piano = { "piano", "pianosway", "piano" },
+	keys = { "keys", "keys", "keyshype" },
+	drumsolo = { "drumsolo", "drumfill", "drumsolo", "drumfill" },
+	dance = { "djmix", "djknob", "djhype", "djmix" },
+	harp = { "harp" },
+	strum = { "strum" },
+}
+
 -- opts = { artistId, design, venueId?, look?, cap, sold, tourName, result?, preview?, onDone }
 function LiveShow.run(app, opts)
 	local ad = Artists.byId[opts.artistId]
@@ -199,6 +212,16 @@ function LiveShow.run(app, opts)
 	table.sort(spots, function(a, b)
 		return (a.spotIndex or 0) < (b.spotIndex or 0)
 	end)
+	-- which songs have effects set by hand (see the animation loop)
+	local songFx = {}
+	for _, r in ipairs(items) do
+		local songs = r.rec and r.rec.songs
+		if type(songs) == "table" and FX_HIT[r.kind] then
+			for _, n in ipairs(songs) do
+				songFx[n] = true
+			end
+		end
+	end
 	local wristbands = false
 	for _, r in ipairs(items) do
 		if r.kind == "wristbands" then
@@ -257,9 +280,9 @@ function LiveShow.run(app, opts)
 			elseif r.kind == "keys" then
 				seat, move, yaw = (r.cf * CFrame.new(0, 0, -2.4)).Position, "keys", math.rad(r.rec.r or 0)
 			elseif r.kind == "acoustic" then
-				seat, move, yaw = (r.cf * CFrame.new(0, 1.15, 0)).Position, "piano", math.rad(r.rec.r or 0)
+				seat, move, yaw = (r.cf * CFrame.new(0, 1.15, 0)).Position, "strum", math.rad(r.rec.r or 0)
 			elseif r.kind == "harp" then
-				seat, move, yaw = (r.cf * CFrame.new(0.2, 0, -2.4)).Position, "piano", math.rad(r.rec.r or 0)
+				seat, move, yaw = (r.cf * CFrame.new(0, 0, -2.2)).Position, "harp", math.rad(r.rec.r or 0)
 			elseif r.kind == "drums" then
 				seat, move, yaw = (r.cf * CFrame.new(0, 1, -1.8)).Position, "drumsolo", math.rad(r.rec.r or 0)
 			else
@@ -781,7 +804,9 @@ function LiveShow.run(app, opts)
 			move = cycle[(math.floor(inSeg / 4) + seg.song) % #cycle + 1]
 		end
 		if curWalk and curWalk.play and t >= curWalk[1] + 5 and not walking then
-			move = curWalk.play.move
+			-- every instrument has a few moves that change every few seconds
+			local moves = PLAY_MOVES[curWalk.play.move] or { curWalk.play.move }
+			move = moves[math.floor(inSeg / 4) % #moves + 1]
 			leadYaw = curWalk.play.yaw
 		end
 		local armsUp = 0
@@ -833,8 +858,47 @@ function LiveShow.run(app, opts)
 		ctx.phones = seg.phones == true
 		ctx.curtainT = math.max(0, t - segments[1].t1)
 		leadNow, yawNow = leadPos, leadYaw
+		-- effects set to fire in chosen songs (stage builder, step 2): they ignore the automatic hits and
+		-- fire at the start, in the middle and near the end of their songs
+		local mySong = seg.song and songFx[seg.song]
+		local customHit = {}
+		if mySong then
+			local inPrev = inSeg - dt
+			for _, at in ipairs({ 0.3, seg.len * 0.5, seg.len - 2 }) do
+				if inPrev < at and inSeg >= at then
+					customHit.now = true
+				end
+			end
+		end
 		for _, r in ipairs(items) do
-			Builder.animate(r, ctx)
+			local songs = r.rec and r.rec.songs
+			if type(songs) == "table" and #songs > 0 and FX_HIT[r.kind] then
+				local saved, savedL, savedF = ctx.hit, ctx.lasers, ctx.fog
+				local here = false
+				for _, n in ipairs(songs) do
+					if n == seg.song then
+						here = true
+					end
+				end
+				local h = {}
+				if here and customHit.now then
+					h[FX_HIT[r.kind]] = true
+					if not r.soundAt or t - r.soundAt > 0.5 then
+						r.soundAt = t
+						local fx = SFX_HITS[FX_HIT[r.kind]]
+						if fx then
+							SoundFX.sfx(fx[1], fx[2])
+						end
+					end
+				end
+				ctx.hit = h
+				ctx.lasers = here
+				ctx.fog = here
+				Builder.animate(r, ctx)
+				ctx.hit, ctx.lasers, ctx.fog = saved, savedL, savedF
+			else
+				Builder.animate(r, ctx)
+			end
 		end
 
 		-- crowd

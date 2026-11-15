@@ -347,7 +347,7 @@ local i = 0
 for _, cat in ipairs(StageItems.CATEGORIES) do
 	MOCK.clickExact(cat.name)
 	for _, def in ipairs(StageItems.list) do
-		if def.cat == cat.id and not def.hidden then
+		if def.cat == cat.id and not def.hidden and def.id ~= "spot" then -- spots are placed in step 2
 			i = i + 1
 			MOCK.clickExact(def.name)
 			MOCK.mouse = Vector2.new(700 + (i % 12) * 45, 420 + math.floor(i / 12) * 6)
@@ -364,7 +364,7 @@ for _, cat in ipairs(StageItems.CATEGORIES) do
 end
 log("designer items", before, "->", #design.items, "money spent", 5000000 - app.state.money)
 local visible = 0
-for _, def in ipairs(StageItems.list) do if not def.hidden then visible = visible + 1 end end
+for _, def in ipairs(StageItems.list) do if not def.hidden and def.id ~= "spot" then visible = visible + 1 end end
 assert(#design.items == before + visible, "not every item was placed")
 -- cancel placing, select a deck and edit it
 key(Enum.KeyCode.F)
@@ -412,10 +412,12 @@ local n0 = #design.items
 MOCK.clickExact("Copy (C)")
 MOCK.click("PLACE", 1)
 log("copy placed", n0, "->", #design.items)
--- screens: live camera, per-song change; instruments: song number
+-- step 2 (setlist & show): screens: live camera, per-song change; instruments: song number; effects per song
+MOCK.clickExact("STEP 2: SETLIST & SHOW >")
+log("phase show, catalog visible", Designer.current.panels[3].Visible)
 for _, r in ipairs(Stage3D.items) do if r.kind == "led" then Designer.current.select(r) break end end
 MOCK.clickExact("Live: artist")
-MOCK.clickExact("+", 3) -- "For": song 1 (after width and height)
+MOCK.clickExact("+", 1) -- "For": song 1
 MOCK.clickExact("Live: fans")
 for _, r in ipairs(Stage3D.items) do if r.kind == "led" then log("screen config", r.rec.scr.default.m, r.rec.scr["1"] and r.rec.scr["1"].m) break end end
 for _, r in ipairs(Stage3D.items) do if r.kind == "piano" then Designer.current.select(r) break end end
@@ -423,6 +425,17 @@ MOCK.clickExact("+", 1)
 local pl = nil
 for _, rec in ipairs(design.items) do if rec.t == "piano" then pl = rec.play end end
 log("piano plays in song", pl)
+local fxRec = nil
+for _, r in ipairs(Stage3D.items) do if r.kind == "pyro" or r.kind == "co2" or r.kind == "sparks" then Designer.current.select(r) fxRec = r.rec break end end
+if fxRec then
+	MOCK.clickExact("2")
+	MOCK.clickExact("3")
+	log("effect fires in songs", fxRec.t, table.concat(fxRec.songs or {}, ","))
+	assert(type(fxRec.songs) == "table" and #fxRec.songs == 2, "effect songs not set")
+else
+	log("no effect item in this design")
+end
+MOCK.clickExact("< STEP 1: BUILD")
 for _, r in ipairs(Stage3D.items) do if r.kind == "piano" then Designer.current.select(r) break end end
 H.moveX.MouseEnter:Fire() -- the mouse was over an arrow when the item was deleted
 MOCK.clickExact("Delete (X)")
@@ -438,18 +451,30 @@ steps(2)
 click3D()
 assert(Designer.current.target() ~= nil, "still clickable after the second delete")
 key(Enum.KeyCode.F)
--- more spots = longer setlist
-MOCK.clickExact("Artist")
-MOCK.clickExact("Artist Spot")
-for k = 1, 5 do
+-- Q places an item in one go (build step)
+MOCK.clickExact("Decor")
+MOCK.clickExact("Velvet Drapes")
+MOCK.mouse = Vector2.new(940, 520)
+steps(2)
+local nq = #design.items
+key(Enum.KeyCode.Q)
+log("placed with Q", nq, "->", #design.items)
+assert(#design.items == nq + 1, "Q must place the item")
+key(Enum.KeyCode.F)
+key(Enum.KeyCode.F)
+-- more spots = longer setlist (step 2)
+MOCK.clickExact("STEP 2: SETLIST & SHOW >")
+MOCK.clickExact("+ ADD ARTIST SPOT (a new song)")
+for k = 1, 6 do
 	MOCK.mouse = Vector2.new(900 + k * 10, 500)
 	steps(2)
-	click3D()
-	MOCK.click("PLACE", 1)
+	key(Enum.KeyCode.Q)
 end
 log("songs in this design", GS.songCount(design))
 assert(GS.songCount(design) == 8, "lift + pop-up = song 1, 6 spots + tower lift = songs 2-8")
 key(Enum.KeyCode.F)
+log("setlist rows", #MOCK.texts("^SONG %d"))
+MOCK.clickExact("< STEP 1: BUILD")
 -- camera controls
 UIS.InputBegan:Fire(MOCK.input(Enum.UserInputType.MouseButton2), false)
 UIS.InputChanged:Fire(MOCK.input(Enum.UserInputType.MouseMovement, { Delta = Vector3.new(30, 10, 0) }), false)

@@ -2,6 +2,13 @@
 math.randomseed(7)
 local RS = game:GetService("ReplicatedStorage")
 local root = MOCK.buildTree(RS, TREE)
+local server = MOCK.newRaw("Script")
+server.__props.Name = "GameServer"
+rawset(server, "__path", SERVER_PATH)
+MOCK.runScript(server)
+MOCK.runTasks()
+game:GetService("Players").PlayerAdded:Fire(MOCK.player)
+MOCK.runTasks()
 local main = MOCK.newRaw("LocalScript")
 main.__props.Name = "Main"
 rawset(main, "__path", MAIN_PATH)
@@ -28,6 +35,8 @@ local groups = {
 	{ { t = "lift", x = -14, z = 0, play = 2 }, { t = "poplift", x = 0, z = 0, play = 3 }, { t = "towerlift", x = 16, z = 0, play = 4 } },
 	{ { t = "pyro", x = -12, z = 0 }, { t = "sparks", x = -4, z = 0 }, { t = "co2", x = 4, z = 0 }, { t = "confetti", x = 12, z = 0 } },
 	{ { t = "stadiumroof", x = 0, z = -40 }, { t = "delaytower", x = 40, z = 60 } },
+	{ { t = "harp", x = -16, z = 0, r = 90 }, { t = "column", x = -6, z = -4 }, { t = "giantguitar", x = 4, z = -4 }, { t = "drapes", x = 20, z = -6 } },
+	{ { t = "barrels", x = -16, z = 0 }, { t = "bookshelf", x = -6, z = -4 }, { t = "lanternline", x = 8, z = -6 }, { t = "golddiscs", x = 22, z = -2 }, { t = "plant", x = -12, z = 6 } },
 }
 for k, items in ipairs(groups) do
 	app.state.money = 90000000
@@ -59,7 +68,9 @@ for k, items in ipairs(groups) do
 	end
 	local y = Stage3D.surfaceY(0, 0)
 	local cams
-	if k == 4 then
+	if k >= 5 then
+		cams = { CFrame.lookAt(Vector3.new(2, y + 14, 44), Vector3.new(2, y + 5, 0)), CFrame.lookAt(Vector3.new(-26, y + 8, 6), Vector3.new(-16, y + 4, 0)) }
+	elseif k == 4 then
 		cams = { CFrame.lookAt(Vector3.new(60, 60, 180), Vector3.new(0, 40, -30)), CFrame.lookAt(Vector3.new(60, 40, 90), Vector3.new(40, 25, 60)) }
 	else
 		cams = { CFrame.lookAt(Vector3.new(4, y + 12, 26), Vector3.new(4, y + 3, 0)), CFrame.lookAt(Vector3.new(-14, y + 9, 12), Vector3.new(-12, y + 3, 0)) }

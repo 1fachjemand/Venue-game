@@ -1,10 +1,10 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
 <External>null</External>
 <External>nil</External>
-<Item class="Workspace" referent="RBX0BCF34D836854A6DB88C0590C28AD0A4"><Properties><string name="Name">Workspace</string><bool name="StreamingEnabled">false</bool></Properties></Item>
-<Item class="Lighting" referent="RBX9BFC5CACC520447A91270CBBA831CE7A"><Properties><string name="Name">Lighting</string><token name="Technology">4</token><bool name="GlobalShadows">false</bool></Properties></Item>
-<Item class="Players" referent="RBXD33496BB02E14D45BD5D8A3C68F7AE9D"><Properties><string name="Name">Players</string><bool name="CharacterAutoLoads">false</bool></Properties></Item>
-<Item class="ReplicatedStorage" referent="RBXC9CE64CBABEE4E6583621472C7CA6CEB"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="Folder" referent="RBX0F2D3F814F914BBE8F4508547CBA3E0D"><Properties><string name="Name">Headliner</string></Properties><Item class="Folder" referent="RBX5721B4E4451740D7BCA36E5CF47444F9"><Properties><string name="Name">Client</string></Properties><Item class="ModuleScript" referent="RBXDF641A77799E43FA9CFAE97E32D44565"><Properties><string name="Name">App</string><ProtectedString name="Source"><![CDATA[-- Main client controller: talks to the server, HUD, the station screens, popups, shows.
+<Item class="Workspace" referent="RBX151BE1845D2247659BAB4562ECD53F38"><Properties><string name="Name">Workspace</string><bool name="StreamingEnabled">false</bool></Properties></Item>
+<Item class="Lighting" referent="RBXC0BF68C1408F4A3C8D907E34831E5B92"><Properties><string name="Name">Lighting</string><token name="Technology">4</token><bool name="GlobalShadows">false</bool></Properties></Item>
+<Item class="Players" referent="RBXBA279A1FB335451B9542B8BF7FB2696D"><Properties><string name="Name">Players</string><bool name="CharacterAutoLoads">false</bool></Properties></Item>
+<Item class="ReplicatedStorage" referent="RBX00A65ACDB73747C4AB748BBACE3D6161"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="Folder" referent="RBXCC5BC374FAA149588E976A54EAF526E7"><Properties><string name="Name">Headliner</string></Properties><Item class="Folder" referent="RBX25D6EFEA345C42178E9D3437673F5A49"><Properties><string name="Name">Client</string></Properties><Item class="ModuleScript" referent="RBX68CB68D235AB40F88DB2127EEF92CB21"><Properties><string name="Name">App</string><ProtectedString name="Source"><![CDATA[-- Main client controller: talks to the server, HUD, the station screens, popups, shows.
 -- The game state lives on the server (src/server/GameServer). `app.state` is a copy that the
 -- server keeps up to date; every change goes through app:act(name, args).
 local Players = game:GetService("Players")
@@ -1302,7 +1302,7 @@ end
 
 return App
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX68F1C7D15F8447DCA03465E47000CE73"><Properties><string name="Name">Builder</string><ProtectedString name="Source"><![CDATA[-- Builds 3D models for stage items and animates them during shows.
+<Item class="ModuleScript" referent="RBXA6BFA3A191FD4C278F89A0B10408A5F4"><Properties><string name="Name">Builder</string><ProtectedString name="Source"><![CDATA[-- Builds 3D models for stage items and animates them during shows.
 -- Every item is built around the local origin (bottom centre for floor items, hanging point for rig items)
 -- and then moved into place with Builder.place().
 local TweenService = game:GetService("TweenService")
@@ -1490,11 +1490,9 @@ function B.stairs(m, r)
 	finishDeck(r)
 end
 
--- decks that overlap at the same height would flicker (z-fighting): every deck gets a tiny height offset
+-- decks keep exactly the height you choose (no hidden offsets), so decks of the same height line up
 local function deckH(r, h)
-	local rec = r.rec or {}
-	local k = math.floor(math.abs((rec.x or 0) * 3.1 + (rec.z or 0) * 1.7 + (rec.w or 0) * 0.9 + (rec.r or 0) * 0.13)) % 4
-	return h + k * 0.04
+	return h
 end
 
 function B.deck(m, r)
@@ -1664,9 +1662,13 @@ function B.par(m, r)
 		cyl(m, "Rib", 0.12, 1.98, CFrame.new(0, -1.3 - k * 0.32, 0), Color3.fromRGB(46, 46, 52), Enum.Material.Metal)
 	end
 	cyl(m, "Rim", 0.3, 2.05, CFrame.new(0, -3.1, 0), Color3.fromRGB(40, 40, 46), Enum.Material.Metal)
-	part(m, "GelFrame", Vector3.new(2.1, 0.12, 2.1), CFrame.new(0, -3.3, 0), Color3.fromRGB(30, 30, 34), Enum.Material.Metal)
+	local gel = part(m, "GelFrame", Vector3.new(2.1, 0.12, 2.1), CFrame.new(0, -3.3, 0), Color3.fromRGB(30, 30, 34), Enum.Material.Metal)
 	r.lens = cyl(m, "Lens", 0.14, 1.5, CFrame.new(0, -3.16, 0), r.color, Enum.Material.Neon)
-	r.light = New("SpotLight", { Face = Enum.NormalId.Left, Angle = 50, Range = 45, Brightness = 1.2, Color = r.color, Shadows = false, Parent = r.lens })
+	r.light = New("SpotLight", { Face = Enum.NormalId.Bottom, Angle = 55, Range = 60, Brightness = 1.6, Color = r.color, Shadows = false, Parent = gel })
+	-- a soft wide cone of light (a wash), so you can see what the PAR does in the haze
+	if not r.preview then
+		r.beam = beam(gel, Vector3.new(0, -0.1, 0), Vector3.new(0, -42, 0), 1.6, 18, r.color, 0.72)
+	end
 end
 
 function B.moving(m, r)
@@ -2835,6 +2837,106 @@ function B.balloonarch(m, r)
 		end
 	end
 end
+function B.drapes(m, r)
+	-- a frame (20 wide, 12 high) with a pelmet and two red drapes tied back at the sides
+	local red = Color3.fromRGB(150, 20, 34)
+	part(m, "FramePostL", Vector3.new(0.6, 12, 0.6), CFrame.new(-10, 6, 0), DARK, Enum.Material.Metal)
+	part(m, "FramePostR", Vector3.new(0.6, 12, 0.6), CFrame.new(10, 6, 0), DARK, Enum.Material.Metal)
+	part(m, "Pelmet", Vector3.new(21.4, 1.6, 0.9), CFrame.new(0, 11.4, 0.2), red, Enum.Material.Fabric)
+	part(m, "PelmetTrim", Vector3.new(21.5, 0.25, 1.0), CFrame.new(0, 10.55, 0.2), Color3.fromRGB(220, 180, 70), Enum.Material.Metal)
+	for _, side in ipairs({ -1, 1 }) do
+		-- folds: a few panels that get narrower towards the tie-back
+		for k = 0, 3 do
+			local x = side * (9.4 - k * 0.9)
+			part(m, "Drape", Vector3.new(0.95, 9.6 - k * 0.4, 0.5 + (k % 2) * 0.25), CFrame.new(x, 5.6 + k * 0.2, -0.1 - (k % 2) * 0.12) * CFrame.Angles(0, 0, side * k * 0.03), red, Enum.Material.Fabric)
+		end
+		part(m, "TieBack", Vector3.new(4.2, 0.3, 1.2), CFrame.new(side * 8.3, 4.6, 0.1), Color3.fromRGB(220, 180, 70), Enum.Material.Metal)
+	end
+end
+
+function B.barrels(m, r)
+	local wood = Color3.fromRGB(130, 84, 46)
+	local hoop = Color3.fromRGB(60, 60, 66)
+	for i, o in ipairs({ { -1.6, 0, 0 }, { 1.4, 0, -0.6 } }) do
+		local c = CFrame.new(o[1], 0, o[3])
+		cyl(m, "Barrel", 3.4, 2.4, c * CFrame.new(0, 1.7, 0), wood, Enum.Material.WoodPlanks)
+		cyl(m, "BarrelBelly", 1.6, 2.7, c * CFrame.new(0, 1.7, 0), wood, Enum.Material.WoodPlanks)
+		for _, y in ipairs({ 0.5, 2.9 }) do
+			cyl(m, "Hoop", 0.2, 2.5, c * CFrame.new(0, y, 0), hoop, Enum.Material.Metal)
+		end
+		local _ = i
+	end
+	part(m, "Crate", Vector3.new(2.2, 2.2, 2.2), CFrame.new(0.2, 1.1, 2.2) * CFrame.Angles(0, 0.3, 0), Color3.fromRGB(170, 130, 80), Enum.Material.WoodPlanks)
+	part(m, "CrateTop", Vector3.new(1.8, 1.8, 1.8), CFrame.new(0.3, 3.1, 2.1) * CFrame.Angles(0, -0.2, 0), Color3.fromRGB(160, 120, 74), Enum.Material.WoodPlanks)
+end
+
+function B.bookshelf(m, r)
+	local wood = Color3.fromRGB(110, 70, 40)
+	part(m, "ShelfBack", Vector3.new(6, 9, 0.3), CFrame.new(0, 4.5, -0.85), wood, Enum.Material.Wood)
+	part(m, "ShelfSideL", Vector3.new(0.3, 9, 2), CFrame.new(-3.15, 4.5, 0), wood, Enum.Material.Wood)
+	part(m, "ShelfSideR", Vector3.new(0.3, 9, 2), CFrame.new(3.15, 4.5, 0), wood, Enum.Material.Wood)
+	local rng = Random.new(5)
+	local BOOK = { Color3.fromRGB(180, 50, 50), Color3.fromRGB(50, 90, 160), Color3.fromRGB(220, 190, 90), Color3.fromRGB(60, 130, 80), Color3.fromRGB(230, 230, 230), Color3.fromRGB(40, 40, 46) }
+	for k = 0, 3 do
+		local y = 0.15 + k * 2.25
+		part(m, "Shelf", Vector3.new(6.0, 0.25, 1.9), CFrame.new(0, y + 0.12, 0.05), wood, Enum.Material.Wood)
+		if k < 3 then
+			local x = -2.8
+			while x < 2.5 do
+				local w = 0.25 + rng:NextNumber() * 0.2
+				local h = 1.3 + rng:NextNumber() * 0.6
+				part(m, "Book", Vector3.new(w, h, 1.3), CFrame.new(x + w / 2, y + 0.25 + h / 2, 0.05), BOOK[rng:NextInteger(1, #BOOK)])
+				x = x + w + 0.03
+				if rng:NextNumber() < 0.08 then
+					x = x + 0.9
+				end
+			end
+		end
+	end
+	part(m, "ShelfTop", Vector3.new(6.6, 0.3, 2.1), CFrame.new(0, 9.15, 0), wood, Enum.Material.Wood)
+	cyl(m, "LampFoot", 1.0, 0.3, CFrame.new(1.8, 9.8, 0), Color3.fromRGB(200, 170, 90), Enum.Material.Metal)
+	r.glow = cyl(m, "LampShade", 0.9, 1.2, CFrame.new(1.8, 10.6, 0), Color3.fromRGB(255, 220, 160), Enum.Material.Neon)
+end
+
+function B.lanternline(m, r)
+	-- two poles 18 apart, a line between them with paper lanterns
+	part(m, "PoleL", Vector3.new(0.4, 11, 0.4), CFrame.new(-9, 5.5, 0), DARK, Enum.Material.Metal)
+	part(m, "PoleR", Vector3.new(0.4, 11, 0.4), CFrame.new(9, 5.5, 0), DARK, Enum.Material.Metal)
+	local COLS = { Color3.fromRGB(255, 120, 90), Color3.fromRGB(255, 210, 110), Color3.fromRGB(255, 160, 200), Color3.fromRGB(150, 220, 255) }
+	local prev = Vector3.new(-9, 10.6, 0)
+	r.lamps = {}
+	for k = 1, 9 do
+		local x = -9 + k * 1.8
+		local y = 10.6 - math.sin(k / 10 * math.pi) * 2.2
+		local pnt = Vector3.new(x, y, 0)
+		tube(m, prev, pnt, 0.06, DARK)
+		prev = pnt
+		if k < 10 then
+			local lamp = part(m, "Lantern", Vector3.new(1.2, 1.2, 1.2), CFrame.new(x, y - 1.0, 0), COLS[k % #COLS + 1], Enum.Material.Neon, Enum.PartType.Ball)
+			part(m, "LanternCap", Vector3.new(0.5, 0.14, 0.5), CFrame.new(x, y - 0.28, 0), DARK)
+			table.insert(r.lamps, lamp)
+		end
+	end
+	tube(m, prev, Vector3.new(9, 10.6, 0), 0.06, DARK)
+end
+
+function B.golddiscs(m, r)
+	-- a black wall on two feet with framed records in rows
+	part(m, "DiscWall", Vector3.new(9, 6.4, 0.4), CFrame.new(0, 4.4, 0), Color3.fromRGB(24, 24, 30))
+	for _, x in ipairs({ -3.6, 3.6 }) do
+		part(m, "DiscFoot", Vector3.new(0.5, 1.2, 2.4), CFrame.new(x, 0.6, 0), DARK, Enum.Material.Metal)
+	end
+	for row = 0, 1 do
+		for col = 0, 2 do
+			local x, y = -2.9 + col * 2.9, 5.9 - row * 3
+			local plat = (row + col) % 3 == 0
+			part(m, "DiscFrame", Vector3.new(2.4, 2.6, 0.16), CFrame.new(x, y, 0.27), Color3.fromRGB(240, 240, 244))
+			cyl(m, "Disc", 0.06, 1.7, CFrame.new(x, y + 0.15, 0.37) * CFrame.Angles(math.pi / 2, 0, 0), plat and Color3.fromRGB(220, 224, 232) or Color3.fromRGB(230, 185, 60), Enum.Material.Metal)
+			part(m, "DiscPlate", Vector3.new(1.6, 0.3, 0.06), CFrame.new(x, y - 1.0, 0.38), Color3.fromRGB(30, 30, 34))
+		end
+	end
+end
+
 function B.banner(m, r)
 	part(m, "Bar", Vector3.new(11, 0.4, 0.4), CFrame.new(0, -0.4, 0), METAL, Enum.Material.Metal)
 	r.panel = part(m, "Banner", Vector3.new(10, 16, 0.2), CFrame.new(0, -8.6, 0), r.color, Enum.Material.Fabric)
@@ -3158,11 +3260,48 @@ function B.plant(m, r)
 	-- potted plant: tapered pot, soil, big drooping leaves
 	oval(m, "Pot", Vector3.new(1.9, 2, 1.9), CFrame.new(0, 0.8, 0), Color3.fromRGB(180, 100, 70), Enum.Material.Concrete)
 	cyl(m, "PotRim", 0.3, 2, CFrame.new(0, 1.7, 0), Color3.fromRGB(160, 86, 60), Enum.Material.Concrete)
-	cyl(m, "Soil", 0.1, 1.7, CFrame.new(0, 1.8, 0), Color3.fromRGB(60, 40, 30), Enum.Material.Ground)
+	cyl(m, "Soil", 0.1, 1.7, CFrame.new(0, 1.76, 0), Color3.fromRGB(60, 40, 30), Enum.Material.Ground) -- just below the rim (no flicker)
 	for i = 0, 8 do
 		local a = i * 2.4
 		local up = 0.5 + (i % 3) * 0.25
 		oval(m, "Leaf", Vector3.new(0.6, 0.14, 2.4), CFrame.new(0, 2.2 + (i % 3) * 0.5, 0) * CFrame.Angles(0, a, 0) * CFrame.Angles(-up, 0, 0) * CFrame.new(0, 0, 1.1), Color3.fromRGB(40 + i * 5, 110 + i * 6, 50), Enum.Material.Grass)
+	end
+end
+
+function B.column(m, r)
+	-- classic column: square plinth, round base, fluted shaft, capital with a glowing top
+	local white = Color3.fromRGB(236, 232, 222)
+	part(m, "Plinth", Vector3.new(3.4, 0.8, 3.4), CFrame.new(0, 0.4, 0), white, Enum.Material.Marble)
+	cyl(m, "ColBase", 0.7, 2.9, CFrame.new(0, 1.15, 0), white, Enum.Material.Marble)
+	cyl(m, "Shaft", 11, 2.2, CFrame.new(0, 7, 0), white, Enum.Material.Marble)
+	for k = 0, 7 do
+		local a = k * math.pi / 4
+		part(m, "Flute", Vector3.new(0.18, 10.6, 0.18), CFrame.new(math.cos(a) * 1.08, 7, math.sin(a) * 1.08), Color3.fromRGB(210, 206, 196), Enum.Material.Marble)
+	end
+	cyl(m, "Neck", 0.5, 2.6, CFrame.new(0, 12.75, 0), white, Enum.Material.Marble)
+	part(m, "Capital", Vector3.new(3.4, 0.9, 3.4), CFrame.new(0, 13.45, 0), white, Enum.Material.Marble)
+	r.glow = part(m, "Glow", Vector3.new(3.0, 0.2, 3.0), CFrame.new(0, 14.0, 0), r.color, Enum.Material.Neon)
+end
+
+function B.giantguitar(m, r)
+	-- a guitar 16 studs tall leaning back on an A-frame stand
+	local body = Color3.fromRGB(200, 40, 50)
+	local lean = CFrame.new(0, 0.5, 0) * CFrame.Angles(math.rad(-12), 0, 0)
+	part(m, "StandFoot", Vector3.new(6, 0.4, 1), CFrame.new(0, 0.2, 0.6), DARK, Enum.Material.Metal)
+	tube(m, Vector3.new(-2.6, 0.3, 0.6), Vector3.new(0, 6.5, -1.6), 0.3, DARK)
+	tube(m, Vector3.new(2.6, 0.3, 0.6), Vector3.new(0, 6.5, -1.6), 0.3, DARK)
+	tube(m, Vector3.new(0, 0.3, -3), Vector3.new(0, 9, -2.2), 0.3, DARK)
+	oval(m, "BodyLow", Vector3.new(6.4, 5.6, 1.4), lean * CFrame.new(0, 3.2, 0), body, Enum.Material.SmoothPlastic)
+	oval(m, "BodyHigh", Vector3.new(5, 4.4, 1.4), lean * CFrame.new(0, 6.6, 0), body, Enum.Material.SmoothPlastic)
+	part(m, "Pickguard", Vector3.new(2.2, 2.6, 0.1), lean * CFrame.new(1.2, 4.2, 0.72), Color3.fromRGB(240, 236, 228))
+	part(m, "Bridge", Vector3.new(2.4, 0.4, 0.2), lean * CFrame.new(0, 2.4, 0.78), Color3.fromRGB(30, 30, 34))
+	part(m, "Neck", Vector3.new(1.2, 8.6, 0.6), lean * CFrame.new(0, 12.8, 0.25), Color3.fromRGB(120, 76, 40), Enum.Material.Wood)
+	part(m, "Fretboard", Vector3.new(1.0, 8.6, 0.12), lean * CFrame.new(0, 12.8, 0.6), Color3.fromRGB(40, 26, 18), Enum.Material.Wood)
+	part(m, "Head", Vector3.new(1.8, 2.4, 0.5), lean * CFrame.new(0, 18.2, 0.2), Color3.fromRGB(30, 30, 34))
+	r.strings = {}
+	for k = 0, 5 do
+		local x = -0.4 + k * 0.16
+		table.insert(r.strings, part(m, "String", Vector3.new(0.06, 15.8, 0.06), lean * CFrame.new(x, 10.2, 0.72), r.color, Enum.Material.Neon))
 	end
 end
 
@@ -3268,26 +3407,76 @@ function B.upright_bass(m, r)
 end
 
 function B.harp(m, r)
-	-- concert harp: tall column, curved neck, sound box, strings, pedal base
+	-- concert harp at the size of a person (about 6 studs). The strings lie in the Y-Z plane: the
+	-- harpist sits behind it (-Z) with the sound box leaning on the shoulder, the column stands at the front.
 	local gold = Color3.fromRGB(214, 172, 66)
-	part(m, "Base", Vector3.new(2.6, 0.8, 2), CFrame.new(0, 0.4, 0), gold, Enum.Material.Metal)
-	cyl(m, "Column", 9.5, 0.5, CFrame.new(-1.2, 5.3, 0), gold, Enum.Material.Metal)
-	oval(m, "Crown", Vector3.new(1, 1.2, 1), CFrame.new(-1.2, 10.3, 0), gold, Enum.Material.Metal)
-	-- sound box: from the base to the top of the neck, leaning
-	part(m, "SoundBox", Vector3.new(1.2, 9.6, 1.4), CFrame.new(0.9, 5, 0) * CFrame.Angles(0, 0, 0.12), Color3.fromRGB(130, 70, 34), Enum.Material.Wood)
-	local neck = arcTube(m, "Neck", CFrame.new(0, 7.8, 0), 2.4, math.rad(200), math.rad(-10), 8, 0.45, gold, Enum.Material.Metal)
-	local _ = neck
-	for k = 0, 12 do
-		local x = -0.9 + k * 0.15
-		local y1 = 7.2 + math.sin(k / 12 * math.pi) * 1.4
-		part(m, "String", Vector3.new(0.03, y1 - 1.2 - k * 0.3, 0.03), CFrame.new(x, (y1 + 1.2 + k * 0.3) / 2, 0), (k % 7 == 0) and Color3.fromRGB(200, 40, 40) or Color3.fromRGB(240, 235, 220))
+	local wood = Color3.fromRGB(120, 64, 30)
+	local board = Color3.fromRGB(214, 170, 112)
+	local function V(z, y)
+		return Vector3.new(0, y, z)
 	end
+	local function rod(name, a, b, d, color, mat)
+		local t = tube(m, a, b, d, color)
+		if t then
+			t.Name = name
+			t.Material = mat or Enum.Material.SmoothPlastic
+		end
+		return t
+	end
+	-- pedestal with the seven pedals on the harpist's side
+	part(m, "Base", Vector3.new(1.5, 0.5, 2.8), CFrame.new(0, 0.25, 0.5), wood, Enum.Material.Wood)
+	part(m, "BaseTrim", Vector3.new(1.6, 0.12, 2.9), CFrame.new(0, 0.56, 0.5), gold, Enum.Material.Metal)
 	for k = 0, 6 do
-		part(m, "Pedal", Vector3.new(0.18, 0.08, 0.5), CFrame.new(-1 + k * 0.33, 0.1, 1.2), gold, Enum.Material.Metal)
+		part(m, "Pedal", Vector3.new(0.12, 0.08, 0.45), CFrame.new(-0.6 + k * 0.2, 0.12, -1.05), gold, Enum.Material.Metal)
+	end
+	-- the column at the front with its crown
+	rod("Column", V(1.5, 0.6), V(1.5, 6.0), 0.42, gold, Enum.Material.Metal)
+	for _, y in ipairs({ 1.0, 5.6 }) do
+		cyl(m, "ColumnRing", 0.18, 0.56, CFrame.new(0, y, 1.5), gold, Enum.Material.Metal)
+	end
+	oval(m, "Crown", Vector3.new(0.7, 0.55, 0.7), CFrame.new(0, 6.2, 1.5), gold, Enum.Material.Metal)
+	-- the sound box: from the pedestal up to the harpist's shoulder, wider at the bottom
+	local sb0, sb1 = V(0.9, 0.6), V(-0.9, 4.9)
+	local dir = (sb1 - sb0).Unit
+	local len = (sb1 - sb0).Magnitude
+	local back = Vector3.new(0, -dir.Z, dir.Y) * -1 -- points away from the strings (down/back)
+	for i = 0, 3 do
+		local f0, f1 = i / 4, (i + 1) / 4
+		local c = sb0 + dir * len * (f0 + f1) / 2 + back * 0.22
+		local wdt = 1.05 - i * 0.18
+		part(m, "SoundBox", Vector3.new(wdt, 0.55, len / 4 + 0.02), CFrame.lookAt(c, c + dir), wood, Enum.Material.Wood)
+	end
+	part(m, "SoundBoard", Vector3.new(0.5, 0.06, len), CFrame.lookAt(sb0 + dir * len / 2 - back * 0.06, sb0 + dir * len / 2 - back * 0.06 + dir), board, Enum.Material.Wood)
+	-- the curved neck from the top of the sound box to the crown (an S shape)
+	local neck = { V(-0.9, 4.9), V(-0.45, 5.45), V(0.15, 5.4), V(0.75, 5.55), V(1.2, 5.9), V(1.5, 6.05) }
+	for i = 2, #neck do
+		rod("Neck", neck[i - 1], neck[i], 0.34, gold, Enum.Material.Metal)
+	end
+	local function neckY(z)
+		for i = 2, #neck do
+			local a, b = neck[i - 1], neck[i]
+			if z >= a.Z and z <= b.Z then
+				return a.Y + (b.Y - a.Y) * (z - a.Z) / (b.Z - a.Z)
+			end
+		end
+		return neck[#neck].Y
+	end
+	-- strings: from the sound board up to the neck; C strings red, F strings dark blue
+	local n = 22
+	for k = 0, n - 1 do
+		local z = -0.72 + k * (1.55 / (n - 1))
+		local yb = sb0.Y + (sb0.Z - z) / (sb0.Z - sb1.Z) * (sb1.Y - sb0.Y)
+		if z > sb0.Z then
+			yb = sb0.Y
+		end
+		local yt = neckY(z) - 0.12
+		local col = (k % 7 == 0) and Color3.fromRGB(200, 40, 40) or ((k % 7 == 3) and Color3.fromRGB(40, 60, 140) or Color3.fromRGB(240, 235, 220))
+		part(m, "String", Vector3.new(0.035, math.max(0.2, yt - yb), 0.035), CFrame.new(0, (yt + yb) / 2, z), col)
 	end
 	-- the harpist's stool
-	cyl(m, "Stool", 0.35, 1.6, CFrame.new(0.2, 2.05, -2.4), Color3.fromRGB(60, 30, 30), Enum.Material.Leather)
-	cyl(m, "StoolLeg", 1.9, 0.3, CFrame.new(0.2, 0.95, -2.4), gold, Enum.Material.Metal)
+	cyl(m, "Stool", 0.3, 1.4, CFrame.new(0, 2.05, -2.2), Color3.fromRGB(110, 30, 40), Enum.Material.Fabric)
+	cyl(m, "StoolLeg", 1.9, 0.26, CFrame.new(0, 0.95, -2.2), gold, Enum.Material.Metal)
+	cyl(m, "StoolFoot", 0.12, 1.0, CFrame.new(0, 0.06, -2.2), gold, Enum.Material.Metal)
 end
 
 function B.strings(m, r)
@@ -3644,6 +3833,51 @@ function B.rainbow(m, r)
 	end
 end
 
+local artistMark
+-- where the artist is while playing an instrument (same places as in LiveShow): x, y, z, turned around, sitting
+local ARTIST_MARK = {
+	piano = { 0, 0, 5.2, true, true },
+	keys = { 0, 0, -2.4, false, false },
+	acoustic = { 0, 1.15, 0, false, true },
+	harp = { 0, 0, -2.2, false, true },
+	drums = { 0, 1, -1.8, false, true },
+	djbooth = { 0, 0, -3.2, false, false },
+}
+Builder.ARTIST_MARK = ARTIST_MARK
+-- in the stage builder: a see-through figure and an arrow on the floor show where the artist stands
+-- and which way they look (hidden during shows, see Builder.hideMarker)
+artistMark = function(m, r, a)
+	local col = Color3.fromRGB(255, 220, 60)
+	local base = CFrame.new(a[1], a[2], a[3]) * CFrame.Angles(0, a[4] and math.pi or 0, 0)
+	local seat = a[5] and 2.25 or 0
+	local list = {}
+	local function mk(name, size, cf, color, mat)
+		local p = part(m, name, size, base * cf, color, mat)
+		p.Transparency = 0.55
+		p.CastShadow = false
+		p.CanQuery = false
+		table.insert(list, p)
+		return p
+	end
+	-- arrow on the floor: a shaft and a head (two turned bars)
+	local fy = 0.08 - a[2]
+	mk("ArtistMark", Vector3.new(0.35, 0.06, 2.2), CFrame.new(0, fy, 0.9), col, Enum.Material.Neon)
+	mk("ArtistMark", Vector3.new(0.35, 0.06, 1.3), CFrame.new(-0.35, fy, 1.85) * CFrame.Angles(0, math.rad(-40), 0), col, Enum.Material.Neon)
+	mk("ArtistMark", Vector3.new(0.35, 0.06, 1.3), CFrame.new(0.35, fy, 1.85) * CFrame.Angles(0, math.rad(40), 0), col, Enum.Material.Neon)
+	-- the figure (sitting ones lower, with the thighs forward)
+	local ghost = Color3.fromRGB(200, 190, 255)
+	if a[5] then
+		mk("ArtistMark", Vector3.new(1.8, 0.8, 1.9), CFrame.new(0, seat + 0.4 - a[2], 0.5), ghost)
+	else
+		mk("ArtistMark", Vector3.new(1.8, 2, 0.9), CFrame.new(0, 1, 0), ghost)
+	end
+	local torsoY = (a[5] and (seat + 0.8 - a[2]) or 2) + 1
+	mk("ArtistMark", Vector3.new(2, 2, 1), CFrame.new(0, torsoY, 0), ghost)
+	mk("ArtistMark", Vector3.new(1.2, 1.2, 1.2), CFrame.new(0, torsoY + 1.6, 0), ghost)
+	mk("ArtistMark", Vector3.new(0.6, 0.3, 0.2), CFrame.new(0, torsoY + 1.6, 0.62), col, Enum.Material.Neon) -- the face side
+	r.artistMark = list
+end
+
 function Builder.build(def, opts)
 	opts = opts or {}
 	local model = New("Model", { Name = def.id })
@@ -3664,6 +3898,9 @@ function Builder.build(def, opts)
 	local fn = B[def.id]
 	if fn then
 		fn(model, refs)
+	end
+	if ARTIST_MARK[def.id] then
+		artistMark(model, refs, ARTIST_MARK[def.id])
 	end
 	return refs
 end
@@ -3688,7 +3925,7 @@ function Builder.ghost(refs, ok)
 	})
 	for _, d in ipairs(refs.model:GetDescendants()) do
 		if d:IsA("BasePart") then
-			if d.Name ~= "Pivot" and d.Name ~= "Target" and d.Name ~= "Nozzle" and d.Name ~= "Burst" then
+			if d.Name ~= "Pivot" and d.Name ~= "Target" and d.Name ~= "Nozzle" and d.Name ~= "Burst" and d.Name ~= "ArtistMark" then
 				d.Transparency = 0.25
 			end
 			d.CanQuery = false
@@ -3730,13 +3967,21 @@ function Builder.animate(refs, ctx)
 	local c1, c2 = ctx.c1, ctx.c2
 	local hit = ctx.hit
 	if k == "par" then
-		local c = (refs.phase > 3.14) and c2 or c1
+		-- wash: the colour changes every 4 beats (the cans take turns), the light pulses on the beat
+		local c = ((math.floor((ctx.beatCount or 0) / 4 + refs.phase) % 2) == 0) and c1 or c2
 		if refs.lastC ~= c then
 			refs.lastC = c
 			refs.lens.Color = c
 			refs.light.Color = c
+			if refs.beam then
+				refs.beam.Color = ColorSequence.new(c)
+			end
 		end
-		refs.light.Brightness = 0.4 + 1.2 * ctx.intensity
+		local pulse = 0.55 + 0.45 * (1 - (ctx.beat or 0))
+		refs.light.Brightness = (0.6 + 1.8 * (ctx.intensity or 0.5)) * pulse
+		if refs.beam then
+			refs.beam.Enabled = (ctx.intensity or 0) > 0.2
+		end
 	elseif k == "moving" then
 		local sp = ctx.sweep
 		local yaw = math.sin(t * 0.8 * sp + refs.phase) * 0.7
@@ -4188,6 +4433,9 @@ function Builder.hideMarker(refs)
 		refs.marker.Transparency = 1
 		refs.gui.Enabled = false
 	end
+	for _, p in ipairs(refs.artistMark or {}) do
+		p.Transparency = 1
+	end
 end
 
 -- What a screen shows at a spot (falls back to the default, then to the old single setting)
@@ -4243,7 +4491,7 @@ end
 
 return Builder
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXEFF5C88C4C7B43A5B63315D716EFAF6E"><Properties><string name="Name">Designer</string><ProtectedString name="Source"><![CDATA[-- STAGE BUILDER: build a stage in 3D.
+<Item class="ModuleScript" referent="RBX88098ADFF7DB4B9185EAC1EC375A2FF5"><Properties><string name="Name">Designer</string><ProtectedString name="Source"><![CDATA[-- STAGE BUILDER: build a stage in 3D.
 -- Works like park builder games: pick an item in the catalog at the bottom, click into the world to put it down,
 -- line it up with the coloured gizmo (red = X, green = height, blue = Z, orange ring = turn, gold cubes = size)
 -- and confirm with the green tick. Click a placed item to select and change it.
@@ -4282,13 +4530,19 @@ local GRIDS = { 1, 2, 4, 8 }
 local TURNS = { 15, 45, 90 }
 local BLACK = Color3.new(0, 0, 0)
 local GEOMETRY_KEYS = { w = true, d = true, h = true, skin = true, edge = true, scr = true }
+-- settings that only change the show (no new model needed)
+local SHOW_KEYS = { play = true, songs = true }
+-- effects that can fire in chosen songs (rec.songs = { 1, 4, ... }; false / nil = automatic)
+local FX_SONG_KINDS = { pyro = true, sparks = true, confetti = true, streamers = true, co2 = true, fireworks = true, balls = true, laser = true, lowfog = true }
+Designer.FX_SONG_KINDS = FX_SONG_KINDS
 
 local HELP = table.concat({
-	"<b>Place</b>   pick an item below, click into the world, then press  <b>OK</b>  (or Enter)",
+	"<b>Place</b>   pick an item below, point at the spot and press  <b>Q</b>  (or click, then Q / Enter)",
 	"<b>Line up</b>   drag the arrows: <font color='#eb463c'>red</font> / <font color='#3c8cff'>blue</font> move, <font color='#5ad250'>green</font> lifts it up",
-	"<b>Turn</b>   drag the <font color='#ff9628'>orange ring</font> or press R / Q      <b>Size</b>   drag the <font color='#ffcd3c'>gold cubes</font>",
+	"<b>Turn</b>   drag the <font color='#ff9628'>orange ring</font> or press R (E = other way)      <b>Size</b>   drag the <font color='#ffcd3c'>gold cubes</font>",
 	"<b>Select</b>   click a placed item      <b>Copy</b>  C      <b>Delete</b>  X      <b>Cancel</b>  Esc / F",
 	"<b>Camera</b>   right mouse = turn, wheel = zoom, WASD = move, T = top view, H = hide menus",
+	"<b>Two steps</b>   1. build the stage   2. SETLIST & SHOW: artist spots, what screens show, effects per song",
 }, "\n")
 
 function Designer.open(app, designId)
@@ -4322,6 +4576,7 @@ function Designer.open(app, designId)
 	local overHandle = false
 	local drag = nil
 	local screenSong = 0 -- 0 = what screens show for the whole show, n = change for song n
+	local phase = "build" -- "build" (the stage itself) | "show" (setlist & show: spots, screens, effects per song)
 
 	local function grid()
 		return GRIDS[gridIndex]
@@ -4439,11 +4694,16 @@ function Designer.open(app, designId)
 		Visible = false,
 		UI.Corner(6),
 	})
+	-- SETLIST & SHOW (second step): the songs on the left
+	local setlistPanel = UI.Panel(root, UI.px(20, 112), UI.px(430, 740), T.panel)
+	setlistPanel.BackgroundTransparency = 0.05
+	setlistPanel.Visible = false
 	local dialog = nil
-	local panels = { top, statsBar, catalog, toolbar, inspector, helpBox }
+	local panels = { top, statsBar, catalog, toolbar, inspector, helpBox, setlistPanel }
 
 	local currentCat = "Stage"
-	local refreshStats, refreshList, refreshTop, refreshInspector, refreshToolbar
+	local refreshStats, refreshList, refreshTop, refreshInspector, refreshToolbar, refreshSetlist
+	local putDown
 
 	------------------------------------------------------------ helpers
 	local function cls()
@@ -4495,7 +4755,7 @@ function Designer.open(app, designId)
 			return true
 		end
 		local m = UserInputService:GetMouseLocation()
-		local all = { top, statsBar, catalog, toolbar, inspector, helpBox }
+		local all = { top, statsBar, catalog, toolbar, inspector, helpBox, setlistPanel }
 		if dialog then
 			table.insert(all, dialog)
 		end
@@ -4772,9 +5032,28 @@ function Designer.open(app, designId)
 				end
 			end
 		end
-		render()
+		-- show settings (song of an instrument, effect songs, screen content) change nothing you can see on the
+		-- stage: no rebuild of the whole stage, so nothing jumps or flickers
+		local onlyShow = true
+		for k in pairs(changes) do
+			if not SHOW_KEYS[k] and k ~= "scr" then
+				onlyShow = false
+			end
+		end
+		if onlyShow then
+			if changes.scr then
+				Stage3D.removeItem(selected)
+				selected = Stage3D.addItem(rec, itemOpts())
+			end
+			Stage3D.numberSpots(self.design)
+		else
+			render()
+		end
 		refreshStats()
 		refreshInspector()
+		if refreshSetlist then
+			refreshSetlist()
+		end
 	end
 
 	local function rotate(delta)
@@ -4858,7 +5137,7 @@ function Designer.open(app, designId)
 		UI.ClearChildren(cardRow)
 		local n = 0
 		for _, def in ipairs(StageItems.list) do
-			if def.cat == currentCat and not def.hidden then
+			if def.cat == currentCat and not def.hidden and def.id ~= "spot" then
 				n = n + 1
 				local isSel = placeDef == def and (mode == "place" or mode == "pending")
 				local b = UI.Button(cardRow, "", nil, UI.px(150, 148), { order = def.order, color = isSel and T.accent or T.panel3 }, function()
@@ -4881,7 +5160,7 @@ function Designer.open(app, designId)
 				c.TextColor3 = on and BLACK or T.text
 			end
 		end
-		catHint.Text = (mode == "place" and placeDef) and ("Placing: " .. placeDef.name .. " - click into the world") or (n .. " items  |  click a card to build")
+		catHint.Text = (mode == "place" and placeDef) and ("Placing: " .. placeDef.name .. " - point at the stage and press Q") or (n .. " items  |  click a card to build")
 	end
 
 	for i, cat in ipairs(StageItems.CATEGORIES) do
@@ -4907,17 +5186,18 @@ function Designer.open(app, designId)
 			turnIndex = turnIndex % #TURNS + 1
 			refreshToolbar()
 		end).LayoutOrder = 2
-		toolButton("Reposts: Turn (R)", 120, nil, nil, function()
+		toolButton("Turn (R)", 100, nil, nil, function()
 			rotate(TURNS[turnIndex])
 		end, not (tgt or mode == "place")).LayoutOrder = 3
 		toolButton("Copy (C)", 100, nil, nil, copySelected, not tgt).LayoutOrder = 4
 		toolButton("Delete (X)", 110, UI.shade(T.bad, 0.7), nil, deleteSelected, not tgt).LayoutOrder = 5
 		toolButton("X", 56, T.panel2, T.bad, cancel, not (tgt or mode == "place")).LayoutOrder = 6
 		local price = pending and Sim.itemPrice(pending.def, pending.rec) or nil
-		local okBtn = toolButton(pending and ("DONE:  PLACE  " .. (price > 0 and Util.moneyShort(price) or "")) or "OK", pending and 180 or 56, pending and T.good or T.panel2, pending and BLACK or T.sub, confirm, not pending)
+		local okBtn = toolButton(pending and ("PLACE (Q)  " .. (price > 0 and Util.moneyShort(price) or "")) or "PLACE (Q)", pending and 180 or 120, pending and T.good or T.panel2, pending and BLACK or T.sub, confirm, not pending)
 		okBtn.LayoutOrder = 7
-		toolbar.Size = UI.px(pending and 900 or 776, 58)
-		toolbar.Position = UI.px(960 - (pending and 450 or 388), 800)
+		toolbar.Size = UI.px(pending and 880 or 820, 58)
+		toolbar.Position = UI.px(960 - (pending and 440 or 410), 800)
+		toolbar.Visible = phase == "build" and catalog.Visible
 	end
 
 	------------------------------------------------------------ inspector
@@ -4956,6 +5236,9 @@ function Designer.open(app, designId)
 	end
 
 	refreshInspector = function()
+		if refreshSetlist then
+			refreshSetlist()
+		end
 		UI.ClearChildren(inspScroll)
 		order = 0
 		local def, rec
@@ -4981,7 +5264,8 @@ function Designer.open(app, designId)
 		nextOrder(UI.Label(inspScroll, priceTxt, nil, UI.px(296, 20), { textSize = 14, color = T.gold, font = UI.FontBold }))
 		nextOrder(UI.Label(inspScroll, def.desc, nil, UI.px(296, 0), { textSize = 13, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
 
-		if def.size then
+		local build = phase == "build"
+		if build and def.size then
 			local sz = def.size
 			local wLabel = (def.shape == "round" or def.id == "portal" or def.id == "moon") and "Diameter" or ((def.mount == "rig") and "Length" or "Width")
 			stepper(wLabel, (rec.w or sz.w) .. " st", function()
@@ -4997,7 +5281,7 @@ function Designer.open(app, designId)
 				end)
 			end
 		end
-		if def.heights then
+		if build and def.heights then
 			nextOrder(section("HEIGHT"))
 			local list = {}
 			for _, h in ipairs(def.heights) do
@@ -5009,7 +5293,7 @@ function Designer.open(app, designId)
 				applyChange({ h = it[1] })
 			end, 7, 38)
 		end
-		if def.deck then
+		if build and def.deck then
 			nextOrder(section("SURFACE"))
 			local list = {}
 			for _, sk in ipairs(Builder.SKINS) do
@@ -5043,7 +5327,65 @@ function Designer.open(app, designId)
 			end
 		end
 		local songs = GS.songCount(self.design)
-		if def.id == "spot" then
+		local showThings = def.id == "spot" or GS.PLAY_ITEMS[def.id] or Builder.SCREEN_KINDS[def.id] or FX_SONG_KINDS[def.id]
+		if build and showThings and def.id ~= "spot" then
+			nextOrder(UI.Label(inspScroll, "What it does in which song: set it up in STEP 2: SETLIST & SHOW (top bar).", nil, UI.px(296, 0), { textSize = 14, color = T.accent2, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
+		end
+		if not build and not showThings then
+			nextOrder(UI.Label(inspScroll, "Nothing to set up for the show here. Go back to BUILD to move or change it.", nil, UI.px(296, 0), { textSize = 14, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
+		end
+		if not build and FX_SONG_KINDS[def.id] then
+			nextOrder(section("FIRES IN SONGS"))
+			nextOrder(UI.Label(inspScroll, "Auto = the show decides (big moments, the finale). Or pick the songs yourself.", nil, UI.px(296, 0), { textSize = 13, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
+			local list = { { "auto", "Auto" } }
+			for n = 1, songs do
+				table.insert(list, { n, tostring(n) })
+			end
+			local function has(n)
+				if type(rec.songs) ~= "table" then
+					return false
+				end
+				for _, v in ipairs(rec.songs) do
+					if v == n then
+						return true
+					end
+				end
+				return false
+			end
+			chips(list, function(it)
+				if it[1] == "auto" then
+					return type(rec.songs) ~= "table" or #rec.songs == 0
+				end
+				return has(it[1])
+			end, function(it)
+				if it[1] == "auto" then
+					applyChange({ songs = false })
+					return
+				end
+				local new = {}
+				for _, v in ipairs(type(rec.songs) == "table" and rec.songs or {}) do
+					if v ~= it[1] then
+						table.insert(new, v)
+					end
+				end
+				if not has(it[1]) then
+					table.insert(new, it[1])
+				end
+				table.sort(new)
+				applyChange({ songs = (#new > 0) and new or false })
+			end, 5, 54)
+			if selected and not pending then
+				nextOrder(UI.Button(inspScroll, "Use these songs for all " .. def.name .. "s", nil, UI.px(296, 32), { textSize = 13, color = T.accent2, textColor = BLACK }, function()
+					for _, other in ipairs(self.design.items) do
+						if other.t == rec.t and other ~= rec then
+							other.songs = (type(rec.songs) == "table") and Util.deepCopy(rec.songs) or false
+						end
+					end
+					app:toast("Done: every " .. def.name .. " fires in the same songs.", T.good)
+				end))
+			end
+		end
+		if not build and def.id == "spot" then
 			local list = spotRecs()
 			local idx = 0
 			for i, r in ipairs(list) do
@@ -5082,7 +5424,7 @@ function Designer.open(app, designId)
 				end)
 			end
 		end
-		if GS.PLAY_ITEMS[def.id] then
+		if not build and GS.PLAY_ITEMS[def.id] then
 			local isLift = def.id == "lift" or def.id == "poplift"
 			local isTower = def.id == "towerlift"
 			nextOrder(section(isTower and "LIFTS THE ARTIST UP IN SONG" or (isLift and "ARTIST COMES UP HERE IN SONG" or "ARTIST PLAYS THIS IN SONG")))
@@ -5106,7 +5448,7 @@ function Designer.open(app, designId)
 				applyChange({ play = math.min(StageItems.MAX_SPOTS, (cur or 0) + 1) })
 			end)
 		end
-		if Builder.SCREEN_KINDS[def.id] then
+		if not build and Builder.SCREEN_KINDS[def.id] then
 			local scr = rec.scr and Util.deepCopy(rec.scr) or { default = Builder.screenConfig({ rec = rec, kind = def.id }, nil) }
 			nextOrder(section("SCREEN SHOWS"))
 			local slot = (screenSong == 0) and "default" or tostring(screenSong)
@@ -5186,23 +5528,100 @@ function Designer.open(app, designId)
 				end))
 			end
 		end
-		nextOrder(section("POSITION"))
-		stepper("Turn", (rec.r or 0) .. " deg", function()
-			rotate(-TURNS[turnIndex])
-		end, function()
-			rotate(TURNS[turnIndex])
-		end)
-		stepper("Lift up", (rec.yo or 0) .. " st", function()
-			applyChange({ yo = math.max((def.mount == "rig") and -20 or 0, (rec.yo or 0) - 1) })
-		end, function()
-			applyChange({ yo = math.min(40, (rec.yo or 0) + 1) })
-		end)
+		if build then
+			nextOrder(section("POSITION"))
+			stepper("Turn", (rec.r or 0) .. " deg", function()
+				rotate(-TURNS[turnIndex])
+			end, function()
+				rotate(TURNS[turnIndex])
+			end)
+			stepper("Lift up", (rec.yo or 0) .. " st", function()
+				applyChange({ yo = math.max((def.mount == "rig") and -20 or 0, (rec.yo or 0) - 1) })
+			end, function()
+				applyChange({ yo = math.min(40, (rec.yo or 0) + 1) })
+			end)
+		elseif def.id == "spot" and selected and not pending then
+			nextOrder(UI.Button(inspScroll, "Remove this spot (X)", nil, UI.px(296, 34), { textSize = 14, color = UI.shade(T.bad, 0.7) }, deleteSelected))
+		end
 		if pending then
 			local f = nextOrder(row(48))
 			UI.Button(f, "X Cancel", UI.px(0, 4), UI.px(120, 42), { textSize = 15 }, cancel)
-			UI.Button(f, "DONE: PLACE", UI.px(126, 4), UI.px(170, 42), { textSize = 17, color = T.good, textColor = BLACK }, confirm)
+			UI.Button(f, "PLACE (Q)", UI.px(126, 4), UI.px(170, 42), { textSize = 17, color = T.good, textColor = BLACK }, confirm)
 		end
 	end
+
+	------------------------------------------------------------ step 2: setlist & show
+	local spotDef = StageItems.byId.spot
+	local function refsOf(rec)
+		for _, r in ipairs(Stage3D.items) do
+			if r.rec == rec then
+				return r
+			end
+		end
+		return nil
+	end
+	refreshSetlist = function()
+		UI.ClearChildren(setlistPanel)
+		setlistPanel.Visible = phase == "show"
+		if phase ~= "show" then
+			return
+		end
+		UI.Label(setlistPanel, "SETLIST & SHOW", UI.px(18, 12), UI.px(394, 32), { textSize = 24, font = UI.FontBlack, color = T.accent2 })
+		UI.Label(setlistPanel, "One song per place: artist spots, lifts and instruments. Click a song or an item on the stage to set it up: screens and effects too.", UI.px(18, 46), UI.px(394, 60), { textSize = 15, color = T.sub, wrap = true })
+		local plan = GS.songPlan(withPending())
+		local list = UI.Scroll(setlistPanel, UI.px(12, 112), UI.px(406, 470))
+		UI.List(true, 6).Parent = list
+		for n = 1, plan.count do
+			local rec = plan.place[n]
+			local def = rec and StageItems.byId[rec.t]
+			local isSel = selected ~= nil and rec ~= nil and selected.rec == rec
+			local what = def and def.name or "free: the artist walks the stage"
+			local tag = (n == 1) and "  (opener)" or ((n == plan.count) and "  (finale)" or "")
+			local b = UI.Button(list, "", nil, UI.px(384, 54), { order = n, color = isSel and T.accent or T.panel2 }, function()
+				local r = rec and refsOf(rec)
+				if r then
+					select(r)
+				end
+			end)
+			UI.Label(b, "SONG " .. n .. tag, UI.px(14, 4), UI.px(360, 22), { textSize = 15, font = UI.FontBlack, color = isSel and T.text or T.gold })
+			UI.Label(b, what, UI.px(14, 26), UI.px(360, 24), { textSize = 16, color = def and T.text or T.sub })
+		end
+		local spots = #spotRecs()
+		UI.Button(setlistPanel, "+ ADD ARTIST SPOT (a new song)", UI.px(18, 594), UI.px(394, 48), { textSize = 16, color = T.good, textColor = BLACK, disabled = spots >= StageItems.MAX_SPOTS }, function()
+			setMode("place", spotDef)
+		end)
+		local fxAuto, fxSet = 0, 0
+		for _, it in ipairs(self.design.items) do
+			if FX_SONG_KINDS[it.t] then
+				if type(it.songs) == "table" and #it.songs > 0 then
+					fxSet = fxSet + 1
+				else
+					fxAuto = fxAuto + 1
+				end
+			end
+		end
+		UI.Label(setlistPanel, string.format("Effects: %d automatic, %d set to songs", fxAuto, fxSet), UI.px(18, 650), UI.px(394, 22), { textSize = 15, color = T.sub })
+		UI.Label(setlistPanel, "Place a spot: point at the stage and press Q.", UI.px(18, 676), UI.px(394, 22), { textSize = 15, color = T.sub })
+	end
+
+	local function setPhase(p)
+		if p == phase then
+			return
+		end
+		select(nil)
+		setMode("idle")
+		phase = p
+		catalog.Visible = p == "build"
+		statsBar.Visible = true
+		refreshTop()
+		refreshToolbar()
+		refreshInspector()
+		refreshSetlist()
+		if p == "show" then
+			app:toast("Step 2: choose what happens in every song. Back to building with  < STEP 1: BUILD.", T.accent2, 5)
+		end
+	end
+	self.setPhase = setPhase
 
 	------------------------------------------------------------ top bar
 	local function switchDesign(d)
@@ -5259,6 +5678,15 @@ function Designer.open(app, designId)
 			helpBox.Visible = not helpBox.Visible
 			refreshTop()
 		end))
+		if phase == "build" then
+			tag(UI.Button(top, "STEP 2: SETLIST & SHOW >", UI.px(798, 10), UI.px(204, 44), { textSize = 15, color = T.good, textColor = BLACK }, function()
+				setPhase("show")
+			end))
+		else
+			tag(UI.Button(top, "< STEP 1: BUILD", UI.px(798, 10), UI.px(204, 44), { textSize = 15, color = T.panel3 }, function()
+				setPhase("build")
+			end))
+		end
 		local ad = previewArtist()
 		tag(UI.Button(top, "Artist: " .. (ad and ad.name or "-") .. "  >", UI.px(1010, 10), UI.px(230, 44), { textSize = 15 }, function()
 			self.previewIndex = self.previewIndex % math.max(1, #signed) + 1
@@ -5387,7 +5815,7 @@ function Designer.open(app, designId)
 
 	local function updateGizmo()
 		local tgt = target()
-		local show = tgt ~= nil and dialog == nil and tgt.model.Parent ~= nil
+		local show = tgt ~= nil and dialog == nil and tgt.model.Parent ~= nil and (phase == "build" or tgt == pending)
 		if show and not drag then
 			local cf, size = tgt.model:GetBoundingBox()
 			sizeBox.CFrame = cf
@@ -5547,6 +5975,32 @@ function Designer.open(app, designId)
 	end)
 
 	------------------------------------------------------------ input
+	-- the piece under the mouse is put down (not bought yet: Q / Enter / the green button buys it)
+	putDown = function()
+		if not ghost then
+			return false
+		end
+		if not ghost.ok then
+			if #self.design.items >= cls().maxItems then
+				app:toast("This " .. self.design.class .. " stage is full (" .. cls().maxItems .. " items).", T.warn)
+			elseif state.money < Sim.itemPrice(placeDef, ghostRec) then
+				app:toast("Not enough money for " .. placeDef.name .. ".", T.bad)
+			else
+				app:toast("Outside the build area (gold lines).", T.warn)
+			end
+			return false
+		end
+		local rec = Util.deepCopy(ghostRec)
+		rec.x, rec.z = ghost.x, ghost.z
+		floorY(rec, placeDef)
+		clearGhost()
+		mode = "pending"
+		buildPending(rec)
+		refreshList()
+		refreshInspector()
+		refreshToolbar()
+		return true
+	end
 	table.insert(self.conns, UserInputService.InputBegan:Connect(function(input, gp)
 		if gp or app.modalOpen or dialog then
 			return
@@ -5559,29 +6013,7 @@ function Designer.open(app, designId)
 				return
 			end
 			if mode == "place" and placeDef then
-				if not ghost then
-					return
-				end
-				if not ghost.ok then
-					if #self.design.items >= cls().maxItems then
-						app:toast("This " .. self.design.class .. " stage is full (" .. cls().maxItems .. " items).", T.warn)
-					elseif state.money < Sim.itemPrice(placeDef, ghostRec) then
-						app:toast("Not enough money for " .. placeDef.name .. ".", T.bad)
-					else
-						app:toast("Outside the build area (gold lines).", T.warn)
-					end
-					return
-				end
-				-- put it down; it is bought with the green tick
-				local rec = Util.deepCopy(ghostRec)
-				rec.x, rec.z = ghost.x, ghost.z
-				floorY(rec, placeDef)
-				clearGhost()
-				mode = "pending"
-				buildPending(rec)
-				refreshList()
-				refreshInspector()
-				refreshToolbar()
+				putDown()
 			elseif mode == "pending" and pending then
 				-- clicking somewhere else moves the new piece there
 				local x, z, rr = mousePoint(pending, pending.def, pending.rec)
@@ -5598,24 +6030,34 @@ function Designer.open(app, designId)
 			end
 		elseif input.UserInputType == Enum.UserInputType.Keyboard then
 			local k = input.KeyCode
-			if k == Enum.KeyCode.R or k == Enum.KeyCode.E then
+			local building = phase == "build"
+			if k == Enum.KeyCode.R and building then
 				rotate(TURNS[turnIndex])
-			elseif k == Enum.KeyCode.Q then
+			elseif k == Enum.KeyCode.E and building then
 				rotate(-TURNS[turnIndex])
+			elseif k == Enum.KeyCode.Q then
+				-- Q places: the piece under the mouse is put down and bought in one go
+				if pending then
+					confirm()
+				elseif mode == "place" and placeDef and putDown() then
+					confirm()
+				end
 			elseif k == Enum.KeyCode.Return or k == Enum.KeyCode.KeypadEnter then
 				confirm()
-			elseif k == Enum.KeyCode.C then
+			elseif k == Enum.KeyCode.C and building then
 				copySelected()
 			elseif k == Enum.KeyCode.X or k == Enum.KeyCode.Delete then
-				deleteSelected()
+				if building or pending or (selected and selected.def.id == "spot") then
+					deleteSelected()
+				end
 			elseif k == Enum.KeyCode.F or k == Enum.KeyCode.Escape then
 				cancel()
 			elseif k == Enum.KeyCode.T then
 				pitch = (pitch > 1.3) and 0.6 or 1.45
 			elseif k == Enum.KeyCode.H then
 				local show = not catalog.Visible
-				catalog.Visible = show
-				toolbar.Visible = show
+				catalog.Visible = show and phase == "build"
+				toolbar.Visible = show and phase == "build"
 				statsBar.Visible = show
 				inspector.Visible = show and target() ~= nil
 			end
@@ -5750,7 +6192,7 @@ end
 
 return Designer
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXE8C20A40C1D04190912BED77E27BFC90"><Properties><string name="Name">LiveFeed</string><ProtectedString name="Source"><![CDATA[-- Live camera pictures for LED screens ("Live: artist" / "Live: crowd").
+<Item class="ModuleScript" referent="RBX4AAEA9AB65CC46BDB956077BCD35A02C"><Properties><string name="Name">LiveFeed</string><ProtectedString name="Source"><![CDATA[-- Live camera pictures for LED screens ("Live: artist" / "Live: crowd").
 -- Every screen face gets its own little 3D scene inside its ViewportFrame:
 --   artist: copies of the performers (synced every frame) in front of a glowing LED wall, the camera slowly circles them
 --   crowd:  a crowd of fans with raised arms, light sticks and phone lights, the camera pans along the rows
@@ -6042,7 +6484,7 @@ end
 
 return LiveFeed
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX5004E8A562354D508DB626C406D1D15B"><Properties><string name="Name">LiveShow</string><ProtectedString name="Source"><![CDATA[-- Plays a concert in 3D: venue + crowd + your stage design + the artist.
+<Item class="ModuleScript" referent="RBX9E8EA7F48C254F4DB65DAD8F5D5317A5"><Properties><string name="Name">LiveShow</string><ProtectedString name="Source"><![CDATA[-- Plays a concert in 3D: venue + crowd + your stage design + the artist.
 -- Every show gets its own running order: the songs, the ballad position, effects and colours change.
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -6183,6 +6625,19 @@ local function buildTimeline(ad, rng, songCount, hasRoof)
 	return segments, t
 end
 
+-- effect items and the hit that fires them (laser / low fog follow ctx.lasers / ctx.fog)
+local FX_HIT = { pyro = "pyro", sparks = "sparks", confetti = "confetti", streamers = "streamers", co2 = "co2", fireworks = "fireworks", balls = "balls", laser = "laser", lowfog = "fog" }
+
+-- the moves of the artist at an instrument (they change every 4 seconds)
+local PLAY_MOVES = {
+	piano = { "piano", "pianosway", "piano" },
+	keys = { "keys", "keys", "keyshype" },
+	drumsolo = { "drumsolo", "drumfill", "drumsolo", "drumfill" },
+	dance = { "djmix", "djknob", "djhype", "djmix" },
+	harp = { "harp" },
+	strum = { "strum" },
+}
+
 -- opts = { artistId, design, venueId?, look?, cap, sold, tourName, result?, preview?, onDone }
 function LiveShow.run(app, opts)
 	local ad = Artists.byId[opts.artistId]
@@ -6243,6 +6698,16 @@ function LiveShow.run(app, opts)
 	table.sort(spots, function(a, b)
 		return (a.spotIndex or 0) < (b.spotIndex or 0)
 	end)
+	-- which songs have effects set by hand (see the animation loop)
+	local songFx = {}
+	for _, r in ipairs(items) do
+		local songs = r.rec and r.rec.songs
+		if type(songs) == "table" and FX_HIT[r.kind] then
+			for _, n in ipairs(songs) do
+				songFx[n] = true
+			end
+		end
+	end
 	local wristbands = false
 	for _, r in ipairs(items) do
 		if r.kind == "wristbands" then
@@ -6301,9 +6766,9 @@ function LiveShow.run(app, opts)
 			elseif r.kind == "keys" then
 				seat, move, yaw = (r.cf * CFrame.new(0, 0, -2.4)).Position, "keys", math.rad(r.rec.r or 0)
 			elseif r.kind == "acoustic" then
-				seat, move, yaw = (r.cf * CFrame.new(0, 1.15, 0)).Position, "piano", math.rad(r.rec.r or 0)
+				seat, move, yaw = (r.cf * CFrame.new(0, 1.15, 0)).Position, "strum", math.rad(r.rec.r or 0)
 			elseif r.kind == "harp" then
-				seat, move, yaw = (r.cf * CFrame.new(0.2, 0, -2.4)).Position, "piano", math.rad(r.rec.r or 0)
+				seat, move, yaw = (r.cf * CFrame.new(0, 0, -2.2)).Position, "harp", math.rad(r.rec.r or 0)
 			elseif r.kind == "drums" then
 				seat, move, yaw = (r.cf * CFrame.new(0, 1, -1.8)).Position, "drumsolo", math.rad(r.rec.r or 0)
 			else
@@ -6825,7 +7290,9 @@ function LiveShow.run(app, opts)
 			move = cycle[(math.floor(inSeg / 4) + seg.song) % #cycle + 1]
 		end
 		if curWalk and curWalk.play and t >= curWalk[1] + 5 and not walking then
-			move = curWalk.play.move
+			-- every instrument has a few moves that change every few seconds
+			local moves = PLAY_MOVES[curWalk.play.move] or { curWalk.play.move }
+			move = moves[math.floor(inSeg / 4) % #moves + 1]
 			leadYaw = curWalk.play.yaw
 		end
 		local armsUp = 0
@@ -6877,8 +7344,47 @@ function LiveShow.run(app, opts)
 		ctx.phones = seg.phones == true
 		ctx.curtainT = math.max(0, t - segments[1].t1)
 		leadNow, yawNow = leadPos, leadYaw
+		-- effects set to fire in chosen songs (stage builder, step 2): they ignore the automatic hits and
+		-- fire at the start, in the middle and near the end of their songs
+		local mySong = seg.song and songFx[seg.song]
+		local customHit = {}
+		if mySong then
+			local inPrev = inSeg - dt
+			for _, at in ipairs({ 0.3, seg.len * 0.5, seg.len - 2 }) do
+				if inPrev < at and inSeg >= at then
+					customHit.now = true
+				end
+			end
+		end
 		for _, r in ipairs(items) do
-			Builder.animate(r, ctx)
+			local songs = r.rec and r.rec.songs
+			if type(songs) == "table" and #songs > 0 and FX_HIT[r.kind] then
+				local saved, savedL, savedF = ctx.hit, ctx.lasers, ctx.fog
+				local here = false
+				for _, n in ipairs(songs) do
+					if n == seg.song then
+						here = true
+					end
+				end
+				local h = {}
+				if here and customHit.now then
+					h[FX_HIT[r.kind]] = true
+					if not r.soundAt or t - r.soundAt > 0.5 then
+						r.soundAt = t
+						local fx = SFX_HITS[FX_HIT[r.kind]]
+						if fx then
+							SoundFX.sfx(fx[1], fx[2])
+						end
+					end
+				end
+				ctx.hit = h
+				ctx.lasers = here
+				ctx.fog = here
+				Builder.animate(r, ctx)
+				ctx.hit, ctx.lasers, ctx.fog = saved, savedL, savedF
+			else
+				Builder.animate(r, ctx)
+			end
 		end
 
 		-- crowd
@@ -6937,7 +7443,7 @@ end
 
 return LiveShow
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX735E7F4613D9456B85DB95F2380E3252"><Properties><string name="Name">MainMenu</string><ProtectedString name="Source"><![CDATA[-- Title screen: menu on the left, a famous venue at night on the right (see MenuScene).
+<Item class="ModuleScript" referent="RBXE5832F36AA5542DF8543800F10DE751A"><Properties><string name="Name">MainMenu</string><ProtectedString name="Source"><![CDATA[-- Title screen: menu on the left, a famous venue at night on the right (see MenuScene).
 -- New game: name your label, then pick your first artist.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
@@ -7224,7 +7730,7 @@ end
 
 return MainMenu
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXEDDACC065EF141D1A4DBF58C27352CBA"><Properties><string name="Name">MenuScene</string><ProtectedString name="Source"><![CDATA[-- Main menu background: detailed parody versions of famous venues at night.
+<Item class="ModuleScript" referent="RBXF68C04E133124832941ABB79A2A5F412"><Properties><string name="Name">MenuScene</string><ProtectedString name="Source"><![CDATA[-- Main menu background: detailed parody versions of famous venues at night.
 -- Every scene is a whole city district built from parts. The camera flies through the streets
 -- (Catmull-Rom spline through key points) and ends at the venue. Between scenes the 3D view
 -- fades to black (ColorCorrection, so the menu UI stays visible) while the next district is built.
@@ -9281,7 +9787,7 @@ end
 
 return MenuScene
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXF27FC485DDD241D79AC4BAC3641B8CB0"><Properties><string name="Name">People</string><ProtectedString name="Source"><![CDATA[-- Blocky performer figures (no external assets needed). Figures face +Z (towards the crowd) at yaw 0.
+<Item class="ModuleScript" referent="RBXD5A305336FFB4ACCA1DC3591D08F39BB"><Properties><string name="Name">People</string><ProtectedString name="Source"><![CDATA[-- Blocky performer figures (no external assets needed). Figures face +Z (towards the crowd) at yaw 0.
 local Root = script:FindFirstAncestor("Headliner")
 local UI = require(Root.Client.UI)
 local New = UI.New
@@ -9375,14 +9881,21 @@ function People.new(parent, outfit, scale, role, seed, look)
 	elseif style == "long" then
 		extra("HairBack", Vector3.new(1.3, 1.7, 0.4), "head", CFrame.new(0, -0.15, -0.55), hair)
 	elseif style == "bun" then
-		extra("HairBun", Vector3.new(0.7, 0.7, 0.7), "head", CFrame.new(0, 1.05, -0.35), hair, nil, Enum.PartType.Ball)
+		-- a knot on top: two crossed blocks
+		extra("HairBun", Vector3.new(0.72, 0.5, 0.72), "head", CFrame.new(0, 1.05, -0.3) * CFrame.Angles(0, math.rad(45), 0), hair)
+		extra("HairBun", Vector3.new(0.5, 0.36, 0.5), "head", CFrame.new(0, 1.36, -0.3), hair)
 	elseif style == "pony" then
 		extra("HairTail", Vector3.new(0.45, 1.5, 0.45), "head", CFrame.new(0, 0.1, -0.8) * CFrame.Angles(0.35, 0, 0), hair)
 	elseif style == "pigtails" then
 		extra("HairTail", Vector3.new(0.4, 1.2, 0.4), "head", CFrame.new(-0.75, 0, -0.2) * CFrame.Angles(0, 0, -0.3), hair)
 		extra("HairTail", Vector3.new(0.4, 1.2, 0.4), "head", CFrame.new(0.75, 0, -0.2) * CFrame.Angles(0, 0, 0.3), hair)
 	elseif style == "afro" then
-		extra("Afro", Vector3.new(1.9, 1.9, 1.9), "head", CFrame.new(0, 0.55, -0.15), hair, nil, Enum.PartType.Ball)
+		-- a big blocky afro: crown, both sides and the back
+		extra("Afro", Vector3.new(1.7, 0.78, 1.6), "head", CFrame.new(0, 0.74, -0.1), hair)
+		extra("Afro", Vector3.new(1.36, 0.36, 1.3), "head", CFrame.new(0, 1.28, -0.12), hair)
+		extra("Afro", Vector3.new(0.3, 1.0, 1.4), "head", CFrame.new(-0.76, 0.25, -0.12), hair)
+		extra("Afro", Vector3.new(0.3, 1.0, 1.4), "head", CFrame.new(0.76, 0.25, -0.12), hair)
+		extra("Afro", Vector3.new(1.6, 1.1, 0.35), "head", CFrame.new(0, 0.2, -0.8), hair)
 	elseif style == "messy" then
 		extra("HairFringe", Vector3.new(1.32, 0.35, 0.3), "head", CFrame.new(0, 0.42, 0.55) * CFrame.Angles(-0.4, 0, 0), hair)
 	elseif style == "mohawk" then
@@ -9487,6 +10000,10 @@ function People.preview(parent, look, color, pos, size, bg)
 	return vp, fig
 end
 
+-- moves played on an instrument: sitting ones and those where both hands are busy (mic on a stand)
+People.SEATED = { piano = true, pianosway = true, drumsolo = true, drumfill = true, harp = true, strum = true }
+People.BUSY = { piano = true, pianosway = true, drumsolo = true, drumfill = true, harp = true, strum = true, keys = true, keyshype = true, djmix = true, djhype = true, djknob = true }
+
 -- opts: t, beat (0..1), energy (0..1), walking (bool), armsUp (0..1),
 --       move = "idle" | "dance" | "jump" | "point" | "wave" | "kneel" | "headbang" | "micout" | "bow"
 function People:update(pos, yaw, opts)
@@ -9511,9 +10028,18 @@ function People:update(pos, yaw, opts)
 	elseif move == "bow" then
 		lean = 0.8
 		bob = 0
-	elseif move == "piano" or move == "drumsolo" then
+	elseif People.SEATED[move] then
 		drop = 2 * s - 2.25 -- sitting: hips on a seat about 2.25 studs high
 		bob = 0
+		if move == "pianosway" then
+			sway = math.sin(t * 2.2) * 0.12
+			lean = 0.12
+		elseif move == "harp" then
+			lean = 0.08
+			sway = math.sin(t * 1.6) * 0.05
+		end
+	elseif move == "djknob" then
+		headPitch = 0.25 + beatWave * 0.15 -- nodding to the beat, eyes on the mixer
 	elseif move == "pop" then
 		-- shot out of the pop-up lift: tucked legs, arms up
 		lean = -0.15
@@ -9526,7 +10052,7 @@ function People:update(pos, yaw, opts)
 	local legLA, legRA = swing, -swing
 	if move == "kneel" then
 		legLA, legRA = 1.45, -0.3
-	elseif move == "piano" or move == "drumsolo" then
+	elseif People.SEATED[move] then
 		legLA, legRA = -0.8, -0.72 -- thighs forward and down, feet on the floor (never through the seat)
 	elseif move == "pop" then
 		legLA, legRA = -0.9, -0.35
@@ -9580,9 +10106,35 @@ function People:update(pos, yaw, opts)
 	elseif move == "drumsolo" then
 		lx, lz = -0.9 + math.sin(t * 16 + 1.5) * 0.5, 0
 		rx, rz = -0.9 + math.sin(t * 16) * 0.5, 0
+	elseif move == "drumfill" then
+		-- a fill over the toms: both sticks travel left and right
+		lx, lz = -1.15 + math.sin(t * 20) * 0.45, 0.1 + math.sin(t * 5) * 0.35
+		rx, rz = -1.15 + math.sin(t * 20 + 1.6) * 0.45, -0.1 + math.sin(t * 5) * 0.35
+	elseif move == "pianosway" then
+		lx, lz = -1.3 + math.sin(t * 5) * 0.14, 0.25 + math.sin(t * 2.2) * 0.15
+		rx, rz = -1.3 + math.sin(t * 5 + 2) * 0.14, -0.05 + math.sin(t * 2.2) * 0.15
+	elseif move == "keyshype" then
+		lx, lz = -2.75 + math.sin(t * 6) * 0.15, -0.2
+		rx, rz = -1.35 + math.sin(t * 8) * 0.08, -0.15
+	elseif move == "harp" then
+		-- both hands reach into the strings in front, plucking
+		lx, lz = -1.2 + math.sin(t * 6) * 0.12, 0.35 + math.sin(t * 9) * 0.06
+		rx, rz = -1.45 + math.sin(t * 6 + 1.4) * 0.12, -0.35 - math.sin(t * 9 + 1) * 0.06
+	elseif move == "strum" then
+		lx, lz = -1.1, 0.55
+		rx, rz = -0.75 + math.sin(t * 12) * 0.25, -0.25
+	elseif move == "djmix" then
+		lx, lz = -1.15 + math.sin(t * 4) * 0.08, 0.1
+		rx, rz = -1.1, -0.1 + math.sin(t * 8) * 0.25 -- scratching
+	elseif move == "djhype" then
+		lx, lz = -2.8 + math.abs(beatWave) * 0.25, -0.15 -- fist in the air
+		rx, rz = -1.1 + math.sin(t * 4) * 0.08, -0.1
+	elseif move == "djknob" then
+		lx, lz = -1.2 + math.sin(t * 3) * 0.06, 0.2
+		rx, rz = -1.2 + math.sin(t * 3 + 1) * 0.06, -0.2
 	end
 	local micAtMouth = false
-	if self.role == "lead" and (move == "piano" or move == "drumsolo" or move == "keys") then
+	if self.role == "lead" and People.BUSY[move] then
 		-- hands are busy: the mic hangs from a stand at the mouth
 		micAtMouth = true
 	elseif self.role == "lead" then
@@ -9650,7 +10202,7 @@ end
 
 return People
 ]]></ProtectedString></Properties></Item>
-<Item class="Folder" referent="RBX892EB49B3F544D168A6308639232BA1F"><Properties><string name="Name">Screens</string></Properties><Item class="ModuleScript" referent="RBX30A97C62B9AB401F90BB4E8DEBC964C7"><Properties><string name="Name">ArtistsScreen</string><ProtectedString name="Source"><![CDATA[-- ARTISTS screen: your roster and the talent scout.
+<Item class="Folder" referent="RBX6F9899EC5D5F45DAB36DA135C5DD7985"><Properties><string name="Name">Screens</string></Properties><Item class="ModuleScript" referent="RBX3A7ABCDFBA4F42AC99767483DB571B24"><Properties><string name="Name">ArtistsScreen</string><ProtectedString name="Source"><![CDATA[-- ARTISTS screen: your roster and the talent scout.
 local Root = script:FindFirstAncestor("Headliner")
 local Achievements = require(Root.Data.Achievements)
 local Config = require(Root.Config)
@@ -9776,7 +10328,7 @@ end
 
 return ArtistsScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX6A405EE04F6844EF80F4A9967C43B828"><Properties><string name="Name">ChartsScreen</string><ProtectedString name="Source"><![CDATA[-- CHARTS screen: Top grossing tours of all time + achievements + records.
+<Item class="ModuleScript" referent="RBXCC212B3633114EE3912723DE4BCC36DF"><Properties><string name="Name">ChartsScreen</string><ProtectedString name="Source"><![CDATA[-- CHARTS screen: Top grossing tours of all time + achievements + records.
 local Root = script:FindFirstAncestor("Headliner")
 local Achievements = require(Root.Data.Achievements)
 local Util = require(Root.Logic.Util)
@@ -9858,7 +10410,7 @@ end
 
 return ChartsScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX9AE324E4536E4582B89056713F987C97"><Properties><string name="Name">OfficeScreen</string><ProtectedString name="Source"><![CDATA[-- OFFICE: the home screen. Shows what happens next, upcoming shows, what fans post and the news.
+<Item class="ModuleScript" referent="RBXCF49D0CBFACF44C2BDC99DD796160E96"><Properties><string name="Name">OfficeScreen</string><ProtectedString name="Source"><![CDATA[-- OFFICE: the home screen. Shows what happens next, upcoming shows, what fans post and the news.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local Countries = require(Root.Data.Countries)
@@ -10010,7 +10562,7 @@ end
 
 return OfficeScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX79219A18AC724E7E895227A91E4C101C"><Properties><string name="Name">PhoneScreen</string><ProtectedString name="Source"><![CDATA[-- The phone (SOCIAL): opens from the phone button at any time while walking around.
+<Item class="ModuleScript" referent="RBXCD98FE64A18141D8817613C23A248C6B"><Properties><string name="Name">PhoneScreen</string><ProtectedString name="Source"><![CDATA[-- The phone (SOCIAL): opens from the phone button at any time while walking around.
 -- A smartphone on the right side of the screen with the fan feed, the fan mood and trending hashtags.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
@@ -10127,7 +10679,7 @@ end
 
 return PhoneScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX52DCB4E4198B44E38717601181BB5D06"><Properties><string name="Name">PlannerScreen</string><ProtectedString name="Source"><![CDATA[-- PLAN A TOUR: the plan (app.state.draft, stored on the server) is made in different rooms:
+<Item class="ModuleScript" referent="RBXC65CC7DA0FC94BAF9B77ECFC593EE92E"><Properties><string name="Name">PlannerScreen</string><ProtectedString name="Source"><![CDATA[-- PLAN A TOUR: the plan (app.state.draft, stored on the server) is made in different rooms:
 -- meeting room (artist) -> world map table (this screen, mode "map": country -> venue -> date)
 -- -> laptop (mode "plan": ticket prices, stage, check, announce) with a trip to the stage hall.
 -- A tour can have many shows: after a date, "+ ADD ANOTHER SHOW" goes back to the map.
@@ -11226,7 +11778,7 @@ end
 
 return MapScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX5498533505E94B27ACB42F78C69A38E0"><Properties><string name="Name">SocialScreen</string><ProtectedString name="Source"><![CDATA[-- SOCIAL: what fans post about your artists. Good shows get love, bad shows and high prices get criticism.
+<Item class="ModuleScript" referent="RBX9EB3240A030F479E923357E30FA9CF8F"><Properties><string name="Name">SocialScreen</string><ProtectedString name="Source"><![CDATA[-- SOCIAL: what fans post about your artists. Good shows get love, bad shows and high prices get criticism.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local Artists = require(Root.Data.Artists)
@@ -11664,7 +12216,7 @@ end
 
 return SocialScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX0CE5738EA47246589B28EC5630C2EF88"><Properties><string name="Name">StagesScreen</string><ProtectedString name="Source"><![CDATA[-- MY STAGES: all your stage designs in one place. Edit, copy, delete or start a new one.
+<Item class="ModuleScript" referent="RBX1CE98FD2C6FD439880086406A4C86007"><Properties><string name="Name">StagesScreen</string><ProtectedString name="Source"><![CDATA[-- MY STAGES: all your stage designs in one place. Edit, copy, delete or start a new one.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local StageItems = require(Root.Data.StageItems)
@@ -11701,20 +12253,50 @@ end
 
 -- small 3D picture of a design
 local function thumbnail(parent, design, pos, size)
+	-- the background (a gradient behind the 3D picture; a gradient on the ViewportFrame would tint the picture too)
+	local back = UI.New("Frame", { Parent = parent, Position = pos, Size = size, BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0, UI.Corner(10) })
+	UI.New("UIGradient", { Parent = back, Color = ColorSequence.new(Color3.fromRGB(70, 50, 110), Color3.fromRGB(12, 12, 20)), Rotation = 90 })
 	local vp = UI.New("ViewportFrame", {
 		Parent = parent,
 		Position = pos,
 		Size = size,
-		BackgroundColor3 = Color3.fromRGB(30, 34, 50),
+		BackgroundTransparency = 1,
+		ZIndex = back.ZIndex + 1,
 		BorderSizePixel = 0,
 		Ambient = Color3.fromRGB(165, 165, 185),
 		LightColor = Color3.new(1, 1, 1),
 		LightDirection = Vector3.new(-0.5, -1, -0.7),
 		UI.Corner(10),
 	})
-	local floor = UI.New("Part", { Size = Vector3.new(400, 1, 400), CFrame = CFrame.new(0, -0.5, 0), Color = Color3.fromRGB(44, 48, 60), Anchored = true, Parent = vp })
-	local _ = floor
+	-- a small venue around the stage: dark hall, back drape with a light strip, fans in front
 	local c = Config.STAGE_CLASS_BY_ID[design.class]
+	local reach = (design.layout == "center") and c.center or math.max(c.maxX, (c.maxZ - c.minZ) / 2)
+	local cz = (design.layout == "center") and 0 or (c.minZ + (c.maxZ - c.minZ) * 0.3)
+	local function block(size, cf, color, mat)
+		return UI.New("Part", { Size = size, CFrame = cf, Color = color, Material = mat or Enum.Material.SmoothPlastic, Anchored = true, Parent = vp })
+	end
+	block(Vector3.new(reach * 6, 1, reach * 6), CFrame.new(0, -0.5, cz), Color3.fromRGB(34, 34, 44))
+	if design.layout ~= "center" then
+		block(Vector3.new(reach * 4, reach * 1.6, 1), CFrame.new(0, reach * 0.8, c.minZ - 3), Color3.fromRGB(20, 20, 28))
+		block(Vector3.new(reach * 4, 0.6, 0.4), CFrame.new(0, reach * 1.1, c.minZ - 2.4), T.accent, Enum.Material.Neon)
+	end
+	-- fans: a few rows of little figures in front of (or around) the stage
+	local rng = Random.new(#design.items + 7)
+	local FAN = { Color3.fromRGB(240, 90, 120), Color3.fromRGB(80, 170, 255), Color3.fromRGB(250, 210, 80), Color3.fromRGB(120, 220, 160), Color3.fromRGB(230, 230, 240), Color3.fromRGB(170, 110, 255) }
+	for k = 1, 70 do
+		local x, z
+		if design.layout == "center" then
+			local a = rng:NextNumber() * math.pi * 2
+			local rr = reach * (1.05 + rng:NextNumber() * 0.5)
+			x, z = math.cos(a) * rr, math.sin(a) * rr
+		else
+			x = (rng:NextNumber() - 0.5) * reach * 2.4
+			z = c.maxZ + 4 + rng:NextNumber() * reach * 0.9
+		end
+		local sc = math.max(1, reach / 40)
+		block(Vector3.new(1.6, 3, 1) * sc, CFrame.new(x, 1.5 * sc, z), FAN[rng:NextInteger(1, #FAN)])
+		block(Vector3.new(1, 1, 1) * sc, CFrame.new(x, 3.6 * sc, z), Color3.fromRGB(200, 160, 130))
+	end
 	local n = 0
 	for _, rec in ipairs(design.items) do
 		local def = StageItems.byId[rec.t]
@@ -11722,6 +12304,7 @@ local function thumbnail(parent, design, pos, size)
 			n = n + 1
 			local refs = Builder.build(def, { color = T.accent2, artistName = "", rec = rec, preview = true })
 			Builder.rest(refs)
+			Builder.hideMarker(refs)
 			local y = (rec.y or 0) + (rec.yo or 0)
 			if def.mount == "rig" then
 				y = c.rigY - 2
@@ -11730,8 +12313,9 @@ local function thumbnail(parent, design, pos, size)
 			refs.model.Parent = vp
 		end
 	end
-	local reach = (design.layout == "center") and c.center or math.max(c.maxX, (c.maxZ - c.minZ) / 2)
-	local cz = (design.layout == "center") and 0 or (c.minZ + (c.maxZ - c.minZ) * 0.3)
+	if n == 0 then
+		UI.Label(vp, "EMPTY - OPEN IT TO BUILD", UI.px(0, 0), UDim2.fromScale(1, 0.3), { textSize = 16, font = UI.FontBold, color = Color3.fromRGB(220, 220, 235), alignX = Enum.TextXAlignment.Center })
+	end
 	local cam = UI.New("Camera", { FieldOfView = 40, Parent = vp })
 	cam.CFrame = CFrame.lookAt(Vector3.new(reach * 0.9, reach * 1.1, cz + reach * 1.7), Vector3.new(0, 4, cz))
 	vp.CurrentCamera = cam
@@ -11940,7 +12524,7 @@ end
 
 return StagesScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX0D494F09A6B943A39625229703CD2FE4"><Properties><string name="Name">ToursScreen</string><ProtectedString name="Source"><![CDATA[-- TOURS screen: ticket sales, prices, marketing and results of your tours.
+<Item class="ModuleScript" referent="RBX2F1F1EE212774D41A0D38664851FAF29"><Properties><string name="Name">ToursScreen</string><ProtectedString name="Source"><![CDATA[-- TOURS screen: ticket sales, prices, marketing and results of your tours.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local Countries = require(Root.Data.Countries)
@@ -12141,7 +12725,7 @@ end
 return ToursScreen
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="ModuleScript" referent="RBX81272408BD364E7493F79BFC3C750237"><Properties><string name="Name">ShowTasks</string><ProtectedString name="Source"><![CDATA[-- Mini tasks during a live show (planned for a later update: fix a spotlight, refill the merch stand ...).
+<Item class="ModuleScript" referent="RBX5C8C6CDF534145AABCB3984AD892C932"><Properties><string name="Name">ShowTasks</string><ProtectedString name="Source"><![CDATA[-- Mini tasks during a live show (planned for a later update: fix a spotlight, refill the merch stand ...).
 -- The live show calls start / update / stop; every task registered here gets the show context:
 --   ctx = { app, venue, look, crowd (Venue.build info), items (stage items), overlay (UI frame),
 --           character, t (show time), seg (current part of the show), timeScale }
@@ -12180,7 +12764,7 @@ end
 
 return ShowTasks
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX96B5982C73D04D09B947382CC45504F5"><Properties><string name="Name">SoundFX</string><ProtectedString name="Source"><![CDATA[-- Music and sound effects. Every sound is a part (PlaybackRegion) of a few uploaded files, see Data/Audio.lua.
+<Item class="ModuleScript" referent="RBX78CA4F2682DA47D598E1C579DB6F7F06"><Properties><string name="Name">SoundFX</string><ProtectedString name="Source"><![CDATA[-- Music and sound effects. Every sound is a part (PlaybackRegion) of a few uploaded files, see Data/Audio.lua.
 -- Without uploaded IDs every function quietly does nothing.
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
@@ -12360,7 +12944,7 @@ end
 
 return SoundFX
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXC1C10A5ED40B46F2BF830864B18D5D8D"><Properties><string name="Name">Stage3D</string><ProtectedString name="Source"><![CDATA[-- The 3D world: ground, the build area of the current stage design, and the placed design items.
+<Item class="ModuleScript" referent="RBX90105CF5462F4BDCB81D11558AB42EF3"><Properties><string name="Name">Stage3D</string><ProtectedString name="Source"><![CDATA[-- The 3D world: ground, the build area of the current stage design, and the placed design items.
 -- There is no fixed stage: everything (decks, catwalks, center stages) is built from items.
 local Lighting = game:GetService("Lighting")
 local Root = script:FindFirstAncestor("Headliner")
@@ -12710,7 +13294,7 @@ end
 
 return Stage3D
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX299EBB3FC7F34C86975EB7F8A17BBD0E"><Properties><string name="Name">UI</string><ProtectedString name="Source"><![CDATA[-- Tiny UI toolkit. All layouts are designed for a 1920x1080 canvas that gets scaled to the screen.
+<Item class="ModuleScript" referent="RBX7603FD1540834879A50454930276AA86"><Properties><string name="Name">UI</string><ProtectedString name="Source"><![CDATA[-- Tiny UI toolkit. All layouts are designed for a 1920x1080 canvas that gets scaled to the screen.
 local TweenService = game:GetService("TweenService")
 
 local UI = {}
@@ -12966,7 +13550,7 @@ end
 
 return UI
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX35B8C69132F34B288012B101ED162BD6"><Properties><string name="Name">Venue</string><ProtectedString name="Source"><![CDATA[-- Builds the inside of a venue around the stage and fills it with a crowd.
+<Item class="ModuleScript" referent="RBXC510F74936FB4EC58A83DB64747BB045"><Properties><string name="Name">Venue</string><ProtectedString name="Source"><![CDATA[-- Builds the inside of a venue around the stage and fills it with a crowd.
 --   arena:   oval bowl with lower and upper tier, sections with stairs, concourse, suites, LED ribbon, roof rig,
 --            black drapes behind an end stage (or a full bowl around a center stage)
 --   stadium: football stadium with pitch and floor cover, two tiers all around, roof with floodlights
@@ -14021,7 +14605,7 @@ end
 
 return Venue
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX1301FCC24CCF4542ADCA24CF5409834A"><Properties><string name="Name">World</string><ProtectedString name="Source"><![CDATA[-- The label building on the client: the player's character, the stations (ProximityPrompts),
+<Item class="ModuleScript" referent="RBX20D3264AA35B427F916F062821677D8B"><Properties><string name="Name">World</string><ProtectedString name="Source"><![CDATA[-- The label building on the client: the player's character, the stations (ProximityPrompts),
 -- name tags over the stations, the guide arrow, the world map on the table, the charts wall and
 -- the stage hall door. The building itself is built by the server (World/Hub.lua).
 local Players = game:GetService("Players")
@@ -14354,7 +14938,7 @@ function World.refreshPosters()
 		local signed = state.artists[ad.id].signed
 		local onTour = GS.activeTour(state, ad.id) ~= nil
 		local layout = idx % 4
-		local bg = New("Frame", { Parent = g, Size = UDim2.fromScale(1, 1), BackgroundColor3 = col, BorderSizePixel = 0 })
+		local bg = New("Frame", { Parent = g, Size = UDim2.fromScale(1, 1), BackgroundColor3 = col, BorderSizePixel = 0, ClipsDescendants = true })
 		local line = onTour and "ON TOUR NOW" or (signed and string.upper(state.labelName) or "COMING SOON")
 		if wide then
 			-- billboard: picture left, big name right
@@ -14380,8 +14964,9 @@ function World.refreshPosters()
 		elseif layout == 2 then
 			-- festival / club night: dark with stripes
 			bg.BackgroundColor3 = dark
-			for k = 0, 5 do
-				New("Frame", { Parent = bg, Position = UDim2.fromOffset(-80 + k * 110, -40), Size = UDim2.fromOffset(40, 720), Rotation = 20, BackgroundColor3 = col, BackgroundTransparency = 0.6, BorderSizePixel = 0 })
+			-- stripes stay inside the poster (rotated frames are not clipped in Roblox)
+			for k = 0, 4 do
+				New("Frame", { Parent = bg, Position = UDim2.fromOffset(18 + k * 84, 0), Size = UDim2.fromOffset(34, 600), BackgroundColor3 = col, BackgroundTransparency = 0.6 + k * 0.06, BorderSizePixel = 0 })
 			end
 			posterPicture(bg, ad, UDim2.fromOffset(10, 20), UDim2.fromOffset(400, 400), idx)
 			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(14, 420), Size = UDim2.fromOffset(392, 90), BackgroundTransparency = 1, Text = string.upper(ad.name), TextScaled = true, TextColor3 = col:Lerp(Color3.new(1, 1, 1), 0.4), Font = font })
@@ -14469,12 +15054,19 @@ local function seatedFigure(f, data, look, n)
 		p("CapBrim", Vector3.new(1.2, 0.1, 0.7), headCF * CFrame.new(0, 0.58, 0.85), top)
 	elseif look.acc == "beanie" then
 		p("Beanie", Vector3.new(1.38, 0.6, 1.38), headCF * CFrame.new(0, 0.72, 0), c3(look.bag), Enum.Material.Fabric)
+	elseif look.hair == "afro" then
+		p("Afro", Vector3.new(1.7, 0.78, 1.6), headCF * CFrame.new(0, 0.74, -0.1), hairC)
+		p("Afro", Vector3.new(1.36, 0.36, 1.3), headCF * CFrame.new(0, 1.28, -0.12), hairC)
+		p("Afro", Vector3.new(0.3, 1.0, 1.4), headCF * CFrame.new(-0.76, 0.25, -0.12), hairC)
+		p("Afro", Vector3.new(0.3, 1.0, 1.4), headCF * CFrame.new(0.76, 0.25, -0.12), hairC)
+		p("Afro", Vector3.new(1.6, 1.1, 0.35), headCF * CFrame.new(0, 0.2, -0.8), hairC)
 	elseif look.hair ~= "buzz" then
 		p("Hair", Vector3.new(1.3, 0.45, 1.3), headCF * CFrame.new(0, 0.7, -0.05), hairC)
 		if look.hair == "long" or look.hair == "pigtails" then
 			p("HairBack", Vector3.new(1.26, 1.6, 0.36), headCF * CFrame.new(0, -0.15, -0.6), hairC)
 		elseif look.hair == "bun" then
-			p("Bun", Vector3.new(0.7, 0.7, 0.7), headCF * CFrame.new(0, 1.05, -0.35), hairC, nil, Enum.PartType.Ball)
+			p("Bun", Vector3.new(0.72, 0.5, 0.72), headCF * CFrame.new(0, 1.05, -0.3) * CFrame.Angles(0, math.rad(45), 0), hairC)
+			p("Bun", Vector3.new(0.5, 0.36, 0.5), headCF * CFrame.new(0, 1.36, -0.3), hairC)
 		end
 	end
 	if look.acc == "sunglasses" then
@@ -14482,29 +15074,6 @@ local function seatedFigure(f, data, look, n)
 	end
 	local _ = n
 	return m
-end
-
-local function buildPeople()
-	local f = New("Folder", { Name = "People", Parent = World.folder })
-	World.npcs = {}
-	local n = 0
-	for _, st in ipairs(Hub.STAFF) do
-		n = n + 1
-		seatedFigure(f, { pos = st.pos, yaw = st.yaw, seatY = st.seatY, work = st.desk ~= nil }, randomLook(n), n)
-	end
-	for _, st in ipairs(Hub.SITTERS) do
-		n = n + 1
-		seatedFigure(f, st, randomLook(n), n)
-	end
-	for i, path in ipairs(Hub.WALKS) do
-		local count = (i <= 4) and 3 or 1
-		for k = 1, count do
-			n = n + 1
-			local look = randomLook(n)
-			local fig = People.new(f, c3(look.top), 1, "dancer", n, look)
-			table.insert(World.npcs, { fig = fig, data = { path = path, speed = 5 + ((n * 37) % 30) / 10, offset = (k - 1) / count }, ph = n * 1.7 })
-		end
-	end
 end
 
 local function pathLength(path)
@@ -14529,22 +15098,94 @@ local function alongPath(path, dist)
 end
 World.alongPath = alongPath
 
-local function animatePeople(t)
+local streetTrip = Hub.streetTrip
+
+local function buildPeople()
+	local f = New("Folder", { Name = "People", Parent = World.folder })
+	World.npcs = {}
+	local n = 0
+	for _, st in ipairs(Hub.STAFF) do
+		n = n + 1
+		seatedFigure(f, { pos = st.pos, yaw = st.yaw, seatY = st.seatY, work = st.desk ~= nil }, randomLook(n), n)
+	end
+	for _, st in ipairs(Hub.SITTERS) do
+		n = n + 1
+		seatedFigure(f, st, randomLook(n), n)
+	end
+	local rng = Random.new(77)
+	-- indoor: walk to the coffee bar / the arcade, wait there, walk back, wait
+	for _, path in ipairs(Hub.WALKS) do
+		n = n + 1
+		local look = randomLook(n)
+		table.insert(World.npcs, { fig = People.new(f, c3(look.top), 1, "dancer", n, look), kind = "loop", path = path, len = pathLength(path), speed = 4.5, pause = 4, t = rng:NextNumber(0, 10), ph = n * 1.7 })
+	end
+	-- street: from door to door
+	for k = 1, 14 do
+		n = n + 1
+		local look = randomLook(n)
+		local npc = { fig = People.new(f, c3(look.top), 1, "dancer", n, look), kind = "street", speed = 4.6 + rng:NextNumber() * 1.8, ph = n * 1.7, rng = Random.new(n * 13) }
+		npc.door = Hub.DOORS[(k % #Hub.DOORS) + 1]
+		npc.wait = rng:NextNumber(0, 12) -- some start inside
+		table.insert(World.npcs, npc)
+	end
+end
+
+local function animatePeople(t, dt)
+	World.crossing = false
 	for _, npc in ipairs(World.npcs or {}) do
-		local d = npc.data
-		local len = d.len or pathLength(d.path)
-		d.len = len
-		-- walk the path forward and back
-		local dist = ((t * d.speed) + (d.offset or 0) * len * 2) % (len * 2)
-		local back = dist > len
-		if back then
-			dist = len * 2 - dist
+		if npc.kind == "loop" then
+			-- there and back with a pause at both ends
+			npc.t = npc.t + dt
+			local walk = npc.len / npc.speed
+			local cycle = (walk + npc.pause) * 2
+			local u = npc.t % cycle
+			local dist, dirSign, moving
+			if u < walk then
+				dist, dirSign, moving = u * npc.speed, 1, true
+			elseif u < walk + npc.pause then
+				dist, dirSign, moving = npc.len, 1, false
+			elseif u < walk * 2 + npc.pause then
+				dist, dirSign, moving = npc.len - (u - walk - npc.pause) * npc.speed, -1, true
+			else
+				dist, dirSign, moving = 0, -1, false
+			end
+			local pos, dir = alongPath(npc.path, dist)
+			dir = dir * dirSign
+			npc.fig:update(O + pos, math.atan2(dir.X, dir.Z), { t = t + npc.ph, beat = 0, energy = 0, walking = moving, move = "idle" })
+		else
+			if npc.wait > 0 then
+				-- inside a shop
+				npc.wait = npc.wait - dt
+				if npc.visible ~= false then
+					npc.visible = false
+					npc.fig:setVisible(false)
+				end
+				if npc.wait <= 0 then
+					local to = npc.door
+					while to == npc.door do
+						to = Hub.DOORS[npc.rng:NextInteger(1, #Hub.DOORS)]
+					end
+					npc.path = streetTrip(npc.door, to)
+					npc.len = pathLength(npc.path)
+					npc.dist = 0
+					npc.door = to
+				end
+			else
+				if npc.visible == false then
+					npc.visible = true
+					npc.fig:setVisible(true)
+				end
+				npc.dist = npc.dist + dt * npc.speed
+				local pos, dir = alongPath(npc.path, npc.dist)
+				npc.fig:update(O + pos, math.atan2(dir.X, dir.Z), { t = t + npc.ph, beat = 0, energy = 0, walking = true })
+				if pos.Z > 62 and pos.Z < 90 then
+					World.crossing = true
+				end
+				if npc.dist >= npc.len then
+					npc.wait = npc.rng:NextNumber(4, 14)
+				end
+			end
 		end
-		local pos, dir = alongPath(d.path, dist)
-		if back then
-			dir = -dir
-		end
-		npc.fig:update(O + pos, math.atan2(dir.X, dir.Z), { t = t + npc.ph, beat = 0, energy = 0, walking = true })
 	end
 end
 
@@ -14621,31 +15262,36 @@ end
 local function buildTraffic()
 	local f = New("Folder", { Name = "Traffic", Parent = World.folder })
 	World.traffic = {}
-	local lanes = { { lanePath(ST.laneEast, true) }, { lanePath(ST.laneWest, false) } }
-	for _, lane in ipairs(lanes) do
-		lane.len = pathLength(lane[1])
-	end
-	local CAR_COLORS = { Color3.fromRGB(200, 60, 60), Color3.fromRGB(60, 110, 200), Color3.fromRGB(230, 230, 230), Color3.fromRGB(40, 40, 46), Color3.fromRGB(80, 160, 110), Color3.fromRGB(150, 150, 160) }
-	local fleet = {
-		{ "car" }, { "taxi" }, { "bus" }, { "car" }, { "van" }, { "tourbus" }, { "car" }, { "taxi" },
+	-- one queue per lane: every vehicle of a lane drives at the same speed with a fixed gap, so nobody
+	-- drives through another; a lane waits in front of the zebra crossing while people cross
+	local lanes = {
+		{ path = lanePath(ST.laneEast, true), z = ST.laneEast, east = true, fleet = { "car", "bus", "taxi", "car" } },
+		{ path = lanePath(ST.laneWest, false), z = ST.laneWest, east = false, fleet = { "taxi", "car", "tourbus", "van" } },
 	}
-	for i, v in ipairs(fleet) do
-		local kind = v[1]
-		local color, label = CAR_COLORS[i % #CAR_COLORS + 1], nil
-		if kind == "taxi" then
-			color = Color3.fromRGB(250, 200, 40)
-		elseif kind == "bus" then
-			color, label = Color3.fromRGB(220, 230, 240), "CITY LINE 7"
-		elseif kind == "van" then
-			color = Color3.fromRGB(240, 240, 236)
+	local CAR_COLORS = { Color3.fromRGB(200, 60, 60), Color3.fromRGB(60, 110, 200), Color3.fromRGB(230, 230, 230), Color3.fromRGB(40, 40, 46), Color3.fromRGB(80, 160, 110), Color3.fromRGB(150, 150, 160) }
+	local n = 0
+	for li, lane in ipairs(lanes) do
+		lane.len = pathLength(lane.path)
+		lane.dist = li * 37
+		lane.speed = 20
+		for k, kind in ipairs(lane.fleet) do
+			n = n + 1
+			local color, label = CAR_COLORS[n % #CAR_COLORS + 1], nil
+			if kind == "taxi" then
+				color = Color3.fromRGB(250, 200, 40)
+			elseif kind == "bus" then
+				color, label = Color3.fromRGB(220, 230, 240), "CITY LINE 7"
+			elseif kind == "van" then
+				color = Color3.fromRGB(240, 240, 236)
+			end
+			local veh = vehicle(f, kind, color, label)
+			veh.kind = kind
+			veh.lane = lane
+			veh.offset = (k - 1) / #lane.fleet * lane.len
+			table.insert(World.traffic, veh)
 		end
-		local veh = vehicle(f, kind, color, label)
-		veh.kind = kind
-		veh.lane = lanes[(i % 2) + 1]
-		veh.offset = (i - 1) / #fleet
-		veh.speed = (kind == "bus" or kind == "tourbus") and 18 or (24 + (i % 3) * 4)
-		table.insert(World.traffic, veh)
 	end
+	World.lanes = lanes
 	World.trafficFolder = f
 end
 
@@ -14660,23 +15306,38 @@ local function tourBusLabel()
 	return "NOVA RAY | STARDUST WORLD TOUR", Color3.fromRGB(255, 120, 180)
 end
 
-local function animateTraffic(t)
+local function animateTraffic(t, dt)
+	-- does a lane have to wait at the zebra crossing?
+	for _, lane in ipairs(World.lanes or {}) do
+		local wait, onZebra = false, false
+		if World.crossing then
+			for _, v in ipairs(World.traffic) do
+				if v.lane == lane and v.pos and math.abs(v.pos.Z - lane.z) < 3 then
+					local x = v.pos.X
+					local approaching = lane.east and (x > -34 and x < -8) or (not lane.east and x < 34 and x > 8)
+					if approaching then
+						wait = true
+					elseif math.abs(x) <= 8 then
+						onZebra = true -- a car already on the crossing drives on and clears it
+					end
+				end
+			end
+		end
+		if onZebra then
+			wait = false
+		end
+		if not wait then
+			lane.dist = lane.dist + dt * lane.speed
+		end
+	end
 	for _, v in ipairs(World.traffic or {}) do
 		local lane = v.lane
-		local dist = (t * v.speed + v.offset * lane.len) % lane.len
+		local dist = (lane.dist + v.offset) % lane.len
 		if v.kind == "tourbus" and (not v.labelled or math.floor(t) % 20 == 0) then
-			-- (re)paint the tour bus now and then
+			-- (re)paint the tour bus with the running tour
 			local txt, col = tourBusLabel()
 			if v.labelText ~= txt then
 				v.labelText = txt
-				if v.label then
-					v.label:Destroy()
-				end
-				for _, pp in ipairs(v.parts) do
-					if pp[1].Name == "Body" then
-						pp[1].Color = Color3.fromRGB(26, 26, 32)
-					end
-				end
 				local lab = vehicle(World.trafficFolder, "tourbus", col, txt)
 				v.model:Destroy()
 				v.model, v.parts = lab.model, lab.parts
@@ -14688,7 +15349,8 @@ local function animateTraffic(t)
 			end
 			v.labelled = true
 		end
-		local pos, dir = alongPath(lane[1], dist)
+		local pos, dir = alongPath(lane.path, dist)
+		v.pos = pos
 		local cf = CFrame.lookAt(O + pos, O + pos + Vector3.new(dir.X, 0, dir.Z))
 		for _, pp in ipairs(v.parts) do
 			pp[1].CFrame = cf * pp[2]
@@ -15023,8 +15685,10 @@ function World.start(app)
 			peopleT = peopleT + dt
 			if peopleT > 1 / 30 then
 				peopleT = 0
-				animatePeople(t)
-				animateTraffic(t)
+				local step = math.min(0.2, World.lastStep and (t - World.lastStep) or 0)
+				World.lastStep = t
+				animatePeople(t, step)
+				animateTraffic(t, step)
 			end
 			-- the meeting prompt only shows while sitting
 			local pr = World.prompts.meeting
@@ -15042,7 +15706,7 @@ end
 
 return World
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX6A20E3CCAF28444B9CA09B9D25B0C7A2"><Properties><string name="Name">WorldMap3D</string><ProtectedString name="Source"><![CDATA[-- 3D world map table used by the tour planner. Countries light up on hover and can be clicked.
+<Item class="ModuleScript" referent="RBX04BB0F020896413C91FEEE49B89AB9D6"><Properties><string name="Name">WorldMap3D</string><ProtectedString name="Source"><![CDATA[-- 3D world map table used by the tour planner. Countries light up on hover and can be clicked.
 -- Built from Natural Earth borders (see Data/WorldMap.lua). It lives far away from the stage area.
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -15444,7 +16108,7 @@ end
 return WM
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="ModuleScript" referent="RBXD09E12F344F44EEC83254B8DD7E54AF0"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[-- HEADLINER :: global tuning values
+<Item class="ModuleScript" referent="RBXCDEDC6FF58C541BA886B2D8317A15340"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[-- HEADLINER :: global tuning values
 local Config = {}
 
 Config.GAME_TITLE = "HEADLINER"
@@ -15540,7 +16204,7 @@ Config.MARKETING = {
 
 return Config
 ]]></ProtectedString></Properties></Item>
-<Item class="Folder" referent="RBX41667288C82744E9ADAC729B5B2E9AED"><Properties><string name="Name">Data</string></Properties><Item class="ModuleScript" referent="RBXD65F6D7CCB6D4F9982DE69D22C07C33D"><Properties><string name="Name">Achievements</string><ProtectedString name="Source"><![CDATA[-- Goals. Checked after every show / tour.
+<Item class="Folder" referent="RBX8BFF8E8D0B874C76A1F09D3584418B73"><Properties><string name="Name">Data</string></Properties><Item class="ModuleScript" referent="RBXB116B1EBF61F4F9B8913AA9FAE60B6FC"><Properties><string name="Name">Achievements</string><ProtectedString name="Source"><![CDATA[-- Goals. Checked after every show / tour.
 local Achievements = {
 	list = {
 		{ id = "first_show", name = "Opening Night", desc = "Play your first show." },
@@ -15568,7 +16232,7 @@ for _, a in ipairs(Achievements.list) do
 end
 return Achievements
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXFCC7AF248F9944D88EC83F785B6994D9"><Properties><string name="Name">Artists</string><ProtectedString name="Source"><![CDATA[-- Fictional artists. fans = starting fan count per region.
+<Item class="ModuleScript" referent="RBX978EFADC5D874FB7A7612C5D63CD31D2"><Properties><string name="Name">Artists</string><ProtectedString name="Source"><![CDATA[-- Fictional artists. fans = starting fan count per region.
 -- skill (0-100) = live performance quality. pricePower = how much fans pay compared to an average act.
 -- members: 1 = solo, 2+ = band/group. level = label level needed to sign. starter = can be picked for free at game start.
 
@@ -15705,7 +16369,7 @@ end
 
 return Artists
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXEC6DDA2F367A47D68D0D8F7063963A93"><Properties><string name="Name">Audio</string><ProtectedString name="Source"><![CDATA[-- Roblox asset IDs of the uploaded audio files (folder audio/ in the project, made by tools/music/make_audio.py).
+<Item class="ModuleScript" referent="RBX4A2500B3320A4ACA9BD8D5B6A6DEDE16"><Properties><string name="Name">Audio</string><ProtectedString name="Source"><![CDATA[-- Roblox asset IDs of the uploaded audio files (folder audio/ in the project, made by tools/music/make_audio.py).
 -- 0 = not uploaded yet: the game simply stays silent for that part.
 -- Every artist file holds 12 songs of 30 s (song n starts at (n - 1) * 30 s), see Data/AudioMap.lua.
 local Audio = {}
@@ -15729,7 +16393,7 @@ Audio.IDS = {
 
 return Audio
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX9E095439A64948ADADBFE171F61FEBE5"><Properties><string name="Name">AudioMap</string><ProtectedString name="Source"><![CDATA[-- Generated by tools/music/make_audio.py: where each sound sits inside the uploaded files (seconds).
+<Item class="ModuleScript" referent="RBX974D8E0DB1854B9A98D903ED2CB80533"><Properties><string name="Name">AudioMap</string><ProtectedString name="Source"><![CDATA[-- Generated by tools/music/make_audio.py: where each sound sits inside the uploaded files (seconds).
 local AudioMap = {}
 AudioMap.SONG_LEN = 30
 AudioMap.BALLAD_INDEX = 4
@@ -15755,7 +16419,7 @@ AudioMap.SFX = {
 }
 return AudioMap
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX447876551E1E4774994C695E9DADFB6B"><Properties><string name="Name">Countries</string><ProtectedString name="Source"><![CDATA[-- Countries and venues.
+<Item class="ModuleScript" referent="RBXC79666544841480FA231A15620E9E870"><Properties><string name="Name">Countries</string><ProtectedString name="Source"><![CDATA[-- Countries and venues.
 -- Venue names are parody names inspired by real venues. Capacities follow the real venues'
 -- concert capacities (source: Wikipedia infoboxes, checked Nov 2026). Venues marked "fictional" are made up.
 --
@@ -16244,7 +16908,7 @@ end
 
 return Countries
 ]]></ProtectedString></Properties></Item>
-<Item class="Folder" referent="RBX1EB60AAB660944DB992D47FD2BD16B70"><Properties><string name="Name">MenuCity</string></Properties><Item class="ModuleScript" referent="RBX8B77FBFEAC0C4B4B82E9B196840259F5"><Properties><string name="Name">lanxus</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="Folder" referent="RBX59A733BF1BD84D55B9BD2E6F6F7E1C03"><Properties><string name="Name">MenuCity</string></Properties><Item class="ModuleScript" referent="RBX2A767FC60493449E9D1253DD117E9B2D"><Properties><string name="Name">lanxus</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -17197,7 +17861,7 @@ return {
 	A = { dom = { -3472, -646 }, bridge = { -2455, -424 } },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXF67225B3717F424E9EF97F9DA482C924"><Properties><string name="Name">madrid</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBX94220F5C029949E3A56710B80ECBD40B"><Properties><string name="Name">madrid</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -17706,7 +18370,7 @@ return {
 	A = {  },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX92A3196DEE0C4459B3BA3E5A70FC6D73"><Properties><string name="Name">msg</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBX5CC8AFC6E39A4DBE92363B42D126B256"><Properties><string name="Name">msg</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z (map turned -29 deg)
 return {
@@ -18307,7 +18971,7 @@ return {
 	A = { empire = { 1365, -233 }, penn = { -238, 159 } },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX9D1493CCFB8D45EEBF824162C1DBFFAA"><Properties><string name="Name">o3</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBX3472083188F04C5D86EDDF663273A376"><Properties><string name="Name">o3</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -18897,7 +19561,7 @@ return {
 	A = {  },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX033B21D1F67E42F4AD2B5C0540B00FB4"><Properties><string name="Name">paris</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBX1FA4634B257F4E6AA5718EFDE78EC4D8"><Properties><string name="Name">paris</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -19585,7 +20249,7 @@ return {
 	A = {  },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXBAF7C3FF91274F99B3D647E5FD0F98E4"><Properties><string name="Name">wembley</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBX51A0152CAC0D4AA885A414C1EB8D2E8F"><Properties><string name="Name">wembley</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -20005,7 +20669,7 @@ return {
 	A = { station = { 12, -1636 } },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX9E937662232342608B14603904B00D87"><Properties><string name="Name">zurich</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBX9E4CA89A907D4037ACD93EFDE2C627C0"><Properties><string name="Name">zurich</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -20641,7 +21305,7 @@ return {
 }
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="ModuleScript" referent="RBX0A0FDEF998F046A3834C1C6293DDBDE6"><Properties><string name="Name">Regions</string><ProtectedString name="Source"><![CDATA[-- World regions. Artists have a fan count per region.
+<Item class="ModuleScript" referent="RBXAC59A6D7F3F14887A1C75859D1E2475B"><Properties><string name="Name">Regions</string><ProtectedString name="Source"><![CDATA[-- World regions. Artists have a fan count per region.
 local Regions = {
 	list = {
 		{ id = "EU", name = "Europe" },
@@ -20660,7 +21324,7 @@ end
 
 return Regions
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX88EDED3613D0436DAB95087D51C37638"><Properties><string name="Name">Reviews</string><ProtectedString name="Source"><![CDATA[-- Review quotes by star rating. {artist} {venue} {city} are replaced.
+<Item class="ModuleScript" referent="RBX2CCAACDDF52C40B6B3AD81FCDE39FDF5"><Properties><string name="Name">Reviews</string><ProtectedString name="Source"><![CDATA[-- Review quotes by star rating. {artist} {venue} {city} are replaced.
 return {
 	[1] = {
 		"\"A night to forget. {artist} looked lost at {venue}.\"",
@@ -20685,7 +21349,7 @@ return {
 	},
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX9EF9E78DAEFF466CB9EB79D22D976928"><Properties><string name="Name">Rivals</string><ProtectedString name="Source"><![CDATA[-- Fictional rival tours for the "Top Grossing Tours" chart. Beat them all!
+<Item class="ModuleScript" referent="RBXDE3D3F810F5E451D84D824C8234A4610"><Properties><string name="Name">Rivals</string><ProtectedString name="Source"><![CDATA[-- Fictional rival tours for the "Top Grossing Tours" chart. Beat them all!
 return {
 	{ artist = "Aurora Vale", tour = "The Celestial Tour", gross = 520000000, shows = 120, attendance = 6100000 },
 	{ artist = "The Midnight Kings", tour = "Crown & Glory Tour", gross = 410000000, shows = 88, attendance = 4200000 },
@@ -20702,7 +21366,7 @@ return {
 	{ artist = "The Weekend Plans", tour = "Small Rooms Tour", gross = 600000, shows = 24, attendance = 30000 },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX339C060D68C549E6B51F775466EDCC54"><Properties><string name="Name">Social</string><ProtectedString name="Source"><![CDATA[-- Fan posts for the SOCIAL feed. Placeholders: {artist} {venue} {city} {country} {tour} {song} {price} {tag} {item} {label}
+<Item class="ModuleScript" referent="RBXE5E9FEB946694FDA8D164A4161D76A87"><Properties><string name="Name">Social</string><ProtectedString name="Source"><![CDATA[-- Fan posts for the SOCIAL feed. Placeholders: {artist} {venue} {city} {country} {tour} {song} {price} {tag} {item} {label}
 -- mood: 1 = positive, 0 = neutral, -1 = negative. photo = the post shows a concert photo.
 local Social = {}
 
@@ -20942,7 +21606,7 @@ end
 
 return Social
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX4C8F5C73D02043D6BE508E3C924313F9"><Properties><string name="Name">SocialMore</string><ProtectedString name="Source"><![CDATA[-- More fan posts (merged into Social.POSTS by Data/Social.lua). Same format: { mood, text }.
+<Item class="ModuleScript" referent="RBXC08F5D17F9864CD283E8B4A50512A001"><Properties><string name="Name">SocialMore</string><ProtectedString name="Source"><![CDATA[-- More fan posts (merged into Social.POSTS by Data/Social.lua). Same format: { mood, text }.
 -- Placeholders: {artist} {venue} {city} {country} {tour} {song} {price} {tag} {item} {label}
 return {
 	announce = {
@@ -21110,7 +21774,7 @@ return {
 	},
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX447638E52FD04EB5BCAA2D56C3BB4FA3"><Properties><string name="Name">StageItems</string><ProtectedString name="Source"><![CDATA[-- Stage design catalog.
+<Item class="ModuleScript" referent="RBXCC1FEA8D52784DD49E3D97BC06ADE023"><Properties><string name="Name">StageItems</string><ProtectedString name="Source"><![CDATA[-- Stage design catalog.
 -- cost  = production cost per show (crew, transport, power)
 -- pts   = production value points (more points = more impressive show)
 -- tags  = used for genre bonuses
@@ -21233,6 +21897,8 @@ StageItems.list = {
 	{ id = "lighthouse", name = "Lighthouse", cat = "Set", cost = 4800, pts = 10, tags = { "spectacle", "lights" }, mount = "floor", deck = false, desc = "Striped lighthouse whose beam sweeps across the crowd." },
 	{ id = "cloud", name = "Floating Cloud", cat = "Set", cost = 2200, pts = 6, tags = { "intimate", "atmosphere" }, mount = "rig", deck = false, desc = "Fluffy cloud hanging in the rig, glowing from inside." },
 	{ id = "rainbow", name = "Rainbow Arch", cat = "Set", cost = 3400, pts = 8, tags = { "party", "spectacle" }, mount = "floor", deck = false, size = { w = 30, minW = 16, maxW = 80 }, desc = "Seven neon tubes in rainbow colours, standing on two clouds." },
+	{ id = "column", name = "Grand Column", cat = "Set", cost = 1200, pts = 4, tags = { "intimate", "spectacle" }, mount = "floor", deck = false, desc = "White column with a lit top. Line up a few for a temple or a palace set." },
+	{ id = "giantguitar", name = "Giant Guitar", cat = "Set", cost = 3800, pts = 9, tags = { "band", "retro", "spectacle" }, mount = "floor", deck = false, desc = "A guitar as tall as a house, leaning on its stand, with glowing strings." },
 	{ id = "palm", name = "Neon Palm", cat = "Set", cost = 800, pts = 3, tags = { "party", "retro" }, mount = "floor", deck = false, desc = "Glowing palm tree." },
 	-- Decor: small things that make a stage feel like a place
 	{ id = "sofa", name = "Sofa", cat = "Decor", cost = 500, pts = 2, tags = { "intimate" }, mount = "floor", deck = false, desc = "Cosy sofa for a living-room set." },
@@ -21246,6 +21912,11 @@ StageItems.list = {
 	{ id = "streetlamp", name = "Street Lamp", cat = "Decor", cost = 300, pts = 2, tags = { "retro" }, mount = "floor", deck = false, desc = "Old-style street lamp." },
 	{ id = "roadcase", name = "Road Cases", cat = "Decor", cost = 150, pts = 0, tags = { "band" }, mount = "floor", deck = false, desc = "Stacked flight cases, the rock'n'roll look." },
 	{ id = "balloonarch", name = "Balloon Arch", cat = "Decor", cost = 700, pts = 3, tags = { "party" }, mount = "floor", deck = false, size = { w = 16, minW = 8, maxW = 40 }, desc = "Arch of balloons." },
+	{ id = "drapes", name = "Velvet Drapes", cat = "Decor", cost = 600, pts = 2, tags = { "intimate", "retro" }, mount = "floor", deck = false, desc = "Red velvet curtains on a frame, tied back at the sides. A little theatre on the stage." },
+	{ id = "barrels", name = "Barrels and Crates", cat = "Decor", cost = 180, pts = 1, tags = { "band", "retro" }, mount = "floor", deck = false, desc = "Old wooden barrels and crates for a saloon or harbour look." },
+	{ id = "bookshelf", name = "Bookshelf", cat = "Decor", cost = 350, pts = 1, tags = { "intimate" }, mount = "floor", deck = false, desc = "Tall shelf with books, records and a lamp: a living-room set." },
+	{ id = "lanternline", name = "Lantern Line", cat = "Decor", cost = 450, pts = 2, tags = { "intimate", "party" }, mount = "floor", deck = false, desc = "Two poles with glowing paper lanterns on a line between them." },
+	{ id = "golddiscs", name = "Gold Disc Wall", cat = "Decor", cost = 800, pts = 2, tags = { "retro" }, mount = "floor", deck = false, desc = "Framed gold and platinum records on a stand: the artist's hits." },
 	{ id = "banner", name = "Logo Banner", cat = "Decor", cost = 500, pts = 2, tags = {}, mount = "rig", deck = false, desc = "Hanging fabric banner with the artist's name." },
 }
 
@@ -21404,7 +22075,7 @@ end
 
 return StageItems
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX7FF814A364264B03982C3008CFAC58F1"><Properties><string name="Name">WorldMap</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/gen_worldmap.py from Natural Earth borders (world-atlas 2.0.2, public domain).
+<Item class="ModuleScript" referent="RBX58F92BAC8A95486FB48870154493956F"><Properties><string name="Name">WorldMap</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/gen_worldmap.py from Natural Earth borders (world-atlas 2.0.2, public domain).
 -- land: 1 degree grid (W x H). countries: 0.5 degree grid (CW x CH). Latitude 80N..58S.
 -- rects = { row, col, width, height } in grid cells (0-based).
 return {
@@ -21453,7 +22124,7 @@ return {
 }
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="Folder" referent="RBXDC87CCD6051D4ABAA394F5E21B956DFC"><Properties><string name="Name">Logic</string></Properties><Item class="ModuleScript" referent="RBXACEFD884A1A54EE1A8FB53921C596077"><Properties><string name="Name">Actions</string><ProtectedString name="Source"><![CDATA[-- Everything that changes the game state, by name. The server runs these on the real game state
+<Item class="Folder" referent="RBX878834E6319F4F6DBECBCE048831DA82"><Properties><string name="Name">Logic</string></Properties><Item class="ModuleScript" referent="RBX1BD64788EFF3466786F5578C5FC3FA97"><Properties><string name="Name">Actions</string><ProtectedString name="Source"><![CDATA[-- Everything that changes the game state, by name. The server runs these on the real game state
 -- (the client only asks for them). Pure Lua (no Roblox APIs), so the logic tests can run it too.
 -- Actions.run(state, name, args) -> ok, message, data
 local Root = script:FindFirstAncestor("Headliner")
@@ -21933,7 +22604,7 @@ end
 local _ = Artists
 return Actions
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX0BEA45001D214948B6D38D1433B3E4F8"><Properties><string name="Name">GameState</string><ProtectedString name="Source"><![CDATA[-- Game state: everything that gets saved. Pure Lua (no Roblox APIs).
+<Item class="ModuleScript" referent="RBX1CD296FA9A3649888350853754B6A8AF"><Properties><string name="Name">GameState</string><ProtectedString name="Source"><![CDATA[-- Game state: everything that gets saved. Pure Lua (no Roblox APIs).
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local Countries = require(Root.Data.Countries)
@@ -22966,7 +23637,7 @@ end
 
 return GS
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXA8F96C3C46234B28A118A74D34B2DEE8"><Properties><string name="Name">Sim</string><ProtectedString name="Source"><![CDATA[-- Simulation formulas: demand, ticket sales, production value, show results.
+<Item class="ModuleScript" referent="RBX88385FADBBD140F2AD860608B79F3E48"><Properties><string name="Name">Sim</string><ProtectedString name="Source"><![CDATA[-- Simulation formulas: demand, ticket sales, production value, show results.
 -- Pure Lua (no Roblox APIs) so it can be unit tested outside of Roblox.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
@@ -23491,7 +24162,7 @@ end
 
 return Sim
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX8AC87B58357A4AF39CEE9712530F9D44"><Properties><string name="Name">Social</string><ProtectedString name="Source"><![CDATA[-- Generates fan posts for the SOCIAL feed. Pure Lua (no Roblox APIs).
+<Item class="ModuleScript" referent="RBX5912A5E3DCEF48F196FBB1319209E50B"><Properties><string name="Name">Social</string><ProtectedString name="Source"><![CDATA[-- Generates fan posts for the SOCIAL feed. Pure Lua (no Roblox APIs).
 local Root = script:FindFirstAncestor("Headliner")
 local Data = require(Root.Data.Social)
 local Countries = require(Root.Data.Countries)
@@ -23692,7 +24363,7 @@ end
 
 return Social
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXB033CA2BC778450299BB22C612C15215"><Properties><string name="Name">Util</string><ProtectedString name="Source"><![CDATA[-- Small helpers (pure Lua, no Roblox APIs)
+<Item class="ModuleScript" referent="RBX107754205E8C41D4BDABB26D7DBB427A"><Properties><string name="Name">Util</string><ProtectedString name="Source"><![CDATA[-- Small helpers (pure Lua, no Roblox APIs)
 local Util = {}
 
 function Util.clamp(x, a, b)
@@ -23942,7 +24613,7 @@ end
 return Util
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="Folder" referent="RBX2F7093FF704946EB94B2A0FC4C78BB8D"><Properties><string name="Name">World</string></Properties><Item class="ModuleScript" referent="RBXAC342FB4C26E4950AF8757DE88C46BF0"><Properties><string name="Name">Hub</string><ProtectedString name="Source"><![CDATA[-- The label building "Starlight Records" and its little street: the walkable hub.
+<Item class="Folder" referent="RBX72FFB9CF5664475281EAA20DFBE96F7A"><Properties><string name="Name">World</string></Properties><Item class="ModuleScript" referent="RBX50DCAAED2AAC4DB1B28DB53D14E8B9C3"><Properties><string name="Name">Hub</string><ProtectedString name="Source"><![CDATA[-- The label building "Starlight Records" and its little street: the walkable hub.
 -- Built once by the server (so seats and prompts work); the client adds name tags, posters, people,
 -- the table map and the charts screen (Client/World.lua).
 -- Style: bright and friendly (daylight, light wood, white walls, painted colour accents, no neon strips).
@@ -23974,15 +24645,49 @@ Hub.STAFF = {
 -- the street: straight from XW to XE, bends away around the corners CW / CE (radius 20 inner sidewalk .. 76)
 Hub.STREET = { xw = -130, xe = 170, cw = Vector3.new(-130, 0, 124), ce = Vector3.new(170, 0, 124), laneEast = 80, laneWest = 74.5 }
 -- walking paths stay in the free lanes of the sidewalks (trees, lamps, benches and tables are elsewhere)
+-- indoor walks (with a pause at each end); the street people walk from door to door (Hub.DOORS)
+Hub.LANES = { front = { 52.4, 55.2 }, far = { 96, 98.2 } }
 Hub.WALKS = {
-	{ Vector3.new(-124, 0, 52.4), Vector3.new(164, 0, 52.4) },
-	{ Vector3.new(164, 0, 55.2), Vector3.new(-124, 0, 55.2) },
-	{ Vector3.new(-124, 0, 96), Vector3.new(164, 0, 96) },
-	{ Vector3.new(164, 0, 98.2), Vector3.new(-124, 0, 98.2) },
 	{ Vector3.new(-6, 0, 22), Vector3.new(28, 0, 22), Vector3.new(28, 0, 25.4) }, -- office: to the coffee bar
 	{ Vector3.new(-70, 0, 12.5), Vector3.new(-62, 0, 18), Vector3.new(-48, 0, 19.5) }, -- lounge
 }
+-- street people have a goal: they come out of a door, walk to another door (crossing at the zebra
+-- crossing if needed), go in, stay a while, come out again
+function Hub.streetTrip(from, to)
+	local lanes = Hub.LANES
+	local dirX = (to.pos.X >= from.pos.X) and 1 or -1
+	local function lane(side, d)
+		return lanes[side][(d > 0) and 1 or 2]
+	end
+	local pts = { from.pos }
+	if from.side == to.side then
+		local z = lane(from.side, dirX)
+		table.insert(pts, Vector3.new(from.pos.X, 0, z))
+		table.insert(pts, Vector3.new(to.pos.X, 0, z))
+	else
+		local cx = (from.side == "front") and -2.2 or 2.2
+		local z1 = lane(from.side, (cx >= from.pos.X) and 1 or -1)
+		local z2 = lane(to.side, (to.pos.X >= cx) and 1 or -1)
+		table.insert(pts, Vector3.new(from.pos.X, 0, z1))
+		table.insert(pts, Vector3.new(cx, 0, z1))
+		table.insert(pts, Vector3.new(cx, 0, z2))
+		table.insert(pts, Vector3.new(to.pos.X, 0, z2))
+	end
+	table.insert(pts, to.pos)
+	return pts
+end
+
 Hub.CAFE_TABLES = { -84, -72, -60 }
+-- doors people walk to: shops across the street (door = right part of each shop) and on the label side
+Hub.SHOP_ROW = { { -130, -90 }, { -90, -46 }, { -46, -6 }, { -6, 34 }, { 34, 76 }, { 76, 120 }, { 120, 170 } }
+Hub.DOORS = {
+	{ pos = Vector3.new(0, 0, 47.5), side = "front", name = "label" },
+	{ pos = Vector3.new(-110, 0, 48.6), side = "front", name = "flats west" },
+	{ pos = Vector3.new(146, 0, 48.6), side = "front", name = "hotel" },
+}
+for _, sh in ipairs(Hub.SHOP_ROW) do
+	table.insert(Hub.DOORS, { pos = Vector3.new(sh[2] - 4.5, 0, 103.6), side = "far" })
+end
 Hub.SITTERS = {
 	{ pos = Vector3.new(-63, 0, 36.9), yaw = math.pi, seatY = 2.4 }, -- lounge sofa
 	{ pos = Vector3.new(-40, 0, 58.4), yaw = 0, seatY = 2.1 }, -- bus stop
@@ -24283,16 +24988,30 @@ local function shop(parent, x0, x1, o)
 	local cx, iz = (x0 + x1) / 2, z0 + depth
 	local kind = o.kind
 	if kind == "pizza" then
-		box(parent, "Oven", cx - 5, 0.1, iz - 4, cx + 5, 8, iz - 0.06, Color3.fromRGB(170, 90, 60), Enum.Material.Brick)
-		box(parent, "OvenMouth", cx - 2.5, 3, iz - 4.04, cx + 2.5, 5.5, iz - 4, Color3.fromRGB(30, 20, 16), nil, { collide = false })
-		local fire = box(parent, "OvenFire", cx - 1.5, 3.1, iz - 4.08, cx + 1.5, 4.2, iz - 4.04, Color3.fromRGB(255, 140, 40), Enum.Material.Neon, { collide = false })
+		-- back: brick oven against the wall, the counter in front of it (on the door side)
+		local ox = doorX - 9
+		box(parent, "Oven", ox - 5, 0.1, iz - 4, ox + 5, 7.5, iz - 0.06, Color3.fromRGB(170, 90, 60), Enum.Material.Brick)
+		box(parent, "OvenMouth", ox - 2.5, 3, iz - 4.04, ox + 2.5, 5.5, iz - 4, Color3.fromRGB(30, 20, 16), nil, { collide = false })
+		local fire = box(parent, "OvenFire", ox - 1.5, 3.1, iz - 4.08, ox + 1.5, 4.2, iz - 4.04, Color3.fromRGB(255, 140, 40), Enum.Material.Neon, { collide = false })
 		new("PointLight", { Range = 10, Brightness = 1, Color = Color3.fromRGB(255, 150, 60), Shadows = false }, fire)
-		for i, tx in ipairs({ x0 + 7, x0 + 17 }) do
-			box(parent, "PizzaTable", tx - 2, 2.8, z0 + 3, tx + 2, 3.1, z0 + 6.5, (i == 1) and Color3.fromRGB(200, 60, 50) or C.white)
-			box(parent, "PizzaTableLeg", tx - 0.2, 0.1, z0 + 4.55, tx + 0.2, 2.8, z0 + 4.95, C.dark)
-			chair(parent, Vector3.new(tx - 3.4, 0.1, z0 + 4.75), math.pi / 2, Color3.fromRGB(46, 140, 70))
-			chair(parent, Vector3.new(tx + 3.4, 0.1, z0 + 4.75), -math.pi / 2, Color3.fromRGB(46, 140, 70))
-			part(parent, "Pizza", Vector3.new(0.12, 2.4, 2.4), CFrame.new(Vector3.new(tx, 3.16, z0 + 4.75)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(240, 170, 70), nil, { shape = Enum.PartType.Cylinder, collide = false })
+		box(parent, "OvenChimney", ox - 1.2, 7.5, iz - 2.6, ox + 1.2, 11.5, iz - 0.06, Color3.fromRGB(150, 80, 56), Enum.Material.Brick)
+		box(parent, "Counter", ox - 6, 0.1, iz - 7.6, x1 - 2.5, 3.6, iz - 6, C.white)
+		box(parent, "CounterTop", ox - 6.2, 3.6, iz - 7.8, x1 - 2.3, 3.9, iz - 5.8, C.woodDark, Enum.Material.Wood)
+		box(parent, "Register", x1 - 6, 3.9, iz - 7.4, x1 - 4.2, 5, iz - 6.2, C.dark)
+		for k = 0, 2 do
+			part(parent, "PizzaOnCounter", Vector3.new(0.12, 2, 2), CFrame.new(Vector3.new(ox - 4 + k * 2.4, 3.96, iz - 6.8)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(240, 170, 70), nil, { shape = Enum.PartType.Cylinder, collide = false })
+		end
+		local menuBoard = box(parent, "MenuBoard", ox + 2, 8.4, iz - 0.12, ox + 11, 11.2, iz - 0.06, C.dark, nil, { collide = false })
+		sign(menuBoard, Enum.NormalId.Front, "MARGHERITA  DIAVOLA  FUNGHI", C.yellow, Enum.Font.Antique)
+		-- dining: small tables along the shop window, two chairs facing each other (aisle to the door stays free)
+		for i, tx in ipairs({ x0 + 5, x0 + 13.5, x0 + 22 }) do
+			if tx + 3 < ox - 6 then
+				box(parent, "PizzaTable", tx - 1.3, 2.8, z0 + 2.4, tx + 1.3, 3.1, z0 + 5.2, (i % 2 == 1) and Color3.fromRGB(200, 60, 50) or C.white)
+				box(parent, "PizzaTableLeg", tx - 0.2, 0.1, z0 + 3.6, tx + 0.2, 2.8, z0 + 4, C.dark)
+				chair(parent, Vector3.new(tx - 2.6, 0.1, z0 + 3.8), -math.pi / 2, Color3.fromRGB(46, 140, 70))
+				chair(parent, Vector3.new(tx + 2.6, 0.1, z0 + 3.8), math.pi / 2, Color3.fromRGB(46, 140, 70))
+				part(parent, "Pizza", Vector3.new(0.12, 2, 2), CFrame.new(Vector3.new(tx, 3.16, z0 + 3.8)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(240, 170, 70), nil, { shape = Enum.PartType.Cylinder, collide = false })
+			end
 		end
 		-- a big round pizza sign sticking out over the sidewalk
 		box(parent, "PizzaSignArm", x1 - 4.2, 18.6, z0 - 5, x1 - 3.8, 19, z0 - 0.06, C.dark, Enum.Material.Metal)
@@ -24329,17 +25048,33 @@ local function shop(parent, x0, x1, o)
 			box(parent, "AlbumCover", x0 + 4 + col * 5, 5 + row * 3.4, iz - 0.12, x0 + 7 + col * 5, 8 + row * 3.4, iz - 0.06, c, nil, { collide = false })
 		end
 	elseif kind == "music" then
+		-- back wall: a row of guitars on hooks; counter by the door; drum kit on a riser in the window
 		for k = 0, 4 do
-			local gx = x0 + 5 + k * 5
+			local gx = x0 + 5 + k * 4.2
 			local c = ({ Color3.fromRGB(200, 40, 40), C.white, Color3.fromRGB(30, 30, 34), Color3.fromRGB(230, 150, 40), Color3.fromRGB(60, 110, 200) })[k + 1]
-			part(parent, "GuitarBody", Vector3.new(2.4, 3, 0.5), Vector3.new(gx, 4.4, iz - 0.4), c, nil, { shape = Enum.PartType.Ball, collide = false })
-			box(parent, "GuitarNeck", gx - 0.18, 5.6, iz - 0.45, gx + 0.18, 9.6, iz - 0.25, C.woodDark, Enum.Material.Wood, { collide = false })
+			box(parent, "GuitarHook", gx - 0.15, 9.7, iz - 0.6, gx + 0.15, 10, iz - 0.06, C.grey, Enum.Material.Metal, { collide = false })
+			box(parent, "GuitarNeck", gx - 0.18, 6.4, iz - 0.5, gx + 0.18, 9.7, iz - 0.3, C.woodDark, Enum.Material.Wood, { collide = false })
+			part(parent, "GuitarBody", Vector3.new(2.2, 2.8, 0.45), Vector3.new(gx, 5.2, iz - 0.4), c, nil, { shape = Enum.PartType.Ball, collide = false })
 		end
-		box(parent, "Amp", x0 + 4, 0.1, z0 + 3, x0 + 8, 4, z0 + 5.4, C.dark, Enum.Material.Leather)
-		box(parent, "Amp", x0 + 9, 0.1, z0 + 3, x0 + 13, 5.5, z0 + 5.4, C.dark, Enum.Material.Leather)
-		box(parent, "AmpGrille", x0 + 9.4, 0.6, z0 + 2.96, x0 + 12.6, 4.8, z0 + 3, Color3.fromRGB(90, 76, 60), Enum.Material.Fabric, { collide = false })
-		part(parent, "DrumKick", Vector3.new(2, 3, 3), CFrame.new(Vector3.new(x0 + 20, 1.6, z0 + 5)) * CFrame.Angles(0, math.pi / 2, 0), C.white, nil, { shape = Enum.PartType.Cylinder })
-		part(parent, "Cymbal", Vector3.new(0.1, 2.4, 2.4), CFrame.new(Vector3.new(x0 + 22.4, 5, z0 + 4.6)) * CFrame.Angles(0, 0, math.pi / 2), C.yellow, Enum.Material.Metal, { shape = Enum.PartType.Cylinder, collide = false })
+		box(parent, "Counter", doorX - 9, 0.1, iz - 4.5, x1 - 2.5, 3.6, iz - 2.8, C.dark)
+		box(parent, "CounterTop", doorX - 9.2, 3.6, iz - 4.7, x1 - 2.3, 3.9, iz - 2.6, C.woodDark, Enum.Material.Wood)
+		box(parent, "Register", x1 - 6, 3.9, iz - 4.3, x1 - 4.2, 5, iz - 3.1, C.grey)
+		for k = 0, 2 do
+			box(parent, "PedalBox", doorX - 8 + k * 1.6, 3.9, iz - 4.2, doorX - 6.9 + k * 1.6, 4.3, iz - 3.3, ({ C.coral, C.teal, C.yellow })[k + 1], nil, { collide = false })
+		end
+		-- the window display: a drum kit on a riser
+		local dx = x0 + 9
+		box(parent, "Riser", x0 + 3, 0.1, z0 + 1.6, x0 + 15, 1.2, z0 + 7.4, C.dark, Enum.Material.Carpet)
+		part(parent, "KickDrum", Vector3.new(1.8, 3, 3), CFrame.new(Vector3.new(dx, 2.7, z0 + 5)) * CFrame.Angles(0, math.pi / 2, 0), C.white, nil, { shape = Enum.PartType.Cylinder })
+		part(parent, "Snare", Vector3.new(0.8, 1.8, 1.8), CFrame.new(Vector3.new(dx - 2.4, 3.4, z0 + 4)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(200, 200, 210), nil, { shape = Enum.PartType.Cylinder, collide = false })
+		part(parent, "Tom", Vector3.new(0.9, 1.6, 1.6), CFrame.new(Vector3.new(dx + 0.2, 4.6, z0 + 4.4)) * CFrame.Angles(0, 0, math.pi / 2), C.white, nil, { shape = Enum.PartType.Cylinder, collide = false })
+		box(parent, "CymbalStand", dx + 2.9, 1.2, z0 + 3.9, dx + 3.1, 5.4, z0 + 4.1, C.grey, Enum.Material.Metal, { collide = false })
+		part(parent, "Cymbal", Vector3.new(0.1, 2.4, 2.4), CFrame.new(Vector3.new(dx + 3, 5.5, z0 + 4)) * CFrame.Angles(0, 0, math.pi / 2), C.yellow, Enum.Material.Metal, { shape = Enum.PartType.Cylinder, collide = false })
+		box(parent, "DrumStool", dx - 0.7, 1.2, z0 + 6.2, dx + 0.7, 2.6, z0 + 7.2, C.dark)
+		-- amps against the side wall, facing the room
+		box(parent, "Amp", x0 + 0.7, 0.1, z0 + 8, x0 + 3.2, 4.2, z0 + 11, C.dark, Enum.Material.Leather)
+		box(parent, "AmpHead", x0 + 0.9, 4.2, z0 + 8.3, x0 + 3, 5.4, z0 + 10.7, Color3.fromRGB(40, 36, 32), Enum.Material.Leather)
+		box(parent, "AmpGrille", x0 + 3.2, 0.8, z0 + 8.4, x0 + 3.24, 4.8, z0 + 10.6, Color3.fromRGB(90, 76, 60), Enum.Material.Fabric, { collide = false })
 	elseif kind == "bakery" then
 		box(parent, "Display", x0 + 3, 0.1, z0 + 3, x1 - 9, 3.2, z0 + 6, C.white)
 		box(parent, "DisplayGlass", x0 + 3, 3.2, z0 + 3, x1 - 9, 4.6, z0 + 3.2, C.glass, Enum.Material.Glass, { transparency = 0.4, collide = false })
@@ -24475,7 +25210,7 @@ function Hub.build(parentFolder)
 	-- the roll-up door (the client rolls it up once the hall is open)
 	local door = new("Model", { Name = "HallDoor" }, stations)
 	for i = 0, 13 do
-		box(door, "Slat", 40.3, i, 2, 41.7, i + 1, 18, (i % 2 == 0) and Color3.fromRGB(190, 194, 200) or Color3.fromRGB(176, 180, 188), Enum.Material.Metal)
+		box(door, "Slat", 40.3, i, 2.05, 41.7, math.min(13.95, i + 1), 17.95, (i % 2 == 0) and Color3.fromRGB(190, 194, 200) or Color3.fromRGB(176, 180, 188), Enum.Material.Metal)
 	end
 	local doorSign = box(door, "DoorSign", 40.1, 6, 6, 40.26, 8.4, 14, C.yellow, nil, { collide = false })
 	sign(doorSign, Enum.NormalId.Left, "STAGE HALL", C.dark)
@@ -24792,6 +25527,34 @@ function Hub.build(parentFolder)
 			local xa, xb = xr(77), xr(108)
 			box(out, "ContBuilding", math.min(xa, xb), -1, z0, math.max(xa, xb), h, z0 + 36, Color3.fromRGB(rng:NextInteger(160, 220), rng:NextInteger(150, 200), rng:NextInteger(140, 200)), Enum.Material.Brick)
 		end
+		-- life in the side street: shop fronts and windows, trees, lamps, parked cars
+		local out0 = -dir -- the house fronts look towards the road
+		local NAMES = { "DINER", "BOOKS", "FLOWERS", "SNEAKERS", "GYM", "BARBER", "NOODLES", "PHONE REPAIR", "ICE CREAM", "COMICS" }
+		for i = 0, 4 do
+			local z0 = ctr.Z + i * 38
+			local fx = xr(77)
+			local c = ({ C.coral, C.teal, C.purple, C.yellow, Color3.fromRGB(90, 140, 220) })[i % 5 + 1]
+			box(out, "ContShopGlass", math.min(fx, fx + out0 * 0.3), 1.2, z0 + 4, math.max(fx, fx + out0 * 0.3), 8.6, z0 + 28, C.glass, Enum.Material.Glass)
+			local sg = box(out, "ContShopSign", math.min(fx, fx + out0 * 0.5), 9.4, z0 + 6, math.max(fx, fx + out0 * 0.5), 12, z0 + 30, c)
+			sign(sg, (out0 > 0) and Enum.NormalId.Right or Enum.NormalId.Left, NAMES[(i + (dir > 0 and 5 or 0)) % #NAMES + 1], C.white)
+			for fl = 0, 3 do
+				for k = 0, 3 do
+					box(out, "ContWindow", math.min(fx, fx + out0 * 0.25), 15 + fl * 9, z0 + 3 + k * 8.5, math.max(fx, fx + out0 * 0.25), 20 + fl * 9, z0 + 8 + k * 8.5, Color3.fromRGB(170, 196, 220), Enum.Material.Glass)
+				end
+			end
+			local ix = xr(20)
+			for fl = 0, 3 do
+				for k = 0, 3 do
+					box(out, "ContWindow", math.min(ix, ix + dir * 0.25), 6 + fl * 9, z0 + 3 + k * 8.5, math.max(ix, ix + dir * 0.25), 11 + fl * 9, z0 + 8 + k * 8.5, Color3.fromRGB(170, 196, 220), Enum.Material.Glass)
+				end
+			end
+			tree(out, Vector3.new(xr(70), 0, z0 + 18))
+			tree(out, Vector3.new(xr(28), 0, z0 + 30))
+			streetLamp(out, Vector3.new(xr(64), 0, z0 + 6), 0)
+			if i % 2 == 0 then
+				car(out, Vector3.new(xr(57.8), -0.5, z0 + 22), math.pi / 2, ({ Color3.fromRGB(60, 120, 200), Color3.fromRGB(200, 200, 205), Color3.fromRGB(150, 40, 40) })[i / 2 + 1])
+			end
+		end
 		box(out, "ContEnd", math.min(xr(0), xr(110)), -1, ctr.Z + 190, math.max(xr(0), xr(110)), 70, ctr.Z + 220, Color3.fromRGB(190, 180, 170), Enum.Material.Concrete)
 		-- the inner corner: a round corner house and the block along the side street
 		part(out, "CornerTower", Vector3.new(52, 40, 40), CFrame.new(ctr + Vector3.new(0, 25, 0)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(214, 196, 172), Enum.Material.SmoothPlastic, { shape = Enum.PartType.Cylinder })
@@ -24810,12 +25573,20 @@ function Hub.build(parentFolder)
 			for k = 0, math.floor((nb[2] - nb[1] - 8) / 9) do
 				local wx, wy = nb[1] + 5 + k * 9, 6 + fl * 10
 				local underBillboard = nb[1] > 0 and wx + 5 > 128 and wx < 168 and wy + 6 > 24 and wy < 54
-				if not underBillboard then
+				local entrance = wy < 11 and ((wx + 5.3 > -114 and wx - 0.3 < -106) or (wx + 5.3 > 142 and wx - 0.3 < 150))
+				if not underBillboard and not entrance then
 					box(out, "Window", wx, wy, 48.06, wx + 5, wy + 6, 48.3, Color3.fromRGB(170, 196, 220), Enum.Material.Glass)
 					box(out, "WindowSill", wx - 0.3, wy - 0.4, 48.04, wx + 5.3, wy, 48.5, C.white)
 				end
 			end
 		end
+	end
+	-- entrances of the flats (west) and the hotel (east)
+	for _, dx in ipairs({ -110, 146 }) do
+		box(out, "EntranceFrame", dx - 3.5, 0, 48.04, dx + 3.5, 10, 48.5, C.white)
+		box(out, "EntranceDoor", dx - 2.5, 0, 48.5, dx + 2.5, 8.6, 48.7, C.woodDark, Enum.Material.Wood)
+		box(out, "EntranceLamp", dx - 0.6, 9.2, 48.5, dx + 0.6, 9.8, 49.1, C.lamp, Enum.Material.Neon, { collide = false })
+		box(out, "EntranceStep", dx - 4, 0, 48.56, dx + 4, 0.4, 50, C.concrete, Enum.Material.Concrete)
 	end
 	box(out, "BillboardFrame", 130, 26, 48.06, 166, 52, 48.6, C.dark)
 	poster(out, Vector3.new(148, 39, 48.72), Enum.NormalId.Back, 34, 24)
@@ -24892,11 +25663,11 @@ end
 return Hub
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="Folder" referent="RBX4830D52F10024BCC8CF82E0340BAAB0E"><Properties><string name="Name">Remotes</string></Properties><Item class="RemoteFunction" referent="RBX1E31C7D02FFB414CBAC98BB9E027CE1F"><Properties><string name="Name">Action</string></Properties></Item>
+<Item class="Folder" referent="RBXBD2D75EB11154CFCB4FB402D8E192A7F"><Properties><string name="Name">Remotes</string></Properties><Item class="RemoteFunction" referent="RBXA8F725836CB6456188C239D0A1F9F29C"><Properties><string name="Name">Action</string></Properties></Item>
 </Item>
 </Item>
 </Item>
-<Item class="ServerScriptService" referent="RBX9BE5B00D0A354EDFBDF2EC48029852BC"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBX002727F9D4EC4B879593C07169442B1B"><Properties><string name="Name">GameServer</string><bool name="Disabled">false</bool><ProtectedString name="Source"><![CDATA[-- HEADLINER server: owns the game state of every player, runs all actions (Logic/Actions.lua),
+<Item class="ServerScriptService" referent="RBX9EDFF974029143FFA53132F579F075D1"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBX1047548EC31D4030BADAE22759C5A606"><Properties><string name="Name">GameServer</string><bool name="Disabled">false</bool><ProtectedString name="Source"><![CDATA[-- HEADLINER server: owns the game state of every player, runs all actions (Logic/Actions.lua),
 -- saves to the DataStore (only works in a published place) and builds the label building.
 -- The client only shows the state: after every action the server sends the parts that changed.
 local Players = game:GetService("Players")
@@ -25165,7 +25936,7 @@ Remotes.Action.OnServerInvoke = function(player, name, args)
 end
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="StarterPlayer" referent="RBX438E0BD39C2E4A3E8E3779EBB4DA1435"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX46B54FCB0F534EFA8BA2EBF29183F391"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX76F1DBCE826F4332B3CA65B362F9D580"><Properties><string name="Name">Main</string><bool name="Disabled">false</bool><ProtectedString name="Source"><![CDATA[-- HEADLINER client entry point
+<Item class="StarterPlayer" referent="RBX83D53020FDDC4084B784BF4A1A2EB79A"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBXD5947A71D8D04051BDBC29117A0D73AA"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX1DEBB4207EBC414A8549AAD6F0F75CCA"><Properties><string name="Name">Main</string><bool name="Disabled">false</bool><ProtectedString name="Source"><![CDATA[-- HEADLINER client entry point
 if not game:IsLoaded() then
 	game.Loaded:Wait()
 end

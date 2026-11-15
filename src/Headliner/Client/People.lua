@@ -211,6 +211,10 @@ function People.preview(parent, look, color, pos, size, bg)
 	return vp, fig
 end
 
+-- moves played on an instrument: sitting ones and those where both hands are busy (mic on a stand)
+People.SEATED = { piano = true, pianosway = true, drumsolo = true, drumfill = true, harp = true, strum = true }
+People.BUSY = { piano = true, pianosway = true, drumsolo = true, drumfill = true, harp = true, strum = true, keys = true, keyshype = true, djmix = true, djhype = true, djknob = true }
+
 -- opts: t, beat (0..1), energy (0..1), walking (bool), armsUp (0..1),
 --       move = "idle" | "dance" | "jump" | "point" | "wave" | "kneel" | "headbang" | "micout" | "bow"
 function People:update(pos, yaw, opts)
@@ -235,9 +239,18 @@ function People:update(pos, yaw, opts)
 	elseif move == "bow" then
 		lean = 0.8
 		bob = 0
-	elseif move == "piano" or move == "drumsolo" then
+	elseif People.SEATED[move] then
 		drop = 2 * s - 2.25 -- sitting: hips on a seat about 2.25 studs high
 		bob = 0
+		if move == "pianosway" then
+			sway = math.sin(t * 2.2) * 0.12
+			lean = 0.12
+		elseif move == "harp" then
+			lean = 0.08
+			sway = math.sin(t * 1.6) * 0.05
+		end
+	elseif move == "djknob" then
+		headPitch = 0.25 + beatWave * 0.15 -- nodding to the beat, eyes on the mixer
 	elseif move == "pop" then
 		-- shot out of the pop-up lift: tucked legs, arms up
 		lean = -0.15
@@ -250,7 +263,7 @@ function People:update(pos, yaw, opts)
 	local legLA, legRA = swing, -swing
 	if move == "kneel" then
 		legLA, legRA = 1.45, -0.3
-	elseif move == "piano" or move == "drumsolo" then
+	elseif People.SEATED[move] then
 		legLA, legRA = -0.8, -0.72 -- thighs forward and down, feet on the floor (never through the seat)
 	elseif move == "pop" then
 		legLA, legRA = -0.9, -0.35
@@ -304,9 +317,35 @@ function People:update(pos, yaw, opts)
 	elseif move == "drumsolo" then
 		lx, lz = -0.9 + math.sin(t * 16 + 1.5) * 0.5, 0
 		rx, rz = -0.9 + math.sin(t * 16) * 0.5, 0
+	elseif move == "drumfill" then
+		-- a fill over the toms: both sticks travel left and right
+		lx, lz = -1.15 + math.sin(t * 20) * 0.45, 0.1 + math.sin(t * 5) * 0.35
+		rx, rz = -1.15 + math.sin(t * 20 + 1.6) * 0.45, -0.1 + math.sin(t * 5) * 0.35
+	elseif move == "pianosway" then
+		lx, lz = -1.3 + math.sin(t * 5) * 0.14, 0.25 + math.sin(t * 2.2) * 0.15
+		rx, rz = -1.3 + math.sin(t * 5 + 2) * 0.14, -0.05 + math.sin(t * 2.2) * 0.15
+	elseif move == "keyshype" then
+		lx, lz = -2.75 + math.sin(t * 6) * 0.15, -0.2
+		rx, rz = -1.35 + math.sin(t * 8) * 0.08, -0.15
+	elseif move == "harp" then
+		-- both hands reach into the strings in front, plucking
+		lx, lz = -1.2 + math.sin(t * 6) * 0.12, 0.35 + math.sin(t * 9) * 0.06
+		rx, rz = -1.45 + math.sin(t * 6 + 1.4) * 0.12, -0.35 - math.sin(t * 9 + 1) * 0.06
+	elseif move == "strum" then
+		lx, lz = -1.1, 0.55
+		rx, rz = -0.75 + math.sin(t * 12) * 0.25, -0.25
+	elseif move == "djmix" then
+		lx, lz = -1.15 + math.sin(t * 4) * 0.08, 0.1
+		rx, rz = -1.1, -0.1 + math.sin(t * 8) * 0.25 -- scratching
+	elseif move == "djhype" then
+		lx, lz = -2.8 + math.abs(beatWave) * 0.25, -0.15 -- fist in the air
+		rx, rz = -1.1 + math.sin(t * 4) * 0.08, -0.1
+	elseif move == "djknob" then
+		lx, lz = -1.2 + math.sin(t * 3) * 0.06, 0.2
+		rx, rz = -1.2 + math.sin(t * 3 + 1) * 0.06, -0.2
 	end
 	local micAtMouth = false
-	if self.role == "lead" and (move == "piano" or move == "drumsolo" or move == "keys") then
+	if self.role == "lead" and People.BUSY[move] then
 		-- hands are busy: the mic hangs from a stand at the mouth
 		micAtMouth = true
 	elseif self.role == "lead" then

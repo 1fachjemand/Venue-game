@@ -35,20 +35,50 @@ end
 
 -- small 3D picture of a design
 local function thumbnail(parent, design, pos, size)
+	-- the background (a gradient behind the 3D picture; a gradient on the ViewportFrame would tint the picture too)
+	local back = UI.New("Frame", { Parent = parent, Position = pos, Size = size, BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0, UI.Corner(10) })
+	UI.New("UIGradient", { Parent = back, Color = ColorSequence.new(Color3.fromRGB(70, 50, 110), Color3.fromRGB(12, 12, 20)), Rotation = 90 })
 	local vp = UI.New("ViewportFrame", {
 		Parent = parent,
 		Position = pos,
 		Size = size,
-		BackgroundColor3 = Color3.fromRGB(30, 34, 50),
+		BackgroundTransparency = 1,
+		ZIndex = back.ZIndex + 1,
 		BorderSizePixel = 0,
 		Ambient = Color3.fromRGB(165, 165, 185),
 		LightColor = Color3.new(1, 1, 1),
 		LightDirection = Vector3.new(-0.5, -1, -0.7),
 		UI.Corner(10),
 	})
-	local floor = UI.New("Part", { Size = Vector3.new(400, 1, 400), CFrame = CFrame.new(0, -0.5, 0), Color = Color3.fromRGB(44, 48, 60), Anchored = true, Parent = vp })
-	local _ = floor
+	-- a small venue around the stage: dark hall, back drape with a light strip, fans in front
 	local c = Config.STAGE_CLASS_BY_ID[design.class]
+	local reach = (design.layout == "center") and c.center or math.max(c.maxX, (c.maxZ - c.minZ) / 2)
+	local cz = (design.layout == "center") and 0 or (c.minZ + (c.maxZ - c.minZ) * 0.3)
+	local function block(size, cf, color, mat)
+		return UI.New("Part", { Size = size, CFrame = cf, Color = color, Material = mat or Enum.Material.SmoothPlastic, Anchored = true, Parent = vp })
+	end
+	block(Vector3.new(reach * 6, 1, reach * 6), CFrame.new(0, -0.5, cz), Color3.fromRGB(34, 34, 44))
+	if design.layout ~= "center" then
+		block(Vector3.new(reach * 4, reach * 1.6, 1), CFrame.new(0, reach * 0.8, c.minZ - 3), Color3.fromRGB(20, 20, 28))
+		block(Vector3.new(reach * 4, 0.6, 0.4), CFrame.new(0, reach * 1.1, c.minZ - 2.4), T.accent, Enum.Material.Neon)
+	end
+	-- fans: a few rows of little figures in front of (or around) the stage
+	local rng = Random.new(#design.items + 7)
+	local FAN = { Color3.fromRGB(240, 90, 120), Color3.fromRGB(80, 170, 255), Color3.fromRGB(250, 210, 80), Color3.fromRGB(120, 220, 160), Color3.fromRGB(230, 230, 240), Color3.fromRGB(170, 110, 255) }
+	for k = 1, 70 do
+		local x, z
+		if design.layout == "center" then
+			local a = rng:NextNumber() * math.pi * 2
+			local rr = reach * (1.05 + rng:NextNumber() * 0.5)
+			x, z = math.cos(a) * rr, math.sin(a) * rr
+		else
+			x = (rng:NextNumber() - 0.5) * reach * 2.4
+			z = c.maxZ + 4 + rng:NextNumber() * reach * 0.9
+		end
+		local sc = math.max(1, reach / 40)
+		block(Vector3.new(1.6, 3, 1) * sc, CFrame.new(x, 1.5 * sc, z), FAN[rng:NextInteger(1, #FAN)])
+		block(Vector3.new(1, 1, 1) * sc, CFrame.new(x, 3.6 * sc, z), Color3.fromRGB(200, 160, 130))
+	end
 	local n = 0
 	for _, rec in ipairs(design.items) do
 		local def = StageItems.byId[rec.t]
@@ -56,6 +86,7 @@ local function thumbnail(parent, design, pos, size)
 			n = n + 1
 			local refs = Builder.build(def, { color = T.accent2, artistName = "", rec = rec, preview = true })
 			Builder.rest(refs)
+			Builder.hideMarker(refs)
 			local y = (rec.y or 0) + (rec.yo or 0)
 			if def.mount == "rig" then
 				y = c.rigY - 2
@@ -64,8 +95,9 @@ local function thumbnail(parent, design, pos, size)
 			refs.model.Parent = vp
 		end
 	end
-	local reach = (design.layout == "center") and c.center or math.max(c.maxX, (c.maxZ - c.minZ) / 2)
-	local cz = (design.layout == "center") and 0 or (c.minZ + (c.maxZ - c.minZ) * 0.3)
+	if n == 0 then
+		UI.Label(vp, "EMPTY - OPEN IT TO BUILD", UI.px(0, 0), UDim2.fromScale(1, 0.3), { textSize = 16, font = UI.FontBold, color = Color3.fromRGB(220, 220, 235), alignX = Enum.TextXAlignment.Center })
+	end
 	local cam = UI.New("Camera", { FieldOfView = 40, Parent = vp })
 	cam.CFrame = CFrame.lookAt(Vector3.new(reach * 0.9, reach * 1.1, cz + reach * 1.7), Vector3.new(0, 4, cz))
 	vp.CurrentCamera = cam

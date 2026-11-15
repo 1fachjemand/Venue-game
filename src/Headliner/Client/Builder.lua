@@ -186,11 +186,9 @@ function B.stairs(m, r)
 	finishDeck(r)
 end
 
--- decks that overlap at the same height would flicker (z-fighting): every deck gets a tiny height offset
+-- decks keep exactly the height you choose (no hidden offsets), so decks of the same height line up
 local function deckH(r, h)
-	local rec = r.rec or {}
-	local k = math.floor(math.abs((rec.x or 0) * 3.1 + (rec.z or 0) * 1.7 + (rec.w or 0) * 0.9 + (rec.r or 0) * 0.13)) % 4
-	return h + k * 0.04
+	return h
 end
 
 function B.deck(m, r)
@@ -360,9 +358,13 @@ function B.par(m, r)
 		cyl(m, "Rib", 0.12, 1.98, CFrame.new(0, -1.3 - k * 0.32, 0), Color3.fromRGB(46, 46, 52), Enum.Material.Metal)
 	end
 	cyl(m, "Rim", 0.3, 2.05, CFrame.new(0, -3.1, 0), Color3.fromRGB(40, 40, 46), Enum.Material.Metal)
-	part(m, "GelFrame", Vector3.new(2.1, 0.12, 2.1), CFrame.new(0, -3.3, 0), Color3.fromRGB(30, 30, 34), Enum.Material.Metal)
+	local gel = part(m, "GelFrame", Vector3.new(2.1, 0.12, 2.1), CFrame.new(0, -3.3, 0), Color3.fromRGB(30, 30, 34), Enum.Material.Metal)
 	r.lens = cyl(m, "Lens", 0.14, 1.5, CFrame.new(0, -3.16, 0), r.color, Enum.Material.Neon)
-	r.light = New("SpotLight", { Face = Enum.NormalId.Left, Angle = 50, Range = 45, Brightness = 1.2, Color = r.color, Shadows = false, Parent = r.lens })
+	r.light = New("SpotLight", { Face = Enum.NormalId.Bottom, Angle = 55, Range = 60, Brightness = 1.6, Color = r.color, Shadows = false, Parent = gel })
+	-- a soft wide cone of light (a wash), so you can see what the PAR does in the haze
+	if not r.preview then
+		r.beam = beam(gel, Vector3.new(0, -0.1, 0), Vector3.new(0, -42, 0), 1.6, 18, r.color, 0.72)
+	end
 end
 
 function B.moving(m, r)
@@ -1531,6 +1533,106 @@ function B.balloonarch(m, r)
 		end
 	end
 end
+function B.drapes(m, r)
+	-- a frame (20 wide, 12 high) with a pelmet and two red drapes tied back at the sides
+	local red = Color3.fromRGB(150, 20, 34)
+	part(m, "FramePostL", Vector3.new(0.6, 12, 0.6), CFrame.new(-10, 6, 0), DARK, Enum.Material.Metal)
+	part(m, "FramePostR", Vector3.new(0.6, 12, 0.6), CFrame.new(10, 6, 0), DARK, Enum.Material.Metal)
+	part(m, "Pelmet", Vector3.new(21.4, 1.6, 0.9), CFrame.new(0, 11.4, 0.2), red, Enum.Material.Fabric)
+	part(m, "PelmetTrim", Vector3.new(21.5, 0.25, 1.0), CFrame.new(0, 10.55, 0.2), Color3.fromRGB(220, 180, 70), Enum.Material.Metal)
+	for _, side in ipairs({ -1, 1 }) do
+		-- folds: a few panels that get narrower towards the tie-back
+		for k = 0, 3 do
+			local x = side * (9.4 - k * 0.9)
+			part(m, "Drape", Vector3.new(0.95, 9.6 - k * 0.4, 0.5 + (k % 2) * 0.25), CFrame.new(x, 5.6 + k * 0.2, -0.1 - (k % 2) * 0.12) * CFrame.Angles(0, 0, side * k * 0.03), red, Enum.Material.Fabric)
+		end
+		part(m, "TieBack", Vector3.new(4.2, 0.3, 1.2), CFrame.new(side * 8.3, 4.6, 0.1), Color3.fromRGB(220, 180, 70), Enum.Material.Metal)
+	end
+end
+
+function B.barrels(m, r)
+	local wood = Color3.fromRGB(130, 84, 46)
+	local hoop = Color3.fromRGB(60, 60, 66)
+	for i, o in ipairs({ { -1.6, 0, 0 }, { 1.4, 0, -0.6 } }) do
+		local c = CFrame.new(o[1], 0, o[3])
+		cyl(m, "Barrel", 3.4, 2.4, c * CFrame.new(0, 1.7, 0), wood, Enum.Material.WoodPlanks)
+		cyl(m, "BarrelBelly", 1.6, 2.7, c * CFrame.new(0, 1.7, 0), wood, Enum.Material.WoodPlanks)
+		for _, y in ipairs({ 0.5, 2.9 }) do
+			cyl(m, "Hoop", 0.2, 2.5, c * CFrame.new(0, y, 0), hoop, Enum.Material.Metal)
+		end
+		local _ = i
+	end
+	part(m, "Crate", Vector3.new(2.2, 2.2, 2.2), CFrame.new(0.2, 1.1, 2.2) * CFrame.Angles(0, 0.3, 0), Color3.fromRGB(170, 130, 80), Enum.Material.WoodPlanks)
+	part(m, "CrateTop", Vector3.new(1.8, 1.8, 1.8), CFrame.new(0.3, 3.1, 2.1) * CFrame.Angles(0, -0.2, 0), Color3.fromRGB(160, 120, 74), Enum.Material.WoodPlanks)
+end
+
+function B.bookshelf(m, r)
+	local wood = Color3.fromRGB(110, 70, 40)
+	part(m, "ShelfBack", Vector3.new(6, 9, 0.3), CFrame.new(0, 4.5, -0.85), wood, Enum.Material.Wood)
+	part(m, "ShelfSideL", Vector3.new(0.3, 9, 2), CFrame.new(-3.15, 4.5, 0), wood, Enum.Material.Wood)
+	part(m, "ShelfSideR", Vector3.new(0.3, 9, 2), CFrame.new(3.15, 4.5, 0), wood, Enum.Material.Wood)
+	local rng = Random.new(5)
+	local BOOK = { Color3.fromRGB(180, 50, 50), Color3.fromRGB(50, 90, 160), Color3.fromRGB(220, 190, 90), Color3.fromRGB(60, 130, 80), Color3.fromRGB(230, 230, 230), Color3.fromRGB(40, 40, 46) }
+	for k = 0, 3 do
+		local y = 0.15 + k * 2.25
+		part(m, "Shelf", Vector3.new(6.0, 0.25, 1.9), CFrame.new(0, y + 0.12, 0.05), wood, Enum.Material.Wood)
+		if k < 3 then
+			local x = -2.8
+			while x < 2.5 do
+				local w = 0.25 + rng:NextNumber() * 0.2
+				local h = 1.3 + rng:NextNumber() * 0.6
+				part(m, "Book", Vector3.new(w, h, 1.3), CFrame.new(x + w / 2, y + 0.25 + h / 2, 0.05), BOOK[rng:NextInteger(1, #BOOK)])
+				x = x + w + 0.03
+				if rng:NextNumber() < 0.08 then
+					x = x + 0.9
+				end
+			end
+		end
+	end
+	part(m, "ShelfTop", Vector3.new(6.6, 0.3, 2.1), CFrame.new(0, 9.15, 0), wood, Enum.Material.Wood)
+	cyl(m, "LampFoot", 1.0, 0.3, CFrame.new(1.8, 9.8, 0), Color3.fromRGB(200, 170, 90), Enum.Material.Metal)
+	r.glow = cyl(m, "LampShade", 0.9, 1.2, CFrame.new(1.8, 10.6, 0), Color3.fromRGB(255, 220, 160), Enum.Material.Neon)
+end
+
+function B.lanternline(m, r)
+	-- two poles 18 apart, a line between them with paper lanterns
+	part(m, "PoleL", Vector3.new(0.4, 11, 0.4), CFrame.new(-9, 5.5, 0), DARK, Enum.Material.Metal)
+	part(m, "PoleR", Vector3.new(0.4, 11, 0.4), CFrame.new(9, 5.5, 0), DARK, Enum.Material.Metal)
+	local COLS = { Color3.fromRGB(255, 120, 90), Color3.fromRGB(255, 210, 110), Color3.fromRGB(255, 160, 200), Color3.fromRGB(150, 220, 255) }
+	local prev = Vector3.new(-9, 10.6, 0)
+	r.lamps = {}
+	for k = 1, 9 do
+		local x = -9 + k * 1.8
+		local y = 10.6 - math.sin(k / 10 * math.pi) * 2.2
+		local pnt = Vector3.new(x, y, 0)
+		tube(m, prev, pnt, 0.06, DARK)
+		prev = pnt
+		if k < 10 then
+			local lamp = part(m, "Lantern", Vector3.new(1.2, 1.2, 1.2), CFrame.new(x, y - 1.0, 0), COLS[k % #COLS + 1], Enum.Material.Neon, Enum.PartType.Ball)
+			part(m, "LanternCap", Vector3.new(0.5, 0.14, 0.5), CFrame.new(x, y - 0.28, 0), DARK)
+			table.insert(r.lamps, lamp)
+		end
+	end
+	tube(m, prev, Vector3.new(9, 10.6, 0), 0.06, DARK)
+end
+
+function B.golddiscs(m, r)
+	-- a black wall on two feet with framed records in rows
+	part(m, "DiscWall", Vector3.new(9, 6.4, 0.4), CFrame.new(0, 4.4, 0), Color3.fromRGB(24, 24, 30))
+	for _, x in ipairs({ -3.6, 3.6 }) do
+		part(m, "DiscFoot", Vector3.new(0.5, 1.2, 2.4), CFrame.new(x, 0.6, 0), DARK, Enum.Material.Metal)
+	end
+	for row = 0, 1 do
+		for col = 0, 2 do
+			local x, y = -2.9 + col * 2.9, 5.9 - row * 3
+			local plat = (row + col) % 3 == 0
+			part(m, "DiscFrame", Vector3.new(2.4, 2.6, 0.16), CFrame.new(x, y, 0.27), Color3.fromRGB(240, 240, 244))
+			cyl(m, "Disc", 0.06, 1.7, CFrame.new(x, y + 0.15, 0.37) * CFrame.Angles(math.pi / 2, 0, 0), plat and Color3.fromRGB(220, 224, 232) or Color3.fromRGB(230, 185, 60), Enum.Material.Metal)
+			part(m, "DiscPlate", Vector3.new(1.6, 0.3, 0.06), CFrame.new(x, y - 1.0, 0.38), Color3.fromRGB(30, 30, 34))
+		end
+	end
+end
+
 function B.banner(m, r)
 	part(m, "Bar", Vector3.new(11, 0.4, 0.4), CFrame.new(0, -0.4, 0), METAL, Enum.Material.Metal)
 	r.panel = part(m, "Banner", Vector3.new(10, 16, 0.2), CFrame.new(0, -8.6, 0), r.color, Enum.Material.Fabric)
@@ -1854,11 +1956,48 @@ function B.plant(m, r)
 	-- potted plant: tapered pot, soil, big drooping leaves
 	oval(m, "Pot", Vector3.new(1.9, 2, 1.9), CFrame.new(0, 0.8, 0), Color3.fromRGB(180, 100, 70), Enum.Material.Concrete)
 	cyl(m, "PotRim", 0.3, 2, CFrame.new(0, 1.7, 0), Color3.fromRGB(160, 86, 60), Enum.Material.Concrete)
-	cyl(m, "Soil", 0.1, 1.7, CFrame.new(0, 1.8, 0), Color3.fromRGB(60, 40, 30), Enum.Material.Ground)
+	cyl(m, "Soil", 0.1, 1.7, CFrame.new(0, 1.76, 0), Color3.fromRGB(60, 40, 30), Enum.Material.Ground) -- just below the rim (no flicker)
 	for i = 0, 8 do
 		local a = i * 2.4
 		local up = 0.5 + (i % 3) * 0.25
 		oval(m, "Leaf", Vector3.new(0.6, 0.14, 2.4), CFrame.new(0, 2.2 + (i % 3) * 0.5, 0) * CFrame.Angles(0, a, 0) * CFrame.Angles(-up, 0, 0) * CFrame.new(0, 0, 1.1), Color3.fromRGB(40 + i * 5, 110 + i * 6, 50), Enum.Material.Grass)
+	end
+end
+
+function B.column(m, r)
+	-- classic column: square plinth, round base, fluted shaft, capital with a glowing top
+	local white = Color3.fromRGB(236, 232, 222)
+	part(m, "Plinth", Vector3.new(3.4, 0.8, 3.4), CFrame.new(0, 0.4, 0), white, Enum.Material.Marble)
+	cyl(m, "ColBase", 0.7, 2.9, CFrame.new(0, 1.15, 0), white, Enum.Material.Marble)
+	cyl(m, "Shaft", 11, 2.2, CFrame.new(0, 7, 0), white, Enum.Material.Marble)
+	for k = 0, 7 do
+		local a = k * math.pi / 4
+		part(m, "Flute", Vector3.new(0.18, 10.6, 0.18), CFrame.new(math.cos(a) * 1.08, 7, math.sin(a) * 1.08), Color3.fromRGB(210, 206, 196), Enum.Material.Marble)
+	end
+	cyl(m, "Neck", 0.5, 2.6, CFrame.new(0, 12.75, 0), white, Enum.Material.Marble)
+	part(m, "Capital", Vector3.new(3.4, 0.9, 3.4), CFrame.new(0, 13.45, 0), white, Enum.Material.Marble)
+	r.glow = part(m, "Glow", Vector3.new(3.0, 0.2, 3.0), CFrame.new(0, 14.0, 0), r.color, Enum.Material.Neon)
+end
+
+function B.giantguitar(m, r)
+	-- a guitar 16 studs tall leaning back on an A-frame stand
+	local body = Color3.fromRGB(200, 40, 50)
+	local lean = CFrame.new(0, 0.5, 0) * CFrame.Angles(math.rad(-12), 0, 0)
+	part(m, "StandFoot", Vector3.new(6, 0.4, 1), CFrame.new(0, 0.2, 0.6), DARK, Enum.Material.Metal)
+	tube(m, Vector3.new(-2.6, 0.3, 0.6), Vector3.new(0, 6.5, -1.6), 0.3, DARK)
+	tube(m, Vector3.new(2.6, 0.3, 0.6), Vector3.new(0, 6.5, -1.6), 0.3, DARK)
+	tube(m, Vector3.new(0, 0.3, -3), Vector3.new(0, 9, -2.2), 0.3, DARK)
+	oval(m, "BodyLow", Vector3.new(6.4, 5.6, 1.4), lean * CFrame.new(0, 3.2, 0), body, Enum.Material.SmoothPlastic)
+	oval(m, "BodyHigh", Vector3.new(5, 4.4, 1.4), lean * CFrame.new(0, 6.6, 0), body, Enum.Material.SmoothPlastic)
+	part(m, "Pickguard", Vector3.new(2.2, 2.6, 0.1), lean * CFrame.new(1.2, 4.2, 0.72), Color3.fromRGB(240, 236, 228))
+	part(m, "Bridge", Vector3.new(2.4, 0.4, 0.2), lean * CFrame.new(0, 2.4, 0.78), Color3.fromRGB(30, 30, 34))
+	part(m, "Neck", Vector3.new(1.2, 8.6, 0.6), lean * CFrame.new(0, 12.8, 0.25), Color3.fromRGB(120, 76, 40), Enum.Material.Wood)
+	part(m, "Fretboard", Vector3.new(1.0, 8.6, 0.12), lean * CFrame.new(0, 12.8, 0.6), Color3.fromRGB(40, 26, 18), Enum.Material.Wood)
+	part(m, "Head", Vector3.new(1.8, 2.4, 0.5), lean * CFrame.new(0, 18.2, 0.2), Color3.fromRGB(30, 30, 34))
+	r.strings = {}
+	for k = 0, 5 do
+		local x = -0.4 + k * 0.16
+		table.insert(r.strings, part(m, "String", Vector3.new(0.06, 15.8, 0.06), lean * CFrame.new(x, 10.2, 0.72), r.color, Enum.Material.Neon))
 	end
 end
 
@@ -1964,26 +2103,76 @@ function B.upright_bass(m, r)
 end
 
 function B.harp(m, r)
-	-- concert harp: tall column, curved neck, sound box, strings, pedal base
+	-- concert harp at the size of a person (about 6 studs). The strings lie in the Y-Z plane: the
+	-- harpist sits behind it (-Z) with the sound box leaning on the shoulder, the column stands at the front.
 	local gold = Color3.fromRGB(214, 172, 66)
-	part(m, "Base", Vector3.new(2.6, 0.8, 2), CFrame.new(0, 0.4, 0), gold, Enum.Material.Metal)
-	cyl(m, "Column", 9.5, 0.5, CFrame.new(-1.2, 5.3, 0), gold, Enum.Material.Metal)
-	oval(m, "Crown", Vector3.new(1, 1.2, 1), CFrame.new(-1.2, 10.3, 0), gold, Enum.Material.Metal)
-	-- sound box: from the base to the top of the neck, leaning
-	part(m, "SoundBox", Vector3.new(1.2, 9.6, 1.4), CFrame.new(0.9, 5, 0) * CFrame.Angles(0, 0, 0.12), Color3.fromRGB(130, 70, 34), Enum.Material.Wood)
-	local neck = arcTube(m, "Neck", CFrame.new(0, 7.8, 0), 2.4, math.rad(200), math.rad(-10), 8, 0.45, gold, Enum.Material.Metal)
-	local _ = neck
-	for k = 0, 12 do
-		local x = -0.9 + k * 0.15
-		local y1 = 7.2 + math.sin(k / 12 * math.pi) * 1.4
-		part(m, "String", Vector3.new(0.03, y1 - 1.2 - k * 0.3, 0.03), CFrame.new(x, (y1 + 1.2 + k * 0.3) / 2, 0), (k % 7 == 0) and Color3.fromRGB(200, 40, 40) or Color3.fromRGB(240, 235, 220))
+	local wood = Color3.fromRGB(120, 64, 30)
+	local board = Color3.fromRGB(214, 170, 112)
+	local function V(z, y)
+		return Vector3.new(0, y, z)
 	end
+	local function rod(name, a, b, d, color, mat)
+		local t = tube(m, a, b, d, color)
+		if t then
+			t.Name = name
+			t.Material = mat or Enum.Material.SmoothPlastic
+		end
+		return t
+	end
+	-- pedestal with the seven pedals on the harpist's side
+	part(m, "Base", Vector3.new(1.5, 0.5, 2.8), CFrame.new(0, 0.25, 0.5), wood, Enum.Material.Wood)
+	part(m, "BaseTrim", Vector3.new(1.6, 0.12, 2.9), CFrame.new(0, 0.56, 0.5), gold, Enum.Material.Metal)
 	for k = 0, 6 do
-		part(m, "Pedal", Vector3.new(0.18, 0.08, 0.5), CFrame.new(-1 + k * 0.33, 0.1, 1.2), gold, Enum.Material.Metal)
+		part(m, "Pedal", Vector3.new(0.12, 0.08, 0.45), CFrame.new(-0.6 + k * 0.2, 0.12, -1.05), gold, Enum.Material.Metal)
+	end
+	-- the column at the front with its crown
+	rod("Column", V(1.5, 0.6), V(1.5, 6.0), 0.42, gold, Enum.Material.Metal)
+	for _, y in ipairs({ 1.0, 5.6 }) do
+		cyl(m, "ColumnRing", 0.18, 0.56, CFrame.new(0, y, 1.5), gold, Enum.Material.Metal)
+	end
+	oval(m, "Crown", Vector3.new(0.7, 0.55, 0.7), CFrame.new(0, 6.2, 1.5), gold, Enum.Material.Metal)
+	-- the sound box: from the pedestal up to the harpist's shoulder, wider at the bottom
+	local sb0, sb1 = V(0.9, 0.6), V(-0.9, 4.9)
+	local dir = (sb1 - sb0).Unit
+	local len = (sb1 - sb0).Magnitude
+	local back = Vector3.new(0, -dir.Z, dir.Y) * -1 -- points away from the strings (down/back)
+	for i = 0, 3 do
+		local f0, f1 = i / 4, (i + 1) / 4
+		local c = sb0 + dir * len * (f0 + f1) / 2 + back * 0.22
+		local wdt = 1.05 - i * 0.18
+		part(m, "SoundBox", Vector3.new(wdt, 0.55, len / 4 + 0.02), CFrame.lookAt(c, c + dir), wood, Enum.Material.Wood)
+	end
+	part(m, "SoundBoard", Vector3.new(0.5, 0.06, len), CFrame.lookAt(sb0 + dir * len / 2 - back * 0.06, sb0 + dir * len / 2 - back * 0.06 + dir), board, Enum.Material.Wood)
+	-- the curved neck from the top of the sound box to the crown (an S shape)
+	local neck = { V(-0.9, 4.9), V(-0.45, 5.45), V(0.15, 5.4), V(0.75, 5.55), V(1.2, 5.9), V(1.5, 6.05) }
+	for i = 2, #neck do
+		rod("Neck", neck[i - 1], neck[i], 0.34, gold, Enum.Material.Metal)
+	end
+	local function neckY(z)
+		for i = 2, #neck do
+			local a, b = neck[i - 1], neck[i]
+			if z >= a.Z and z <= b.Z then
+				return a.Y + (b.Y - a.Y) * (z - a.Z) / (b.Z - a.Z)
+			end
+		end
+		return neck[#neck].Y
+	end
+	-- strings: from the sound board up to the neck; C strings red, F strings dark blue
+	local n = 22
+	for k = 0, n - 1 do
+		local z = -0.72 + k * (1.55 / (n - 1))
+		local yb = sb0.Y + (sb0.Z - z) / (sb0.Z - sb1.Z) * (sb1.Y - sb0.Y)
+		if z > sb0.Z then
+			yb = sb0.Y
+		end
+		local yt = neckY(z) - 0.12
+		local col = (k % 7 == 0) and Color3.fromRGB(200, 40, 40) or ((k % 7 == 3) and Color3.fromRGB(40, 60, 140) or Color3.fromRGB(240, 235, 220))
+		part(m, "String", Vector3.new(0.035, math.max(0.2, yt - yb), 0.035), CFrame.new(0, (yt + yb) / 2, z), col)
 	end
 	-- the harpist's stool
-	cyl(m, "Stool", 0.35, 1.6, CFrame.new(0.2, 2.05, -2.4), Color3.fromRGB(60, 30, 30), Enum.Material.Leather)
-	cyl(m, "StoolLeg", 1.9, 0.3, CFrame.new(0.2, 0.95, -2.4), gold, Enum.Material.Metal)
+	cyl(m, "Stool", 0.3, 1.4, CFrame.new(0, 2.05, -2.2), Color3.fromRGB(110, 30, 40), Enum.Material.Fabric)
+	cyl(m, "StoolLeg", 1.9, 0.26, CFrame.new(0, 0.95, -2.2), gold, Enum.Material.Metal)
+	cyl(m, "StoolFoot", 0.12, 1.0, CFrame.new(0, 0.06, -2.2), gold, Enum.Material.Metal)
 end
 
 function B.strings(m, r)
@@ -2340,6 +2529,51 @@ function B.rainbow(m, r)
 	end
 end
 
+local artistMark
+-- where the artist is while playing an instrument (same places as in LiveShow): x, y, z, turned around, sitting
+local ARTIST_MARK = {
+	piano = { 0, 0, 5.2, true, true },
+	keys = { 0, 0, -2.4, false, false },
+	acoustic = { 0, 1.15, 0, false, true },
+	harp = { 0, 0, -2.2, false, true },
+	drums = { 0, 1, -1.8, false, true },
+	djbooth = { 0, 0, -3.2, false, false },
+}
+Builder.ARTIST_MARK = ARTIST_MARK
+-- in the stage builder: a see-through figure and an arrow on the floor show where the artist stands
+-- and which way they look (hidden during shows, see Builder.hideMarker)
+artistMark = function(m, r, a)
+	local col = Color3.fromRGB(255, 220, 60)
+	local base = CFrame.new(a[1], a[2], a[3]) * CFrame.Angles(0, a[4] and math.pi or 0, 0)
+	local seat = a[5] and 2.25 or 0
+	local list = {}
+	local function mk(name, size, cf, color, mat)
+		local p = part(m, name, size, base * cf, color, mat)
+		p.Transparency = 0.55
+		p.CastShadow = false
+		p.CanQuery = false
+		table.insert(list, p)
+		return p
+	end
+	-- arrow on the floor: a shaft and a head (two turned bars)
+	local fy = 0.08 - a[2]
+	mk("ArtistMark", Vector3.new(0.35, 0.06, 2.2), CFrame.new(0, fy, 0.9), col, Enum.Material.Neon)
+	mk("ArtistMark", Vector3.new(0.35, 0.06, 1.3), CFrame.new(-0.35, fy, 1.85) * CFrame.Angles(0, math.rad(-40), 0), col, Enum.Material.Neon)
+	mk("ArtistMark", Vector3.new(0.35, 0.06, 1.3), CFrame.new(0.35, fy, 1.85) * CFrame.Angles(0, math.rad(40), 0), col, Enum.Material.Neon)
+	-- the figure (sitting ones lower, with the thighs forward)
+	local ghost = Color3.fromRGB(200, 190, 255)
+	if a[5] then
+		mk("ArtistMark", Vector3.new(1.8, 0.8, 1.9), CFrame.new(0, seat + 0.4 - a[2], 0.5), ghost)
+	else
+		mk("ArtistMark", Vector3.new(1.8, 2, 0.9), CFrame.new(0, 1, 0), ghost)
+	end
+	local torsoY = (a[5] and (seat + 0.8 - a[2]) or 2) + 1
+	mk("ArtistMark", Vector3.new(2, 2, 1), CFrame.new(0, torsoY, 0), ghost)
+	mk("ArtistMark", Vector3.new(1.2, 1.2, 1.2), CFrame.new(0, torsoY + 1.6, 0), ghost)
+	mk("ArtistMark", Vector3.new(0.6, 0.3, 0.2), CFrame.new(0, torsoY + 1.6, 0.62), col, Enum.Material.Neon) -- the face side
+	r.artistMark = list
+end
+
 function Builder.build(def, opts)
 	opts = opts or {}
 	local model = New("Model", { Name = def.id })
@@ -2360,6 +2594,9 @@ function Builder.build(def, opts)
 	local fn = B[def.id]
 	if fn then
 		fn(model, refs)
+	end
+	if ARTIST_MARK[def.id] then
+		artistMark(model, refs, ARTIST_MARK[def.id])
 	end
 	return refs
 end
@@ -2384,7 +2621,7 @@ function Builder.ghost(refs, ok)
 	})
 	for _, d in ipairs(refs.model:GetDescendants()) do
 		if d:IsA("BasePart") then
-			if d.Name ~= "Pivot" and d.Name ~= "Target" and d.Name ~= "Nozzle" and d.Name ~= "Burst" then
+			if d.Name ~= "Pivot" and d.Name ~= "Target" and d.Name ~= "Nozzle" and d.Name ~= "Burst" and d.Name ~= "ArtistMark" then
 				d.Transparency = 0.25
 			end
 			d.CanQuery = false
@@ -2426,13 +2663,21 @@ function Builder.animate(refs, ctx)
 	local c1, c2 = ctx.c1, ctx.c2
 	local hit = ctx.hit
 	if k == "par" then
-		local c = (refs.phase > 3.14) and c2 or c1
+		-- wash: the colour changes every 4 beats (the cans take turns), the light pulses on the beat
+		local c = ((math.floor((ctx.beatCount or 0) / 4 + refs.phase) % 2) == 0) and c1 or c2
 		if refs.lastC ~= c then
 			refs.lastC = c
 			refs.lens.Color = c
 			refs.light.Color = c
+			if refs.beam then
+				refs.beam.Color = ColorSequence.new(c)
+			end
 		end
-		refs.light.Brightness = 0.4 + 1.2 * ctx.intensity
+		local pulse = 0.55 + 0.45 * (1 - (ctx.beat or 0))
+		refs.light.Brightness = (0.6 + 1.8 * (ctx.intensity or 0.5)) * pulse
+		if refs.beam then
+			refs.beam.Enabled = (ctx.intensity or 0) > 0.2
+		end
 	elseif k == "moving" then
 		local sp = ctx.sweep
 		local yaw = math.sin(t * 0.8 * sp + refs.phase) * 0.7
@@ -2883,6 +3128,9 @@ function Builder.hideMarker(refs)
 	if refs.marker then
 		refs.marker.Transparency = 1
 		refs.gui.Enabled = false
+	end
+	for _, p in ipairs(refs.artistMark or {}) do
+		p.Transparency = 1
 	end
 end
 

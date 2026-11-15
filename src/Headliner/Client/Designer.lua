@@ -37,13 +37,19 @@ local GRIDS = { 1, 2, 4, 8 }
 local TURNS = { 15, 45, 90 }
 local BLACK = Color3.new(0, 0, 0)
 local GEOMETRY_KEYS = { w = true, d = true, h = true, skin = true, edge = true, scr = true }
+-- settings that only change the show (no new model needed)
+local SHOW_KEYS = { play = true, songs = true }
+-- effects that can fire in chosen songs (rec.songs = { 1, 4, ... }; false / nil = automatic)
+local FX_SONG_KINDS = { pyro = true, sparks = true, confetti = true, streamers = true, co2 = true, fireworks = true, balls = true, laser = true, lowfog = true }
+Designer.FX_SONG_KINDS = FX_SONG_KINDS
 
 local HELP = table.concat({
-	"<b>Place</b>   pick an item below, click into the world, then press  <b>OK</b>  (or Enter)",
+	"<b>Place</b>   pick an item below, point at the spot and press  <b>Q</b>  (or click, then Q / Enter)",
 	"<b>Line up</b>   drag the arrows: <font color='#eb463c'>red</font> / <font color='#3c8cff'>blue</font> move, <font color='#5ad250'>green</font> lifts it up",
-	"<b>Turn</b>   drag the <font color='#ff9628'>orange ring</font> or press R / Q      <b>Size</b>   drag the <font color='#ffcd3c'>gold cubes</font>",
+	"<b>Turn</b>   drag the <font color='#ff9628'>orange ring</font> or press R (E = other way)      <b>Size</b>   drag the <font color='#ffcd3c'>gold cubes</font>",
 	"<b>Select</b>   click a placed item      <b>Copy</b>  C      <b>Delete</b>  X      <b>Cancel</b>  Esc / F",
 	"<b>Camera</b>   right mouse = turn, wheel = zoom, WASD = move, T = top view, H = hide menus",
+	"<b>Two steps</b>   1. build the stage   2. SETLIST & SHOW: artist spots, what screens show, effects per song",
 }, "\n")
 
 function Designer.open(app, designId)
@@ -77,6 +83,7 @@ function Designer.open(app, designId)
 	local overHandle = false
 	local drag = nil
 	local screenSong = 0 -- 0 = what screens show for the whole show, n = change for song n
+	local phase = "build" -- "build" (the stage itself) | "show" (setlist & show: spots, screens, effects per song)
 
 	local function grid()
 		return GRIDS[gridIndex]
@@ -194,11 +201,16 @@ function Designer.open(app, designId)
 		Visible = false,
 		UI.Corner(6),
 	})
+	-- SETLIST & SHOW (second step): the songs on the left
+	local setlistPanel = UI.Panel(root, UI.px(20, 112), UI.px(430, 740), T.panel)
+	setlistPanel.BackgroundTransparency = 0.05
+	setlistPanel.Visible = false
 	local dialog = nil
-	local panels = { top, statsBar, catalog, toolbar, inspector, helpBox }
+	local panels = { top, statsBar, catalog, toolbar, inspector, helpBox, setlistPanel }
 
 	local currentCat = "Stage"
-	local refreshStats, refreshList, refreshTop, refreshInspector, refreshToolbar
+	local refreshStats, refreshList, refreshTop, refreshInspector, refreshToolbar, refreshSetlist
+	local putDown
 
 	------------------------------------------------------------ helpers
 	local function cls()
@@ -250,7 +262,7 @@ function Designer.open(app, designId)
 			return true
 		end
 		local m = UserInputService:GetMouseLocation()
-		local all = { top, statsBar, catalog, toolbar, inspector, helpBox }
+		local all = { top, statsBar, catalog, toolbar, inspector, helpBox, setlistPanel }
 		if dialog then
 			table.insert(all, dialog)
 		end
@@ -527,9 +539,28 @@ function Designer.open(app, designId)
 				end
 			end
 		end
-		render()
+		-- show settings (song of an instrument, effect songs, screen content) change nothing you can see on the
+		-- stage: no rebuild of the whole stage, so nothing jumps or flickers
+		local onlyShow = true
+		for k in pairs(changes) do
+			if not SHOW_KEYS[k] and k ~= "scr" then
+				onlyShow = false
+			end
+		end
+		if onlyShow then
+			if changes.scr then
+				Stage3D.removeItem(selected)
+				selected = Stage3D.addItem(rec, itemOpts())
+			end
+			Stage3D.numberSpots(self.design)
+		else
+			render()
+		end
 		refreshStats()
 		refreshInspector()
+		if refreshSetlist then
+			refreshSetlist()
+		end
 	end
 
 	local function rotate(delta)
@@ -613,7 +644,7 @@ function Designer.open(app, designId)
 		UI.ClearChildren(cardRow)
 		local n = 0
 		for _, def in ipairs(StageItems.list) do
-			if def.cat == currentCat and not def.hidden then
+			if def.cat == currentCat and not def.hidden and def.id ~= "spot" then
 				n = n + 1
 				local isSel = placeDef == def and (mode == "place" or mode == "pending")
 				local b = UI.Button(cardRow, "", nil, UI.px(150, 148), { order = def.order, color = isSel and T.accent or T.panel3 }, function()
@@ -636,7 +667,7 @@ function Designer.open(app, designId)
 				c.TextColor3 = on and BLACK or T.text
 			end
 		end
-		catHint.Text = (mode == "place" and placeDef) and ("Placing: " .. placeDef.name .. " - click into the world") or (n .. " items  |  click a card to build")
+		catHint.Text = (mode == "place" and placeDef) and ("Placing: " .. placeDef.name .. " - point at the stage and press Q") or (n .. " items  |  click a card to build")
 	end
 
 	for i, cat in ipairs(StageItems.CATEGORIES) do
@@ -662,17 +693,18 @@ function Designer.open(app, designId)
 			turnIndex = turnIndex % #TURNS + 1
 			refreshToolbar()
 		end).LayoutOrder = 2
-		toolButton("Reposts: Turn (R)", 120, nil, nil, function()
+		toolButton("Turn (R)", 100, nil, nil, function()
 			rotate(TURNS[turnIndex])
 		end, not (tgt or mode == "place")).LayoutOrder = 3
 		toolButton("Copy (C)", 100, nil, nil, copySelected, not tgt).LayoutOrder = 4
 		toolButton("Delete (X)", 110, UI.shade(T.bad, 0.7), nil, deleteSelected, not tgt).LayoutOrder = 5
 		toolButton("X", 56, T.panel2, T.bad, cancel, not (tgt or mode == "place")).LayoutOrder = 6
 		local price = pending and Sim.itemPrice(pending.def, pending.rec) or nil
-		local okBtn = toolButton(pending and ("DONE:  PLACE  " .. (price > 0 and Util.moneyShort(price) or "")) or "OK", pending and 180 or 56, pending and T.good or T.panel2, pending and BLACK or T.sub, confirm, not pending)
+		local okBtn = toolButton(pending and ("PLACE (Q)  " .. (price > 0 and Util.moneyShort(price) or "")) or "PLACE (Q)", pending and 180 or 120, pending and T.good or T.panel2, pending and BLACK or T.sub, confirm, not pending)
 		okBtn.LayoutOrder = 7
-		toolbar.Size = UI.px(pending and 900 or 776, 58)
-		toolbar.Position = UI.px(960 - (pending and 450 or 388), 800)
+		toolbar.Size = UI.px(pending and 880 or 820, 58)
+		toolbar.Position = UI.px(960 - (pending and 440 or 410), 800)
+		toolbar.Visible = phase == "build" and catalog.Visible
 	end
 
 	------------------------------------------------------------ inspector
@@ -711,6 +743,9 @@ function Designer.open(app, designId)
 	end
 
 	refreshInspector = function()
+		if refreshSetlist then
+			refreshSetlist()
+		end
 		UI.ClearChildren(inspScroll)
 		order = 0
 		local def, rec
@@ -736,7 +771,8 @@ function Designer.open(app, designId)
 		nextOrder(UI.Label(inspScroll, priceTxt, nil, UI.px(296, 20), { textSize = 14, color = T.gold, font = UI.FontBold }))
 		nextOrder(UI.Label(inspScroll, def.desc, nil, UI.px(296, 0), { textSize = 13, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
 
-		if def.size then
+		local build = phase == "build"
+		if build and def.size then
 			local sz = def.size
 			local wLabel = (def.shape == "round" or def.id == "portal" or def.id == "moon") and "Diameter" or ((def.mount == "rig") and "Length" or "Width")
 			stepper(wLabel, (rec.w or sz.w) .. " st", function()
@@ -752,7 +788,7 @@ function Designer.open(app, designId)
 				end)
 			end
 		end
-		if def.heights then
+		if build and def.heights then
 			nextOrder(section("HEIGHT"))
 			local list = {}
 			for _, h in ipairs(def.heights) do
@@ -764,7 +800,7 @@ function Designer.open(app, designId)
 				applyChange({ h = it[1] })
 			end, 7, 38)
 		end
-		if def.deck then
+		if build and def.deck then
 			nextOrder(section("SURFACE"))
 			local list = {}
 			for _, sk in ipairs(Builder.SKINS) do
@@ -798,7 +834,65 @@ function Designer.open(app, designId)
 			end
 		end
 		local songs = GS.songCount(self.design)
-		if def.id == "spot" then
+		local showThings = def.id == "spot" or GS.PLAY_ITEMS[def.id] or Builder.SCREEN_KINDS[def.id] or FX_SONG_KINDS[def.id]
+		if build and showThings and def.id ~= "spot" then
+			nextOrder(UI.Label(inspScroll, "What it does in which song: set it up in STEP 2: SETLIST & SHOW (top bar).", nil, UI.px(296, 0), { textSize = 14, color = T.accent2, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
+		end
+		if not build and not showThings then
+			nextOrder(UI.Label(inspScroll, "Nothing to set up for the show here. Go back to BUILD to move or change it.", nil, UI.px(296, 0), { textSize = 14, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
+		end
+		if not build and FX_SONG_KINDS[def.id] then
+			nextOrder(section("FIRES IN SONGS"))
+			nextOrder(UI.Label(inspScroll, "Auto = the show decides (big moments, the finale). Or pick the songs yourself.", nil, UI.px(296, 0), { textSize = 13, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
+			local list = { { "auto", "Auto" } }
+			for n = 1, songs do
+				table.insert(list, { n, tostring(n) })
+			end
+			local function has(n)
+				if type(rec.songs) ~= "table" then
+					return false
+				end
+				for _, v in ipairs(rec.songs) do
+					if v == n then
+						return true
+					end
+				end
+				return false
+			end
+			chips(list, function(it)
+				if it[1] == "auto" then
+					return type(rec.songs) ~= "table" or #rec.songs == 0
+				end
+				return has(it[1])
+			end, function(it)
+				if it[1] == "auto" then
+					applyChange({ songs = false })
+					return
+				end
+				local new = {}
+				for _, v in ipairs(type(rec.songs) == "table" and rec.songs or {}) do
+					if v ~= it[1] then
+						table.insert(new, v)
+					end
+				end
+				if not has(it[1]) then
+					table.insert(new, it[1])
+				end
+				table.sort(new)
+				applyChange({ songs = (#new > 0) and new or false })
+			end, 5, 54)
+			if selected and not pending then
+				nextOrder(UI.Button(inspScroll, "Use these songs for all " .. def.name .. "s", nil, UI.px(296, 32), { textSize = 13, color = T.accent2, textColor = BLACK }, function()
+					for _, other in ipairs(self.design.items) do
+						if other.t == rec.t and other ~= rec then
+							other.songs = (type(rec.songs) == "table") and Util.deepCopy(rec.songs) or false
+						end
+					end
+					app:toast("Done: every " .. def.name .. " fires in the same songs.", T.good)
+				end))
+			end
+		end
+		if not build and def.id == "spot" then
 			local list = spotRecs()
 			local idx = 0
 			for i, r in ipairs(list) do
@@ -837,7 +931,7 @@ function Designer.open(app, designId)
 				end)
 			end
 		end
-		if GS.PLAY_ITEMS[def.id] then
+		if not build and GS.PLAY_ITEMS[def.id] then
 			local isLift = def.id == "lift" or def.id == "poplift"
 			local isTower = def.id == "towerlift"
 			nextOrder(section(isTower and "LIFTS THE ARTIST UP IN SONG" or (isLift and "ARTIST COMES UP HERE IN SONG" or "ARTIST PLAYS THIS IN SONG")))
@@ -861,7 +955,7 @@ function Designer.open(app, designId)
 				applyChange({ play = math.min(StageItems.MAX_SPOTS, (cur or 0) + 1) })
 			end)
 		end
-		if Builder.SCREEN_KINDS[def.id] then
+		if not build and Builder.SCREEN_KINDS[def.id] then
 			local scr = rec.scr and Util.deepCopy(rec.scr) or { default = Builder.screenConfig({ rec = rec, kind = def.id }, nil) }
 			nextOrder(section("SCREEN SHOWS"))
 			local slot = (screenSong == 0) and "default" or tostring(screenSong)
@@ -941,23 +1035,100 @@ function Designer.open(app, designId)
 				end))
 			end
 		end
-		nextOrder(section("POSITION"))
-		stepper("Turn", (rec.r or 0) .. " deg", function()
-			rotate(-TURNS[turnIndex])
-		end, function()
-			rotate(TURNS[turnIndex])
-		end)
-		stepper("Lift up", (rec.yo or 0) .. " st", function()
-			applyChange({ yo = math.max((def.mount == "rig") and -20 or 0, (rec.yo or 0) - 1) })
-		end, function()
-			applyChange({ yo = math.min(40, (rec.yo or 0) + 1) })
-		end)
+		if build then
+			nextOrder(section("POSITION"))
+			stepper("Turn", (rec.r or 0) .. " deg", function()
+				rotate(-TURNS[turnIndex])
+			end, function()
+				rotate(TURNS[turnIndex])
+			end)
+			stepper("Lift up", (rec.yo or 0) .. " st", function()
+				applyChange({ yo = math.max((def.mount == "rig") and -20 or 0, (rec.yo or 0) - 1) })
+			end, function()
+				applyChange({ yo = math.min(40, (rec.yo or 0) + 1) })
+			end)
+		elseif def.id == "spot" and selected and not pending then
+			nextOrder(UI.Button(inspScroll, "Remove this spot (X)", nil, UI.px(296, 34), { textSize = 14, color = UI.shade(T.bad, 0.7) }, deleteSelected))
+		end
 		if pending then
 			local f = nextOrder(row(48))
 			UI.Button(f, "X Cancel", UI.px(0, 4), UI.px(120, 42), { textSize = 15 }, cancel)
-			UI.Button(f, "DONE: PLACE", UI.px(126, 4), UI.px(170, 42), { textSize = 17, color = T.good, textColor = BLACK }, confirm)
+			UI.Button(f, "PLACE (Q)", UI.px(126, 4), UI.px(170, 42), { textSize = 17, color = T.good, textColor = BLACK }, confirm)
 		end
 	end
+
+	------------------------------------------------------------ step 2: setlist & show
+	local spotDef = StageItems.byId.spot
+	local function refsOf(rec)
+		for _, r in ipairs(Stage3D.items) do
+			if r.rec == rec then
+				return r
+			end
+		end
+		return nil
+	end
+	refreshSetlist = function()
+		UI.ClearChildren(setlistPanel)
+		setlistPanel.Visible = phase == "show"
+		if phase ~= "show" then
+			return
+		end
+		UI.Label(setlistPanel, "SETLIST & SHOW", UI.px(18, 12), UI.px(394, 32), { textSize = 24, font = UI.FontBlack, color = T.accent2 })
+		UI.Label(setlistPanel, "One song per place: artist spots, lifts and instruments. Click a song or an item on the stage to set it up: screens and effects too.", UI.px(18, 46), UI.px(394, 60), { textSize = 15, color = T.sub, wrap = true })
+		local plan = GS.songPlan(withPending())
+		local list = UI.Scroll(setlistPanel, UI.px(12, 112), UI.px(406, 470))
+		UI.List(true, 6).Parent = list
+		for n = 1, plan.count do
+			local rec = plan.place[n]
+			local def = rec and StageItems.byId[rec.t]
+			local isSel = selected ~= nil and rec ~= nil and selected.rec == rec
+			local what = def and def.name or "free: the artist walks the stage"
+			local tag = (n == 1) and "  (opener)" or ((n == plan.count) and "  (finale)" or "")
+			local b = UI.Button(list, "", nil, UI.px(384, 54), { order = n, color = isSel and T.accent or T.panel2 }, function()
+				local r = rec and refsOf(rec)
+				if r then
+					select(r)
+				end
+			end)
+			UI.Label(b, "SONG " .. n .. tag, UI.px(14, 4), UI.px(360, 22), { textSize = 15, font = UI.FontBlack, color = isSel and T.text or T.gold })
+			UI.Label(b, what, UI.px(14, 26), UI.px(360, 24), { textSize = 16, color = def and T.text or T.sub })
+		end
+		local spots = #spotRecs()
+		UI.Button(setlistPanel, "+ ADD ARTIST SPOT (a new song)", UI.px(18, 594), UI.px(394, 48), { textSize = 16, color = T.good, textColor = BLACK, disabled = spots >= StageItems.MAX_SPOTS }, function()
+			setMode("place", spotDef)
+		end)
+		local fxAuto, fxSet = 0, 0
+		for _, it in ipairs(self.design.items) do
+			if FX_SONG_KINDS[it.t] then
+				if type(it.songs) == "table" and #it.songs > 0 then
+					fxSet = fxSet + 1
+				else
+					fxAuto = fxAuto + 1
+				end
+			end
+		end
+		UI.Label(setlistPanel, string.format("Effects: %d automatic, %d set to songs", fxAuto, fxSet), UI.px(18, 650), UI.px(394, 22), { textSize = 15, color = T.sub })
+		UI.Label(setlistPanel, "Place a spot: point at the stage and press Q.", UI.px(18, 676), UI.px(394, 22), { textSize = 15, color = T.sub })
+	end
+
+	local function setPhase(p)
+		if p == phase then
+			return
+		end
+		select(nil)
+		setMode("idle")
+		phase = p
+		catalog.Visible = p == "build"
+		statsBar.Visible = true
+		refreshTop()
+		refreshToolbar()
+		refreshInspector()
+		refreshSetlist()
+		if p == "show" then
+			app:toast("Step 2: choose what happens in every song. Back to building with  < STEP 1: BUILD.", T.accent2, 5)
+		end
+	end
+	self.setPhase = setPhase
 
 	------------------------------------------------------------ top bar
 	local function switchDesign(d)
@@ -1014,6 +1185,15 @@ function Designer.open(app, designId)
 			helpBox.Visible = not helpBox.Visible
 			refreshTop()
 		end))
+		if phase == "build" then
+			tag(UI.Button(top, "STEP 2: SETLIST & SHOW >", UI.px(798, 10), UI.px(204, 44), { textSize = 15, color = T.good, textColor = BLACK }, function()
+				setPhase("show")
+			end))
+		else
+			tag(UI.Button(top, "< STEP 1: BUILD", UI.px(798, 10), UI.px(204, 44), { textSize = 15, color = T.panel3 }, function()
+				setPhase("build")
+			end))
+		end
 		local ad = previewArtist()
 		tag(UI.Button(top, "Artist: " .. (ad and ad.name or "-") .. "  >", UI.px(1010, 10), UI.px(230, 44), { textSize = 15 }, function()
 			self.previewIndex = self.previewIndex % math.max(1, #signed) + 1
@@ -1142,7 +1322,7 @@ function Designer.open(app, designId)
 
 	local function updateGizmo()
 		local tgt = target()
-		local show = tgt ~= nil and dialog == nil and tgt.model.Parent ~= nil
+		local show = tgt ~= nil and dialog == nil and tgt.model.Parent ~= nil and (phase == "build" or tgt == pending)
 		if show and not drag then
 			local cf, size = tgt.model:GetBoundingBox()
 			sizeBox.CFrame = cf
@@ -1302,6 +1482,32 @@ function Designer.open(app, designId)
 	end)
 
 	------------------------------------------------------------ input
+	-- the piece under the mouse is put down (not bought yet: Q / Enter / the green button buys it)
+	putDown = function()
+		if not ghost then
+			return false
+		end
+		if not ghost.ok then
+			if #self.design.items >= cls().maxItems then
+				app:toast("This " .. self.design.class .. " stage is full (" .. cls().maxItems .. " items).", T.warn)
+			elseif state.money < Sim.itemPrice(placeDef, ghostRec) then
+				app:toast("Not enough money for " .. placeDef.name .. ".", T.bad)
+			else
+				app:toast("Outside the build area (gold lines).", T.warn)
+			end
+			return false
+		end
+		local rec = Util.deepCopy(ghostRec)
+		rec.x, rec.z = ghost.x, ghost.z
+		floorY(rec, placeDef)
+		clearGhost()
+		mode = "pending"
+		buildPending(rec)
+		refreshList()
+		refreshInspector()
+		refreshToolbar()
+		return true
+	end
 	table.insert(self.conns, UserInputService.InputBegan:Connect(function(input, gp)
 		if gp or app.modalOpen or dialog then
 			return
@@ -1314,29 +1520,7 @@ function Designer.open(app, designId)
 				return
 			end
 			if mode == "place" and placeDef then
-				if not ghost then
-					return
-				end
-				if not ghost.ok then
-					if #self.design.items >= cls().maxItems then
-						app:toast("This " .. self.design.class .. " stage is full (" .. cls().maxItems .. " items).", T.warn)
-					elseif state.money < Sim.itemPrice(placeDef, ghostRec) then
-						app:toast("Not enough money for " .. placeDef.name .. ".", T.bad)
-					else
-						app:toast("Outside the build area (gold lines).", T.warn)
-					end
-					return
-				end
-				-- put it down; it is bought with the green tick
-				local rec = Util.deepCopy(ghostRec)
-				rec.x, rec.z = ghost.x, ghost.z
-				floorY(rec, placeDef)
-				clearGhost()
-				mode = "pending"
-				buildPending(rec)
-				refreshList()
-				refreshInspector()
-				refreshToolbar()
+				putDown()
 			elseif mode == "pending" and pending then
 				-- clicking somewhere else moves the new piece there
 				local x, z, rr = mousePoint(pending, pending.def, pending.rec)
@@ -1353,24 +1537,34 @@ function Designer.open(app, designId)
 			end
 		elseif input.UserInputType == Enum.UserInputType.Keyboard then
 			local k = input.KeyCode
-			if k == Enum.KeyCode.R or k == Enum.KeyCode.E then
+			local building = phase == "build"
+			if k == Enum.KeyCode.R and building then
 				rotate(TURNS[turnIndex])
-			elseif k == Enum.KeyCode.Q then
+			elseif k == Enum.KeyCode.E and building then
 				rotate(-TURNS[turnIndex])
+			elseif k == Enum.KeyCode.Q then
+				-- Q places: the piece under the mouse is put down and bought in one go
+				if pending then
+					confirm()
+				elseif mode == "place" and placeDef and putDown() then
+					confirm()
+				end
 			elseif k == Enum.KeyCode.Return or k == Enum.KeyCode.KeypadEnter then
 				confirm()
-			elseif k == Enum.KeyCode.C then
+			elseif k == Enum.KeyCode.C and building then
 				copySelected()
 			elseif k == Enum.KeyCode.X or k == Enum.KeyCode.Delete then
-				deleteSelected()
+				if building or pending or (selected and selected.def.id == "spot") then
+					deleteSelected()
+				end
 			elseif k == Enum.KeyCode.F or k == Enum.KeyCode.Escape then
 				cancel()
 			elseif k == Enum.KeyCode.T then
 				pitch = (pitch > 1.3) and 0.6 or 1.45
 			elseif k == Enum.KeyCode.H then
 				local show = not catalog.Visible
-				catalog.Visible = show
-				toolbar.Visible = show
+				catalog.Visible = show and phase == "build"
+				toolbar.Visible = show and phase == "build"
 				statsBar.Visible = show
 				inspector.Visible = show and target() ~= nil
 			end
