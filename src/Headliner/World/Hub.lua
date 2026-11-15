@@ -30,15 +30,49 @@ Hub.STAFF = {
 -- the street: straight from XW to XE, bends away around the corners CW / CE (radius 20 inner sidewalk .. 76)
 Hub.STREET = { xw = -130, xe = 170, cw = Vector3.new(-130, 0, 124), ce = Vector3.new(170, 0, 124), laneEast = 80, laneWest = 74.5 }
 -- walking paths stay in the free lanes of the sidewalks (trees, lamps, benches and tables are elsewhere)
+-- indoor walks (with a pause at each end); the street people walk from door to door (Hub.DOORS)
+Hub.LANES = { front = { 52.4, 55.2 }, far = { 96, 98.2 } }
 Hub.WALKS = {
-	{ Vector3.new(-124, 0, 52.4), Vector3.new(164, 0, 52.4) },
-	{ Vector3.new(164, 0, 55.2), Vector3.new(-124, 0, 55.2) },
-	{ Vector3.new(-124, 0, 96), Vector3.new(164, 0, 96) },
-	{ Vector3.new(164, 0, 98.2), Vector3.new(-124, 0, 98.2) },
 	{ Vector3.new(-6, 0, 22), Vector3.new(28, 0, 22), Vector3.new(28, 0, 25.4) }, -- office: to the coffee bar
 	{ Vector3.new(-70, 0, 12.5), Vector3.new(-62, 0, 18), Vector3.new(-48, 0, 19.5) }, -- lounge
 }
+-- street people have a goal: they come out of a door, walk to another door (crossing at the zebra
+-- crossing if needed), go in, stay a while, come out again
+function Hub.streetTrip(from, to)
+	local lanes = Hub.LANES
+	local dirX = (to.pos.X >= from.pos.X) and 1 or -1
+	local function lane(side, d)
+		return lanes[side][(d > 0) and 1 or 2]
+	end
+	local pts = { from.pos }
+	if from.side == to.side then
+		local z = lane(from.side, dirX)
+		table.insert(pts, Vector3.new(from.pos.X, 0, z))
+		table.insert(pts, Vector3.new(to.pos.X, 0, z))
+	else
+		local cx = (from.side == "front") and -2.2 or 2.2
+		local z1 = lane(from.side, (cx >= from.pos.X) and 1 or -1)
+		local z2 = lane(to.side, (to.pos.X >= cx) and 1 or -1)
+		table.insert(pts, Vector3.new(from.pos.X, 0, z1))
+		table.insert(pts, Vector3.new(cx, 0, z1))
+		table.insert(pts, Vector3.new(cx, 0, z2))
+		table.insert(pts, Vector3.new(to.pos.X, 0, z2))
+	end
+	table.insert(pts, to.pos)
+	return pts
+end
+
 Hub.CAFE_TABLES = { -84, -72, -60 }
+-- doors people walk to: shops across the street (door = right part of each shop) and on the label side
+Hub.SHOP_ROW = { { -130, -90 }, { -90, -46 }, { -46, -6 }, { -6, 34 }, { 34, 76 }, { 76, 120 }, { 120, 170 } }
+Hub.DOORS = {
+	{ pos = Vector3.new(0, 0, 47.5), side = "front", name = "label" },
+	{ pos = Vector3.new(-110, 0, 48.6), side = "front", name = "flats west" },
+	{ pos = Vector3.new(146, 0, 48.6), side = "front", name = "hotel" },
+}
+for _, sh in ipairs(Hub.SHOP_ROW) do
+	table.insert(Hub.DOORS, { pos = Vector3.new(sh[2] - 4.5, 0, 103.6), side = "far" })
+end
 Hub.SITTERS = {
 	{ pos = Vector3.new(-63, 0, 36.9), yaw = math.pi, seatY = 2.4 }, -- lounge sofa
 	{ pos = Vector3.new(-40, 0, 58.4), yaw = 0, seatY = 2.1 }, -- bus stop
@@ -339,16 +373,30 @@ local function shop(parent, x0, x1, o)
 	local cx, iz = (x0 + x1) / 2, z0 + depth
 	local kind = o.kind
 	if kind == "pizza" then
-		box(parent, "Oven", cx - 5, 0.1, iz - 4, cx + 5, 8, iz - 0.06, Color3.fromRGB(170, 90, 60), Enum.Material.Brick)
-		box(parent, "OvenMouth", cx - 2.5, 3, iz - 4.04, cx + 2.5, 5.5, iz - 4, Color3.fromRGB(30, 20, 16), nil, { collide = false })
-		local fire = box(parent, "OvenFire", cx - 1.5, 3.1, iz - 4.08, cx + 1.5, 4.2, iz - 4.04, Color3.fromRGB(255, 140, 40), Enum.Material.Neon, { collide = false })
+		-- back: brick oven against the wall, the counter in front of it (on the door side)
+		local ox = doorX - 9
+		box(parent, "Oven", ox - 5, 0.1, iz - 4, ox + 5, 7.5, iz - 0.06, Color3.fromRGB(170, 90, 60), Enum.Material.Brick)
+		box(parent, "OvenMouth", ox - 2.5, 3, iz - 4.04, ox + 2.5, 5.5, iz - 4, Color3.fromRGB(30, 20, 16), nil, { collide = false })
+		local fire = box(parent, "OvenFire", ox - 1.5, 3.1, iz - 4.08, ox + 1.5, 4.2, iz - 4.04, Color3.fromRGB(255, 140, 40), Enum.Material.Neon, { collide = false })
 		new("PointLight", { Range = 10, Brightness = 1, Color = Color3.fromRGB(255, 150, 60), Shadows = false }, fire)
-		for i, tx in ipairs({ x0 + 7, x0 + 17 }) do
-			box(parent, "PizzaTable", tx - 2, 2.8, z0 + 3, tx + 2, 3.1, z0 + 6.5, (i == 1) and Color3.fromRGB(200, 60, 50) or C.white)
-			box(parent, "PizzaTableLeg", tx - 0.2, 0.1, z0 + 4.55, tx + 0.2, 2.8, z0 + 4.95, C.dark)
-			chair(parent, Vector3.new(tx - 3.4, 0.1, z0 + 4.75), math.pi / 2, Color3.fromRGB(46, 140, 70))
-			chair(parent, Vector3.new(tx + 3.4, 0.1, z0 + 4.75), -math.pi / 2, Color3.fromRGB(46, 140, 70))
-			part(parent, "Pizza", Vector3.new(0.12, 2.4, 2.4), CFrame.new(Vector3.new(tx, 3.16, z0 + 4.75)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(240, 170, 70), nil, { shape = Enum.PartType.Cylinder, collide = false })
+		box(parent, "OvenChimney", ox - 1.2, 7.5, iz - 2.6, ox + 1.2, 11.5, iz - 0.06, Color3.fromRGB(150, 80, 56), Enum.Material.Brick)
+		box(parent, "Counter", ox - 6, 0.1, iz - 7.6, x1 - 2.5, 3.6, iz - 6, C.white)
+		box(parent, "CounterTop", ox - 6.2, 3.6, iz - 7.8, x1 - 2.3, 3.9, iz - 5.8, C.woodDark, Enum.Material.Wood)
+		box(parent, "Register", x1 - 6, 3.9, iz - 7.4, x1 - 4.2, 5, iz - 6.2, C.dark)
+		for k = 0, 2 do
+			part(parent, "PizzaOnCounter", Vector3.new(0.12, 2, 2), CFrame.new(Vector3.new(ox - 4 + k * 2.4, 3.96, iz - 6.8)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(240, 170, 70), nil, { shape = Enum.PartType.Cylinder, collide = false })
+		end
+		local menuBoard = box(parent, "MenuBoard", ox + 2, 8.4, iz - 0.12, ox + 11, 11.2, iz - 0.06, C.dark, nil, { collide = false })
+		sign(menuBoard, Enum.NormalId.Front, "MARGHERITA  DIAVOLA  FUNGHI", C.yellow, Enum.Font.Antique)
+		-- dining: small tables along the shop window, two chairs facing each other (aisle to the door stays free)
+		for i, tx in ipairs({ x0 + 5, x0 + 13.5, x0 + 22 }) do
+			if tx + 3 < ox - 6 then
+				box(parent, "PizzaTable", tx - 1.3, 2.8, z0 + 2.4, tx + 1.3, 3.1, z0 + 5.2, (i % 2 == 1) and Color3.fromRGB(200, 60, 50) or C.white)
+				box(parent, "PizzaTableLeg", tx - 0.2, 0.1, z0 + 3.6, tx + 0.2, 2.8, z0 + 4, C.dark)
+				chair(parent, Vector3.new(tx - 2.6, 0.1, z0 + 3.8), -math.pi / 2, Color3.fromRGB(46, 140, 70))
+				chair(parent, Vector3.new(tx + 2.6, 0.1, z0 + 3.8), math.pi / 2, Color3.fromRGB(46, 140, 70))
+				part(parent, "Pizza", Vector3.new(0.12, 2, 2), CFrame.new(Vector3.new(tx, 3.16, z0 + 3.8)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(240, 170, 70), nil, { shape = Enum.PartType.Cylinder, collide = false })
+			end
 		end
 		-- a big round pizza sign sticking out over the sidewalk
 		box(parent, "PizzaSignArm", x1 - 4.2, 18.6, z0 - 5, x1 - 3.8, 19, z0 - 0.06, C.dark, Enum.Material.Metal)
@@ -385,17 +433,33 @@ local function shop(parent, x0, x1, o)
 			box(parent, "AlbumCover", x0 + 4 + col * 5, 5 + row * 3.4, iz - 0.12, x0 + 7 + col * 5, 8 + row * 3.4, iz - 0.06, c, nil, { collide = false })
 		end
 	elseif kind == "music" then
+		-- back wall: a row of guitars on hooks; counter by the door; drum kit on a riser in the window
 		for k = 0, 4 do
-			local gx = x0 + 5 + k * 5
+			local gx = x0 + 5 + k * 4.2
 			local c = ({ Color3.fromRGB(200, 40, 40), C.white, Color3.fromRGB(30, 30, 34), Color3.fromRGB(230, 150, 40), Color3.fromRGB(60, 110, 200) })[k + 1]
-			part(parent, "GuitarBody", Vector3.new(2.4, 3, 0.5), Vector3.new(gx, 4.4, iz - 0.4), c, nil, { shape = Enum.PartType.Ball, collide = false })
-			box(parent, "GuitarNeck", gx - 0.18, 5.6, iz - 0.45, gx + 0.18, 9.6, iz - 0.25, C.woodDark, Enum.Material.Wood, { collide = false })
+			box(parent, "GuitarHook", gx - 0.15, 9.7, iz - 0.6, gx + 0.15, 10, iz - 0.06, C.grey, Enum.Material.Metal, { collide = false })
+			box(parent, "GuitarNeck", gx - 0.18, 6.4, iz - 0.5, gx + 0.18, 9.7, iz - 0.3, C.woodDark, Enum.Material.Wood, { collide = false })
+			part(parent, "GuitarBody", Vector3.new(2.2, 2.8, 0.45), Vector3.new(gx, 5.2, iz - 0.4), c, nil, { shape = Enum.PartType.Ball, collide = false })
 		end
-		box(parent, "Amp", x0 + 4, 0.1, z0 + 3, x0 + 8, 4, z0 + 5.4, C.dark, Enum.Material.Leather)
-		box(parent, "Amp", x0 + 9, 0.1, z0 + 3, x0 + 13, 5.5, z0 + 5.4, C.dark, Enum.Material.Leather)
-		box(parent, "AmpGrille", x0 + 9.4, 0.6, z0 + 2.96, x0 + 12.6, 4.8, z0 + 3, Color3.fromRGB(90, 76, 60), Enum.Material.Fabric, { collide = false })
-		part(parent, "DrumKick", Vector3.new(2, 3, 3), CFrame.new(Vector3.new(x0 + 20, 1.6, z0 + 5)) * CFrame.Angles(0, math.pi / 2, 0), C.white, nil, { shape = Enum.PartType.Cylinder })
-		part(parent, "Cymbal", Vector3.new(0.1, 2.4, 2.4), CFrame.new(Vector3.new(x0 + 22.4, 5, z0 + 4.6)) * CFrame.Angles(0, 0, math.pi / 2), C.yellow, Enum.Material.Metal, { shape = Enum.PartType.Cylinder, collide = false })
+		box(parent, "Counter", doorX - 9, 0.1, iz - 4.5, x1 - 2.5, 3.6, iz - 2.8, C.dark)
+		box(parent, "CounterTop", doorX - 9.2, 3.6, iz - 4.7, x1 - 2.3, 3.9, iz - 2.6, C.woodDark, Enum.Material.Wood)
+		box(parent, "Register", x1 - 6, 3.9, iz - 4.3, x1 - 4.2, 5, iz - 3.1, C.grey)
+		for k = 0, 2 do
+			box(parent, "PedalBox", doorX - 8 + k * 1.6, 3.9, iz - 4.2, doorX - 6.9 + k * 1.6, 4.3, iz - 3.3, ({ C.coral, C.teal, C.yellow })[k + 1], nil, { collide = false })
+		end
+		-- the window display: a drum kit on a riser
+		local dx = x0 + 9
+		box(parent, "Riser", x0 + 3, 0.1, z0 + 1.6, x0 + 15, 1.2, z0 + 7.4, C.dark, Enum.Material.Carpet)
+		part(parent, "KickDrum", Vector3.new(1.8, 3, 3), CFrame.new(Vector3.new(dx, 2.7, z0 + 5)) * CFrame.Angles(0, math.pi / 2, 0), C.white, nil, { shape = Enum.PartType.Cylinder })
+		part(parent, "Snare", Vector3.new(0.8, 1.8, 1.8), CFrame.new(Vector3.new(dx - 2.4, 3.4, z0 + 4)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(200, 200, 210), nil, { shape = Enum.PartType.Cylinder, collide = false })
+		part(parent, "Tom", Vector3.new(0.9, 1.6, 1.6), CFrame.new(Vector3.new(dx + 0.2, 4.6, z0 + 4.4)) * CFrame.Angles(0, 0, math.pi / 2), C.white, nil, { shape = Enum.PartType.Cylinder, collide = false })
+		box(parent, "CymbalStand", dx + 2.9, 1.2, z0 + 3.9, dx + 3.1, 5.4, z0 + 4.1, C.grey, Enum.Material.Metal, { collide = false })
+		part(parent, "Cymbal", Vector3.new(0.1, 2.4, 2.4), CFrame.new(Vector3.new(dx + 3, 5.5, z0 + 4)) * CFrame.Angles(0, 0, math.pi / 2), C.yellow, Enum.Material.Metal, { shape = Enum.PartType.Cylinder, collide = false })
+		box(parent, "DrumStool", dx - 0.7, 1.2, z0 + 6.2, dx + 0.7, 2.6, z0 + 7.2, C.dark)
+		-- amps against the side wall, facing the room
+		box(parent, "Amp", x0 + 0.7, 0.1, z0 + 8, x0 + 3.2, 4.2, z0 + 11, C.dark, Enum.Material.Leather)
+		box(parent, "AmpHead", x0 + 0.9, 4.2, z0 + 8.3, x0 + 3, 5.4, z0 + 10.7, Color3.fromRGB(40, 36, 32), Enum.Material.Leather)
+		box(parent, "AmpGrille", x0 + 3.2, 0.8, z0 + 8.4, x0 + 3.24, 4.8, z0 + 10.6, Color3.fromRGB(90, 76, 60), Enum.Material.Fabric, { collide = false })
 	elseif kind == "bakery" then
 		box(parent, "Display", x0 + 3, 0.1, z0 + 3, x1 - 9, 3.2, z0 + 6, C.white)
 		box(parent, "DisplayGlass", x0 + 3, 3.2, z0 + 3, x1 - 9, 4.6, z0 + 3.2, C.glass, Enum.Material.Glass, { transparency = 0.4, collide = false })
@@ -531,7 +595,7 @@ function Hub.build(parentFolder)
 	-- the roll-up door (the client rolls it up once the hall is open)
 	local door = new("Model", { Name = "HallDoor" }, stations)
 	for i = 0, 13 do
-		box(door, "Slat", 40.3, i, 2, 41.7, i + 1, 18, (i % 2 == 0) and Color3.fromRGB(190, 194, 200) or Color3.fromRGB(176, 180, 188), Enum.Material.Metal)
+		box(door, "Slat", 40.3, i, 2.05, 41.7, math.min(13.95, i + 1), 17.95, (i % 2 == 0) and Color3.fromRGB(190, 194, 200) or Color3.fromRGB(176, 180, 188), Enum.Material.Metal)
 	end
 	local doorSign = box(door, "DoorSign", 40.1, 6, 6, 40.26, 8.4, 14, C.yellow, nil, { collide = false })
 	sign(doorSign, Enum.NormalId.Left, "STAGE HALL", C.dark)
@@ -848,6 +912,34 @@ function Hub.build(parentFolder)
 			local xa, xb = xr(77), xr(108)
 			box(out, "ContBuilding", math.min(xa, xb), -1, z0, math.max(xa, xb), h, z0 + 36, Color3.fromRGB(rng:NextInteger(160, 220), rng:NextInteger(150, 200), rng:NextInteger(140, 200)), Enum.Material.Brick)
 		end
+		-- life in the side street: shop fronts and windows, trees, lamps, parked cars
+		local out0 = -dir -- the house fronts look towards the road
+		local NAMES = { "DINER", "BOOKS", "FLOWERS", "SNEAKERS", "GYM", "BARBER", "NOODLES", "PHONE REPAIR", "ICE CREAM", "COMICS" }
+		for i = 0, 4 do
+			local z0 = ctr.Z + i * 38
+			local fx = xr(77)
+			local c = ({ C.coral, C.teal, C.purple, C.yellow, Color3.fromRGB(90, 140, 220) })[i % 5 + 1]
+			box(out, "ContShopGlass", math.min(fx, fx + out0 * 0.3), 1.2, z0 + 4, math.max(fx, fx + out0 * 0.3), 8.6, z0 + 28, C.glass, Enum.Material.Glass)
+			local sg = box(out, "ContShopSign", math.min(fx, fx + out0 * 0.5), 9.4, z0 + 6, math.max(fx, fx + out0 * 0.5), 12, z0 + 30, c)
+			sign(sg, (out0 > 0) and Enum.NormalId.Right or Enum.NormalId.Left, NAMES[(i + (dir > 0 and 5 or 0)) % #NAMES + 1], C.white)
+			for fl = 0, 3 do
+				for k = 0, 3 do
+					box(out, "ContWindow", math.min(fx, fx + out0 * 0.25), 15 + fl * 9, z0 + 3 + k * 8.5, math.max(fx, fx + out0 * 0.25), 20 + fl * 9, z0 + 8 + k * 8.5, Color3.fromRGB(170, 196, 220), Enum.Material.Glass)
+				end
+			end
+			local ix = xr(20)
+			for fl = 0, 3 do
+				for k = 0, 3 do
+					box(out, "ContWindow", math.min(ix, ix + dir * 0.25), 6 + fl * 9, z0 + 3 + k * 8.5, math.max(ix, ix + dir * 0.25), 11 + fl * 9, z0 + 8 + k * 8.5, Color3.fromRGB(170, 196, 220), Enum.Material.Glass)
+				end
+			end
+			tree(out, Vector3.new(xr(70), 0, z0 + 18))
+			tree(out, Vector3.new(xr(28), 0, z0 + 30))
+			streetLamp(out, Vector3.new(xr(64), 0, z0 + 6), 0)
+			if i % 2 == 0 then
+				car(out, Vector3.new(xr(57.8), -0.5, z0 + 22), math.pi / 2, ({ Color3.fromRGB(60, 120, 200), Color3.fromRGB(200, 200, 205), Color3.fromRGB(150, 40, 40) })[i / 2 + 1])
+			end
+		end
 		box(out, "ContEnd", math.min(xr(0), xr(110)), -1, ctr.Z + 190, math.max(xr(0), xr(110)), 70, ctr.Z + 220, Color3.fromRGB(190, 180, 170), Enum.Material.Concrete)
 		-- the inner corner: a round corner house and the block along the side street
 		part(out, "CornerTower", Vector3.new(52, 40, 40), CFrame.new(ctr + Vector3.new(0, 25, 0)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(214, 196, 172), Enum.Material.SmoothPlastic, { shape = Enum.PartType.Cylinder })
@@ -866,12 +958,20 @@ function Hub.build(parentFolder)
 			for k = 0, math.floor((nb[2] - nb[1] - 8) / 9) do
 				local wx, wy = nb[1] + 5 + k * 9, 6 + fl * 10
 				local underBillboard = nb[1] > 0 and wx + 5 > 128 and wx < 168 and wy + 6 > 24 and wy < 54
-				if not underBillboard then
+				local entrance = wy < 11 and ((wx + 5.3 > -114 and wx - 0.3 < -106) or (wx + 5.3 > 142 and wx - 0.3 < 150))
+				if not underBillboard and not entrance then
 					box(out, "Window", wx, wy, 48.06, wx + 5, wy + 6, 48.3, Color3.fromRGB(170, 196, 220), Enum.Material.Glass)
 					box(out, "WindowSill", wx - 0.3, wy - 0.4, 48.04, wx + 5.3, wy, 48.5, C.white)
 				end
 			end
 		end
+	end
+	-- entrances of the flats (west) and the hotel (east)
+	for _, dx in ipairs({ -110, 146 }) do
+		box(out, "EntranceFrame", dx - 3.5, 0, 48.04, dx + 3.5, 10, 48.5, C.white)
+		box(out, "EntranceDoor", dx - 2.5, 0, 48.5, dx + 2.5, 8.6, 48.7, C.woodDark, Enum.Material.Wood)
+		box(out, "EntranceLamp", dx - 0.6, 9.2, 48.5, dx + 0.6, 9.8, 49.1, C.lamp, Enum.Material.Neon, { collide = false })
+		box(out, "EntranceStep", dx - 4, 0, 48.56, dx + 4, 0.4, 50, C.concrete, Enum.Material.Concrete)
 	end
 	box(out, "BillboardFrame", 130, 26, 48.06, 166, 52, 48.6, C.dark)
 	poster(out, Vector3.new(148, 39, 48.72), Enum.NormalId.Back, 34, 24)

@@ -331,7 +331,7 @@ function World.refreshPosters()
 		local signed = state.artists[ad.id].signed
 		local onTour = GS.activeTour(state, ad.id) ~= nil
 		local layout = idx % 4
-		local bg = New("Frame", { Parent = g, Size = UDim2.fromScale(1, 1), BackgroundColor3 = col, BorderSizePixel = 0 })
+		local bg = New("Frame", { Parent = g, Size = UDim2.fromScale(1, 1), BackgroundColor3 = col, BorderSizePixel = 0, ClipsDescendants = true })
 		local line = onTour and "ON TOUR NOW" or (signed and string.upper(state.labelName) or "COMING SOON")
 		if wide then
 			-- billboard: picture left, big name right
@@ -357,8 +357,9 @@ function World.refreshPosters()
 		elseif layout == 2 then
 			-- festival / club night: dark with stripes
 			bg.BackgroundColor3 = dark
-			for k = 0, 5 do
-				New("Frame", { Parent = bg, Position = UDim2.fromOffset(-80 + k * 110, -40), Size = UDim2.fromOffset(40, 720), Rotation = 20, BackgroundColor3 = col, BackgroundTransparency = 0.6, BorderSizePixel = 0 })
+			-- stripes stay inside the poster (rotated frames are not clipped in Roblox)
+			for k = 0, 4 do
+				New("Frame", { Parent = bg, Position = UDim2.fromOffset(18 + k * 84, 0), Size = UDim2.fromOffset(34, 600), BackgroundColor3 = col, BackgroundTransparency = 0.6 + k * 0.06, BorderSizePixel = 0 })
 			end
 			posterPicture(bg, ad, UDim2.fromOffset(10, 20), UDim2.fromOffset(400, 400), idx)
 			New("TextLabel", { Parent = bg, Position = UDim2.fromOffset(14, 420), Size = UDim2.fromOffset(392, 90), BackgroundTransparency = 1, Text = string.upper(ad.name), TextScaled = true, TextColor3 = col:Lerp(Color3.new(1, 1, 1), 0.4), Font = font })
@@ -446,12 +447,19 @@ local function seatedFigure(f, data, look, n)
 		p("CapBrim", Vector3.new(1.2, 0.1, 0.7), headCF * CFrame.new(0, 0.58, 0.85), top)
 	elseif look.acc == "beanie" then
 		p("Beanie", Vector3.new(1.38, 0.6, 1.38), headCF * CFrame.new(0, 0.72, 0), c3(look.bag), Enum.Material.Fabric)
+	elseif look.hair == "afro" then
+		p("Afro", Vector3.new(1.7, 0.78, 1.6), headCF * CFrame.new(0, 0.74, -0.1), hairC)
+		p("Afro", Vector3.new(1.36, 0.36, 1.3), headCF * CFrame.new(0, 1.28, -0.12), hairC)
+		p("Afro", Vector3.new(0.3, 1.0, 1.4), headCF * CFrame.new(-0.76, 0.25, -0.12), hairC)
+		p("Afro", Vector3.new(0.3, 1.0, 1.4), headCF * CFrame.new(0.76, 0.25, -0.12), hairC)
+		p("Afro", Vector3.new(1.6, 1.1, 0.35), headCF * CFrame.new(0, 0.2, -0.8), hairC)
 	elseif look.hair ~= "buzz" then
 		p("Hair", Vector3.new(1.3, 0.45, 1.3), headCF * CFrame.new(0, 0.7, -0.05), hairC)
 		if look.hair == "long" or look.hair == "pigtails" then
 			p("HairBack", Vector3.new(1.26, 1.6, 0.36), headCF * CFrame.new(0, -0.15, -0.6), hairC)
 		elseif look.hair == "bun" then
-			p("Bun", Vector3.new(0.7, 0.7, 0.7), headCF * CFrame.new(0, 1.05, -0.35), hairC, nil, Enum.PartType.Ball)
+			p("Bun", Vector3.new(0.72, 0.5, 0.72), headCF * CFrame.new(0, 1.05, -0.3) * CFrame.Angles(0, math.rad(45), 0), hairC)
+			p("Bun", Vector3.new(0.5, 0.36, 0.5), headCF * CFrame.new(0, 1.36, -0.3), hairC)
 		end
 	end
 	if look.acc == "sunglasses" then
@@ -459,29 +467,6 @@ local function seatedFigure(f, data, look, n)
 	end
 	local _ = n
 	return m
-end
-
-local function buildPeople()
-	local f = New("Folder", { Name = "People", Parent = World.folder })
-	World.npcs = {}
-	local n = 0
-	for _, st in ipairs(Hub.STAFF) do
-		n = n + 1
-		seatedFigure(f, { pos = st.pos, yaw = st.yaw, seatY = st.seatY, work = st.desk ~= nil }, randomLook(n), n)
-	end
-	for _, st in ipairs(Hub.SITTERS) do
-		n = n + 1
-		seatedFigure(f, st, randomLook(n), n)
-	end
-	for i, path in ipairs(Hub.WALKS) do
-		local count = (i <= 4) and 3 or 1
-		for k = 1, count do
-			n = n + 1
-			local look = randomLook(n)
-			local fig = People.new(f, c3(look.top), 1, "dancer", n, look)
-			table.insert(World.npcs, { fig = fig, data = { path = path, speed = 5 + ((n * 37) % 30) / 10, offset = (k - 1) / count }, ph = n * 1.7 })
-		end
-	end
 end
 
 local function pathLength(path)
@@ -506,22 +491,94 @@ local function alongPath(path, dist)
 end
 World.alongPath = alongPath
 
-local function animatePeople(t)
+local streetTrip = Hub.streetTrip
+
+local function buildPeople()
+	local f = New("Folder", { Name = "People", Parent = World.folder })
+	World.npcs = {}
+	local n = 0
+	for _, st in ipairs(Hub.STAFF) do
+		n = n + 1
+		seatedFigure(f, { pos = st.pos, yaw = st.yaw, seatY = st.seatY, work = st.desk ~= nil }, randomLook(n), n)
+	end
+	for _, st in ipairs(Hub.SITTERS) do
+		n = n + 1
+		seatedFigure(f, st, randomLook(n), n)
+	end
+	local rng = Random.new(77)
+	-- indoor: walk to the coffee bar / the arcade, wait there, walk back, wait
+	for _, path in ipairs(Hub.WALKS) do
+		n = n + 1
+		local look = randomLook(n)
+		table.insert(World.npcs, { fig = People.new(f, c3(look.top), 1, "dancer", n, look), kind = "loop", path = path, len = pathLength(path), speed = 4.5, pause = 4, t = rng:NextNumber(0, 10), ph = n * 1.7 })
+	end
+	-- street: from door to door
+	for k = 1, 14 do
+		n = n + 1
+		local look = randomLook(n)
+		local npc = { fig = People.new(f, c3(look.top), 1, "dancer", n, look), kind = "street", speed = 4.6 + rng:NextNumber() * 1.8, ph = n * 1.7, rng = Random.new(n * 13) }
+		npc.door = Hub.DOORS[(k % #Hub.DOORS) + 1]
+		npc.wait = rng:NextNumber(0, 12) -- some start inside
+		table.insert(World.npcs, npc)
+	end
+end
+
+local function animatePeople(t, dt)
+	World.crossing = false
 	for _, npc in ipairs(World.npcs or {}) do
-		local d = npc.data
-		local len = d.len or pathLength(d.path)
-		d.len = len
-		-- walk the path forward and back
-		local dist = ((t * d.speed) + (d.offset or 0) * len * 2) % (len * 2)
-		local back = dist > len
-		if back then
-			dist = len * 2 - dist
+		if npc.kind == "loop" then
+			-- there and back with a pause at both ends
+			npc.t = npc.t + dt
+			local walk = npc.len / npc.speed
+			local cycle = (walk + npc.pause) * 2
+			local u = npc.t % cycle
+			local dist, dirSign, moving
+			if u < walk then
+				dist, dirSign, moving = u * npc.speed, 1, true
+			elseif u < walk + npc.pause then
+				dist, dirSign, moving = npc.len, 1, false
+			elseif u < walk * 2 + npc.pause then
+				dist, dirSign, moving = npc.len - (u - walk - npc.pause) * npc.speed, -1, true
+			else
+				dist, dirSign, moving = 0, -1, false
+			end
+			local pos, dir = alongPath(npc.path, dist)
+			dir = dir * dirSign
+			npc.fig:update(O + pos, math.atan2(dir.X, dir.Z), { t = t + npc.ph, beat = 0, energy = 0, walking = moving, move = "idle" })
+		else
+			if npc.wait > 0 then
+				-- inside a shop
+				npc.wait = npc.wait - dt
+				if npc.visible ~= false then
+					npc.visible = false
+					npc.fig:setVisible(false)
+				end
+				if npc.wait <= 0 then
+					local to = npc.door
+					while to == npc.door do
+						to = Hub.DOORS[npc.rng:NextInteger(1, #Hub.DOORS)]
+					end
+					npc.path = streetTrip(npc.door, to)
+					npc.len = pathLength(npc.path)
+					npc.dist = 0
+					npc.door = to
+				end
+			else
+				if npc.visible == false then
+					npc.visible = true
+					npc.fig:setVisible(true)
+				end
+				npc.dist = npc.dist + dt * npc.speed
+				local pos, dir = alongPath(npc.path, npc.dist)
+				npc.fig:update(O + pos, math.atan2(dir.X, dir.Z), { t = t + npc.ph, beat = 0, energy = 0, walking = true })
+				if pos.Z > 62 and pos.Z < 90 then
+					World.crossing = true
+				end
+				if npc.dist >= npc.len then
+					npc.wait = npc.rng:NextNumber(4, 14)
+				end
+			end
 		end
-		local pos, dir = alongPath(d.path, dist)
-		if back then
-			dir = -dir
-		end
-		npc.fig:update(O + pos, math.atan2(dir.X, dir.Z), { t = t + npc.ph, beat = 0, energy = 0, walking = true })
 	end
 end
 
@@ -598,31 +655,36 @@ end
 local function buildTraffic()
 	local f = New("Folder", { Name = "Traffic", Parent = World.folder })
 	World.traffic = {}
-	local lanes = { { lanePath(ST.laneEast, true) }, { lanePath(ST.laneWest, false) } }
-	for _, lane in ipairs(lanes) do
-		lane.len = pathLength(lane[1])
-	end
-	local CAR_COLORS = { Color3.fromRGB(200, 60, 60), Color3.fromRGB(60, 110, 200), Color3.fromRGB(230, 230, 230), Color3.fromRGB(40, 40, 46), Color3.fromRGB(80, 160, 110), Color3.fromRGB(150, 150, 160) }
-	local fleet = {
-		{ "car" }, { "taxi" }, { "bus" }, { "car" }, { "van" }, { "tourbus" }, { "car" }, { "taxi" },
+	-- one queue per lane: every vehicle of a lane drives at the same speed with a fixed gap, so nobody
+	-- drives through another; a lane waits in front of the zebra crossing while people cross
+	local lanes = {
+		{ path = lanePath(ST.laneEast, true), z = ST.laneEast, east = true, fleet = { "car", "bus", "taxi", "car" } },
+		{ path = lanePath(ST.laneWest, false), z = ST.laneWest, east = false, fleet = { "taxi", "car", "tourbus", "van" } },
 	}
-	for i, v in ipairs(fleet) do
-		local kind = v[1]
-		local color, label = CAR_COLORS[i % #CAR_COLORS + 1], nil
-		if kind == "taxi" then
-			color = Color3.fromRGB(250, 200, 40)
-		elseif kind == "bus" then
-			color, label = Color3.fromRGB(220, 230, 240), "CITY LINE 7"
-		elseif kind == "van" then
-			color = Color3.fromRGB(240, 240, 236)
+	local CAR_COLORS = { Color3.fromRGB(200, 60, 60), Color3.fromRGB(60, 110, 200), Color3.fromRGB(230, 230, 230), Color3.fromRGB(40, 40, 46), Color3.fromRGB(80, 160, 110), Color3.fromRGB(150, 150, 160) }
+	local n = 0
+	for li, lane in ipairs(lanes) do
+		lane.len = pathLength(lane.path)
+		lane.dist = li * 37
+		lane.speed = 20
+		for k, kind in ipairs(lane.fleet) do
+			n = n + 1
+			local color, label = CAR_COLORS[n % #CAR_COLORS + 1], nil
+			if kind == "taxi" then
+				color = Color3.fromRGB(250, 200, 40)
+			elseif kind == "bus" then
+				color, label = Color3.fromRGB(220, 230, 240), "CITY LINE 7"
+			elseif kind == "van" then
+				color = Color3.fromRGB(240, 240, 236)
+			end
+			local veh = vehicle(f, kind, color, label)
+			veh.kind = kind
+			veh.lane = lane
+			veh.offset = (k - 1) / #lane.fleet * lane.len
+			table.insert(World.traffic, veh)
 		end
-		local veh = vehicle(f, kind, color, label)
-		veh.kind = kind
-		veh.lane = lanes[(i % 2) + 1]
-		veh.offset = (i - 1) / #fleet
-		veh.speed = (kind == "bus" or kind == "tourbus") and 18 or (24 + (i % 3) * 4)
-		table.insert(World.traffic, veh)
 	end
+	World.lanes = lanes
 	World.trafficFolder = f
 end
 
@@ -637,23 +699,38 @@ local function tourBusLabel()
 	return "NOVA RAY | STARDUST WORLD TOUR", Color3.fromRGB(255, 120, 180)
 end
 
-local function animateTraffic(t)
+local function animateTraffic(t, dt)
+	-- does a lane have to wait at the zebra crossing?
+	for _, lane in ipairs(World.lanes or {}) do
+		local wait, onZebra = false, false
+		if World.crossing then
+			for _, v in ipairs(World.traffic) do
+				if v.lane == lane and v.pos and math.abs(v.pos.Z - lane.z) < 3 then
+					local x = v.pos.X
+					local approaching = lane.east and (x > -34 and x < -8) or (not lane.east and x < 34 and x > 8)
+					if approaching then
+						wait = true
+					elseif math.abs(x) <= 8 then
+						onZebra = true -- a car already on the crossing drives on and clears it
+					end
+				end
+			end
+		end
+		if onZebra then
+			wait = false
+		end
+		if not wait then
+			lane.dist = lane.dist + dt * lane.speed
+		end
+	end
 	for _, v in ipairs(World.traffic or {}) do
 		local lane = v.lane
-		local dist = (t * v.speed + v.offset * lane.len) % lane.len
+		local dist = (lane.dist + v.offset) % lane.len
 		if v.kind == "tourbus" and (not v.labelled or math.floor(t) % 20 == 0) then
-			-- (re)paint the tour bus now and then
+			-- (re)paint the tour bus with the running tour
 			local txt, col = tourBusLabel()
 			if v.labelText ~= txt then
 				v.labelText = txt
-				if v.label then
-					v.label:Destroy()
-				end
-				for _, pp in ipairs(v.parts) do
-					if pp[1].Name == "Body" then
-						pp[1].Color = Color3.fromRGB(26, 26, 32)
-					end
-				end
 				local lab = vehicle(World.trafficFolder, "tourbus", col, txt)
 				v.model:Destroy()
 				v.model, v.parts = lab.model, lab.parts
@@ -665,7 +742,8 @@ local function animateTraffic(t)
 			end
 			v.labelled = true
 		end
-		local pos, dir = alongPath(lane[1], dist)
+		local pos, dir = alongPath(lane.path, dist)
+		v.pos = pos
 		local cf = CFrame.lookAt(O + pos, O + pos + Vector3.new(dir.X, 0, dir.Z))
 		for _, pp in ipairs(v.parts) do
 			pp[1].CFrame = cf * pp[2]
@@ -1000,8 +1078,10 @@ function World.start(app)
 			peopleT = peopleT + dt
 			if peopleT > 1 / 30 then
 				peopleT = 0
-				animatePeople(t)
-				animateTraffic(t)
+				local step = math.min(0.2, World.lastStep and (t - World.lastStep) or 0)
+				World.lastStep = t
+				animatePeople(t, step)
+				animateTraffic(t, step)
 			end
 			-- the meeting prompt only shows while sitting
 			local pr = World.prompts.meeting

@@ -92,14 +92,21 @@ function People.new(parent, outfit, scale, role, seed, look)
 	elseif style == "long" then
 		extra("HairBack", Vector3.new(1.3, 1.7, 0.4), "head", CFrame.new(0, -0.15, -0.55), hair)
 	elseif style == "bun" then
-		extra("HairBun", Vector3.new(0.7, 0.7, 0.7), "head", CFrame.new(0, 1.05, -0.35), hair, nil, Enum.PartType.Ball)
+		-- a knot on top: two crossed blocks
+		extra("HairBun", Vector3.new(0.72, 0.5, 0.72), "head", CFrame.new(0, 1.05, -0.3) * CFrame.Angles(0, math.rad(45), 0), hair)
+		extra("HairBun", Vector3.new(0.5, 0.36, 0.5), "head", CFrame.new(0, 1.36, -0.3), hair)
 	elseif style == "pony" then
 		extra("HairTail", Vector3.new(0.45, 1.5, 0.45), "head", CFrame.new(0, 0.1, -0.8) * CFrame.Angles(0.35, 0, 0), hair)
 	elseif style == "pigtails" then
 		extra("HairTail", Vector3.new(0.4, 1.2, 0.4), "head", CFrame.new(-0.75, 0, -0.2) * CFrame.Angles(0, 0, -0.3), hair)
 		extra("HairTail", Vector3.new(0.4, 1.2, 0.4), "head", CFrame.new(0.75, 0, -0.2) * CFrame.Angles(0, 0, 0.3), hair)
 	elseif style == "afro" then
-		extra("Afro", Vector3.new(1.9, 1.9, 1.9), "head", CFrame.new(0, 0.55, -0.15), hair, nil, Enum.PartType.Ball)
+		-- a big blocky afro: crown, both sides and the back
+		extra("Afro", Vector3.new(1.7, 0.78, 1.6), "head", CFrame.new(0, 0.74, -0.1), hair)
+		extra("Afro", Vector3.new(1.36, 0.36, 1.3), "head", CFrame.new(0, 1.28, -0.12), hair)
+		extra("Afro", Vector3.new(0.3, 1.0, 1.4), "head", CFrame.new(-0.76, 0.25, -0.12), hair)
+		extra("Afro", Vector3.new(0.3, 1.0, 1.4), "head", CFrame.new(0.76, 0.25, -0.12), hair)
+		extra("Afro", Vector3.new(1.6, 1.1, 0.35), "head", CFrame.new(0, 0.2, -0.8), hair)
 	elseif style == "messy" then
 		extra("HairFringe", Vector3.new(1.32, 0.35, 0.3), "head", CFrame.new(0, 0.42, 0.55) * CFrame.Angles(-0.4, 0, 0), hair)
 	elseif style == "mohawk" then

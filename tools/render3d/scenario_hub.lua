@@ -61,7 +61,23 @@ WRITEFILE(OUT_DIR .. "/parts.txt", table.concat(zl, "\n"))
 -- people must not walk through things: sample every walking path against the parts of the building
 local FLAT = { Floor = true, HallFloor = true, Sidewalk = true, SidewalkFar = true, Road = true, Curb = true, CurbFar = true, Ground = true, Crosswalk = true, LaneMark = true, OfficeRug = true, LoungeRug = true, MeetingCarpet = true, DoorMat = true, EntranceSill = true, TreePit = true, Spawn = true, Boundary = true }
 local hits = {}
-for wi, path in ipairs(Hub.WALKS) do
+local paths = {}
+for _, w in ipairs(Hub.WALKS) do paths[#paths + 1] = w end
+-- every street trip from door to door (the last steps into the door itself are left out)
+for _, a in ipairs(Hub.DOORS) do
+	for _, b in ipairs(Hub.DOORS) do
+		if a ~= b then
+			local tp = Hub.streetTrip(a, b)
+			local q = {}
+			for i, pt in ipairs(tp) do q[i] = pt end
+			q[1] = tp[1] + (tp[2] - tp[1]).Unit * math.min(2.5, (tp[2] - tp[1]).Magnitude)
+			q[#q] = tp[#tp] + (tp[#tp - 1] - tp[#tp]).Unit * math.min(2.5, (tp[#tp - 1] - tp[#tp]).Magnitude)
+			paths[#paths + 1] = q
+		end
+	end
+end
+print("checked walking paths", #paths)
+for wi, path in ipairs(paths) do
 	for i = 2, #path do
 		local a0, a1 = path[i - 1], path[i]
 		local n = math.ceil((a1 - a0).Magnitude / 1)
@@ -105,6 +121,9 @@ local cams = {
 	CFrame.lookAt(P(-63, 6, 28), P(-63, 3, 38)), -- 12 lounge sofa
 	CFrame.lookAt(P(58, 7, -14), P(58, 4.5, -24)), -- 13 stage design workstation
 	CFrame.lookAt(P(140, 8, 76), P(200, 6, 110)), -- 14 the eastern bend
+	CFrame.lookAt(P(10, 7, 86), P(20, 4, 108)), -- 15 the music shop
+	CFrame.lookAt(P(-150, 14, 150), P(-170, 4, 230)), -- 16 down the western side street
+	CFrame.lookAt(P(190, 14, 150), P(210, 4, 230)), -- 17 down the eastern side street
 }
 local cs = {}
 for _, c in ipairs(cams) do cs[#cs + 1] = cfs(c) end
