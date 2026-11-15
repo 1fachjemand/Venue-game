@@ -59,6 +59,21 @@ end
 ------------------------------------------------------------------ stands along a path
 -- path: points on the floor edge (Vector3, y ignored). Rows go outwards and upwards.
 -- returns the outer offset; adds crowd slots for every row
+-- adds a point where the path crosses z (so no stand section is half in front of, half behind a drape)
+local function splitAtZ(path, z)
+	local out = {}
+	local n = #path
+	for i = 1, n do
+		local a, b = path[i], path[i % n + 1]
+		table.insert(out, a)
+		if (a.Z - z) * (b.Z - z) < 0 then
+			local f = (z - a.Z) / (b.Z - a.Z)
+			table.insert(out, a:Lerp(b, f))
+		end
+	end
+	return out
+end
+
 local function stands(folder, path, closed, center, o, slots, rankBase)
 	local n = #path
 	local segs = closed and n or n - 1
@@ -83,6 +98,23 @@ local function stands(folder, path, closed, center, o, slots, rankBase)
 				local draped = o.killZ and (mid.Z + nrm.Z * (off + o.depth / 2)) < o.killZ
 				if draped then
 					col = DRAPE
+				end
+				-- at an end stage, coloured seats never reach behind the side drapes (and black ones never in front)
+				if o.killZ and math.abs(dir.Z) > 0.3 then
+					local e1, e2 = c - dir * (L / 2), c + dir * (L / 2)
+					local function clip(pA, pB, keepFront)
+						-- moves pA along the tier to the drape line if it is on the wrong side
+						local bad = keepFront and (pA.Z < o.killZ) or (not keepFront and pA.Z > o.killZ)
+						if bad and math.abs(pB.Z - pA.Z) > 0.01 then
+							local f = (o.killZ - pA.Z) / (pB.Z - pA.Z)
+							return pA:Lerp(pB, math.clamp(f, 0, 1))
+						end
+						return pA
+					end
+					e1 = clip(e1, e2, not draped)
+					e2 = clip(e2, e1, not draped)
+					c = (e1 + e2) / 2
+					L = math.max(1, (e2 - e1).Magnitude)
 				end
 				local h = math.min(top, o.step * 3 + (o.base > 0 and 2 or top))
 				local p = blk(folder, draped and "DrapedTier" or "Tier", Vector3.new(L, h, o.depth), CFrame.new(c.X, top - h / 2, c.Z) * CFrame.Angles(0, yaw + math.pi / 2, 0), col, Enum.Material.Fabric)
@@ -115,6 +147,41 @@ local function stands(folder, path, closed, center, o, slots, rankBase)
 		end
 	end
 	return o.offset + o.rows * o.depth, o.base + o.rows * o.step
+end
+
+local function sign(part, face, text, color)
+	local g = New("SurfaceGui", { Parent = part, Face = face, SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud, PixelsPerStud = 30, LightInfluence = 0.2 })
+	New("TextLabel", { Parent = g, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = text, TextScaled = true, Font = Enum.Font.GothamBlack, TextColor3 = color })
+end
+-- exit tunnels at floor level in the long stand sections: a concrete frame, a dark opening, a lit EXIT sign
+local function exitTunnels(folder, path, center, killZ, big)
+	local n = #path
+	for s = 1, n do
+		local a, b = path[s], path[s % n + 1]
+		local dir = Vector3.new(b.X - a.X, 0, b.Z - a.Z)
+		local len = dir.Magnitude
+		local mid = (a + b) / 2
+		if len > 30 and (not killZ or mid.Z > killZ + 10) then
+			dir = dir.Unit
+			local nrm = Vector3.new(dir.Z, 0, -dir.X)
+			if (Vector3.new(mid.X, 0, mid.Z) - Vector3.new(center.X, 0, center.Z)):Dot(nrm) < 0 then
+				nrm = -nrm
+			end
+			local yaw = math.atan2(nrm.X, nrm.Z)
+			local count = (len > 90) and 2 or 1
+			for k = 1, count do
+				local u = -len / 2 + k * len / (count + 1)
+				local base = Vector3.new(mid.X, 0, mid.Z) + dir * u
+				local cf = CFrame.new(base) * CFrame.Angles(0, yaw, 0) -- local -Z points out of the stand, into the hall
+				local w, h = big and 10 or 8, big and 9 or 8
+				blk(folder, "TunnelFrame", Vector3.new(w + 2, h + 1, 2.4), cf * CFrame.new(0, (h + 1) / 2, 0.2), Color3.fromRGB(96, 98, 106), Enum.Material.Concrete)
+				blk(folder, "TunnelOpening", Vector3.new(w, h, 2.6), cf * CFrame.new(0, h / 2 - 0.05, 0.2), Color3.fromRGB(6, 6, 8))
+				local sg = blk(folder, "ExitSign", Vector3.new(4.6, 1.5, 0.3), cf * CFrame.new(0, h + 2, -1.2), Color3.fromRGB(20, 140, 60), Enum.Material.Neon)
+				sign(sg, Enum.NormalId.Back, "EXIT", Color3.new(1, 1, 1))
+				sign(sg, Enum.NormalId.Front, "EXIT", Color3.new(1, 1, 1))
+			end
+		end
+	end
 end
 
 -- a band (wall, LED ribbon, roof edge...) along the same path at an offset
@@ -372,10 +439,6 @@ local function solidOff(p)
 	p.CanCollide = false
 	return p
 end
-local function sign(part, face, text, color)
-	local g = New("SurfaceGui", { Parent = part, Face = face, SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud, PixelsPerStud = 30, LightInfluence = 0.2 })
-	New("TextLabel", { Parent = g, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = text, TextScaled = true, Font = Enum.Font.GothamBlack, TextColor3 = color })
-end
 -- a bar / merch stand on the floor: counter, back wall with a lit name, things on the counter. faces -z (the stage)
 -- (Venue.noCrowd collects the places where nobody may stand)
 Venue.noCrowd = {}
@@ -517,9 +580,14 @@ function Venue.theatreDetails(folder, d)
 		med.Shape = Enum.PartType.Cylinder
 	end
 	-- exit signs at the back
+	-- exit doors: at the top of the stalls (back wall) and in the side walls near the stage
 	for _, sx in ipairs({ -1, 1 }) do
-		local e = solidOff(blk(folder, "ExitSign", Vector3.new(5, 1.6, 0.3), CFrame.new(sx * halfW * 0.7, 12, d.z1 + d.out1 - 0.2), Color3.fromRGB(20, 120, 50)))
-		sign(e, Enum.NormalId.Front, "EXIT", Color3.fromRGB(230, 255, 230))
+		local e = solidOff(blk(folder, "ExitSign", Vector3.new(5, 1.6, 0.3), CFrame.new(sx * halfW * 0.7, 19.4, d.z1 + d.out1 - 0.2), Color3.fromRGB(20, 140, 60), Enum.Material.Neon))
+		sign(e, Enum.NormalId.Front, "EXIT", Color3.new(1, 1, 1))
+		blk(folder, "ExitDoor", Vector3.new(6, 8, 0.4), CFrame.new(sx * halfW * 0.7, 10 + 4, d.z1 + d.out1 - 0.15), Color3.fromRGB(50, 30, 30), Enum.Material.Wood)
+		blk(folder, "ExitDoor", Vector3.new(0.4, 9, 6), CFrame.new(sx * (halfW + 1.8), 4.5, 12), Color3.fromRGB(50, 30, 30), Enum.Material.Wood)
+		local e2 = solidOff(blk(folder, "ExitSign", Vector3.new(0.3, 1.5, 4.6), CFrame.new(sx * (halfW + 1.6), 10.6, 12), Color3.fromRGB(20, 140, 60), Enum.Material.Neon))
+		sign(e2, (sx < 0) and Enum.NormalId.Right or Enum.NormalId.Left, "EXIT", Color3.new(1, 1, 1))
 	end
 end
 
@@ -595,14 +663,12 @@ function Venue.build(lookKey, fill, merchColor, opts)
 	local floor = blk(folder, "Floor", Vector3.new(halfW * 2, 0.2, z1 - z0), CFrame.new(0, 0.05, cz), Color3.fromRGB(28, 28, 34), Enum.Material.Concrete)
 	floor.CanCollide = false
 	if lookKey == "stadium" then
-		local pitch = blk(folder, "Pitch", Vector3.new(halfW * 2 + 30, 0.18, z1 - z0 + 30), CFrame.new(0, 0.02, cz), Color3.fromRGB(34, 96, 44), Enum.Material.Grass)
-		pitch.CanCollide = false
-		floor.Color = Color3.fromRGB(70, 74, 82) -- floor protection tiles over the grass
+		-- the whole pitch is covered with floor protection tiles (from behind the stage to the stands)
+		floor.Color = Color3.fromRGB(70, 74, 82)
 		floor.Material = Enum.Material.DiamondPlate
-		floor.Size = Vector3.new(halfW * 2 - 30, 0.2, z1 - z0 - 20)
-		for _, x in ipairs({ -halfW - 8, halfW + 8 }) do
-			blk(folder, "PitchLine", Vector3.new(0.4, 0.06, z1 - z0 + 10), CFrame.new(x, 0.13, cz), Color3.new(1, 1, 1)).CanCollide = false
-		end
+		local fz0, fz1 = center and (z0 - 4) or (zBack - 2), z1 + 4
+		floor.Size = Vector3.new(halfW * 2 + 6, 0.2, fz1 - fz0)
+		floor.CFrame = CFrame.new(0, 0.05, (fz0 + fz1) / 2)
 	end
 	if opts.standingColor then
 		floor.Color = opts.standingColor
@@ -679,6 +745,9 @@ function Venue.build(lookKey, fill, merchColor, opts)
 		local path = roundRect(0, bcz, halfW + 2, (z1 + 2 - bz0) / 2, c, "all")
 		ctr = Vector3.new(0, 0, bcz)
 		local killZ = (not center) and 2 or nil
+		if killZ then
+			path = splitAtZ(path, killZ)
+		end
 		local lower = big and { rows = 12, depth = 4.6, step = 2.4 } or { rows = 8, depth = 5.2, step = 3.0 }
 		lower.offset, lower.base, lower.color, lower.killZ = 1, 0.4, seat, killZ
 		local lOut, lTop = stands(folder, path, true, ctr, lower, slotList, 0.55)
@@ -689,10 +758,7 @@ function Venue.build(lookKey, fill, merchColor, opts)
 		end
 		band(folder, path, true, ctr, lOut + 2.8, lTop + 6.5, 6, 1, Color3.fromRGB(30, 30, 38), Enum.Material.Glass, "Suites")
 		band(folder, path, true, ctr, lOut + 2.2, lTop + 6.5, 2, 0.3, Color3.fromRGB(255, 214, 150), Enum.Material.Neon, "SuiteWindows")
-		local exits = band(folder, path, true, ctr, 0.3, lower.base + lower.step * 3, 0.9, 0.2, Color3.fromRGB(40, 220, 90), Enum.Material.Neon, "ExitSign")
-		for _, e in ipairs(exits) do
-			e.Size = Vector3.new(3, 0.9, 0.2)
-		end
+		exitTunnels(folder, path, ctr, killZ, big)
 		local upper = big and { rows = 14, depth = 4.4, step = 3.2 } or { rows = 7, depth = 5, step = 3.8 }
 		upper.offset, upper.base, upper.color, upper.killZ = lOut + 5, lTop + 9.5, seat:Lerp(Color3.new(0, 0, 0), 0.1), killZ
 		local uOut, uTop = stands(folder, path, true, ctr, upper, slotList, 1.1)
@@ -835,7 +901,8 @@ function Venue.build(lookKey, fill, merchColor, opts)
 		local brick = Color3.fromRGB(70, 40, 34)
 		wallH = L.roof
 		for _, x in ipairs({ -1, 1 }) do
-			blk(folder, "Wall", Vector3.new(2, wallH, z1 + 30), CFrame.new(x * (halfW + 2), wallH / 2, (z1 - 30) / 2), brick, Enum.Material.Brick).CanCollide = false
+			-- the side walls run on to the outside of the back wall (no gap in the corners)
+			blk(folder, "Wall", Vector3.new(2, wallH, z1 + 33), CFrame.new(x * (halfW + 2), wallH / 2, (z1 + 3 - 30) / 2), brick, Enum.Material.Brick).CanCollide = false
 			blk(folder, "WallSpeaker", Vector3.new(3, 4.5, 3), CFrame.new(x * (halfW - 2), 22, -6), Color3.fromRGB(16, 16, 18), Enum.Material.Fabric).CanCollide = false
 		end
 		blk(folder, "BackWall", Vector3.new(halfW * 2 + 2, wallH, 2), CFrame.new(0, wallH / 2, z1 + 2), brick, Enum.Material.Brick).CanCollide = false
@@ -865,7 +932,7 @@ function Venue.build(lookKey, fill, merchColor, opts)
 			blk(folder, "Bottle", Vector3.new(0.4, 1.2, 0.4), CFrame.new(-halfW + 1.8, 9.2, z0 + 21 + i * 2), Color3.fromRGB(60 + i * 15, 140, 90), Enum.Material.Glass).CanCollide = false
 		end
 		if not opts.noRoof then
-			blk(folder, "Ceiling", Vector3.new(halfW * 2 + 5, 2, z1 + 29), CFrame.new(0, wallH + 0.3, (z1 - 30) / 2), Color3.fromRGB(18, 18, 22)).CanCollide = false
+			blk(folder, "Ceiling", Vector3.new(halfW * 2 + 6, 2, z1 + 33), CFrame.new(0, wallH + 0.3, (z1 + 3 - 30) / 2), Color3.fromRGB(18, 18, 22)).CanCollide = false
 		end
 		Venue.clubDetails(folder, { halfW = halfW, z0 = z0, z1 = z1, wallH = wallH, accent = accent, center = center })
 		outer = halfW + 4
@@ -1012,6 +1079,12 @@ function Venue.build(lookKey, fill, merchColor, opts)
 	end
 	info.count = count
 	info.cfs = table.create(#info.parts)
+	info.pars = {}
+	for _, d in ipairs(folder:GetDescendants()) do
+		if d.Name == "ParLens" then
+			table.insert(info.pars, d)
+		end
+	end
 	return info
 end
 
@@ -1035,6 +1108,16 @@ function Venue.animate(info, t, energy, speed, phonesOn, c1, c2, beatCount)
 		for _, w in ipairs(info.bands) do
 			local wave = math.floor((w.z * 0.08 + w.x * 0.03) + b) % 3
 			w.part.Color = (wave == 0) and c1 or ((wave == 1) and c2 or Color3.new(1, 1, 1))
+		end
+	end
+	-- the venue's own PAR cans change colour with the music (every 4 beats, neighbours take turns)
+	if info.pars and c1 then
+		local q = math.floor((beatCount or 0) / 4)
+		if info.parQ ~= q or info.parC1 ~= c1 then
+			info.parQ, info.parC1 = q, c1
+			for i, p in ipairs(info.pars) do
+				p.Color = ((i + q) % 2 == 0) and c1 or (c2 or c1)
+			end
 		end
 	end
 	if info.phonesOn ~= phonesOn then

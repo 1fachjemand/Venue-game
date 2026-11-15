@@ -61,6 +61,22 @@ for k, v in ipairs(list) do
 			table.insert(items, string.format('{"s":"%s","z":[%s,%s,%s],"c":[%d,%d,%d],"m":"%s","t":%s,"f":%s}', shape, num(s.X), num(s.Y), num(s.Z), math.floor(c.R * 255), math.floor(c.G * 255), math.floor(c.B * 255), d2.Material.Name, num(d2.Transparency), cfs(d2.CFrame)))
 		end
 	end
+	-- end stages: no coloured seat block may reach behind the side drapes (z < 2), no black one in front
+	if v[4] == "end" and (v[1] == "arena" or v[1] == "stadium") then
+		local worst, worstD = 99, -99
+		for _, d2 in ipairs(crowd.folder:GetDescendants()) do
+			if d2.Name == "Tier" or d2.Name == "DrapedTier" then
+				local cf, s2 = d2.CFrame, d2.Size
+				local zmin, zmax = 1e9, -1e9
+				for _, sx in ipairs({ -1, 1 }) do for _, sz2 in ipairs({ -1, 1 }) do
+					local wp = cf * Vector3.new(sx * s2.X / 2, 0, sz2 * s2.Z / 2)
+					zmin, zmax = math.min(zmin, wp.Z), math.max(zmax, wp.Z)
+				end end
+				if d2.Name == "Tier" then worst = math.min(worst, zmin) else worstD = math.max(worstD, zmax) end
+			end
+		end
+		print("seat blocks: front-most coloured z", string.format("%.2f", worst), "back-most black z", string.format("%.2f", worstD))
+	end
 	local sz = crowd.size
 	local o = sz.outer
 	local cz = (sz.floorStart + sz.floorEnd) / 2
@@ -71,6 +87,8 @@ for k, v in ipairs(list) do
 		CFrame.lookAt(Vector3.new(o * 1.2, o * 1.4, cz + o * 1.6), Vector3.new(0, 0, cz)), -- outside view
 		CFrame.lookAt(Vector3.new(6, 6, sz.floorEnd - 8), Vector3.new(0, 14, sz.center and 0 or -10)), -- 4: standing at the back of the floor
 		CFrame.lookAt(Vector3.new(-sz.halfW * 0.5, 6, cz), Vector3.new(sz.halfW * 0.3, sz.height * 0.8, cz + 20)), -- 5: looking up at the roof
+		CFrame.lookAt(Vector3.new(sz.halfW * 0.3, 10, 34), Vector3.new(-sz.halfW - 10, 10, -4)), -- 6: the side drape next to the stage
+		CFrame.lookAt(Vector3.new(-sz.halfW * 0.3, 8, sz.floorEnd - 24), Vector3.new(sz.halfW + 2, 8, sz.floorEnd + 2)), -- 7: a back corner
 	}
 	local cs = {}
 	for _, c in ipairs(cams) do cs[#cs + 1] = cfs(c) end
