@@ -86,8 +86,8 @@ function ToursScreen:refreshDetail()
 	})
 	nameBox.FocusLost:Connect(function()
 		local txt = nameBox.Text:gsub("^%s+", ""):gsub("%s+$", "")
-		if #txt > 0 then
-			tour.name = txt:sub(1, 40)
+		if #txt > 0 and txt ~= tour.name then
+			app:act("renameTour", { tourId = tour.id, name = txt:sub(1, 40) })
 		end
 		nameBox.Text = tour.name
 		app:refreshCurrent()
@@ -120,12 +120,12 @@ function ToursScreen:refreshDetail()
 		local price = tour.price or tour.shows[#tour.shows].price
 		UI.Label(d, "TICKET PRICE (remaining shows)", UI.px(930, 180), UI.px(260, 20), { textSize = 13, color = T.sub, font = UI.FontBold })
 		UI.Button(d, "-", UI.px(930, 204), UI.px(44, 44), { textSize = 20 }, function()
-			GS.setTourPrice(state, tour.id, price - (price >= 20 and 5 or 1))
+			app:act("setTourPrice", { tourId = tour.id, price = price - (price >= 20 and 5 or 1) })
 			app:refreshCurrent()
 		end)
 		UI.Label(d, Util.money(price), UI.px(978, 204), UI.px(100, 44), { textSize = 22, font = UI.FontBlack, alignX = Enum.TextXAlignment.Center })
 		UI.Button(d, "+", UI.px(1082, 204), UI.px(44, 44), { textSize = 20 }, function()
-			GS.setTourPrice(state, tour.id, price + (price >= 20 and 5 or 1))
+			app:act("setTourPrice", { tourId = tour.id, price = price + (price >= 20 and 5 or 1) })
 			app:refreshCurrent()
 		end)
 		UI.Label(d, "MARKETING (boosts ticket demand for all remaining shows)", UI.px(24, 180), UI.px(700, 20), { textSize = 13, color = T.sub, font = UI.FontBold })
@@ -134,16 +134,16 @@ function ToursScreen:refreshDetail()
 			local cost = GS.marketingCost(tour, mk)
 			local txt = owned and (mk.name .. " - RUNNING") or (mk.name .. " +" .. math.floor(mk.boost * 100) .. "%  (" .. Util.moneyShort(cost) .. ")")
 			UI.Button(d, txt, UI.px(24 + (i - 1) * 300, 204), UI.px(290, 44), { color = owned and T.good or T.panel3, disabled = owned or state.money < cost, textSize = 15 }, function()
-				local ok, msg = GS.buyMarketing(state, tour.id, mk.id)
-				app:toast(msg, ok and T.good or T.bad)
+				local ok, msg = app:act("buyMarketing", { tourId = tour.id, id = mk.id })
+				app:toast(msg or "", ok and T.good or T.bad)
 				app:refreshCurrent()
 			end)
 		end
 		if tour.played == 0 then
 			UI.Button(d, "Cancel tour", UI.px(1180, 204), UI.px(160, 44), { color = UI.shade(T.bad, 0.7), textSize = 15 }, function()
 				app:confirm("Cancel tour?", "All tickets get refunded and " .. ad.name .. " loses hype. Are you sure?", function()
-					local ok, msg = GS.cancelTour(state, tour.id)
-					app:toast(msg, ok and T.warn or T.bad)
+					local ok, msg = app:act("cancelTour", { tourId = tour.id })
+					app:toast(msg or "", ok and T.warn or T.bad)
 					self.selected = nil
 					app:refreshCurrent()
 				end)
@@ -187,8 +187,9 @@ function ToursScreen:refreshDetail()
 			UI.Label(row, s.sold >= s.cap and "waiting for show day" or "tickets on sale", UI.px(1040, 0), UI.px(220, 54), { textSize = 13, color = T.sub })
 		end
 		if not s.done then
-			UI.Button(row, s.watch and "ON" or "off", UI.px(1250, 10), UI.px(60, 34), { color = s.watch and T.accent or T.panel, textSize = 14 }, function()
-				s.watch = not s.watch
+			local live = not s.skipLive
+			UI.Button(row, live and "GO" or "auto", UI.px(1250, 10), UI.px(60, 34), { color = live and T.accent or T.panel, textSize = 14 }, function()
+				app:act("setLive", { tourId = tour.id, idx = i, live = not live })
 				app:refreshCurrent()
 			end)
 		end

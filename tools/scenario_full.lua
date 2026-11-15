@@ -1,9 +1,21 @@
--- Full automated play-through of HEADLINER in the Roblox mock.
+-- Full automated play-through of HEADLINER in the Roblox mock (server + client).
 math.randomseed(7)
 local RS = game:GetService("ReplicatedStorage")
 local root = MOCK.buildTree(RS, TREE)
 -- pretend the audio files are uploaded so every sound path runs
 for k in pairs(require(root.Data.Audio).IDS) do require(root.Data.Audio).IDS[k] = 1000 end
+-- the server: builds the label building, owns the game state
+local server = MOCK.newRaw("Script")
+server.__props.Name = "GameServer"
+rawset(server, "__path", SERVER_PATH)
+MOCK.runScript(server)
+MOCK.runTasks()
+assert(workspace:FindFirstChild("StarlightRecords"), "the server did not build the label building")
+local Players = game:GetService("Players")
+Players.PlayerAdded:Fire(MOCK.player)
+MOCK.runTasks()
+local function SRV() return shared.HeadlinerServer.sessions[MOCK.player].state end
+-- the client
 local main = MOCK.newRaw("LocalScript")
 main.__props.Name = "Main"
 rawset(main, "__path", MAIN_PATH)
@@ -16,9 +28,20 @@ local app = App.instance
 assert(app, "App did not start")
 local function log(...) print("[test]", ...) end
 local function steps(n, dt) for _ = 1, n do MOCK.step(dt or 1 / 30) end end
-local function modalButtons() return #MOCK.buttons("^Continue$") + #MOCK.buttons("^Great!$") end
+-- test cheats change the state on the server, then the client gets the new state
+local function resync() app:applyDelta(app:call("resync").delta) app:refreshCurrent() end
+local function cheat(fn) fn(SRV()) resync() end
+local function clearModals()
+	for _ = 1, 8 do
+		if #MOCK.buttons("^Nice!$") > 0 then MOCK.clickExact("Nice!")
+		elseif #MOCK.buttons("^Great!$") > 0 then MOCK.clickExact("Great!")
+		elseif #MOCK.buttons("^Continue$") > 0 then MOCK.clickExact("Continue")
+		elseif #MOCK.buttons("^Let's go!$") > 0 then MOCK.clickExact("Let's go!") end
+	end
+end
+local function nextDay() MOCK.click("^NEXT DAY", 1) steps(1) end
 
--- 1) main menu -> new game
+-- 1) main menu -> new game -> walking in the label building
 assert(app.mode == "title", "should start on the title screen")
 MOCK.clickExact("SETTINGS")
 MOCK.clickExact("Low")
@@ -27,7 +50,8 @@ MOCK.clickExact("STORE")
 MOCK.clickExact("< Back")
 MOCK.clickExact("CREDITS")
 MOCK.clickExact("< Back")
-for k = 1, 3 do
+assert(#MOCK.buttons("SANDBOX") == 1, "sandbox button missing in studio")
+for k = 1, 2 do
 	log("menu scene", k, "parts", #workspace.MenuScene:GetDescendants())
 	steps(475, 0.1)
 end
@@ -35,10 +59,30 @@ MOCK.clickExact("NEW GAME")
 MOCK.clickExact("NEXT >")
 MOCK.clickExact("SIGN", 1)
 assert(app.state and app.state.artists.lila.signed, "starter not signed")
+assert(SRV().artists.lila.signed and SRV().labelName == app.state.labelName, "server state differs")
 MOCK.clickExact("Let's go!")
-assert(app.current == "office", "not in office")
-log("label", app.state.labelName, "money", app.state.money)
-
+assert(app.mode == "world", "not walking in the building")
+assert(MOCK.player.Character and MOCK.player.Character:FindFirstChild("Humanoid"), "no character")
+assert(app.hud.Visible and #MOCK.buttons("^OFFICE$") == 0, "old tab bar still there")
+assert(#MOCK.buttons("^>>>$") == 0, "speed buttons still there")
+log("label", app.state.labelName, "money", app.state.money, "objective", GS.objective(app.state).text)
+assert(GS.objective(app.state).target == "maptable", "first goal should be the world map")
+local W = app.world
+assert(W.prompts.laptop.Enabled and W.prompts.maptable.Enabled, "start stations open")
+assert(not W.prompts.stagehall.Enabled, "stage hall should be locked")
+assert(not W.prompts.meeting.Enabled, "meeting prompt only while sitting")
+steps(30)
+log("hub parts", #workspace.StarlightRecords:GetDescendants(), "client parts", #workspace.HubClient:GetDescendants())
+-- locked hall: a hint
+W.trigger("stagehall")
+assert(app.mode == "world")
+-- laptop
+MOCK.prompt("laptop")
+assert(app.current == "office" and app.mode == "menu", "laptop opens the overview")
+MOCK.clickExact("TOURS")
+assert(app.current == "tours")
+MOCK.clickExact("✕  CLOSE")
+assert(app.mode == "world", "close returns to walking")
 -- pick the n-th venue in the list and book it on the next free day after the last show
 local function book(n)
 	local map = app.screens.planner
@@ -55,7 +99,7 @@ local function book(n)
 end
 
 -- 2) plan a tour (wizard)
-MOCK.clickExact("+ PLAN A TOUR")
+MOCK.prompt("maptable")
 local map = app.screens.planner
 assert(map.step == 1, "planner should start at step 1")
 MOCK.clickExact("SELECT")
@@ -115,26 +159,27 @@ MOCK.clickExact("-1", 1)
 log("section prices", MOCK.texts("^%$%d+$")[1], MOCK.texts("% sold")[1])
 MOCK.clickExact("NEXT: CONFIRM >")
 assert(map.step == 5)
-MOCK.click("Watch the opening night")
-MOCK.click("Watch the opening night")
 log("confirm estimate:", MOCK.texts("Estimated gross")[1])
 MOCK.clickExact("ANNOUNCE TOUR")
+if app.current ~= "tours" then for _, d in ipairs(app.toastFrame:GetDescendants()) do if d:IsA("TextLabel") then log("toast:", d.Text) end end end
 assert(app.current == "tours", "not on tours screen after announce")
 local tour = app.state.tours[1]
 log("tour", tour.name, "#shows", #tour.shows, "price", tour.price, tour.shows[2].price, "presale sold", tour.shows[1].sold)
 MOCK.click("^Social Ads")
 MOCK.clickExact("+")
 log("tour price after +", tour.price, tour.shows[3].price)
-MOCK.clickExact("OFFICE")
+MOCK.clickExact("OVERVIEW")
 assert(app.current == "office")
 log("upcoming:", #MOCK.texts("@"))
+MOCK.clickExact("✕  CLOSE")
+assert(SRV().tours[1] and SRV().tours[1].id == tour.id, "the tour is not on the server")
 
--- 3) run time until opening night
-MOCK.clickExact(">>>")
+
+-- 3) press NEXT DAY until opening night
 local found = false
-for _ = 1, 600 do
-	MOCK.step(0.25)
+for _ = 1, 200 do
 	if #MOCK.buttons("WATCH LIVE") > 0 then found = true break end
+	nextDay()
 end
 assert(found, "no SHOWTIME modal")
 log("showtime on day", app.state.day)
@@ -148,53 +193,65 @@ steps(300)
 MOCK.click("^Orbit")
 local frames = 600
 while app.mode == "live" and frames < 8000 do MOCK.step(1 / 30) frames = frames + 1 end
-log("live show finished after frames", frames, "mode", app.mode, "bulk moves", MOCK.bulkMoves)
+log("live show finished after frames", frames, "mode", app.mode)
 assert(#MOCK.buttons("^Continue$") == 1, "no show report")
 log("report:", MOCK.texts("Attendance")[1])
 MOCK.clickExact("Continue")
+assert(app.mode == "world", "back in the building after the show")
+assert(W.prompts.stagehall.Enabled, "the stage hall opens after the first show")
+assert(GS.objective(app.state).target == "stagehall", "next goal: stage hall")
 
--- 4) run the rest of the tour
+-- 4) the rest of the tour
 local done = false
-for _ = 1, 2000 do
-	MOCK.step(0.25)
+for _ = 1, 400 do
 	if #MOCK.buttons("^Great!$") > 0 then done = true break end
-	if #MOCK.buttons("^Simulate$") > 0 then MOCK.clickExact("Simulate") end
-	if #MOCK.buttons("^Continue$") > 0 then MOCK.clickExact("Continue") end
+	if #MOCK.buttons("^Skip$") > 0 then MOCK.clickExact("Skip")
+	elseif #MOCK.buttons("^Continue$") > 0 then MOCK.clickExact("Continue")
+	elseif #MOCK.buttons("^Nice!$") > 0 then MOCK.clickExact("Nice!")
+	else nextDay() end
 end
 assert(done, "tour never completed")
-log("tour complete:", tour.status, "gross", tour.gross, "net", tour.net, "money", app.state.money)
-MOCK.clickExact("Charts")
+log("tour complete:", tour.status, "gross", tour.gross, "net", tour.net, "money", app.state.money, "server money", SRV().money)
+assert(SRV().money == app.state.money, "money differs")
+MOCK.clickExact("Great!")
+assert(GS.unlocks(app.state).charts, "charts open after the first tour")
+MOCK.prompt("charts")
 assert(app.current == "charts")
+MOCK.clickExact("✕  CLOSE")
 
--- 5) artists: Kai is locked until level 2
-MOCK.clickExact("OFFICE")
-MOCK.clickExact("ARTISTS")
+-- 5) meeting room: sit down, then the meeting starts; Kai is locked until level 2
+local seat = workspace.StarlightRecords:FindFirstChild("MeetingSeat1", true)
+MOCK.sit(seat)
+steps(2)
+assert(W.prompts.meeting.Enabled, "meeting prompt while sitting")
+MOCK.prompt("meeting")
+assert(app.current == "artists")
 MOCK.clickExact("TALENT SCOUT")
 log("locked buttons", #MOCK.buttons("^LOCKED"))
-app.state.stats.tickets = 30000
-app.state.money = 1000000
-MOCK.clickExact("NEXT DAY")
-if #MOCK.buttons("^Nice!$") > 0 then log("level-up modal shown") MOCK.clickExact("Nice!") end
-for _ = 1, 5 do if app.modalOpen then MOCK.click("^[A-Z]", 1) end end
-MOCK.clickExact("OFFICE")
-MOCK.clickExact("ARTISTS")
+MOCK.clickExact("✕  CLOSE")
+cheat(function(s) s.stats.tickets = 30000 s.money = 1000000 end)
+nextDay()
+clearModals()
+MOCK.prompt("meeting")
 MOCK.clickExact("TALENT SCOUT")
 MOCK.click("^SIGN FOR %$250,000")
 MOCK.clickExact("Yes")
-log("kai signed", app.state.artists.kai.signed, "money", app.state.money)
-MOCK.clickExact("YOUR ROSTER")
-MOCK.click("^%+ PLAN A TOUR", 2)
-assert(app.current == "planner")
+log("kai signed", app.state.artists.kai.signed, SRV().artists.kai.signed, "money", app.state.money)
+assert(SRV().artists.kai.signed, "signing did not reach the server")
+MOCK.clickExact("✕  CLOSE")
+MOCK.sit(nil)
+steps(2)
+assert(not W.prompts.meeting.Enabled, "standing up hides the meeting prompt")
 
 -- 6) stage builder: place every item type the new way (card -> click into the world -> tick)
-MOCK.clickExact("STAGES")
+MOCK.prompt("stagehall")
 assert(app.current == "stages", "stages screen")
 local Designer = require(root.Client.Designer)
 local Stage3D = require(root.Client.Stage3D)
 local UIS = game:GetService("UserInputService")
 local function click3D() UIS.InputBegan:Fire(MOCK.input(Enum.UserInputType.MouseButton1), false) MOCK.runTasks() end
 local function key(k) UIS.InputBegan:Fire(MOCK.input(Enum.UserInputType.Keyboard, { KeyCode = k }), false) MOCK.runTasks() end
-app.state.money = 5000000
+cheat(function(s) s.money = 5000000 end)
 MOCK.clickExact("+  NEW STAGE")
 MOCK.clickExact("ARENA")
 MOCK.clickExact("CENTER STAGE")
@@ -360,6 +417,8 @@ local barriers = 0
 for _, d in ipairs(workspace:GetDescendants()) do if d.Name == "Barrier" then barriers = barriers + 1 end end
 -- back to the library: copy and delete
 MOCK.clickExact("◀  MY STAGES")
+log("money after the builder: client", app.state.money, "server", SRV().money, "items on server", #GS.getDesign(SRV(), design.id).items)
+assert(#GS.getDesign(SRV(), design.id).items == #design.items, "the server did not get the edited stage")
 local leftover = 0
 for _, d in ipairs(MOCK.playerGui:GetChildren()) do if d:IsA("SurfaceGui") then leftover = leftover + 1 end end
 log("screen guis left in PlayerGui after closing the builder", leftover)
@@ -374,10 +433,10 @@ MOCK.clickExact("Yes")
 log("designs after delete", #app.state.designs)
 -- buy every tour template and preview it
 for _, tpl in ipairs({ { "ARENA", "CENTER STAGE", "The Cube" }, { "ARENA", "END STAGE", "Portal Ring" }, { "STADIUM", "END STAGE", "Runway & Moon" }, { "STADIUM", "END STAGE", "Stadium Tour" } }) do
-	app.state.money = 5000000
-	while #app.state.designs >= 7 do GS.deleteDesign(app.state, app.state.designs[#app.state.designs].id) end
-	app:refreshCurrent()
-	if #app.state.designs >= 8 then GS.deleteDesign(app.state, app.state.designs[#app.state.designs].id) app:refreshCurrent() end
+	cheat(function(s)
+		s.money = 5000000
+		while #s.designs >= 7 do GS.deleteDesign(s, s.designs[#s.designs].id) end
+	end)
 	MOCK.clickExact("+  NEW STAGE")
 	MOCK.clickExact(tpl[1])
 	MOCK.clickExact(tpl[2])
@@ -397,50 +456,45 @@ for _, tpl in ipairs({ { "ARENA", "CENTER STAGE", "The Cube" }, { "ARENA", "END 
 		assert(tw, "stadium template: the tower lift gets a song")
 	end
 	MOCK.clickExact("DONE")
+	assert(math.abs(SRV().money - app.state.money) < 1, "server and client money differ after the builder")
 end
 log("designs now", #app.state.designs)
 
--- 7) other screens
-MOCK.clickExact("TOURS")
-MOCK.clickExact("OFFICE")
-MOCK.clickExact("SOCIAL")
-log("social posts", #app.state.social, "first:", app.state.social[1] and app.state.social[1].text)
-MOCK.clickExact("CHARTS")
-MOCK.clickExact("OFFICE")
-MOCK.clickExact("NEXT DAY")
 
--- 8) superstar stadium tour, watched live with skip
-app.state.money = 60000000
-app.state.stats.tickets = 2000000
-log("sign nova", GS.sign(app.state, "nova"))
-app:go("planner", { artistId = "nova" })
+-- 7) phone + laptop pages
+MOCK.clickExact("✕  CLOSE")
+assert(app.mode == "world")
+app:openPhone()
+assert(app.current == "social")
+log("social posts", #app.state.social, "first:", app.state.social[1] and app.state.social[1].text)
+MOCK.clickExact("✕  CLOSE")
+
+-- 8) superstar stadium tour (needs level 4), watched live with skip
+cheat(function(s) s.money = 60000000 s.stats.tickets = 2000000 end)
+log("sign nova", app:act("sign", { artistId = "nova" }))
+clearModals()
+MOCK.prompt("maptable")
+local map = app.screens.planner
+map:show({ artistId = "nova" })
 map.selected = "uk"
 map:refresh()
 MOCK.click("^STADIUMS")
-book(3) -- Wemblee (biggest UK stadium)
+book(3)
 MOCK.click("^CLUBS")
-book(1) -- a club show too: needs a second, smaller production
-map.selected = "us"
-map:refresh()
-MOCK.click("^STADIUMS")
 book(1)
 log("nova draft", #map.draft.shows, map.draft.artistId)
 MOCK.clickExact("NEXT: STAGE >")
-log("production sections:", table.concat(MOCK.texts("VENUES  %("), " | "))
 MOCK.clickExact("STAGE READY - NEXT: TICKETS >")
-log("ticket tabs", table.concat(MOCK.texts("^STADIUMS$"), ","), table.concat(MOCK.texts("^CLUBS$"), ","))
 MOCK.clickExact("NEXT: CONFIRM >")
 MOCK.clickExact("ANNOUNCE TOUR")
 local nt = app.state.tours[1]
-local dn = {}
-for cls, id in pairs(nt.designs) do dn[#dn + 1] = cls .. "=" .. GS.getDesign(app.state, id).name end
-log("tour productions:", table.concat(dn, ", "))
 log("nova tour", nt.name, nt.shows[1].venueId, nt.shows[1].sold)
+MOCK.clickExact("✕  CLOSE")
 found = false
-for _ = 1, 400 do
-	MOCK.step(0.25)
-	if #MOCK.buttons("^Nice!$") > 0 then MOCK.clickExact("Nice!") end
+for _ = 1, 200 do
+	clearModals()
 	if #MOCK.buttons("WATCH LIVE") > 0 then found = true break end
+	nextDay()
 end
 assert(found, "no stadium showtime")
 MOCK.clickExact("WATCH LIVE")
@@ -450,20 +504,21 @@ for _, d in ipairs(workspace:GetDescendants()) do if d.Name == "Fan" then crowd 
 log("stadium crowd figures", crowd)
 MOCK.click("^Skip")
 steps(2)
-assert(app.mode == "menu", "skip did not end the show")
 MOCK.clickExact("Continue")
-for _ = 1, 400 do
-	MOCK.step(0.25)
+for _ = 1, 200 do
 	if #MOCK.buttons("^Great!$") > 0 then break end
+	if #MOCK.buttons("^Skip$") > 0 then MOCK.clickExact("Skip")
+	elseif #MOCK.buttons("^Continue$") > 0 then MOCK.clickExact("Continue")
+	else nextDay() end
 end
 log("report texts", #MOCK.texts("MONEY PER SHOW"), #MOCK.texts("WHERE THE MONEY WENT"))
 MOCK.clickExact("Great!")
-log("nova tour", nt.status, nt.gross)
 local rows, best = GS.chart(app.state)
 log("best chart rank", best)
 
--- 9) cancel a tour
-app:go("planner", { artistId = "kai" })
+-- 9) cancel a tour (laptop > tours)
+MOCK.prompt("maptable")
+map:show({ artistId = "kai" })
 map.selected = "us"
 map:refresh()
 book(1)
@@ -471,27 +526,48 @@ MOCK.clickExact("NEXT: STAGE >")
 MOCK.clickExact("STAGE READY - NEXT: TICKETS >")
 MOCK.clickExact("NEXT: CONFIRM >")
 MOCK.clickExact("ANNOUNCE TOUR")
+local nTours = #app.state.tours
 MOCK.clickExact("Cancel tour")
 MOCK.clickExact("Yes")
-log("tours after cancel", #app.state.tours)
+log("tours after cancel", nTours, "->", #app.state.tours, "server", #SRV().tours)
+assert(#SRV().tours == nTours - 1, "cancel did not reach the server")
+MOCK.clickExact("✕  CLOSE")
 
--- 10) save / load roundtrip
-local json = MOCK.jsonEncode(app.state)
-log("save size bytes", #json)
-local loaded = GS.sanitize(MOCK.jsonDecode(json))
-assert(loaded.money == app.state.money and #loaded.tours == #app.state.tours, "roundtrip mismatch")
--- start a second session from the save
-app.speed = 1
+-- 10) leave and come back: the server saved, the next session continues
+local money = SRV().money
+Players.PlayerRemoving:Fire(MOCK.player)
+MOCK.runTasks()
+log("saves", #MOCK.saves)
+Players.PlayerAdded:Fire(MOCK.player)
+MOCK.runTasks()
 app.gui:Destroy()
-MOCK.loadData, MOCK.loadStatus = json, "ok"
 task.spawn(function() App.start() end)
 MOCK.runTasks()
 local app2 = App.instance
-MOCK.clickExact("CONTINUE")
 assert(app2 ~= app, "second session not started")
-log("second session money", app2.state.money, "saveAvailable", app2.saveAvailable)
-app2:save()
-log("saves fired", #MOCK.saves)
+MOCK.click("^CONTINUE$")
+assert(app2.mode == "world", "continue did not enter the building")
+log("second session money", app2.state.money, "was", money)
+assert(app2.state.money == money and #app2.state.tours == #SRV().tours, "loaded game differs")
+app2.gui:Destroy()
+
+-- 11) developer sandbox: unlimited money, everything open, own save
+task.spawn(function() App.start() end)
+MOCK.runTasks()
+local app3 = App.instance
+MOCK.click("^SANDBOX")
+MOCK.click("^NEW SANDBOX", 1)
+MOCK.clickExact("Let's go!")
+assert(app3.state.sandbox and app3.state.money >= 1000000000, "sandbox money")
+assert(GS.level(app3.state) == 5, "sandbox: every level")
+local un = GS.unlocks(app3.state)
+assert(un.stagehall and un.charts, "sandbox: every room open")
+assert(app3.world.prompts.stagehall.Enabled, "sandbox: hall prompt")
+local ok3 = app3:act("sign", { artistId = "nova" })
+assert(ok3 and app3.state.money >= 1000000000, "sandbox: sign the superstar for free")
+MOCK.clickExact("+7 DAYS")
+log("sandbox day", app3.state.day, "money", app3.state.money)
+assert(MOCK.store.data["player_1_sandbox"] ~= nil, "sandbox has its own save")
+assert(MOCK.store.data["player_1"] ~= nil, "real save still there")
 steps(30)
-log("sound plays", MOCK.calls and MOCK.calls.Play, "sounds in SoundService", #game:GetService("SoundService"):GetChildren())
 log("errors", #MOCK.errors)

@@ -165,6 +165,60 @@ function Util.deepCopy(t)
 	return c
 end
 
+-- Copies `src` into `dst` in place, so tables other code holds on to stay the same tables.
+-- Lists of tables with an id (or uid) are matched by that id, other lists by position.
+local function syncKey(v)
+	return type(v) == "table" and (v.id or v.uid) or nil
+end
+function Util.syncInto(dst, src)
+	if #src > 0 then
+		local byKey = {}
+		for _, v in ipairs(dst) do
+			local k = syncKey(v)
+			if k ~= nil then
+				byKey[k] = v
+			end
+		end
+		local out = {}
+		for i, v in ipairs(src) do
+			local k = syncKey(v)
+			local old
+			if k ~= nil then
+				old = byKey[k]
+				byKey[k] = nil
+			elseif type(dst[i]) == "table" and syncKey(dst[i]) == nil then
+				old = dst[i]
+			end
+			if type(v) == "table" and type(old) == "table" then
+				Util.syncInto(old, v)
+				out[i] = old
+			else
+				out[i] = v
+			end
+		end
+		for k in pairs(dst) do
+			dst[k] = nil
+		end
+		for i, v in ipairs(out) do
+			dst[i] = v
+		end
+		return dst
+	end
+	for k in pairs(dst) do
+		if src[k] == nil then
+			dst[k] = nil
+		end
+	end
+	for k, v in pairs(src) do
+		if type(v) == "table" and type(dst[k]) == "table" then
+			Util.syncInto(dst[k], v)
+		else
+			dst[k] = v
+		end
+	end
+	return dst
+end
+
 function Util.stars(n)
 	local s = ""
 	for i = 1, 5 do

@@ -38,7 +38,27 @@ function GS.log(state, text)
 	end
 end
 
-function GS.new(labelName, starterId)
+-- a random id for a placed stage item (made on the client and the server, so it is not a counter)
+local uidCount = 0
+function GS.uid()
+	uidCount = uidCount + 1
+	return "u" .. tostring(math.random(1, 999999999)) .. "_" .. tostring(uidCount)
+end
+
+-- every item of a design gets a uid (the server pays the difference of a changed design by uid)
+function GS.ensureUids(design)
+	local seen = {}
+	for _, it in ipairs(design.items or {}) do
+		if type(it.uid) ~= "string" or seen[it.uid] then
+			it.uid = GS.uid()
+		end
+		seen[it.uid] = true
+	end
+end
+
+-- opts = { sandbox = true } for the developer test mode
+function GS.new(labelName, starterId, opts)
+	opts = opts or {}
 	local state = {
 		version = Config.SAVE_VERSION,
 		labelName = labelName or Config.DEFAULT_LABEL_NAME,
@@ -52,6 +72,8 @@ function GS.new(labelName, starterId)
 		log = {},
 		social = {},
 		levelSeen = 1,
+		sandbox = opts.sandbox == true,
+		visited = {},
 		stats = {
 			shows = 0,
 			sellouts = 0,
@@ -76,6 +98,11 @@ function GS.new(labelName, starterId)
 		end
 	end
 	GS.log(state, state.labelName .. " opens its doors with " .. starter.name .. " on the roster.")
+	if state.sandbox then
+		state.money = Config.SANDBOX_MONEY
+		state.levelSeen = #Config.LEVELS
+		GS.log(state, "SANDBOX: unlimited money, every level, artist, venue and room is open.")
+	end
 	return state
 end
 
@@ -116,6 +143,7 @@ function GS.sanitize(data)
 		if type(d.items) ~= "table" then
 			d.items = {}
 		end
+		GS.ensureUids(d)
 	end
 	if #data.designs == 0 then
 		GS.addDesign(data, "My Design", {}, "Club", "end")
@@ -154,6 +182,10 @@ function GS.activeTour(state, artistId)
 end
 
 function GS.level(state)
+	if state.sandbox then
+		local n = #Config.LEVELS
+		return n, Config.LEVELS[n], nil
+	end
 	local lvl = 1
 	for i, l in ipairs(Config.LEVELS) do
 		if state.stats.tickets >= l.tickets then
@@ -182,9 +214,86 @@ function GS.sign(state, artistId)
 	return true, ad.name .. " joined your label!"
 end
 
+-- can the label book this venue yet? (level 1 = clubs, see Config.VENUE_LEVEL)
+function GS.venueLevel(venue)
+	return Config.VENUE_LEVEL[venue.type] or 1
+end
+function GS.venueUnlocked(state, venue)
+	return GS.level(state) >= GS.venueLevel(venue)
+end
+
+------------------------------------------------------------------ the label building: rooms open one after another
+GS.STATIONS = { "laptop", "maptable", "meeting", "stagehall", "charts" }
+function GS.unlocks(state)
+	local st = state.stats
+	local anyDone = false
+	for _, t in ipairs(state.tours) do
+		if t.status == "done" then
+			anyDone = true
+		end
+	end
+	local all = state.sandbox == true
+	return {
+		laptop = true,
+		maptable = true,
+		meeting = true,
+		phone = true,
+		stagehall = all or st.shows >= 1,
+		charts = all or anyDone or st.shows >= 5,
+	}
+end
+GS.UNLOCK_HINT = {
+	stagehall = "Opens after your first show",
+	charts = "Opens after your first finished tour",
+}
+
+-- what the player should do next: { text, target = station id or nil }
+function GS.objective(state)
+	local un = GS.unlocks(state)
+	local visited = state.visited or {}
+	local active = nil
+	for _, t in ipairs(state.tours) do
+		if t.status ~= "done" then
+			active = t
+		end
+	end
+	if #state.tours == 0 then
+		return { text = "Walk to the WORLD MAP table and plan your first tour.", target = "maptable" }
+	end
+	if un.stagehall and not visited.stagehall then
+		return { text = "The STAGE HALL is open! Build your own stage show.", target = "stagehall" }
+	end
+	if un.charts and not visited.charts then
+		return { text = "The CHARTS screen is on! See where your tours rank.", target = "charts" }
+	end
+	local talent = false
+	for _, ad in ipairs(Artists.list) do
+		if not state.artists[ad.id].signed and ad.level <= GS.level(state) and ad.signCost <= state.money then
+			talent = true
+		end
+	end
+	if talent and not visited.meeting and state.stats.shows >= 1 then
+		return { text = "New talent wants to meet you. Sit down in the MEETING ROOM.", target = "meeting" }
+	end
+	if active then
+		local nextDay = nil
+		for _, s in ipairs(active.shows) do
+			if not s.done and (not nextDay or s.day < nextDay) then
+				nextDay = s.day
+			end
+		end
+		if nextDay then
+			local d = nextDay - state.day
+			return { text = "Next show in " .. d .. " day" .. (d == 1 and "" or "s") .. ". Press NEXT DAY, check ticket sales on the LAPTOP.", target = nil }
+		end
+	end
+	return { text = "No tour on sale. Plan the next one at the WORLD MAP table.", target = "maptable" }
+end
+
 ------------------------------------------------------------------ designs
 function GS.addDesign(state, name, items, class, layout)
 	local d = { id = GS.newId(state, "d"), name = name, items = items or {}, class = class or "Arena", layout = layout or "end" }
+	GS.ensureUids(d)
 	table.insert(state.designs, d)
 	return d
 end
@@ -343,6 +452,9 @@ function GS.buyItem(state, design, rec)
 		return false, "Not enough money for " .. def.name .. " (" .. Util.money(price) .. ")."
 	end
 	state.money = state.money - price
+	if type(rec.uid) ~= "string" then
+		rec.uid = GS.uid()
+	end
 	table.insert(design.items, rec)
 	return true
 end
@@ -482,6 +594,12 @@ function GS.createTour(state, draft)
 	local designs = {}
 	for _, s in ipairs(draft.shows) do
 		local v = Countries.venueById[s.venueId]
+		if not v then
+			return false, "Unknown venue."
+		end
+		if not GS.venueUnlocked(state, v) then
+			return false, v.name .. " needs label level " .. GS.venueLevel(v) .. "."
+		end
 		local vc = GS.venueClass(v)
 		local d = GS.getDesign(state, (draft.designs and draft.designs[vc]) or draft.designId or "")
 		if not d then
@@ -769,7 +887,8 @@ function GS.advanceDay(state, rnd)
 		end
 		for idx, s in ipairs(tour.shows) do
 			if not s.done and s.day <= state.day then
-				if s.watch and s.day == state.day then
+				-- every show of today is played live (the player goes there), unless it was set to "auto"
+				if s.day == state.day and not s.skipLive then
 					table.insert(ev.live, { tourId = tour.id, idx = idx })
 				else
 					local r = GS.prepareShow(state, tour, idx, rnd)
@@ -831,6 +950,9 @@ function GS.checkLevelUp(state)
 	local lvl, def = GS.level(state)
 	if lvl > (state.levelSeen or 1) then
 		state.levelSeen = lvl
+		if state.visited then
+			state.visited.meeting = nil -- new talent wants to meet
+		end
 		GS.log(state, "Your label is now a " .. def.name .. "! New artists can be signed.")
 		return def.name
 	end

@@ -19,13 +19,13 @@ Config.MAX_SHOWS_PER_TOUR = 60
 -- Part of the ticket gross that goes to the artist
 Config.ARTIST_SHARE = 0.35
 
--- Seconds per in-game day for each speed setting (1 = paused)
-Config.SPEEDS = {
-	{ label = "II", seconds = 0 },
-	{ label = ">", seconds = 15 },
-	{ label = ">>", seconds = 4 },
-	{ label = ">>>", seconds = 1 },
-}
+-- Time only moves when the player presses NEXT DAY (no running clock any more)
+
+-- Sandbox (developer test mode): money never runs out, every level, artist, venue and station is open
+Config.SANDBOX_MONEY = 1000000000
+
+-- Label level needed to book a venue type (level 1 = clubs)
+Config.VENUE_LEVEL = { Club = 1, Theatre = 2, Hall = 2, Arena = 3, Amphitheatre = 3, Stadium = 4 }
 
 -- Label levels: unlocked by total tickets sold. Bigger artists need a higher level.
 Config.LEVELS = {

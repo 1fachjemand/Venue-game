@@ -119,18 +119,16 @@ function StagesScreen:refresh()
 		UI.Button(card, "Copy", UI.px(226, 330), UI.px(98, 54), { textSize = 16, disabled = not canAdd }, function()
 			local value = GS.designValue(d)
 			app:confirm("Copy \"" .. UI.esc(d.name) .. "\"?", "A copy needs its own equipment, worth <b>" .. Util.money(value) .. "</b>.", function()
-				if state.money < value then
-					app:toast("Not enough money for the equipment.", T.bad)
-					return
+				local ok, msg = app:act("copyDesign", { designId = d.id })
+				if not ok then
+					app:toast(msg or "Could not copy.", T.bad)
 				end
-				state.money = state.money - value
-				GS.addDesign(state, (d.name .. " copy"):sub(1, 24), Util.deepCopy(d.items), d.class, d.layout)
 				app:refreshCurrent()
 			end)
 		end)
 		UI.Button(card, "Delete", UI.px(332, 330), UI.px(102, 54), { textSize = 16, color = UI.shade(T.bad, 0.65), disabled = d.template ~= nil or t ~= nil }, function()
 			app:confirm("Delete \"" .. UI.esc(d.name) .. "\"?", "The equipment is sold for " .. math.floor(Config.RESALE * 100) .. "% of its price (+" .. Util.money(math.floor(GS.designValue(d) * Config.RESALE)) .. ").", function()
-				local ok, msg = GS.deleteDesign(state, d.id)
+				local ok, msg = app:act("deleteDesign", { designId = d.id })
 				app:toast(ok and "Stage deleted." or msg, ok and T.good or T.bad)
 				app:refreshCurrent()
 			end)
@@ -199,31 +197,14 @@ function StagesScreen:newDialog(preClass)
 		end
 		UI.Button(dlg, "Cancel", UI.px(32, 840), UI.px(200, 64), { textSize = 18 }, close)
 		UI.Button(dlg, "CREATE & BUILD", UI.px(668, 840), UI.px(300, 64), { color = T.accent, textSize = 22 }, function()
-			local d, msg
-			local name = choice.class .. " " .. (choice.layout == "center" and "Center" or "Stage") .. " " .. (#state.designs + 1)
-			if choice.preset then
-				d, msg = GS.addDesignFromTemplate(state, choice.preset)
-			elseif #state.designs >= Config.MAX_DESIGNS then
-				msg = "You can have up to " .. Config.MAX_DESIGNS .. " stages. Delete one first."
-			else
-				d = GS.addDesign(state, name, {}, choice.class, choice.layout)
-				if choice.start == "deck" then
-					local c = Config.STAGE_CLASS_BY_ID[choice.class]
-					local rec
-					if choice.layout == "center" then
-						rec = { t = "deck_round", x = 0, z = 0, r = 0, w = math.min(70, math.floor(c.center * 0.5)), h = 6, y = 0 }
-					else
-						rec = { t = "deck", x = 0, z = c.minZ + math.floor((c.maxX - c.minX) * 0.12) + 2, r = 0, w = math.floor((c.maxX - c.minX) * 0.6), d = math.floor((c.maxX - c.minX) * 0.25), h = (c.order == 1) and 4 or 6, y = 0 }
-					end
-					local ok, err = GS.buyItem(state, d, rec)
-					if not ok then
-						app:toast(err, T.warn)
-					end
-				end
-			end
+			local ok, msg, data = app:act("newDesign", { class = choice.class, layout = choice.layout, start = choice.start, preset = choice.preset and choice.preset.name or nil })
+			local d = ok and data and GS.getDesign(state, data.designId)
 			if not d then
 				app:toast(msg or "Could not create the stage.", T.bad)
 				return
+			end
+			if msg then
+				app:toast(msg, T.warn)
 			end
 			close()
 			app.returnScreen = self.back or "stages"

@@ -100,7 +100,15 @@ function Stage3D.setLighting(mode)
 	Lighting.FogEnd = 100000
 	Lighting.ClockTime = (mode == "show") and 0 or 14
 	Stage3D.ground.Color = (mode == "show") and Color3.fromRGB(22, 22, 26) or Color3.fromRGB(78, 82, 92)
-	if mode == "show" then
+	if mode == "hub" then
+		-- the label building in the evening: warm lights inside, city lights outside
+		Lighting.ClockTime = 19.6
+		Lighting.Brightness = 1.6
+		Lighting.Ambient = Color3.fromRGB(96, 94, 116)
+		Lighting.OutdoorAmbient = Color3.fromRGB(92, 92, 120)
+		Lighting.EnvironmentDiffuseScale = 0.45
+		Lighting.EnvironmentSpecularScale = 0.5
+	elseif mode == "show" then
 		Lighting.Brightness = 1.5
 		Lighting.Ambient = Color3.fromRGB(62, 60, 80)
 		Lighting.OutdoorAmbient = Color3.fromRGB(70, 70, 92)

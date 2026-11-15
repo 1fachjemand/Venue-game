@@ -368,6 +368,8 @@ end
 InstMT.__newindex = function(self, k, v)
 	if k == "Parent" then return setParent(self, v) end
 	local cls = rawget(self, "__class")
+	-- callbacks (RemoteFunction.OnServerInvoke ...)
+	if type(v) == "function" and findMember(cls, "funcs", k) then self.__props[k] = v return end
 	local p = findMember(cls, "props", k)
 	if not p then error(string.format("%s is not a valid member of %s", tostring(k), cls), 2) end
 	if p[3] then error(k .. " is read-only / not scriptable on " .. cls, 2) end
@@ -411,7 +413,23 @@ function Methods.GetDescendants(self)
 	return out
 end
 function Methods.IsA(self, c) return isA(self.__class, c) end
-function Methods.FindFirstChild(self, n) for _, c in ipairs(self.__children) do if c.__props.Name == n then return c end end return nil end
+function Methods.FindFirstChild(self, n, recursive)
+	for _, c in ipairs(self.__children) do if c.__props.Name == n then return c end end
+	if recursive then for _, c in ipairs(self.__children) do local f = Methods.FindFirstChild(c, n, true) if f then return f end end end
+	return nil
+end
+function Methods.FindFirstChildOfClass(self, cls) for _, c in ipairs(self.__children) do if c.__class == cls then return c end end return nil end
+function Methods.FindFirstChildWhichIsA(self, cls) for _, c in ipairs(self.__children) do if isA(c.__class, cls) then return c end end return nil end
+function Methods.SetAttribute(self, k, v)
+	assert(type(k) == "string", "SetAttribute: name must be a string")
+	local t = type(v)
+	assert(v == nil or t == "string" or t == "number" or t == "boolean" or typeof(v) == "Vector3" or typeof(v) == "Color3", "SetAttribute: unsupported value " .. typeof(v))
+	self.__attrs[k] = v
+end
+function Methods.GetAttribute(self, k) return self.__attrs[k] end
+function Methods.IsStudio() return true end
+function Methods.IsServer() return true end
+function Methods.IsClient() return true end
 function Methods.WaitForChild(self, n)
 	local c = Methods.FindFirstChild(self, n)
 	if not c then error("Infinite yield: WaitForChild(\"" .. n .. "\") on " .. self.__props.Name, 2) end
@@ -482,8 +500,85 @@ function Methods.GetService(self, name)
 end
 function Methods.JSONEncode(self, t) return MOCK.jsonEncode(t) end
 function Methods.JSONDecode(self, s) return MOCK.jsonDecode(s) end
-function Methods.InvokeServer(self, ...) return MOCK.loadData, MOCK.loadStatus end
-function Methods.FireServer(self, data) assert(type(data) == "string") table.insert(MOCK.saves, data) end
+-- remotes: values travel through a copy like over the network (no shared tables between client and server)
+local function netCopy(v, depth)
+	depth = depth or 0
+	assert(depth < 40, "remote: table nested too deep")
+	local t = type(v)
+	if t == "function" or t == "thread" or t == "userdata" then error("remote: cannot send a " .. t) end
+	if t ~= "table" or typeof(v) == "Instance" then return v end
+	if getmetatable(v) then return v end
+	local c = {}
+	for k, x in pairs(v) do
+		assert(type(k) == "string" or type(k) == "number", "remote: bad key type " .. type(k))
+		c[k] = netCopy(x, depth + 1)
+	end
+	return c
+end
+function Methods.InvokeServer(self, ...)
+	local cb = self.__props.OnServerInvoke
+	if not cb then error("InvokeServer: no OnServerInvoke on " .. self.__props.Name) end
+	local args = netCopy({ ... })
+	MOCK.invokes = (MOCK.invokes or 0) + 1
+	local res = { cb(MOCK.player, unpack(args)) }
+	return unpack(netCopy(res))
+end
+function Methods.FireServer(self, ...)
+	local s = self.__signals.OnServerEvent
+	if s then s:Fire(MOCK.player, unpack(netCopy({ ... }))) end
+end
+-- DataStore: kept in memory for the whole run
+MOCK.store = { data = {} }
+function MOCK.store:GetAsync(k) return self.data[k] end
+function MOCK.store:SetAsync(k, v) assert(type(k) == "string" and type(v) == "string", "SetAsync args") self.data[k] = v table.insert(MOCK.saves, v) end
+function Methods.GetDataStore(self, name) assert(type(name) == "string") return MOCK.store end
+function Methods.BindToClose(self, fn) MOCK.onClose = fn end
+-- characters: a Model with a Humanoid and a HumanoidRootPart, spawned on the SpawnLocation
+function Methods.LoadCharacter(self)
+	local old = self.__props.Character
+	if old then Methods.Destroy(old) end
+	local char = newInst("Model")
+	char.__props.Name = self.__props.Name
+	local root = newInst("Part")
+	root.__props.Name = "HumanoidRootPart"
+	root.__props.Size = v3(2, 2, 1)
+	setParent(root, char)
+	local head = newInst("Part")
+	head.__props.Name = "Head"
+	setParent(head, char)
+	local h = newInst("Humanoid")
+	h.__props.Name = "Humanoid"
+	h.__props.WalkSpeed = 16
+	setParent(h, char)
+	char.__props.PrimaryPart = root
+	for _, d in ipairs(Methods.GetDescendants(workspace)) do
+		if d.__class == "SpawnLocation" then root.__props.CFrame = d.CFrame + v3(0, 3, 0) end
+	end
+	setParent(char, workspace)
+	self.__props.Character = char
+	MOCK.characters = (MOCK.characters or 0) + 1
+	local sig = self.CharacterAdded
+	sig:Fire(char)
+end
+-- sitting down / standing up (Seat:Sit is server-only in Roblox; the test calls this)
+function MOCK.sit(seat)
+	local char = MOCK.player.Character
+	local h = Methods.FindFirstChildOfClass(char, "Humanoid")
+	h.__props.SeatPart = seat
+	h.__props.Sit = seat ~= nil
+	h.Seated:Fire(seat ~= nil, seat)
+end
+function MOCK.prompt(stationId)
+	for _, d in ipairs(Methods.GetDescendants(workspace)) do
+		if d.__class == "ProximityPrompt" and d.__attrs.Station == stationId then
+			assert(d.Enabled ~= false, "prompt " .. stationId .. " is disabled")
+			game:GetService("ProximityPromptService").PromptTriggered:Fire(d, MOCK.player)
+			MOCK.runTasks()
+			return d
+		end
+	end
+	fail("prompt not found: " .. stationId)
+end
 function Methods.Create(self, inst, info, props)
 	assert(typeof(inst) == "Instance" and typeof(info) == "TweenInfo" and type(props) == "table", "TweenService:Create args")
 	local tw = { Completed = Signal.new() }
@@ -544,6 +639,9 @@ local player = newInst("Player")
 player.__props.Name = "Tester"
 setParent(player, players)
 players.__props.LocalPlayer = player
+player.__props.UserId = 1
+MOCK.player = player
+shared = {}
 local pg = newInst("PlayerGui")
 pg.__props.Name = "PlayerGui"
 setParent(pg, player)

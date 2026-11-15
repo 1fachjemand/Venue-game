@@ -33,16 +33,16 @@ def folder_tree(path, name):
 
 def build():
     hl = folder_tree(os.path.join(SRC, "Headliner"), "Headliner")
-    remotes = item("Folder", "Remotes", "", item("RemoteFunction", "LoadGame") + item("RemoteEvent", "SaveGame"))
+    remotes = item("Folder", "Remotes", "", item("RemoteFunction", "Action"))
     headliner = item("Folder", "Headliner", "", hl + remotes)
     xml = ['<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
            'xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">\n',
            '<External>null</External>\n<External>nil</External>\n',
-           item("Workspace", "Workspace"),
+           item("Workspace", "Workspace", '<bool name="StreamingEnabled">false</bool>'),
            item("Lighting", "Lighting", '<token name="Technology">4</token><bool name="GlobalShadows">false</bool>'),
            item("Players", "Players", '<bool name="CharacterAutoLoads">false</bool>'),
            item("ReplicatedStorage", "ReplicatedStorage", "", headliner),
-           item("ServerScriptService", "ServerScriptService", "", script_item("Script", "SaveServer", os.path.join(SRC, "server", "SaveServer.server.lua"))),
+           item("ServerScriptService", "ServerScriptService", "", script_item("Script", "GameServer", os.path.join(SRC, "server", "GameServer.server.lua"))),
            item("StarterPlayer", "StarterPlayer", "", item("StarterPlayerScripts", "StarterPlayerScripts", "", script_item("LocalScript", "Main", os.path.join(SRC, "client", "Main.client.lua")))),
            '</roblox>\n']
     open(OUT, "w", encoding="utf-8").write("".join(xml))

@@ -991,15 +991,15 @@ function MapScreen:buildConfirmStep(body)
 	end)
 	UI.Button(panel, "ANNOUNCE TOUR", UI.px(1452, 846), UI.px(400, 60), { color = T.accent, textSize = 24 }, function()
 		self:syncPrices()
-		local ok, res = GS.createTour(state, draft)
+		local ok, msg, data = self.app:act("createTour", { draft = draft })
 		if not ok then
-			self.app:toast(res, T.bad)
+			self.app:toast(msg or "Could not announce the tour.", T.bad)
 			return
 		end
+		local res = GS.getTour(state, data.tourId)
 		self.app:toast("<b>" .. UI.esc(res.name) .. "</b> is announced! Tickets are on sale now.", T.good, 8)
 		self.draft = { artistId = nil, name = "", designs = draft.designs, firstIn = 21, gap = 2, watchFirst = true, price = 30, prices = {}, shows = {} }
 		self.step = 1
-		self.app:save()
 		self.app:go("tours", { tourId = res.id })
 	end)
 end

@@ -16,8 +16,10 @@ local MainMenu = {}
 
 local PANEL_W = 600
 
--- onStart(state, isNew)
-function MainMenu.show(app, saved, onStart)
+-- info = what the server knows (saved games, sandbox allowed); onStart(isNew) once a game runs
+function MainMenu.show(app, info, onStart)
+	info = info or {}
+	local saved = info.main
 	app.backdrop.Visible = false
 	app.settings = app.settings or { music = 80, effects = 80, crowd = "High" }
 	SoundFX.init(app.settings)
@@ -77,7 +79,12 @@ function MainMenu.show(app, saved, onStart)
 		return b
 	end
 
-	local home, nameStep, pickArtist, settingsPage, storePage, creditsPage
+	local home, nameStep, pickArtist, settingsPage, storePage, creditsPage, sandboxPage
+	local function start(isNew)
+		MenuScene.stop()
+		root:Destroy()
+		onStart(isNew)
+	end
 
 	nameStep = function()
 		clear()
@@ -132,9 +139,9 @@ function MainMenu.show(app, saved, onStart)
 					end
 				end)
 				UI.Button(card, "SIGN", UI.px(366, 50), UI.px(118, 50), { color = T.accent, textSize = 20 }, function()
-					MenuScene.stop()
-					root:Destroy()
-					onStart(GS.new(labelName, ad.id), true)
+					if app:startNew(labelName, ad.id, false) then
+						start(true)
+					end
 				end)
 				y = y + 162
 			end
@@ -213,9 +220,9 @@ function MainMenu.show(app, saved, onStart)
 		local y = 320
 		if saved then
 			menuButton(y, "CONTINUE", saved.labelName .. "  -  " .. Util.date(saved.day, Config.START_YEAR) .. "  -  " .. Util.money(saved.money), true, function()
-				MenuScene.stop()
-				root:Destroy()
-				onStart(saved, false)
+				if app:continueGame("main") then
+					start(false)
+				end
 			end)
 			y = y + 92
 		end
@@ -232,9 +239,44 @@ function MainMenu.show(app, saved, onStart)
 		menuButton(y, "SETTINGS", nil, false, settingsPage)
 		y = y + 78
 		menuButton(y, "CREDITS", nil, false, creditsPage)
+		if app.canSandbox then
+			y = y + 78
+			local b = menuButton(y, "SANDBOX  (DEV)", "Test everything: no money limit, all unlocked", false, sandboxPage)
+			UI.Stroke(T.gold, 2, 0).Parent = b
+		end
 		if not app.saveAvailable then
 			UI.Label(body, "Saving only works when the place is published to Roblox. In a local file, progress resets when you stop the game.", UI.px(64, 980), UI.px(470, 50), { textSize = 14, color = T.warn, wrap = true })
 		end
+	end
+
+	-- developer test mode: separate save, unlimited money, every level / artist / venue / room open
+	sandboxPage = function()
+		clear()
+		logo()
+		UI.Label(body, "SANDBOX", UI.px(64, 300), UI.px(440, 40), { textSize = 30, font = UI.FontBlack, color = T.gold })
+		UI.Label(body, "Only you (the developer) see this. Money never runs out, every level, artist, venue and room is open. The sandbox has its own save and never touches your real game.", UI.px(64, 346), UI.px(470, 90), { textSize = 16, wrap = true, alignY = Enum.TextYAlignment.Top })
+		local y = 450
+		if info.sandbox then
+			menuButton(y, "CONTINUE SANDBOX", "Day " .. tostring(info.sandbox.day), true, function()
+				if app:continueGame("sandbox") then
+					start(false)
+				end
+			end)
+			y = y + 92
+		end
+		for _, ad in ipairs(Artists.list) do
+			if ad.starter then
+				menuButton(y, "NEW SANDBOX", "Starting artist: " .. ad.name, info.sandbox == nil and ad.id == "lila", function()
+					if app:startNew("Sandbox Records", ad.id, true) then
+						start(true)
+					end
+				end)
+				y = y + 88
+			end
+		end
+		UI.Button(body, "< Back", UI.px(64, y + 10), UI.px(200, 56), { textSize = 20 }, function()
+			home()
+		end)
 	end
 
 	MainMenu.home = home

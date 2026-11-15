@@ -3,6 +3,7 @@ local GS = require(ROOT.Logic.GameState)
 local Sim = require(ROOT.Logic.Sim)
 local Util = require(ROOT.Logic.Util)
 local Countries = require(ROOT.Data.Countries)
+local Config = require(ROOT.Config)
 local fails = 0
 local function check(cond, msg) if not cond then fails = fails + 1; print("FAIL: " .. msg) end end
 
@@ -47,6 +48,10 @@ local est = Sim.estimate(state, draft, club)
 for i, r in ipairs(est.rows) do print(draft.shows[i].venueId, math.floor(r.demand), r.sold, Util.percent(r.fill), r.gross, r.net) end
 print("est total gross", est.gross, "net", est.net)
 
+-- venues need a label level: level 1 = clubs only
+local okLock, msgLock = GS.createTour(state, draft)
+check(not okLock and tostring(msgLock):find("level"), "theatres are locked at level 1: " .. tostring(msgLock))
+state.stats.tickets = 250000 -- level 4 (no level-up check runs here)
 local ok, tour = GS.createTour(state, draft)
 check(ok, "create tour: " .. tostring(tour))
 check(tour.shows[1].sold > 0, "presale sold")
@@ -78,7 +83,7 @@ for day = 1, 60 do
   for _, a in ipairs(ev.achievements) do print("ACH", a) end
   for _, t in ipairs(ev.completed) do print("COMPLETED", t.name, t.gross, t.net) end
 end
-check(live == 1, "one live show")
+check(live >= 1, "shows of the day are played live")
 check(tour.status == "done" and t2.status == "done", "tours done")
 print("money", state.money, "lila fans", Util.totalFans(state.artists.lila.fans), "hype", state.artists.lila.hype)
 local rows, best = GS.chart(state)
@@ -180,13 +185,20 @@ do
       check(inside, p.name .. ": " .. it.t .. " outside the build area")
     end
   end
+  st.stats.tickets = 250000 -- arenas need label level 3
   local ok, t = GS.createTour(st, { artistId = "juno", designs = { Arena = d.id, Club = st.designs[1].id, Theatre = st.designs[1].id }, firstIn = 20, gap = 2, price = 300, shows = { { venueId = "uk_o3" }, { venueId = "uk_o3" } } })
   check(ok and t.shows[2].day == t.shows[1].day + 1 and t.shows[2].travel == 0, "two nights at the O3")
   check(#st.social >= 3, "fans post about the announcement")
   local neg = 0
   for _, p in ipairs(st.social) do if p.kind == "price_high" then neg = neg + 1 end end
   check(neg >= 1, "expensive tickets get criticism")
-  for _ = 1, 40 do GS.advanceDay(st) end
+  for _ = 1, 40 do
+    local ev = GS.advanceDay(st)
+    for _, l in ipairs(ev.live) do
+      local tt = GS.getTour(st, l.tourId)
+      GS.applyShow(st, tt, l.idx, GS.prepareShow(st, tt, l.idx))
+    end
+  end
   local kinds = {}
   for _, p in ipairs(st.social) do kinds[p.kind] = true check(not p.text:find("{"), "placeholder left: " .. p.text) end
   local list = {}
@@ -215,5 +227,59 @@ do
   end
   check(busy > 0 and busy < n * 0.4, "arena is sometimes booked: " .. busy .. "/" .. n)
   check(GS.venueBusy(st, "uk_o3", 77) == GS.venueBusy(st, "uk_o3", 77), "calendar is deterministic")
+end
+
+-- server actions (Logic/Actions.lua): what the client asks for
+do
+  local Actions = require(ROOT.Logic.Actions)
+  local st = GS.new("Act", "lila")
+  local ok, msg, ev = Actions.run(st, "nextDay", {})
+  check(ok and st.day == 1 and type(ev.live) == "table", "nextDay action")
+  check(not Actions.run(st, "nope", {}), "unknown action refused")
+  -- level gate through the action as well
+  local okT, msgT = Actions.run(st, "createTour", { draft = { artistId = "lila", designId = st.designs[1].id, shows = { { venueId = "uk_o3", day = 30 } } } })
+  check(not okT, "arena locked for a new label: " .. tostring(msgT))
+  local okC, _, dataC = Actions.run(st, "createTour", { draft = { artistId = "lila", designId = st.designs[1].id, shows = { { venueId = "uk_fiddle", day = 30 } } } })
+  check(okC and dataC.tourId, "club tour via action")
+  -- a show waits on its day: next day refused until it is played
+  for _ = 1, 40 do
+    local okD = Actions.run(st, "nextDay", {})
+    if not okD then break end
+  end
+  check(st.day == 30, "time stops on the show day: " .. st.day)
+  local tour = GS.getTour(st, dataC.tourId)
+  local okP, _, dataP = Actions.run(st, "playShow", { tourId = tour.id, idx = 1 })
+  check(okP and dataP.result and tour.shows[1].done, "playShow")
+  check(not Actions.run(st, "playShow", { tourId = tour.id, idx = 1 }), "a show plays only once")
+  check(GS.unlocks(st).stagehall, "stage hall opens after the first show")
+  -- stage builder: the server pays the difference per item uid
+  local d = st.designs[1]
+  local before = st.money
+  local items = Util.deepCopy(d.items)
+  table.insert(items, { t = "par", x = 0, z = 0, r = 0 })
+  local okS, _, dataS = Actions.run(st, "saveDesign", { designId = d.id, design = { name = d.name, items = items } })
+  check(okS and dataS.cost > 0 and st.money == before - dataS.cost, "new item is paid: " .. tostring(dataS and dataS.cost))
+  local items2 = Util.deepCopy(d.items)
+  table.remove(items2)
+  local m2 = st.money
+  Actions.run(st, "saveDesign", { designId = d.id, design = { name = d.name, items = items2 } })
+  check(st.money > m2 and st.money < before, "removed item sold for less than its price")
+  check(not Actions.run(st, "saveDesign", { designId = d.id, design = { items = { { t = "hack" } } } }) or #d.items == 0, "unknown items are dropped")
+  -- sandbox
+  local sb = GS.new("Sand", "juno", { sandbox = true })
+  check(sb.sandbox and sb.money == Config.SANDBOX_MONEY and GS.level(sb) == #Config.LEVELS, "sandbox start")
+  local okN = Actions.run(sb, "sign", { artistId = "nova" })
+  check(okN and sb.money == Config.SANDBOX_MONEY, "sandbox: money never runs out")
+  check(GS.unlocks(sb).charts and GS.venueUnlocked(sb, Countries.venueById.uk_wemblee), "sandbox: everything open")
+  check(not Actions.run(st, "devSkip", {}), "dev tools only in the sandbox")
+  check(Actions.run(sb, "devSkip", { days = 7 }) and sb.day == 7, "sandbox skip")
+  -- objective
+  local fresh = GS.new("Obj", "lila")
+  check(GS.objective(fresh).target == "maptable", "first goal: world map")
+  -- in-place sync keeps tables
+  local dst = { list = { { id = "a", v = 1 }, { id = "b", v = 2 } }, n = 1, gone = true }
+  local keepB = dst.list[2]
+  Util.syncInto(dst, { list = { { id = "b", v = 3 } }, n = 2 })
+  check(dst.list[1] == keepB and keepB.v == 3 and #dst.list == 1 and dst.n == 2 and dst.gone == nil, "syncInto")
 end
 print("FAILS", fails)

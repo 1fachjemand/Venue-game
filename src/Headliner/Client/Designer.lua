@@ -1460,7 +1460,7 @@ function Designer.close()
 	end
 	Designer.current = nil
 	self.cleanup()
-	self.app:save()
+	self.app:saveDesign(self.design)
 end
 
 function Designer.preview()

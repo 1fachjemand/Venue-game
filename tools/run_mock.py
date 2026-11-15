@@ -29,10 +29,11 @@ def tree(path, name):
         if os.path.isdir(full): node["children"].append(tree(full, e))
         elif e.endswith(".lua"): node["children"].append({"class": "ModuleScript", "name": e[:-4], "path": full})
     node["children"].append({"class": "Folder", "name": "Remotes", "children": [
-        {"class": "RemoteFunction", "name": "LoadGame"}, {"class": "RemoteEvent", "name": "SaveGame"}]}) if name == "Headliner" else None
+        {"class": "RemoteFunction", "name": "Action"}]}) if name == "Headliner" else None
     return node
 g.TREE = py_to_lua(tree(os.path.join(ROOT, "src", "Headliner"), "Headliner"))
 g.MAIN_PATH = os.path.join(ROOT, "src", "client", "Main.client.lua")
+g.SERVER_PATH = os.path.join(ROOT, "src", "server", "GameServer.server.lua")
 lua.execute(open(sys.argv[2]).read())
 errs = list(g.MOCK.errors.values())
 print("\n==== RESULT:", "OK - no runtime errors" if not errs else f"{len(errs)} runtime error(s)")

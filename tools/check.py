@@ -20,7 +20,7 @@ for f in files:
     if e: err(f, "SYNTAX " + str(e))
 
 # ---------- 2) undefined variables
-ALLOWED = set("""game workspace script Instance Vector3 Vector2 CFrame Color3 UDim UDim2 Enum TweenInfo NumberSequence
+ALLOWED = set("""game workspace script shared Instance Vector3 Vector2 CFrame Color3 UDim UDim2 Enum TweenInfo NumberSequence
 NumberSequenceKeypoint ColorSequence ColorSequenceKeypoint NumberRange RaycastParams Random task math string table os
 pairs ipairs require setmetatable getmetatable type tostring tonumber pcall error print warn next select unpack rawget
 rawset typeof tick utf8 Ray Font Faces Axes""".split())

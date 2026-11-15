@@ -90,12 +90,11 @@ function ArtistsScreen:card(ad, order)
 		local txt = ad.level > lvl and ("LOCKED - needs " .. Config.LEVELS[ad.level].name .. " (Lv " .. ad.level .. ")") or ("SIGN FOR " .. Util.money(ad.signCost))
 		UI.Button(card, txt, UI.px(18, 326), UI.px(416, 52), { color = afford and T.good or T.panel3, disabled = not afford, textSize = 16 }, function()
 			app:confirm("Sign " .. ad.name .. "?", "Signing costs <b>" .. Util.money(ad.signCost) .. "</b>. Then you can book their tours.", function()
-				local ok, msg = GS.sign(state, ad.id)
-				app:toast(msg, ok and T.good or T.bad)
-				for _, id in ipairs(GS.checkAchievements(state)) do
+				local ok, msg, data = app:act("sign", { artistId = ad.id })
+				app:toast(msg or "", ok and T.good or T.bad)
+				for _, id in ipairs((data and data.achievements) or {}) do
 					app:toast("<b>Achievement unlocked:</b> " .. Achievements.byId[id].name, T.accent, 8)
 				end
-				app:save()
 				app:refreshCurrent()
 			end)
 		end)
