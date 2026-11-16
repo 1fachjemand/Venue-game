@@ -3,18 +3,16 @@
 -- shows what to do, and the golden arrow shows the way. Skip any time; the progress is saved
 -- (state.tutorial, action "tutorial").
 local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
 local Root = script:FindFirstAncestor("Headliner")
 local Artists = require(Root.Data.Artists)
 local UI = require(Root.Client.UI)
-local Hub = require(Root.World.Hub)
 local SoundFX = require(Root.Client.SoundFX)
+local Sam = require(Root.Client.Sam)
 
 local T = UI.Theme
 local New = UI.New
 local Tutorial = {}
 
-local O = Hub.ORIGIN
 
 local function laptopWindow(app, id)
 	local lt = app.laptop
@@ -176,70 +174,14 @@ Tutorial.STEPS = {
 	},
 }
 
------------------------------------------------------------------- Sam in the office
+------------------------------------------------------------------ Sam in the office (Client/Sam.lua walks and animates him)
 local function guideModel()
-	local root = workspace:FindFirstChild("StarlightRecords")
-	return root and root:FindFirstChild("Guide")
+	return Sam.model()
 end
-
 local function moveGuide(spot)
-	local g = guideModel()
-	local p = Hub.GUIDE_SPOTS[spot or "start"]
-	if not g or not p then
-		return
-	end
-	local h = g:GetAttribute("RootHeight") or 3
-	local pos = O + p + Vector3.new(0, h, 0)
-	-- look at the player (or towards the room)
-	local look = O + Hub.SPAWN
-	local char = Players.LocalPlayer.Character
-	if char and char.PrimaryPart then
-		look = char.PrimaryPart.Position
-	end
-	local dir = Vector3.new(look.X - pos.X, 0, look.Z - pos.Z)
-	if dir.Magnitude < 0.1 then
-		dir = Vector3.new(0, 0, 1)
-	end
-	pcall(function()
-		g:PivotTo(CFrame.lookAt(pos, pos + dir))
-	end)
+	Sam.walkTo(spot or "start")
 end
 Tutorial.moveGuide = moveGuide
-
--- joints of the R15 character: Sam waves and talks with the hands
-local function joint(g, partName, jointName)
-	local p = g:FindFirstChild(partName)
-	return p and p:FindFirstChild(jointName)
-end
-local function animateGuide(t, talking, wave)
-	local g = guideModel()
-	if not g then
-		return
-	end
-	local rs = joint(g, "RightUpperArm", "RightShoulder")
-	local ls = joint(g, "LeftUpperArm", "LeftShoulder")
-	local neck = joint(g, "Head", "Neck")
-	local waist = joint(g, "UpperTorso", "Waist")
-	if rs and rs:IsA("Motor6D") then
-		if wave > 0 then
-			rs.Transform = CFrame.Angles(0, 0, math.rad(150 + math.sin(t * 9) * 18) * wave)
-		elseif talking then
-			rs.Transform = CFrame.Angles(math.rad(35 + math.sin(t * 3.1) * 14), 0, math.rad(8 + math.sin(t * 2.3) * 6))
-		else
-			rs.Transform = CFrame.Angles(math.rad(math.sin(t * 1.2) * 3), 0, 0)
-		end
-	end
-	if ls and ls:IsA("Motor6D") then
-		-- the clipboard arm stays bent in front of the body
-		ls.Transform = CFrame.Angles(math.rad(55 + math.sin(t * 1.3) * 2), 0, math.rad(-6))
-	end
-	if neck and neck:IsA("Motor6D") then
-		neck.Transform = talking and CFrame.Angles(math.rad(math.sin(t * 5) * 5), math.rad(math.sin(t * 1.7) * 8), 0) or CFrame.Angles(0, math.rad(math.sin(t * 0.6) * 6), 0)
-	end
-	if waist and waist:IsA("Motor6D") then
-		waist.Transform = CFrame.Angles(math.rad(math.sin(t * 1.6) * 1.2), 0, 0)
-	end
-end
 
 ------------------------------------------------------------------ the speech bubble
 local function portrait(parent)
@@ -384,9 +326,9 @@ function Tutorial.finish(app, skipped)
 		app.world.override = nil
 		app.world.refresh()
 	end
-	moveGuide("start")
+	-- Sam goes back to work in his own office (Sam.behave)
 	if skipped then
-		app:toast("Tutorial skipped. Sam is in the office if you need him.", T.accent2, 5)
+		app:toast("Tutorial skipped. Sam is in his office if you need him.", T.accent2, 5)
 	end
 end
 
@@ -427,7 +369,7 @@ function Tutorial.start(app)
 			end
 		end
 		r.wave = math.max(0, (r.wave or 0) - dt)
-		animateGuide(r.t, not r.waiting, math.min(1, r.wave))
+		Sam.setTalk(not r.waiting, math.min(1, r.wave))
 		-- the bubble follows the mode (walking, laptop, builder) and hides in shows
 		local show = app.mode ~= "live" and app.mode ~= "title"
 		f.Visible = show
@@ -438,9 +380,10 @@ function Tutorial.start(app)
 	end))
 	table.insert(r.conns, RunService.Heartbeat:Connect(function()
 		r.check = (r.check or 0) + 1
-		if r.check % 10 ~= 0 or not r.waiting then
+		if r.check % 10 ~= 0 then
 			return
 		end
+		-- the task is noticed by itself, also while Sam still talks (no click on the bubble needed)
 		local st = stepDef(r.step)
 		if st and st.done and st.done(app, r) then
 			SoundFX.sfx("cash", 0.3)

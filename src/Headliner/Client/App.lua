@@ -265,6 +265,12 @@ function App:beginGame(isNew)
 	local World = require(Root.Client.World)
 	self.world = World
 	World.start(self)
+	-- Sam walks, works in his office and joins meetings (the tutorial guides him while it runs)
+	local Sam = require(Root.Client.Sam)
+	Sam.start(self)
+	if not require(Root.Client.Tutorial).active(self) then
+		Sam.placeAtDesk()
+	end
 	SoundFX.menu("office")
 	self:startClock()
 	self:refreshHud()
@@ -1104,6 +1110,7 @@ function App:leaveToMenu()
 	end
 	require(Root.Client.Laptop).destroy(self)
 	require(Root.Client.Tutorial).stop()
+	require(Root.Client.Sam).stop()
 	for _, c in ipairs(self.canvas:GetChildren()) do
 		if not (self.baseChildren or {})[c] and not c:IsA("UIScale") then
 			c:Destroy()

@@ -18,6 +18,41 @@ Hub.GUIDE_SPOTS = {
 	laptop = Vector3.new(6, 0, -28),
 	stagehall = Vector3.new(32, 0, 10),
 	maptable = Vector3.new(6, 0, -3),
+	office = Vector3.new(30.2, 0, -40.5), -- next to Sam's chair in his own office
+}
+-- Sam walks from room to room: every spot has a way from the start spot (the middle of the office);
+-- a walk from A to B goes A -> start -> B. Checked against the building by scenario_hub.
+local SAM_HUB = Vector3.new(-8, 0, -10)
+Hub.SAM_ROUTES = {
+	start = { SAM_HUB },
+	maptable = { SAM_HUB, Vector3.new(6, 0, -3) },
+	laptop = { SAM_HUB, Vector3.new(2, 0, -22), Vector3.new(6, 0, -28) },
+	meeting = { SAM_HUB, Vector3.new(-30, 0, -12), Vector3.new(-44, 0, -12), Vector3.new(-54, 0, -8) },
+	stagehall = { SAM_HUB, Vector3.new(18.9, 0, -10), Vector3.new(18.9, 0, 8), Vector3.new(32, 0, 10) },
+	office = { SAM_HUB, Vector3.new(10, 0, -24), Vector3.new(28.6, 0, -24), Vector3.new(27.7, 0, -30), Vector3.new(27.6, 0, -40.5), Vector3.new(30.2, 0, -40.5) },
+}
+function Hub.samRoute(from, to)
+	local a, b = Hub.SAM_ROUTES[from or "start"], Hub.SAM_ROUTES[to or "start"]
+	if not a or not b or from == to then
+		return {}
+	end
+	local pts = {}
+	for i = #a, 1, -1 do
+		table.insert(pts, a[i])
+	end
+	for i = 2, #b do
+		table.insert(pts, b[i])
+	end
+	return pts
+end
+-- where Sam sits: his office chair (facing the door) and meeting chairs (from the meeting spot: a free floor
+-- point next to the chair, then he sits down); seatTop = height of the cushion
+Hub.SAM_SEATS = {
+	office = { pos = Vector3.new(33, 0, -40), look = Vector3.new(0, 0, 1), seatTop = 2.3 },
+	meeting = {
+		{ seat = "MeetingSeat6", pos = Vector3.new(-56.4, 0, -18), look = Vector3.new(-1, 0, 0), seatTop = 2.1, way = { Vector3.new(-56.4, 0, -14.8) } },
+		{ seat = "MeetingSeat4", pos = Vector3.new(-56.4, 0, -24), look = Vector3.new(-1, 0, 0), seatTop = 2.1, way = { Vector3.new(-53.2, 0, -21), Vector3.new(-56.4, 0, -21) } },
+	},
 }
 Hub.STATIONS = {
 	laptop = { pos = Vector3.new(14, 3.6, -37), name = "LAPTOP", sub = "Overview & tours", action = "Open laptop" },
@@ -670,7 +705,7 @@ function Hub.build(parentFolder)
 	box(dk, "Lamp", 20.85, 3.5, -35.75, 21.15, 5.6, -35.45, C.dark)
 	part(dk, "LampShade", Vector3.new(1.2, 0.9, 1.2), Vector3.new(21, 6.05, -35.6), C.yellow, Enum.Material.SmoothPlastic, { collide = false })
 	-- painted accent wall behind the desk + shelves + label logo
-	box(deco, "AccentWall", 2, 0, -46, 26, H, -45.94, C.purple)
+	box(deco, "AccentWall", 2, 0, -46, 25.7, H, -45.94, C.purple)
 	shelf(deco, 4, -45.94, 13, 6, 2, 1)
 	shelf(deco, 15, -45.94, 24, 6, 2, 1)
 	local logo = box(deco, "LogoBoard", 5, 13.2, -45.9, 23, 16.8, -45.7, C.white, nil, { collide = false })
@@ -702,6 +737,21 @@ function Hub.build(parentFolder)
 	for i = 0, 3 do
 		box(cw, "Trophy", -27 + i * 4.5, 2.2, -44.8, -26 + i * 4.5, 4 + (i % 2) * 0.8, -43.8, C.yellow, Enum.Material.Metal, { collide = false })
 	end
+
+	------------------------------------------------------------ OFFICE: Sam's own office (glass room, back right)
+	local so = new("Folder", { Name = "SamOffice" }, deco)
+	box(shell, "SamGlassFront", 31, 0, -28.2, 40, H - 0.02, -27.8, C.glass, Enum.Material.Glass, { transparency = 0.6 })
+	box(shell, "SamGlassSide", 25.8, 0, -46, 26.2, H - 0.02, -28.2, C.glass, Enum.Material.Glass, { transparency = 0.6 })
+	box(shell, "SamPost", 25.6, 0, -28.4, 26.4, H, -27.6, C.white)
+	box(shell, "SamDoorPost", 30.6, 0, -28.4, 31.4, 10, -27.6, C.white)
+	box(shell, "SamDoorTop", 26.4, 10, -28.4, 31.4, H, -27.6, C.wall)
+	local sam = box(deco, "SamSign", 26.8, 10.6, -27.56, 31, 12.2, -27.4, C.teal, nil, { collide = false })
+	sign(sam, Enum.NormalId.Back, "SAM  |  LABEL MANAGER", C.white)
+	box(so, "SamRug", 27, 0, -45.5, 39.5, 0.06, -29, Color3.fromRGB(200, 214, 230), Enum.Material.Fabric, { collide = false })
+	desk(so, Vector3.new(33, 0, -36), math.pi, true)
+	chair(so, Vector3.new(33, 0, -40), math.pi, C.teal)
+	shelf(so, 28, -46, 37, 0, 2, 1)
+	plant(so, Vector3.new(38, 0, -44), true)
 
 	------------------------------------------------------------ OFFICE: staff desks (people work here)
 	local staff = new("Folder", { Name = "StaffDesks" }, deco)

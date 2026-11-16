@@ -59,7 +59,7 @@ for _, folder in ipairs({ workspace.StarlightRecords, workspace.HubClient }) do
 end
 WRITEFILE(OUT_DIR .. "/parts.txt", table.concat(zl, "\n"))
 -- people must not walk through things: sample every walking path against the parts of the building
-local FLAT = { Floor = true, HallFloor = true, Sidewalk = true, SidewalkFar = true, Road = true, Curb = true, CurbFar = true, Ground = true, Crosswalk = true, LaneMark = true, OfficeRug = true, LoungeRug = true, MeetingCarpet = true, DoorMat = true, EntranceSill = true, TreePit = true, Spawn = true, Boundary = true }
+local FLAT = { Floor = true, HallFloor = true, Sidewalk = true, SidewalkFar = true, Road = true, Curb = true, CurbFar = true, Ground = true, Crosswalk = true, LaneMark = true, OfficeRug = true, LoungeRug = true, MeetingCarpet = true, DoorMat = true, EntranceSill = true, TreePit = true, Spawn = true, Boundary = true, SamRug = true }
 local hits = {}
 local paths = {}
 for _, w in ipairs(Hub.WALKS) do paths[#paths + 1] = w end
@@ -96,6 +96,15 @@ end
 -- the places where Sam (tutorial) waits must be free too
 for _, p in pairs(Hub.GUIDE_SPOTS) do
 	paths[#paths + 1] = { p, p + Vector3.new(0.2, 0, 0.2) }
+end
+-- Sam's ways from room to room, into his office and to the meeting chairs
+for _, r in pairs(Hub.SAM_ROUTES) do
+	if #r > 1 then paths[#paths + 1] = r end
+end
+for _, m in ipairs(Hub.SAM_SEATS.meeting) do
+	local q = { Hub.GUIDE_SPOTS.meeting }
+	for _, w in ipairs(m.way) do q[#q + 1] = w end
+	paths[#paths + 1] = q
 end
 print("checked walking paths", #paths)
 for wi, path in ipairs(paths) do

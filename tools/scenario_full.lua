@@ -71,6 +71,7 @@ local function talk(n) for _ = 1, n do bubble.MouseButton1Click:Fire() MOCK.runT
 talk(14)
 log("tutorial step", app.state.tutorial.step, "hint", MOCK.texts("MEETING ROOM")[1], "arrow", app.world.target)
 assert(app.state.tutorial.step == 2 and app.world.target == "meeting", "first task: the meeting room, the arrow shows it")
+steps(200, 0.05) -- Sam walks over (no teleport)
 local gpos = guide.PrimaryPart.CFrame.Position
 log("Sam waits at", gpos)
 assert((Vector3.new(gpos.X, 0, gpos.Z) - (require(root.World.Hub).ORIGIN + require(root.World.Hub).GUIDE_SPOTS.meeting)).Magnitude < 1, "Sam waits at the meeting room")
@@ -87,6 +88,17 @@ steps(2)
 MOCK.clickExact("Skip tutorial")
 steps(2)
 assert(SRV().tutorial.done and app.canvas:FindFirstChild("TutorialBubble") == nil and app.world.target == nil, "skip ends the tutorial, no arrow")
+-- after the tutorial Sam walks to his own office and works at his desk
+local Sam = require(root.Client.Sam)
+local samWalked = false
+for _ = 1, 400 do
+	steps(1, 0.05)
+	if Sam.walk then samWalked = true end
+	if Sam.sitting and Sam.sitting.kind == "office" and Sam.sitting.t >= 1 then break end
+end
+local sp = guide.PrimaryPart.CFrame.Position - require(root.World.Hub).ORIGIN
+log("Sam in his office", samWalked, Sam.sitting and Sam.sitting.kind, sp)
+assert(samWalked and Sam.sitting and Sam.sitting.kind == "office" and (Vector3.new(sp.X, 0, sp.Z) - Vector3.new(33, 0, -40)).Magnitude < 0.5, "Sam walks to his office and sits at his desk")
 assert(app.mode == "world", "not walking in the building")
 assert(MOCK.player.Character and MOCK.player.Character:FindFirstChild("Humanoid"), "no character")
 assert(app.hud.Visible and #MOCK.buttons("^OFFICE$") == 0, "old tab bar still there")
@@ -213,6 +225,25 @@ local tp = app.screens.planner
 assert(app.current == "planner" and #MOCK.buttons("^Go to the MEETING ROOM") == 1, "no artist yet: the map table sends you to the meeting room")
 MOCK.clickExact("Go to the MEETING ROOM  >")
 assert(app.mode == "world", "back to walking")
+-- Sam joins a meeting: he walks to the meeting room and sits down on a free chair
+do
+	local Sam = require(root.Client.Sam)
+	MOCK.sit(workspace.StarlightRecords:FindFirstChild("MeetingSeat3", true))
+	steps(2)
+	MOCK.prompt("meeting")
+	assert(app.mode == "meeting", "meeting")
+	for _ = 1, 600 do
+		steps(1, 0.05)
+		if Sam.sitting and Sam.sitting.kind == "meeting" and Sam.sitting.t >= 1 then break end
+	end
+	log("Sam in the meeting", Sam.sitting and Sam.sitting.kind)
+	assert(Sam.sitting and Sam.sitting.kind == "meeting", "Sam sits in the meeting")
+	MOCK.sit(nil)
+	steps(2)
+	assert(app.mode == "world", "meeting over")
+	steps(10, 0.05)
+	assert(Sam.goal == "office", "Sam goes back to his office")
+end
 planArtist("lila")
 openPlanner()
 assert(#MOCK.buttons("^Go to the WORLD MAP table") == 1, "the laptop: book the shows at the map table first")
