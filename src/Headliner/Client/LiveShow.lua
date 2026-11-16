@@ -152,6 +152,194 @@ local PLAY_MOVES = {
 	strum = { "strum" },
 }
 
+------------------------------------------------------------------ the dancers of a group (K-Pop & co.)
+-- formations: places next to the anchor (the artist's place in that song); +Z = towards the fans
+local FORMATIONS = {
+	line = { { -6, -3 }, { 6, -3 }, { -12, -3 }, { 12, -3 }, { -18, -3 }, { 18, -3 } },
+	v = { { -5, -4 }, { 5, -4 }, { -10, -8 }, { 10, -8 }, { -15, -12 }, { 15, -12 } },
+	wings = { { -9, 1 }, { 9, 1 }, { -13, -3 }, { 13, -3 }, { -17, 1 }, { 17, 1 } },
+	diamond = { { 0, -6 }, { -6, -2 }, { 6, -2 }, { 0, -11 }, { -11, -6 }, { 11, -6 } },
+	front = { { -5, 4 }, { 5, 4 }, { -10, 2 }, { 10, 2 }, { -15, 0 }, { 15, 0 } },
+	circle = { { -7, 0 }, { 7, 0 }, { 0, -7 }, { -5, -5 }, { 5, -5 }, { 0, 6 } },
+	pairs = { { -8, -2 }, { -5, -2 }, { 5, -2 }, { 8, -2 }, { -14, -5 }, { 14, -5 } },
+}
+local FORMATION_ORDER = { "line", "v", "wings", "diamond", "front", "pairs", "circle" }
+local CREW_MOVES = {
+	["K-Pop"] = { "groove", "hiphop", "armwave", "shimmy", "kick", "heart", "spin", "clap", "pose", "dance" },
+	default = { "dance", "groove", "clap", "swayup", "armwave", "hiphop", "kick" },
+}
+-- moves everybody does together (one per song)
+local SYNC_MOVES = { "clap", "armwave", "hiphop", "kick", "heart", "groove", "spin" }
+
+-- plans every dancer's places and walks for the whole show. env = { findPath, onSurface, walkable, nav, start }
+function LiveShow.planCrew(ad, color, segments, walks, env)
+	local rng = Random.new(#ad.id * 97 + ad.members)
+	local n = math.min(6, ad.members - 1)
+	local crew = {}
+	for i = 1, n do
+		local fig = People.new(Stage3D.peopleFolder, color:Lerp(Color3.new(1, 1, 1), 0.35), 1.45, "dancer", 20 + i, People.bandLook(ad, 10 + i, Artists.BAND_STYLE))
+		table.insert(crew, { p = fig, i = i, plan = {}, phase = rng:NextNumber() * 6, yaw = 0 })
+	end
+	-- where the artist is in each song
+	local anchorOf = {}
+	local last = env.start
+	for _, w in ipairs(walks) do
+		if w.spot and w[2] and not w.moment then
+			anchorOf[w.spot] = w[2]
+			last = w[2]
+		end
+	end
+	-- a free place on a deck near a wanted point
+	local function place(want, taken)
+		local ok, cell = env.walkable(env.onSurface(want))
+		local function free(p)
+			for _, q in ipairs(taken) do
+				if (Vector3.new(p.X, 0, p.Z) - Vector3.new(q.X, 0, q.Z)).Magnitude < 3.2 then
+					return false
+				end
+			end
+			return true
+		end
+		if ok and free(cell) then
+			return cell
+		end
+		-- look around in rings for a deck cell that is free
+		for r = 1, 6 do
+			for k = 0, 11 do
+				local a = k / 12 * math.pi * 2
+				local p = want + Vector3.new(math.cos(a) * r * env.nav, 0, math.sin(a) * r * env.nav)
+				local ok2, c2 = env.walkable(env.onSurface(p))
+				if ok2 and free(c2) then
+					return c2
+				end
+			end
+		end
+		return nil
+	end
+	local cur = {}
+	local prevAnchor = env.start
+	local formN = rng:NextInteger(1, #FORMATION_ORDER)
+	for _, seg in ipairs(segments) do
+		if seg.song then
+			local anchor = anchorOf[seg.song] or prevAnchor or last
+			prevAnchor = anchor
+			-- one formation at the start of the song, a second one half way through long songs
+			local changes = { { seg.t0 + 0.4, FORMATION_ORDER[formN % #FORMATION_ORDER + 1] } }
+			formN = formN + 1
+			if seg.len >= 16 then
+				table.insert(changes, { seg.t0 + seg.len * 0.5, FORMATION_ORDER[formN % #FORMATION_ORDER + 1] })
+				formN = formN + 1
+			end
+			for _, ch in ipairs(changes) do
+				local form = FORMATIONS[ch[2]]
+				local taken = { anchor }
+				for _, c in ipairs(crew) do
+					local off = form[c.i] or { (c.i % 2 == 0) and 8 or -8, -4 }
+					local target = place(anchor + Vector3.new(off[1], 0, off[2]), taken) or cur[c.i] or anchor
+					table.insert(taken, target)
+					local from = cur[c.i] or target
+					local path = nil
+					if (target - from).Magnitude > 0.5 then
+						path = env.findPath(from, target)
+						if not path then
+							path = { from, target }
+						end
+					end
+					local len = 0
+					for k = 2, #(path or {}) do
+						len = len + (path[k] - path[k - 1]).Magnitude
+					end
+					-- they set off one after the other, not like a robot army
+					table.insert(c.plan, { t = ch[1] + (c.i - 1) * 0.2, to = target, path = path, len = len, dur = math.clamp(len / 9, 0.6, 6), form = ch[2] })
+					cur[c.i] = target
+				end
+			end
+		end
+	end
+	-- before the first song: at their first places
+	for _, c in ipairs(crew) do
+		c.pos = c.plan[1] and c.plan[1].to or env.start
+	end
+	return crew
+end
+
+local function pathPoint(path, len, f)
+	local d = len * f
+	for k = 2, #path do
+		local sl = (path[k] - path[k - 1]).Magnitude
+		if d <= sl or k == #path then
+			local u = (sl > 0) and math.clamp(d / sl, 0, 1) or 1
+			local dir = path[k] - path[k - 1]
+			return path[k - 1]:Lerp(path[k], u), math.atan2(dir.X, dir.Z)
+		end
+		d = d - sl
+	end
+	return path[#path], 0
+end
+
+-- every frame: walk / dance / move in sync / a moment with a partner
+function LiveShow.updateCrew(crew, t, seg, inSeg, beat, energy, leadMove, facing, genre)
+	local moves = CREW_MOVES[genre or ""] or CREW_MOVES.default
+	for _, c in ipairs(crew) do
+		local step = nil
+		for _, s2 in ipairs(c.plan) do
+			if t >= s2.t then
+				step = s2
+			end
+		end
+		local pos, yaw, walking = c.pos, facing, false
+		if step then
+			if step.path and t < step.t + step.dur then
+				local f = (t - step.t) / step.dur
+				f = f * f * (3 - 2 * f)
+				pos, yaw = pathPoint(step.path, step.len, f)
+				walking = true
+			else
+				pos = step.to
+			end
+		end
+		c.pos = pos
+		local move
+		if walking then
+			move = "walk"
+		elseif seg.kind == "intro" then
+			move = "pose"
+		elseif seg.kind == "ballad" then
+			move = (c.i % 2 == 0) and "swayup" or "dance"
+		elseif seg.kind == "outro" or seg.kind == "break" then
+			move = leadMove -- bow and wave with the artist
+		elseif seg.song then
+			local songLen = seg.t1 - seg.t0
+			local syncA = inSeg >= 6 and inSeg < 12
+			local syncB = inSeg >= songLen - 7
+			local pairT = inSeg >= songLen * 0.5 + 2 and inSeg < songLen * 0.5 + 6
+			if syncA or syncB or seg.kind == "finale" and inSeg > songLen - 12 then
+				-- everybody together: the same move, facing the fans
+				move = SYNC_MOVES[(seg.song % #SYNC_MOVES) + 1]
+				if seg.kind == "finale" and syncB then
+					move = "jump"
+				end
+			elseif pairT and crew[c.i + ((c.i % 2 == 1) and 1 or -1)] then
+				-- two dancers turn to each other: clap and point
+				local partner = crew[c.i + ((c.i % 2 == 1) and 1 or -1)]
+				local d = partner.pos - pos
+				if d.Magnitude > 0.1 then
+					yaw = math.atan2(d.X, d.Z)
+				end
+				move = (c.i % 2 == 1) and "clap" or "point"
+			else
+				-- their own moves, every few seconds a new one
+				local k = math.floor((t + c.phase) / 3.2) + c.i * 3
+				move = moves[k % #moves + 1]
+			end
+		else
+			move = "idle"
+		end
+		c.p:update(pos, yaw, { t = t + c.phase, beat = beat, energy = energy, walking = walking, armsUp = 0, move = move })
+		c.move = move
+	end
+end
+
 -- opts = { artistId, design, venueId?, look?, cap, sold, tourName, result?, preview?, onDone }
 function LiveShow.run(app, opts)
 	local ad = Artists.byId[opts.artistId]
@@ -450,6 +638,34 @@ function LiveShow.run(app, opts)
 			end
 			table.insert(walks, w)
 			cur = w[2]
+			-- moments inside this song (spots "2.25", "2.5", "2.75"): the artist walks on during the song
+			local prevEnd = w[1] + (w.dur or 0)
+			for _, m in ipairs((plan.moments or {})[spotIdx] or {}) do
+				local spotRef = nil
+				for _, r in ipairs(spots) do
+					if r.rec == m.rec then
+						spotRef = r
+					end
+				end
+				if spotRef and not play then
+					local to = spotRef.cf.Position
+					local mt = math.max(seg.t0 + (seg.t1 - seg.t0) * m.frac, prevEnd + 0.5)
+					local mw = { mt, to, spot = spotIdx, t1 = seg.t1, moment = m.frac }
+					if (to - cur).Magnitude < 1 then
+						mw.kind, mw.dur = "stay", 0
+					else
+						local path = findPath(cur, to) or { cur, to }
+						mw.kind, mw.path = "walk", path
+						mw.len = pathLength(path)
+						mw.dur = math.clamp(mw.len / 9, 1, 9)
+					end
+					if mt + mw.dur < seg.t1 then
+						table.insert(walks, mw)
+						cur = to
+						prevEnd = mt + mw.dur
+					end
+				end
+			end
 		end
 	end
 	local curWalk = nil
@@ -481,16 +697,32 @@ function LiveShow.run(app, opts)
 		table.insert(band, { p = People.new(Stage3D.peopleFolder, Color3.fromRGB(30, 30, 36), 1.4, "guitar", 11, People.bandLook(ad, 1, Artists.BAND_STYLE)), pos = onSurface(home + Vector3.new(-14, 0, -4)) })
 		table.insert(band, { p = People.new(Stage3D.peopleFolder, Color3.fromRGB(30, 30, 36), 1.4, "bass", 12, People.bandLook(ad, 2, Artists.BAND_STYLE)), pos = onSurface(home + Vector3.new(14, 0, -4)) })
 		table.insert(band, { p = People.new(Stage3D.peopleFolder, Color3.fromRGB(30, 30, 36), 1.4, "drums", 13, People.bandLook(ad, 3, Artists.BAND_STYLE)), pos = drumPos })
-	elseif ad.members >= 2 then
-		local offs = { Vector3.new(-7, 0, -3), Vector3.new(7, 0, -3), Vector3.new(-14, 0, -5), Vector3.new(14, 0, -5) }
-		for i = 1, math.min(4, ad.members - 1) do
-			table.insert(band, { p = People.new(Stage3D.peopleFolder, artistColor:Lerp(Color3.new(1, 1, 1), 0.35), 1.45, "dancer", 20 + i, People.bandLook(ad, 10 + i, Artists.BAND_STYLE)), follow = offs[i] })
-		end
 	end
+	-- a group (K-Pop and other groups without a band): the other members dance on their own. They walk to
+	-- their places on the decks (path finding, never off the stage), change formations during the songs,
+	-- have their own moves and come together for moves in sync and little moments with each other
+	local crew = {}
+	if ad.members >= 2 and not hasBand and not (ad.members >= 4 and ad.genre ~= "K-Pop") then
+		crew = LiveShow.planCrew(ad, artistColor, segments, walks, {
+			findPath = findPath,
+			onSurface = onSurface,
+			walkable = function(p)
+				local i, j = cellOf(p)
+				local h = cellH(i, j)
+				return h > 0.5 and math.abs(h - p.Y) < 4.3, Vector3.new(nx0 + (i + 0.5) * NAV, h, nz0 + (j + 0.5) * NAV)
+			end,
+			nav = NAV,
+			start = home,
+		})
+	end
+	LiveShow.lastCrew = crew -- for the automated tests
 	LiveShow.lastBand = #band -- for the automated tests
 	local performers = { lead }
 	for _, b in ipairs(band) do
 		table.insert(performers, b.p)
+	end
+	for _, c in ipairs(crew) do
+		table.insert(performers, c.p)
 	end
 
 	local function idleYaw(t)
@@ -886,6 +1118,9 @@ function LiveShow.run(app, opts)
 				bm = "idle"
 			end
 			b.p:update(pos, b.yaw or 0, { t = t + 0.3, beat = beat, energy = energy, walking = false, armsUp = armsUp, move = bm })
+		end
+		if #crew > 0 then
+			LiveShow.updateCrew(crew, t, seg, inSeg, beat, energy, move, centerStage and idleYaw(t) or 0, ad.genre)
 		end
 
 		ctx.t = t

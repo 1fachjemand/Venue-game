@@ -727,6 +727,47 @@ do
 	assert(doneExit, "exit-lift preview did not finish")
 	for _ = 1, 10 do MOCK.step(1 / 30) end
 end
+-- a group (STARLYTE, K-Pop): the other members dance on their own on the decks; a "2.5" spot (a moment in song 2)
+do
+	local grpDesign = { id = "group_test", name = "Group", class = "Arena", layout = "end", items = {
+		{ t = "deck", x = 0, z = -14, r = 0, w = 60, d = 24, h = 6 },
+		{ t = "spot", x = -10, z = -10, r = 0 }, { t = "spot", x = 10, z = -10, r = 0 }, { t = "spot", x = 0, z = -6, r = 0 },
+		{ t = "spot", x = 14, z = -18, r = 0, song = 2, mid = 0.5 },
+	} }
+	local plan = GS.songPlan(grpDesign)
+	log("group design songs", plan.count, "moment", plan.momentOf[grpDesign.items[5]])
+	assert(plan.count == 3 and plan.momentOf[grpDesign.items[5]] == 2.5, "a moment spot does not add a song")
+	local doneG = false
+	LiveShow.run(app, { artistId = "starlyte", design = grpDesign, look = "arena", cap = 1000, sold = 900, tourName = "Group", preview = true, onDone = function() doneG = true end })
+	local crew = LiveShow.lastCrew
+	assert(#crew == 4, "STARLYTE: the 4 other members dance on their own")
+	local moment = false
+	for _, w in ipairs(LiveShow.lastWalks) do if w.moment then moment = true end end
+	assert(moment, "the artist walks to the 2.5 spot during song 2")
+	MOCK.click("^Speed") MOCK.click("^Speed")
+	local f, off, movesSeen, walked, apart = 0, 0, {}, false, 0
+	while not doneG and f < 8000 do
+		MOCK.step(1 / 30)
+		f = f + 1
+		if f % 15 == 0 then
+			for _, c in ipairs(crew) do
+				movesSeen[c.move or "?"] = true
+				if c.move == "walk" then walked = true end
+				if Stage3D.surfaceY(c.pos.X, c.pos.Z) < 0.5 then off = off + 1 end
+			end
+			for a = 1, #crew do
+				for b = a + 1, #crew do
+					if (crew[a].pos - crew[b].pos).Magnitude < 1.5 then apart = apart + 1 end
+				end
+			end
+		end
+	end
+	local nm = 0
+	for _ in pairs(movesSeen) do nm = nm + 1 end
+	log("group show: different moves", nm, "walked", walked, "off the decks", off, "too close", apart)
+	assert(doneG and walked and nm >= 6 and off == 0, "dancers walk on the decks and dance many different moves")
+	for _ = 1, 10 do MOCK.step(1 / 30) end
+end
 -- back to the library: copy and delete
 if app.mode ~= "designer" then app:openDesigner(design.id) end
 MOCK.clickExact("< MY STAGES")

@@ -358,7 +358,9 @@ function Stage3D.numberSpots(design)
 	end
 	for _, r in ipairs(Stage3D.items) do
 		if r.kind == "spot" and r.label then
-			r.label.Text = tostring(r.spotIndex or "?")
+			local m = r.rec and plan.momentOf[r.rec]
+			-- a moment inside a song: "2.5" (or "2.25", "2.75")
+			r.label.Text = m and tostring(m):gsub("%.?0+$", "") or tostring(r.spotIndex or "?")
 		end
 	end
 end

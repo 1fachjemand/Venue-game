@@ -240,6 +240,28 @@ function People:update(pos, yaw, opts)
 	local beatWave = math.sin(opts.beat * math.pi * 2)
 	local bob = math.abs(math.sin(opts.beat * math.pi)) * 0.35 * s * e
 	local lift, drop, hipYaw, sway, lean, headPitch = 0, 0, 0, 0, 0, beatWave * 0.12 * e
+	local shiftX = 0
+	if move == "groove" then
+		-- side steps to the beat
+		shiftX = math.sin(t * 3.2) * 0.55 * s
+		sway = -math.sin(t * 3.2) * 0.1
+	elseif move == "spin" then
+		hipYaw = (t * 5) % (math.pi * 2)
+	elseif move == "hiphop" then
+		bob = math.abs(math.sin(opts.beat * math.pi)) * 0.6 * s * e
+		lean = 0.18
+		hipYaw = math.sin(t * 1.6) * 0.25
+	elseif move == "shimmy" then
+		sway = math.sin(t * 16) * 0.09
+		bob = bob * 0.5
+	elseif move == "pose" then
+		hipYaw, lean, bob = 0.45, -0.08, 0
+	elseif move == "swayup" or move == "heart" then
+		sway = math.sin(t * 2) * 0.08
+		bob = bob * 0.4
+	elseif move == "kick" or move == "clap" or move == "armwave" then
+		hipYaw = math.sin(t * 2.4) * 0.15
+	end
 	if move == "jump" then
 		lift = math.abs(math.sin(opts.beat * math.pi)) * 1.2 * s * e
 	elseif move == "dance" then
@@ -271,7 +293,7 @@ function People:update(pos, yaw, opts)
 		lean = -0.15
 		bob = 0
 	end
-	local root = CFrame.new(pos) * CFrame.Angles(0, yaw + hipYaw, 0) * CFrame.new(0, bob + lift - drop, 0)
+	local root = CFrame.new(pos) * CFrame.Angles(0, yaw + hipYaw, 0) * CFrame.new(shiftX, bob + lift - drop, 0)
 	local swing = (move == "walk") and math.sin(t * 9) * 0.6 or beatWave * 0.12 * e
 
 	-- legs
@@ -284,6 +306,13 @@ function People:update(pos, yaw, opts)
 		legLA, legRA = -0.9, -0.35
 	elseif move == "jump" then
 		legLA, legRA = 0.35 * math.abs(beatWave), 0.35 * math.abs(beatWave)
+	elseif move == "kick" then
+		-- one leg kicks forward, then the other
+		legLA, legRA = -1.1 * math.max(0, math.sin(t * 6)), -1.1 * math.max(0, -math.sin(t * 6))
+	elseif move == "groove" then
+		legLA, legRA = math.sin(t * 6.4) * 0.3, -math.sin(t * 6.4) * 0.3
+	elseif move == "pose" then
+		legLA, legRA = -0.25, 0.15
 	end
 	self.legL.CFrame = root * CFrame.new(-0.5 * s, 2 * s, 0) * CFrame.Angles(legLA, 0, 0) * CFrame.new(0, -1 * s, 0)
 	self.legR.CFrame = root * CFrame.new(0.5 * s, 2 * s, 0) * CFrame.Angles(legRA, 0, 0) * CFrame.new(0, -1 * s, 0)
@@ -315,6 +344,41 @@ function People:update(pos, yaw, opts)
 		rx, rz = -2.8, 0.25 - math.sin(t * 5) * 0.35
 	elseif move == "point" then
 		lx, lz = -1.75, 0.1
+	elseif move == "groove" then
+		lx, lz = -0.6 + math.sin(t * 6.4) * 0.5, -0.5
+		rx, rz = -0.6 - math.sin(t * 6.4) * 0.5, 0.5
+	elseif move == "spin" then
+		lx, lz = -1.5, -1.2
+		rx, rz = -1.5, 1.2
+	elseif move == "hiphop" then
+		-- arm pumps on the beat
+		local pump = math.abs(math.sin(opts.beat * math.pi))
+		lx, lz = -1.4 - pump * 1.2, -0.2
+		rx, rz = -0.7, 0.35
+	elseif move == "armwave" then
+		-- arms out to the sides, a wave runs through them
+		lx, lz = -0.2 + math.sin(t * 5) * 0.35, -1.45
+		rx, rz = -0.2 + math.sin(t * 5 + 1.2) * 0.35, 1.45
+	elseif move == "clap" then
+		local c = math.abs(math.sin(opts.beat * math.pi))
+		lx, lz = -2.6, -0.05 - c * 0.4
+		rx, rz = -2.6, 0.05 + c * 0.4
+	elseif move == "kick" then
+		lx, lz = -0.9, -0.6
+		rx, rz = -0.9, 0.6
+	elseif move == "shimmy" then
+		lx, lz = -1.2, -0.45 + math.sin(t * 16) * 0.1
+		rx, rz = -1.2, 0.45 + math.sin(t * 16) * 0.1
+	elseif move == "pose" then
+		lx, lz = -2.95, -0.2
+		rx, rz = -0.3, 0.7
+	elseif move == "swayup" then
+		lx, lz = -2.7, -0.3 + math.sin(t * 2) * 0.2
+		rx, rz = -2.7, 0.3 + math.sin(t * 2) * 0.2
+	elseif move == "heart" then
+		-- arms make a heart above the head
+		lx, lz = -2.7, 0.35
+		rx, rz = -2.7, -0.35
 	elseif move == "dance" then
 		lx, lz = -1.0 + math.sin(t * 6.4) * 0.6, -0.3
 		rx, rz = -1.0 - math.sin(t * 6.4) * 0.6, 0.3

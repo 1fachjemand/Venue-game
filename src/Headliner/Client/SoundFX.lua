@@ -125,6 +125,8 @@ end
 -- song n (1..12) of an artist, e.g. during a show
 function SoundFX.song(artistId, n, volume)
 	local len = Map.SONG_LEN or 30
+	-- an audio file holds 12 songs; longer setlists reuse them
+	n = ((n - 1) % (Map.SONGS_PER_FILE or 12)) + 1
 	playRegion(artistId, (n - 1) * len, len, false, volume or 1, artistId .. "_" .. n .. "_" .. tostring(os.clock()))
 end
 

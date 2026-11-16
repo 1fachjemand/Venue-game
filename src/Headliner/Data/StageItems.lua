@@ -19,7 +19,7 @@ StageItems.CATEGORIES = {
 }
 
 -- Up to this many artist spots (= songs in the setlist)
-StageItems.MAX_SPOTS = 12
+StageItems.MAX_SPOTS = 20
 
 local H = { 1, 2, 4, 6, 8, 10, 14 }
 StageItems.list = {

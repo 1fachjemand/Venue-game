@@ -38,7 +38,7 @@ local TURNS = { 15, 45, 90 }
 local BLACK = Color3.new(0, 0, 0)
 local GEOMETRY_KEYS = { w = true, d = true, h = true, skin = true, edge = true, scr = true, cc = true, anim = true }
 -- settings that only change the show (no new model needed)
-local SHOW_KEYS = { play = true, songs = true, cs = true, anim = true }
+local SHOW_KEYS = { play = true, songs = true, cs = true, anim = true, mid = true, song = true }
 -- effects that can fire in chosen songs (rec.songs = { 1, 4, ... }; false / nil = automatic)
 local FX_SONG_KINDS = { pyro = true, sparks = true, confetti = true, streamers = true, co2 = true, fireworks = true, balls = true, laser = true, lowfog = true }
 Designer.FX_SONG_KINDS = FX_SONG_KINDS
@@ -1190,11 +1190,38 @@ function Designer.open(app, designId)
 			end
 			local plan = GS.songPlan(withPending())
 			local song = plan.songOf[rec]
+			local moment = plan.momentOf[rec]
 			nextOrder(section("SETLIST"))
 			local txt = song and ("Song " .. song .. " of " .. plan.count .. (song == 1 and "  (opener)" or (song == plan.count and "  (big finale)" or ""))) or "Song ?"
+			if moment then
+				local names = { [0.25] = "a quarter", [0.5] = "half", [0.75] = "three quarters" }
+				txt = "Moment " .. tostring(moment):gsub("%.?0+$", "") .. ": " .. (names[rec.mid] or "part") .. " through song " .. rec.song
+			end
 			nextOrder(UI.Label(inspScroll, txt, nil, UI.px(296, 24), { textSize = 17, font = UI.FontBold, color = T.gold }))
-			nextOrder(UI.Label(inspScroll, "Lifts and instruments keep their song number, spots take the free ones.", nil, UI.px(296, 0), { textSize = 12, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
-			if idx > 0 then
+			-- optional: a spot can be a moment inside a song (the artist moves there during the song)
+			nextOrder(UI.Label(inspScroll, "WHEN: its own song, or a moment inside a song (2.25 / 2.5 / 2.75 = the artist moves during song 2)", nil, UI.px(296, 0), { textSize = 12, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
+			local whenList = { { false, "Own song" }, { 0.25, "+1/4" }, { 0.5, "+1/2" }, { 0.75, "+3/4" } }
+			chips(whenList, function(it)
+				if it[1] == false then
+					return not moment
+				end
+				return moment ~= nil and rec.mid == it[1]
+			end, function(it)
+				if it[1] == false then
+					applyChange({ mid = false, song = false })
+				else
+					local inSong = (type(rec.song) == "number" and rec.song) or math.max(1, (song or 2) - 1)
+					applyChange({ mid = it[1], song = math.min(inSong, StageItems.MAX_SPOTS) })
+				end
+			end, 4)
+			if moment then
+				stepper("In song", tostring(rec.song), function()
+					applyChange({ song = math.max(1, rec.song - 1) })
+				end, function()
+					applyChange({ song = math.min(plan.count, rec.song + 1) })
+				end)
+			end
+			if idx > 0 and not moment then
 				local f = nextOrder(row(34))
 				local function swap(other)
 					local a, b
@@ -1510,7 +1537,7 @@ function Designer.open(app, designId)
 			setPhase("show")
 		end))
 		local ad = previewArtist()
-		tag(UI.Button(topInner, "Artist: " .. (ad and ad.name or "-"), UI.px(1200, 10), UI.px(180, 44), { textSize = 14 }, function()
+		tag(UI.Button(topInner, "Artist: " .. (ad and ad.name or "-") .. ((ad and ad.members > 1) and (" (" .. ad.members .. ")") or ""), UI.px(1200, 10), UI.px(180, 44), { textSize = 14 }, function()
 			self.previewIndex = self.previewIndex % math.max(1, #signed) + 1
 			render()
 			refreshTop()
@@ -1550,14 +1577,20 @@ function Designer.open(app, designId)
 				table.insert(fits, string.format('%s <font color="%s"><b>%d%%</b></font>', k.id, col, math.floor(score + 0.5)))
 			end
 		end
+		-- a group: say it, the other members dance on their own on the decks (they need room)
+		local group = ""
+		if ad and ad.members > 1 then
+			group = string.format("      <b>%s is a group of %d</b>%s", ad.name, ad.members, (ad.genre == "K-Pop" or ad.members < 4) and " (the others dance on the decks: give them room)" or " (band)")
+		end
 		statsLbl.Text = string.format(
-			"Songs <b>%d</b>      Items <b>%d / %d</b>      Cost <b>%s</b> per show      Quality for %s:  %s",
+			"Songs <b>%d</b>      Items <b>%d / %d</b>      Cost <b>%s</b> per show      Quality for %s:  %s%s",
 			GS.songCount(withPending()),
 			st.count,
 			c.maxItems,
 			Util.money(st.cost),
 			ad and ad.name or "your artist",
-			table.concat(fits, "   ")
+			table.concat(fits, "   "),
+			group
 		)
 	end
 

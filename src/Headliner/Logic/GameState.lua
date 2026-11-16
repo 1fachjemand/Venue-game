@@ -359,9 +359,27 @@ GS.LIFT_ITEMS = { lift = true, poplift = true, towerlift = true }
 -- The setlist of a design. Lifts and instruments keep the song number set in the builder,
 -- artist spots take the free song numbers in the order they were placed.
 -- returns { count = songs, songOf = { [rec] = n }, place = { [n] = rec } }
+-- A spot can also be a moment inside a song (rec.song = n, rec.mid = 0.25 / 0.5 / 0.75): the artist walks
+-- there during song n ("2.5" = half way through song 2). It does not add a song.
+function GS.isMoment(it)
+	return it.t == "spot" and type(it.song) == "number" and type(it.mid) == "number" and it.mid > 0 and it.mid < 1
+end
 function GS.songPlan(design, extraSpot)
 	local items = (design and design.items) or {}
 	local place, songOf = {}, {}
+	local moments, momentOf = {}, {}
+	for _, it in ipairs(items) do
+		if GS.isMoment(it) then
+			moments[it.song] = moments[it.song] or {}
+			table.insert(moments[it.song], { frac = it.mid, rec = it })
+			momentOf[it] = it.song + it.mid
+		end
+	end
+	for _, list in pairs(moments) do
+		table.sort(list, function(a, b)
+			return a.frac < b.frac
+		end)
+	end
 	for _, it in ipairs(items) do
 		if GS.PLAY_ITEMS[it.t] then
 			local n = it.play
@@ -384,7 +402,7 @@ function GS.songPlan(design, extraSpot)
 	end
 	for _, it in ipairs(items) do
 		-- a tower lift without a fixed song takes the next free song like a spot
-		if it.t == "spot" or (it.t == "towerlift" and it.play == nil) then
+		if (it.t == "spot" and not momentOf[it]) or (it.t == "towerlift" and it.play == nil) then
 			addSpot(it)
 		end
 	end
@@ -398,7 +416,7 @@ function GS.songPlan(design, extraSpot)
 		end
 	end
 	local count = (top == 0) and 4 or Util.clamp(top, 3, StageItems.MAX_SPOTS)
-	return { count = count, songOf = songOf, place = place }
+	return { count = count, songOf = songOf, place = place, moments = moments, momentOf = momentOf }
 end
 
 -- number of songs a design plays (at least 3, nothing placed = 4)

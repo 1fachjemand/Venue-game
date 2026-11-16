@@ -517,6 +517,9 @@ local function buildPeople()
 		local npc = { fig = People.new(f, c3(look.top), 1, "dancer", n, look), kind = "crew", path = path, len = pathLength(path), speed = 4, ph = n * 1.9, dist = 0, dir = 1, state = "walk" }
 		npc.dist = (i - 1) * 6
 		npc.box = cpart(f, "CrewBox", Vector3.new(1.8, 1.4, 1.4), CFrame.new(), Color3.fromRGB(196, 160, 110), Enum.Material.Cardboard)
+		npc.cup = cpart(f, "Cup", Vector3.new(0.4, 0.55, 0.4), CFrame.new(), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic)
+		npc.phone = cpart(f, "Phone", Vector3.new(0.12, 0.7, 0.36), CFrame.new(), Color3.fromRGB(20, 20, 24), Enum.Material.SmoothPlastic)
+		npc.rng = Random.new(400 + i * 17)
 		table.insert(World.npcs, npc)
 	end
 	for _, st in ipairs(Hub.SITTERS) do
@@ -621,25 +624,76 @@ local function animateStaff(npc, t, dt)
 end
 
 -- stage hall crew: rack -> rehearsal stage with a box, a short stop, back empty, a short stop
+-- stage hall crew: every trip is a different job at the far end of their lane: carry a box over, check a
+-- flight case (kneeling), a coffee break, a phone call, stretching, waving the forklift through
+local CREW_JOBS = {
+	{ id = "carry", act = "idle", time = { 2, 3 }, box = true },
+	{ id = "carry", act = "idle", time = { 2, 3 }, box = true },
+	{ id = "check", act = "kneel", time = { 4, 7 } },
+	{ id = "coffee", act = "drink", time = { 8, 14 }, cup = true },
+	{ id = "phone", act = "phone", time = { 6, 11 } },
+	{ id = "stretch", act = "stretch", time = { 3, 5 } },
+	{ id = "signal", act = "point", time = { 2, 4 } },
+}
 local function animateCrew(npc, t, dt)
-	if npc.pause and npc.pause > 0 then
-		npc.pause = npc.pause - dt
-	else
-		npc.dist = npc.dist + dt * npc.speed * npc.dir
+	if not npc.job then
+		npc.job = CREW_JOBS[npc.rng:NextInteger(1, #CREW_JOBS)]
+		npc.stage = "go"
+	end
+	local job = npc.job
+	local moving = true
+	if npc.stage == "go" then
+		npc.dist = npc.dist + dt * npc.speed
 		if npc.dist >= npc.len then
-			npc.dist, npc.dir, npc.pause = npc.len, -1, 2.5
-		elseif npc.dist <= 0 then
-			npc.dist, npc.dir, npc.pause = 0, 1, 3
+			npc.dist, npc.stage = npc.len, "act"
+			npc.wait = npc.rng:NextNumber(job.time[1], job.time[2])
+		end
+	elseif npc.stage == "act" then
+		moving = false
+		npc.wait = npc.wait - dt
+		if npc.wait <= 0 then
+			npc.stage = "back"
+		end
+	elseif npc.stage == "back" then
+		npc.dist = npc.dist - dt * npc.speed
+		if npc.dist <= 0 then
+			npc.dist, npc.stage = 0, "rest"
+			npc.wait = npc.rng:NextNumber(1.5, 4)
+		end
+	else
+		moving = false
+		npc.wait = npc.wait - dt
+		if npc.wait <= 0 then
+			npc.job = nil
 		end
 	end
-	local carrying = npc.dir == 1 and not (npc.pause and npc.pause > 0 and npc.dist >= npc.len)
+	local dirSign = (npc.stage == "back") and -1 or 1
 	local p, d = alongPath(npc.path, npc.dist)
-	d = d * npc.dir
-	local moving = not (npc.pause and npc.pause > 0)
-	npc.fig:update(O + p, math.atan2(d.X, d.Z), { t = t + npc.ph, beat = 0, energy = 0, walking = moving and not carrying, move = carrying and "carry" or "idle" })
-	npc.box.Transparency = carrying and 0 or 1
+	d = d * dirSign
+	local carrying = job.box and npc.stage == "go"
+	local move = "idle"
+	if npc.stage == "act" then
+		move = job.act
+	elseif carrying then
+		move = "carry"
+	end
+	local fig = npc.fig
+	fig:update(O + p, math.atan2(d.X, d.Z), { t = t + npc.ph, beat = 0, energy = 0, walking = moving and not carrying, move = move })
+	npc.box.Transparency = (carrying or (job.box and npc.stage == "act")) and 0 or 1
 	if carrying then
-		npc.box.CFrame = npc.fig.torso.CFrame * CFrame.new(0, -0.25, 1.25)
+		npc.box.CFrame = fig.torso.CFrame * CFrame.new(0, -0.25, 1.25)
+	elseif job.box and npc.stage == "act" then
+		-- the box is put down in front of them
+		npc.box.CFrame = CFrame.new(O + p + d.Unit * 1.6 + Vector3.new(0, 0.7, 0))
+	end
+	local cupOn = job.cup and npc.stage ~= "go" and npc.stage ~= "rest"
+	npc.cup.Transparency = cupOn and 0 or 1
+	npc.phone.Transparency = (npc.stage == "act" and job.act == "phone") and 0 or 1
+	if cupOn then
+		npc.cup.CFrame = fig.armR.CFrame * CFrame.new(0, -1.05, 0.15)
+	end
+	if npc.stage == "act" and job.act == "phone" then
+		npc.phone.CFrame = fig.armR.CFrame * CFrame.new(0, -1.05, 0.2)
 	end
 end
 
