@@ -67,7 +67,8 @@ local function buildCrowd(self, vp)
 	local rng = Random.new(77)
 	for row = 0, 7 do
 		for col = 0, 17 do
-			local base = Vector3.new(-36 + col * 4.2 + rng:NextNumber() * 1.6, 0, row * 4.4 + rng:NextNumber() * 1.4)
+			-- far enough apart that raised arms never reach into the neighbour
+			local base = Vector3.new(-40 + col * 4.7 + rng:NextNumber() * 0.9, 0, row * 4.6 + rng:NextNumber() * 1.2)
 			local shirt = (rng:NextNumber() < 0.3) and self.color or SHIRTS[rng:NextInteger(1, #SHIRTS)]
 			local f = { base = base, ph = rng:NextNumber() * 6.28, parts = {} }
 			f.body = mk(vp, "Fan", Vector3.new(1.6, 2.8, 1), CFrame.new(base + Vector3.new(0, 1.4, 0)), shirt)
@@ -103,7 +104,7 @@ local function buildCrowd(self, vp)
 		-- a few rows of plain fans behind them, so every close-up has a crowd in the background
 		for row = 0, 2 do
 			for col = 0, 5 do
-				local base = Vector3.new(gx - 10 + col * 4 + rng:NextNumber() * 1.4, 0, 6 + row * 4)
+				local base = Vector3.new(gx - 12 + col * 4.7 + rng:NextNumber() * 0.9, 0, 7 + row * 4.4)
 				local shirt = (rng:NextNumber() < 0.3) and self.color or SHIRTS[rng:NextInteger(1, #SHIRTS)]
 				local f = { base = base, ph = rng:NextNumber() * 6.28 }
 				f.body = mk(vp, "Fan", Vector3.new(1.6, 2.8, 1), CFrame.new(base + Vector3.new(0, 1.4, 0)), shirt)
@@ -119,7 +120,9 @@ local function buildCrowd(self, vp)
 			local shirt = (i % 2 == 1) and self.color or SHIRTS[rng:NextInteger(1, #SHIRTS)]
 			look.top = { math.floor(shirt.R * 255), math.floor(shirt.G * 255), math.floor(shirt.B * 255) }
 			local fig = People.new(vp, shirt, 1, "crowd", gi * 10 + i, look)
-			local fo = { fig = fig, off = (i - (#lk + 1) / 2) * 2.4, ph = rng:NextNumber() * 6 }
+			-- side by side with room for the arms (friends arm in arm stand a bit closer)
+			local spacing = (kind == "couple") and 3.3 or 4.3
+			local fo = { fig = fig, off = (i - (#lk + 1) / 2) * spacing, ph = rng:NextNumber() * 6 }
 			if kind == "phones" then
 				fo.phone = mk(vp, "PhoneLight", Vector3.new(0.45, 0.75, 0.1), CFrame.new(), Color3.fromRGB(255, 255, 235), Enum.Material.Neon)
 			end
@@ -207,9 +210,10 @@ local function updateCrowd(sc, face, ctx)
 	local shot = math.floor((t + face.seed * 7) / 6) % (#sc.groups + 2)
 	if shot >= 2 then
 		local g = sc.groups[shot - 1]
-		local sway = math.sin(t * 0.5) * 1.5
+		local sway = math.sin(t * 0.5) * 1.2
+		local back = (#g.figs >= 3) and -16 or -11
 		face.liveCam.FieldOfView = 34
-		face.liveCam.CFrame = CFrame.lookAt(Vector3.new(g.x + sway, 4.6, -9), Vector3.new(g.x, 3.8, 2))
+		face.liveCam.CFrame = CFrame.lookAt(Vector3.new(g.x + sway, 4.6, back), Vector3.new(g.x, 3.8, 2))
 	else
 		local a = t * 0.22 + face.seed
 		local pos = Vector3.new(math.sin(a) * 22, 9 + math.sin(t * 0.13) * 2, -14)

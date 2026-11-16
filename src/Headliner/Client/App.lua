@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local StarterGui = game:GetService("StarterGui")
+local GuiService = game:GetService("GuiService")
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local Artists = require(Root.Data.Artists)
@@ -112,7 +113,7 @@ function App.start()
 		BackgroundColor3 = T.bg,
 		BorderSizePixel = 0,
 		UI.New("UIGradient", {
-			Color = ColorSequence.new(Color3.fromRGB(20, 26, 52), Color3.fromRGB(8, 10, 18)),
+			Color = ColorSequence.new(Color3.fromRGB(246, 248, 251), Color3.fromRGB(222, 229, 239)),
 			Rotation = 60,
 		}),
 	})
@@ -131,6 +132,8 @@ function App.start()
 		scale.Scale = math.min(vp.X / 1920, vp.Y / 1080)
 		-- on screens wider than 16:9 the canvas is centred: how far (in canvas pixels) its left edge is from the screen edge
 		self.sideGap = math.max(0, (vp.X / math.max(scale.Scale, 0.01) - 1920) / 2)
+		self.topGap = math.max(0, (vp.Y / math.max(scale.Scale, 0.01) - 1080) / 2)
+		self:measureTopbar()
 		if self.onRescale then
 			self.onRescale()
 		end
@@ -140,6 +143,9 @@ function App.start()
 	end
 	rescale()
 	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale)
+	pcall(function()
+		GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(rescale)
+	end)
 
 	local loading = UI.Label(self.canvas, "HEADLINER  -  loading...", UI.px(0, 500), UI.px(1920, 80), { textSize = 48, font = UI.FontBlack, alignX = Enum.TextXAlignment.Center, color = T.accent })
 
@@ -159,6 +165,37 @@ function App.start()
 		self:beginGame(isNew)
 	end)
 	return self
+end
+
+-- Roblox draws its own buttons (menu, chat) in the top left corner, over our UI (IgnoreGuiInset):
+-- safeX / safeY = the first canvas pixel right of / below them
+function App:measureTopbar()
+	local left, bottom = 0, 0
+	pcall(function()
+		local r = GuiService["TopbarInset"]
+		left, bottom = r.Min.X, r.Max.Y
+	end)
+	if bottom <= 0 then
+		pcall(function()
+			local tl = GuiService:GetGuiInset()
+			bottom = tl.Y
+		end)
+	end
+	if bottom <= 0 then
+		bottom = 58
+	end
+	if left <= 0 then
+		left = 150
+	end
+	local sc = math.max(self.uiScale and self.uiScale.Scale or 1, 0.01)
+	self.safeX = math.max(16, left / sc - (self.sideGap or 0) + 8)
+	self.safeY = math.max(12, bottom / sc - (self.topGap or 0) + 8)
+end
+
+-- position and size (canvas pixels) of a layer that covers the whole screen, also outside the 16:9 canvas
+function App:fullRect()
+	local gx, gy = self.sideGap or 0, self.topGap or 0
+	return UI.px(-gx, -gy), UI.px(1920 + gx * 2, 1080 + gy * 2)
 end
 
 -- MainMenu: start a new label (or the developer sandbox) / continue a saved one
@@ -264,8 +301,8 @@ local TIPS = {
 	"Tip: bigger venues need a bigger label level.",
 }
 function App:showLoading(title, sub)
-	local root = UI.New("CanvasGroup", { Parent = self.gui, Name = "Loading", Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(12, 10, 22), BorderSizePixel = 0, ZIndex = 200 })
-	UI.New("UIGradient", { Parent = root, Color = ColorSequence.new(Color3.fromRGB(70, 40, 130), Color3.fromRGB(10, 8, 20)), Rotation = 90 })
+	local root = UI.New("CanvasGroup", { Parent = self.gui, Name = "Loading", Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(40, 48, 90), BorderSizePixel = 0, ZIndex = 200 })
+	UI.New("UIGradient", { Parent = root, Color = ColorSequence.new(Color3.fromRGB(96, 120, 210), Color3.fromRGB(36, 40, 78)), Rotation = 90 })
 	local function frame(props)
 		props.Parent = props.Parent or root
 		props.BorderSizePixel = 0
@@ -299,14 +336,15 @@ function App:showLoading(title, sub)
 			end
 		end
 	end
-	-- faded: a soft dark veil over the picture
-	frame({ Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, ZIndex = 220 })
+	-- faded: a soft veil over the picture, and a bright card for the title so it is easy to read
+	frame({ Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.75, ZIndex = 220 })
 	local center = frame({ AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.42), Size = UDim2.fromOffset(900, 300), BackgroundTransparency = 1, ZIndex = 221 })
+	UI.New("Frame", { Parent = center, Position = UDim2.fromOffset(40, -20), Size = UDim2.fromOffset(820, 290), BackgroundColor3 = T.panel, BackgroundTransparency = 0.04, BorderSizePixel = 0, ZIndex = 221, UI.Corner(20) })
 	local scale = UI.New("UIScale", { Parent = center, Scale = self.uiScale and self.uiScale.Scale or 1 })
 	local _ = scale
 	UI.New("TextLabel", { Parent = center, Size = UDim2.fromOffset(900, 110), BackgroundTransparency = 1, Text = title or "HEADLINER", TextColor3 = T.text, TextSize = 96, Font = UI.FontBlack, ZIndex = 222 })
-	UI.New("TextLabel", { Parent = center, Position = UDim2.fromOffset(0, 112), Size = UDim2.fromOffset(900, 36), BackgroundTransparency = 1, Text = sub or "", TextColor3 = T.accent2, TextSize = 26, Font = UI.FontBold, ZIndex = 222 })
-	local barBg = UI.New("Frame", { Parent = center, Position = UDim2.fromOffset(250, 176), Size = UDim2.fromOffset(400, 10), BackgroundColor3 = Color3.fromRGB(60, 60, 80), BorderSizePixel = 0, ZIndex = 222, UI.Corner(5) })
+	UI.New("TextLabel", { Parent = center, Position = UDim2.fromOffset(0, 112), Size = UDim2.fromOffset(900, 36), BackgroundTransparency = 1, Text = sub or "", TextColor3 = T.accent, TextSize = 26, Font = UI.FontBold, ZIndex = 222 })
+	local barBg = UI.New("Frame", { Parent = center, Position = UDim2.fromOffset(250, 176), Size = UDim2.fromOffset(400, 10), BackgroundColor3 = Color3.fromRGB(222, 228, 236), BorderSizePixel = 0, ZIndex = 222, UI.Corner(5) })
 	local bar = UI.New("Frame", { Parent = barBg, Size = UDim2.fromScale(0, 1), BackgroundColor3 = T.accent2, BorderSizePixel = 0, ZIndex = 223, UI.Corner(5) })
 	local tip = UI.New("TextLabel", { Parent = center, Position = UDim2.fromOffset(0, 210), Size = UDim2.fromOffset(900, 30), BackgroundTransparency = 1, Text = TIPS[math.random(1, #TIPS)], TextColor3 = T.sub, TextSize = 20, Font = UI.Font, ZIndex = 222 })
 	local alive = true
@@ -338,7 +376,7 @@ end
 
 ------------------------------------------------------------------ HUD (walking around): money, date, level, NEXT DAY
 function App:buildHud()
-	local hud = UI.New("Frame", { Parent = self.canvas, Name = "Hud", Position = UI.px(20, 20), Size = UI.px(600, 118), BackgroundColor3 = T.panel, BackgroundTransparency = 0.08, BorderSizePixel = 0, UI.Corner(14), UI.Stroke(T.accent, 2, 0.3) })
+	local hud = UI.New("Frame", { Parent = self.canvas, Name = "Hud", Position = UI.px(20, 20), Size = UI.px(676, 118), BackgroundColor3 = T.panel, BackgroundTransparency = 0.08, BorderSizePixel = 0, UI.Corner(14), UI.Stroke(T.accent, 2, 0.3) })
 	self.hud = hud
 	self.labelLbl = UI.Label(hud, "", UI.px(18, 10), UI.px(330, 26), { textSize = 20, font = UI.FontBlack })
 	self.levelPill = UI.Pill(hud, "", UI.px(356, 12), UI.px(226, 24), T.accent, 13)
@@ -386,8 +424,9 @@ function App:buildHud()
 	end
 	self.placeEdges = function()
 		local gap = self.sideGap or 0
-		hud.Position = UI.px(20 - gap, 20)
-		obj.Position = UI.px(20 - gap, 148)
+		local top = self.safeY or 20
+		hud.Position = UI.px(20 - gap, top)
+		obj.Position = UI.px(20 - gap, top + 128)
 		phone.Position = UI.px(1790 + gap, 870)
 		if self.sandboxPanel then
 			self.sandboxPanel.Position = UI.px(1500 + gap, 20)
@@ -464,10 +503,28 @@ local TITLES = {
 }
 
 function App:buildScreenBar()
-	local bar = UI.New("Frame", { Parent = self.canvas, Name = "ScreenBar", Size = UI.px(1920, 64), BackgroundColor3 = T.panel, BorderSizePixel = 0, Visible = false })
-	UI.New("Frame", { Parent = bar, Position = UI.px(0, 63), Size = UI.px(1920, 2), BackgroundColor3 = T.accent, BorderSizePixel = 0 })
+	local bar = UI.New("Frame", { Parent = self.canvas, Name = "ScreenBar", Size = UI.px(1920, 64), BackgroundTransparency = 1, BorderSizePixel = 0, Visible = false })
+	-- the white bar reaches the screen edges; the title starts right of Roblox's own buttons
+	local bg = UI.New("Frame", { Parent = bar, Name = "Bg", Size = UI.px(1920, 64), BackgroundColor3 = T.panel, BorderSizePixel = 0, ZIndex = 0 })
+	local line = UI.New("Frame", { Parent = bar, Position = UI.px(0, 63), Size = UI.px(1920, 2), BackgroundColor3 = T.accent, BorderSizePixel = 0, ZIndex = 0 })
 	self.screenBar = bar
 	self.barTitle = UI.Label(bar, "", UI.px(24, 0), UI.px(520, 64), { textSize = 24, font = UI.FontBlack, color = T.accent })
+	local function edges()
+		local gap = self.sideGap or 0
+		bg.Position = UI.px(-gap, -(self.topGap or 0))
+		bg.Size = UI.px(1920 + gap * 2, 64 + (self.topGap or 0))
+		line.Position = UI.px(-gap, 63)
+		line.Size = UI.px(1920 + gap * 2, 2)
+		self.barTitle.Position = UI.px(math.max(24, self.safeX or 24), 0)
+	end
+	edges()
+	local prev = self.placeEdges
+	self.placeEdges = function()
+		if prev then
+			prev()
+		end
+		edges()
+	end
 	self.barTabs = {}
 	self.barMoney = UI.Label(bar, "", UI.px(1200, 4), UI.px(250, 32), { textSize = 26, font = UI.FontBlack, color = T.good, alignX = Enum.TextXAlignment.Right })
 	self.barDate = UI.Label(bar, "", UI.px(1200, 34), UI.px(250, 24), { textSize = 16, color = T.sub, alignX = Enum.TextXAlignment.Right })
@@ -767,7 +824,8 @@ function App:modal(title, body, buttons, width)
 	local layer = UI.New("TextButton", {
 		Parent = self.canvas,
 		Name = "Modal",
-		Size = UI.px(1920, 1080),
+		Position = (self:fullRect()),
+		Size = select(2, self:fullRect()),
 		BackgroundColor3 = Color3.new(0, 0, 0),
 		BackgroundTransparency = 0.45,
 		AutoButtonColor = false,
@@ -877,12 +935,15 @@ local function houseIcon(parent, color)
 end
 
 function App:buildHomeButton()
-	local b = UI.Button(self.canvas, "", UI.px(1844, 20), UI.px(56, 56), { color = T.panel, radius = 14 }, function()
+	-- the house sits at the right end of the HUD (money, date, speed)
+	UI.New("Frame", { Parent = self.hud, Position = UI.px(594, 14), Size = UI.px(2, 90), BackgroundColor3 = T.stroke, BorderSizePixel = 0 })
+	local b = UI.Button(self.hud, "", UI.px(606, 24), UI.px(56, 56), { color = T.panel3, radius = 14 }, function()
 		self:openHome()
 	end)
 	b.Name = "HomeButton"
 	UI.Stroke(T.stroke, 1, 0).Parent = b
 	houseIcon(b, T.text)
+	UI.Label(self.hud, "MENU", UI.px(600, 82), UI.px(68, 20), { textSize = 12, font = UI.FontBold, color = T.sub, alignX = Enum.TextXAlignment.Center })
 	self.homeButton = b
 end
 
@@ -891,9 +952,17 @@ function App:openHome(page)
 		self.homeLayer:Destroy()
 	end
 	self.homeOpen = true
-	local layer = UI.New("TextButton", { Parent = self.canvas, Name = "HomeMenu", Size = UI.px(1920, 1080), Position = UI.px(-(self.sideGap or 0), 0), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.55, AutoButtonColor = false, Text = "", ZIndex = 90 })
+	-- one holder: a grey veil over the whole screen (incl. the edges of wide screens), the menu on the
+	-- left on top of it, and a click on the veil right of the menu closes it
+	local fullPos, fullSize = self:fullRect()
+	local gap, vgap = self.sideGap or 0, self.topGap or 0
+	local layer = UI.New("Frame", { Parent = self.canvas, Name = "HomeMenu", Size = fullSize, Position = fullPos, BackgroundTransparency = 1, ZIndex = 90 })
 	self.homeLayer = layer
-	local panel = UI.New("Frame", { Parent = layer, Position = UI.px(self.sideGap or 0, 0), Size = UI.px(440, 1080), BackgroundColor3 = T.panel, BorderSizePixel = 0, ZIndex = 91 })
+	UI.New("Frame", { Parent = layer, Name = "Veil", Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.55, BorderSizePixel = 0, ZIndex = 90 })
+	local catcher = UI.New("TextButton", { Parent = layer, Name = "CloseArea", Position = UI.px(gap + 440, 0), Size = UDim2.new(1, -(gap + 440), 1, 0), BackgroundTransparency = 1, AutoButtonColor = false, Text = "", ZIndex = 90 })
+	local panel = UI.New("Frame", { Parent = layer, Name = "Panel", Position = UI.px(0, 0), Size = UDim2.new(0, gap + 440, 1, 0), BackgroundColor3 = T.panel, BorderSizePixel = 0, Active = true, ZIndex = 91 })
+	-- (the content starts below Roblox's own buttons in the top left corner)
+	panel = UI.New("Frame", { Parent = panel, Position = UI.px(gap, vgap + math.max(0, (self.safeY or 20) - 20)), Size = UI.px(440, 1000), BackgroundTransparency = 1, ZIndex = 91 })
 	local function close()
 		self.homeOpen = false
 		if self.homeLayer then
@@ -901,7 +970,7 @@ function App:openHome(page)
 			self.homeLayer = nil
 		end
 	end
-	layer.MouseButton1Click:Connect(close)
+	catcher.MouseButton1Click:Connect(close)
 	local function z(inst)
 		inst.ZIndex = 92
 		for _, d in ipairs(inst:GetDescendants()) do
@@ -967,8 +1036,9 @@ function App:openHome(page)
 		self:openHome("settings")
 	end)
 	item("Back to main menu", nil, function()
+		-- the menu closes first, so the question is on top and nothing grey covers it
+		close()
 		self:confirm("Back to the main menu?", "Your game is saved first.", function()
-			close()
 			self:leaveToMenu()
 		end)
 	end)

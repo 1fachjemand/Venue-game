@@ -2219,7 +2219,7 @@ end
 function B.acoustic(m, r)
 	-- acoustic corner: stool, mic stand, acoustic guitar on a stand, a small rug
 	cyl(m, "Rug", 0.1, 7, CFrame.new(0, 0.05, 0), Color3.fromRGB(120, 50, 40), Enum.Material.Fabric)
-	cyl(m, "StoolSeat", 0.35, 1.7, CFrame.new(0, 3.2, 0), Color3.fromRGB(110, 70, 40), Enum.Material.Wood)
+	cyl(m, "StoolSeat", 0.35, 1.35, CFrame.new(0, 3.2, 0), Color3.fromRGB(110, 70, 40), Enum.Material.Wood)
 	for _, a in ipairs({ 0.3, 1.87, 3.44, 5.01 }) do
 		tube(m, Vector3.new(math.cos(a) * 0.45, 3.05, math.sin(a) * 0.45), Vector3.new(math.cos(a) * 0.9, 0.05, math.sin(a) * 0.9), 0.14, Color3.fromRGB(110, 70, 40)).Material = Enum.Material.Wood
 	end

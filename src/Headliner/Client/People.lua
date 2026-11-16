@@ -425,8 +425,36 @@ function People:update(pos, yaw, opts)
 			end
 		end
 	end
+	-- the lead plays the acoustic guitar of the acoustic set in their hands (made the first time it is needed)
+	if self.role == "lead" and (move == "strum" or self.held) then
+		self:holdAcoustic(move == "strum" and self.visible ~= false, hip, s)
+	end
 	self.pos = pos
 	self.yaw = yaw
+end
+
+function People:holdAcoustic(on, hip, s)
+	if not self.held then
+		local wood, dark = Color3.fromRGB(210, 160, 100), Color3.fromRGB(60, 40, 26)
+		local function oval(name, size, color)
+			local p = mk(self.model, name, size * s, color, Enum.Material.Wood)
+			New("SpecialMesh", { MeshType = Enum.MeshType.Sphere, Parent = p })
+			return p
+		end
+		self.held = {
+			{ oval("AcLower", Vector3.new(1.5, 1.25, 0.5), wood), CFrame.new(0, -0.1 * s, 0) },
+			{ oval("AcUpper", Vector3.new(1.15, 0.95, 0.5), wood), CFrame.new(0, 0.75 * s, 0) },
+			{ mk(self.model, "AcHole", Vector3.new(0.4, 0.4, 0.05) * s, Color3.fromRGB(30, 20, 14)), CFrame.new(0, 0.35 * s, 0.25 * s) },
+			{ mk(self.model, "AcBridge", Vector3.new(0.5, 0.1, 0.06) * s, dark, Enum.Material.Wood), CFrame.new(0, -0.3 * s, 0.25 * s) },
+			{ mk(self.model, "AcNeck", Vector3.new(0.2, 1.9, 0.12) * s, Color3.fromRGB(110, 70, 40), Enum.Material.Wood), CFrame.new(0, 2.1 * s, 0.05 * s) },
+			{ mk(self.model, "AcHead", Vector3.new(0.3, 0.5, 0.08) * s, dark, Enum.Material.Wood), CFrame.new(0, 3.25 * s, 0.03 * s) },
+		}
+	end
+	local base = hip * CFrame.new(-0.1 * s, 0.5 * s, 0.85 * s) * CFrame.Angles(0, 0, math.rad(25) - math.pi / 2)
+	for _, h in ipairs(self.held) do
+		h[1].CFrame = base * h[2]
+		h[1].Transparency = on and 0 or 1
+	end
 end
 
 function People:setVisible(on)

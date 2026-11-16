@@ -171,7 +171,7 @@ function Laptop.buildIcons(app)
 	local lt = L(app)
 	UI.ClearChildren(lt.iconLayer)
 	for i, a in ipairs(Laptop.APPS) do
-		local pos = lt.icons[a.id] or { 28, 24 + (i - 1) * 132 }
+		local pos = lt.icons[a.id] or { 28, 84 + (i - 1) * 126 }
 		lt.icons[a.id] = pos
 		local b = New("TextButton", { Parent = lt.iconLayer, Name = "Icon_" .. a.id, Position = UI.px(pos[1], pos[2]), Size = UI.px(116, 122), BackgroundColor3 = T.accent, BackgroundTransparency = 1, AutoButtonColor = false, Text = "", UI.Corner(10) })
 		appTile(b, a, 68, UI.px(24, 8))

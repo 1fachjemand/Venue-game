@@ -158,13 +158,16 @@ function Designer.open(app, designId)
 	-- top bar
 	local top = UI.New("Frame", { Parent = root, Size = UI.px(1920, 64), BackgroundColor3 = T.panel, BackgroundTransparency = 0.05, BorderSizePixel = 0, Active = true })
 	UI.New("Frame", { Parent = top, Position = UI.px(0, 62), Size = UI.px(1920, 2), BackgroundColor3 = T.accent, BorderSizePixel = 0 })
-	-- money (top right)
-	local moneyLbl = UI.Label(top, "", UI.px(1700, 6), UI.px(200, 30), { textSize = 24, font = UI.FontBlack, color = T.good, alignX = Enum.TextXAlignment.Right })
-	UI.Label(top, "YOUR MONEY", UI.px(1700, 36), UI.px(200, 20), { textSize = 13, color = T.sub, font = UI.FontBold, alignX = Enum.TextXAlignment.Right })
+	-- the buttons start right of Roblox's own buttons in the top left corner
+	local topInner = UI.New("Frame", { Parent = top, Position = UI.px(math.max(0, (app.safeX or 16) - 16), 0), Size = UI.px(1760, 64), BackgroundTransparency = 1 })
 
-	-- stats line under the top bar
-	local statsBar = UI.New("Frame", { Parent = root, Position = UI.px(0, 64), Size = UI.px(1920, 34), BackgroundColor3 = T.bg, BackgroundTransparency = 0.25, BorderSizePixel = 0, Active = true })
-	local statsLbl = UI.Label(statsBar, "", UI.px(20, 0), UI.px(1880, 34), { textSize = 15, rich = true, color = T.sub })
+	-- stats line under the top bar (solid and dark text, so it is easy to read over the stage)
+	local statsBar = UI.New("Frame", { Parent = root, Position = UI.px(0, 64), Size = UI.px(1920, 36), BackgroundColor3 = T.bg, BackgroundTransparency = 0.02, BorderSizePixel = 0, Active = true })
+	UI.New("Frame", { Parent = statsBar, Position = UI.px(0, 35), Size = UI.px(1920, 1), BackgroundColor3 = T.stroke, BorderSizePixel = 0 })
+	local statsLbl = UI.Label(statsBar, "", UI.px(20, 0), UI.px(1600, 36), { textSize = 16, rich = true, color = T.text })
+	-- money (right end of the stats line)
+	UI.Label(statsBar, "YOUR MONEY", UI.px(1620, 0), UI.px(120, 36), { textSize = 13, color = T.sub, font = UI.FontBold, alignX = Enum.TextXAlignment.Right })
+	local moneyLbl = UI.Label(statsBar, "", UI.px(1746, 0), UI.px(160, 36), { textSize = 22, font = UI.FontBlack, color = T.good, alignX = Enum.TextXAlignment.Right })
 
 	-- catalog at the bottom: category tabs + a row of item cards
 	local catalog = UI.New("Frame", { Parent = root, Position = UI.px(0, 868), Size = UI.px(1920, 212), BackgroundColor3 = T.panel, BackgroundTransparency = 0.05, BorderSizePixel = 0, Active = true })
@@ -1388,7 +1391,7 @@ function Designer.open(app, designId)
 	self.switchDesign = switchDesign
 
 	refreshTop = function()
-		for _, c in ipairs(top:GetChildren()) do
+		for _, c in ipairs(topInner:GetChildren()) do
 			if c.Name == "TopItem" then
 				c:Destroy()
 			end
@@ -1397,13 +1400,13 @@ function Designer.open(app, designId)
 			inst.Name = "TopItem"
 			return inst
 		end
-		tag(UI.Button(top, "< MY STAGES", UI.px(16, 10), UI.px(170, 44), { textSize = 16 }, function()
+		tag(UI.Button(topInner, "< MY STAGES", UI.px(16, 10), UI.px(170, 44), { textSize = 16 }, function()
 			Designer.close()
 			app:enterMode("menu")
 			app:go("stages")
 		end))
 		local nameBox = tag(UI.New("TextBox", {
-			Parent = top,
+			Parent = topInner,
 			Position = UI.px(200, 10),
 			Size = UI.px(300, 44),
 			BackgroundColor3 = T.panel2,
@@ -1425,31 +1428,31 @@ function Designer.open(app, designId)
 			end
 			nameBox.Text = self.design.name
 		end)
-		tag(UI.Label(top, "STAGE NAME (click to rename)", UI.px(204, 0), UI.px(300, 12), { textSize = 10, color = T.sub, font = UI.FontBold }))
-		local pill = tag(UI.Pill(top, string.upper(self.design.class) .. "  |  " .. (self.design.layout == "center" and "CENTER STAGE" or "END STAGE"), UI.px(512, 18), UI.px(220, 28), T.accent2, 14))
-		tag(UI.Button(top, "?", UI.px(744, 10), UI.px(44, 44), { textSize = 20, color = helpBox.Visible and T.accent or T.panel3 }, function()
+		tag(UI.Label(topInner, "STAGE NAME (click to rename)", UI.px(204, 0), UI.px(300, 12), { textSize = 10, color = T.sub, font = UI.FontBold }))
+		local pill = tag(UI.Pill(topInner, string.upper(self.design.class) .. "  |  " .. (self.design.layout == "center" and "CENTER STAGE" or "END STAGE"), UI.px(512, 18), UI.px(220, 28), T.accent2, 14))
+		tag(UI.Button(topInner, "?", UI.px(744, 10), UI.px(44, 44), { textSize = 20, color = helpBox.Visible and T.accent or T.panel3 }, function()
 			helpBox.Visible = not helpBox.Visible
 			refreshTop()
 		end))
 		-- the two steps as tabs: 1 build the stage, 2 plan the songs
-		local b1 = tag(UI.Button(top, "1  BUILD", UI.px(804, 10), UI.px(150, 44), { textSize = 16, color = (phase == "build") and T.accent or T.panel3 }, function()
+		local b1 = tag(UI.Button(topInner, "1  BUILD", UI.px(804, 10), UI.px(150, 44), { textSize = 16, color = (phase == "build") and T.accent or T.panel3 }, function()
 			setPhase("build")
 		end))
 		b1.Name = "TopItem"
-		tag(UI.Button(top, "2  SETLIST & SHOW", UI.px(960, 10), UI.px(226, 44), { textSize = 16, color = (phase == "show") and T.accent or T.panel3 }, function()
+		tag(UI.Button(topInner, "2  SETLIST & SHOW", UI.px(960, 10), UI.px(226, 44), { textSize = 16, color = (phase == "show") and T.accent or T.panel3 }, function()
 			setPhase("show")
 		end))
 		local ad = previewArtist()
-		tag(UI.Button(top, "Artist: " .. (ad and ad.name or "-"), UI.px(1200, 10), UI.px(180, 44), { textSize = 14 }, function()
+		tag(UI.Button(topInner, "Artist: " .. (ad and ad.name or "-"), UI.px(1200, 10), UI.px(180, 44), { textSize = 14 }, function()
 			self.previewIndex = self.previewIndex % math.max(1, #signed) + 1
 			render()
 			refreshTop()
 			refreshStats()
 		end))
-		tag(UI.Button(top, "Preview show", UI.px(1390, 10), UI.px(170, 44), { color = T.accent2, textSize = 16 }, function()
+		tag(UI.Button(topInner, "Preview show", UI.px(1390, 10), UI.px(170, 44), { color = T.accent2, textSize = 16 }, function()
 			Designer.preview()
 		end))
-		tag(UI.Button(top, "DONE", UI.px(1570, 10), UI.px(110, 44), { color = T.good, textSize = 18 }, function()
+		tag(UI.Button(topInner, "DONE", UI.px(1570, 10), UI.px(110, 44), { color = T.good, textSize = 18 }, function()
 			Designer.close()
 			app:enterMode("menu")
 			app:go(app.returnScreen or "stages")
@@ -1476,7 +1479,7 @@ function Designer.open(app, designId)
 		for _, k in ipairs(Config.STAGE_CLASSES) do
 			if k.order >= c.order then
 				local score = Sim.productionScore(self.design, ad and ad.genre, CLASS_CAP[k.id])
-				local col = score >= 80 and "#2ecc71" or (score >= 55 and "#ffc107" or "#ff5252")
+				local col = score >= 80 and "#16a34a" or (score >= 55 and "#b45309" or "#dc2626")
 				table.insert(fits, string.format('%s <font color="%s"><b>%d%%</b></font>', k.id, col, math.floor(score + 0.5)))
 			end
 		end

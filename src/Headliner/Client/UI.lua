@@ -170,7 +170,8 @@ function UI.Button(parent, text, pos, size, opts, onClick)
 	btn.MouseEnter:Connect(function()
 		if not opts.disabled then
 			btn.BackgroundColor3 = hover
-			if UI.onHover then
+			-- no hover tick right after a click (a screen rebuilt under the mouse would sound twice)
+			if UI.onHover and os.clock() - (UI.lastClick or -1) > 0.3 then
 				UI.onHover()
 			end
 		end
@@ -184,6 +185,7 @@ function UI.Button(parent, text, pos, size, opts, onClick)
 		if opts.disabled or not onClick then
 			return
 		end
+		UI.lastClick = os.clock()
 		if UI.onClick then
 			UI.onClick()
 		end

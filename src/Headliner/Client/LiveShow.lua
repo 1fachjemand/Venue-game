@@ -294,7 +294,7 @@ function LiveShow.run(app, opts)
 			else
 				seat, move, yaw = (r.cf * CFrame.new(0, 0, -3.2)).Position, "dance", math.rad(r.rec.r or 0)
 			end
-			playProps[n] = { pos = seat, move = move, yaw = yaw }
+			playProps[n] = { pos = seat, move = move, yaw = yaw, item = r }
 		end
 	end
 	------------------------------------------------------------ path finding on the stage
@@ -403,6 +403,7 @@ function LiveShow.run(app, opts)
 	-- a lift set to the last song is the exit: the artist walks onto it for the finale, waves at the end
 	-- and is lowered down out of sight
 	local finaleLift = nil
+	local hiddenStand = nil -- acoustic set whose guitar is in the artist's hands
 	local outroSeg = segments[#segments]
 	local exitT0 = outroSeg.t0 + 2.4
 	local EXIT_DUR = 2.4
@@ -859,6 +860,21 @@ function LiveShow.run(app, opts)
 			move = "pop"
 		end
 		lead:update(leadPos, leadYaw, { t = t, beat = beat, energy = energy, walking = walking, armsUp = armsUp, move = move })
+		-- the guitar of the acoustic set leaves its stand while the artist plays it
+		local standItem = curWalk and curWalk.play and curWalk.play.item
+		local want = (standItem and standItem.kind == "acoustic" and move == "strum") and standItem or nil
+		if want ~= hiddenStand then
+			for _, it in ipairs({ hiddenStand or false, want or false }) do
+				if it then
+					for _, pp in ipairs(it.model:GetChildren()) do
+						if pp:IsA("BasePart") and (pp.Name == "Body" or pp.Name == "SoundHole" or pp.Name == "Bridge" or pp.Name == "Neck" or pp.Name == "Headstock") then
+							pp.Transparency = (it == want) and 1 or 0
+						end
+					end
+				end
+			end
+			hiddenStand = want
+		end
 		local bandMove = (ad.genre == "K-Pop") and move or (((ad.genre == "Metal" or ad.genre == "Rock") and seg.kind == "banger") and "headbang" or "idle")
 		for _, b in ipairs(band) do
 			local pos = b.pos

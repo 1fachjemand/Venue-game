@@ -592,7 +592,6 @@ function TP:dayClicked(day)
 		table.insert(draft.shows, { venueId = self.picked, day = day })
 		self:sortShows()
 		self:saveDraft()
-		SoundFX.sfx("click", 0.4)
 	end
 	self:buildCalendar()
 end
