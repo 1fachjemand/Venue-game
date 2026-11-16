@@ -134,6 +134,12 @@ local function openPlanner()
 	Laptop.openApp(app, "planner")
 	assert(app.screens.planner.frame.Visible, "tour planner window")
 end
+-- the world map table: the shows of the plan
+local function openMap()
+	MOCK.prompt("maptable")
+	local tp = app.screens.planner
+	assert(app.current == "planner" and tp:place() == "maptable" and tp.step == 2, "the map table opens the shows step")
+end
 -- book a show: a country on the map -> SELECT on the n-th open venue -> first free day after the last show
 local function book(cid, n)
 	local tp = app.screens.planner
@@ -204,12 +210,16 @@ end
 -- 2) plan a tour: meeting room (PLAN A TOUR) -> laptop: Tour Planner (shows, tickets, stage, announce)
 MOCK.prompt("maptable")
 local tp = app.screens.planner
-assert(app.current == "planner" and tp.step == 1, "the map table opens the planner at the artist step")
-assert(#MOCK.buttons("^Next: plan the shows") == 1, "next button")
-MOCK.clickExact("CLOSE")
+assert(app.current == "planner" and #MOCK.buttons("^Go to the MEETING ROOM") == 1, "no artist yet: the map table sends you to the meeting room")
+MOCK.clickExact("Go to the MEETING ROOM  >")
+assert(app.mode == "world", "back to walking")
 planArtist("lila")
 openPlanner()
-assert(tp.step == 2 and tp.draft.artistId == "lila", "planner opens at the shows")
+assert(#MOCK.buttons("^Go to the WORLD MAP table") == 1, "the laptop: book the shows at the map table first")
+MOCK.clickExact("Go to the WORLD MAP table  >")
+assert(app.mode == "world", "laptop closed")
+openMap()
+assert(tp.step == 2 and tp.draft.artistId == "lila", "map table: the shows")
 assert(tp.map and tp.map.chips.uk and tp.map.chips.br, "the flat map has every country")
 tp.map.chips.uk.chip.MouseButton1Click:Fire() MOCK.runTasks()
 local locked = #MOCK.buttons("^LOCKED$")
@@ -239,8 +249,10 @@ for _, cid in ipairs({ "fr", "de", "nl" }) do book(cid, 1) end
 log("draft shows", #tp.draft.shows)
 for i = 2, #tp.draft.shows do assert(tp.draft.shows[i].day > tp.draft.shows[i - 1].day, "dates not sorted") end
 assert(#SRV().draft.shows == #tp.draft.shows, "dates are on the server")
+-- done at the map table: on to the laptop
+MOCK.clickExact("Done: on to the LAPTOP  >")
+assert(app.mode == "world", "map table closed")
 -- the stage hall can select a stage for the plan too
-MOCK.clickExact("Close laptop")
 MOCK.prompt("stagehall")
 for _, d in ipairs(app.state.designs) do
 	if d.class == "Club" then app.screens.stages:selectForTour(d) break end
@@ -748,11 +760,13 @@ cheat(function(s) s.money = 60000000 s.stats.tickets = 2000000 end)
 log("sign nova", app:act("sign", { artistId = "nova" }))
 clearModals()
 planArtist("nova")
-openPlanner()
-assert(tp.step == 2, "planner for nova")
+openMap()
 book("uk", -1) -- the last (biggest) venue: the stadium
 book("uk", 1) -- and a club: needs a smaller stage too
 log("nova draft", #tp.draft.shows, tp.draft.artistId)
+MOCK.clickExact("Done: on to the LAPTOP  >")
+openPlanner()
+assert(tp.step == 3, "laptop: tickets for nova")
 pricesAndAnnounce()
 local nt = app.state.tours[1]
 log("nova tour", nt.name, nt.shows[1].venueId, nt.shows[1].sold)
@@ -785,8 +799,10 @@ log("best chart rank", best)
 
 -- 9) cancel a tour (laptop > tours)
 planArtist("kai")
-openPlanner()
+openMap()
 book("us", 1)
+MOCK.clickExact("Done: on to the LAPTOP  >")
+openPlanner()
 pricesAndAnnounce()
 local nTours = #app.state.tours
 MOCK.clickExact("Cancel tour")

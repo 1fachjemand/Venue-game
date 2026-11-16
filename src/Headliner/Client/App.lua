@@ -567,6 +567,46 @@ function App:go(name, args)
 		self:openPhone()
 		return
 	end
+	-- PLAN A TOUR (an artist card): this artist goes on tour, the shows are booked at the world map table
+	if name == "planner" and args and args.artistId and self.world then
+		if self.mode == "laptop" then
+			self:closeLaptop()
+		elseif self.mode == "menu" then
+			self:closeScreen()
+		end
+		self.world.planTour(args.artistId)
+		return
+	end
+	-- the planner without an artist card: the room where the plan goes on
+	if name == "planner" and self.station ~= "maptable" then
+		local d = self.state.draft or {}
+		if not d.artistId then
+			name = "meeting"
+		elseif #(d.shows or {}) == 0 then
+			if self.mode == "laptop" then
+				self:closeLaptop()
+			elseif self.mode == "menu" then
+				self:closeScreen()
+			end
+			if self.world then
+				self.world.guide("maptable")
+			end
+			self:toast("Book the shows at the <b>WORLD MAP table</b>.", T.accent2)
+			return
+		end
+	end
+	if name == "meeting" then
+		if self.mode == "laptop" then
+			self:closeLaptop()
+		elseif self.mode == "menu" then
+			self:closeScreen()
+		end
+		if self.world then
+			self.world.guide("meeting")
+		end
+		self:toast("Go to the <b>MEETING ROOM</b> and sit down.", T.accent2)
+		return
+	end
 	if LAPTOP_APP[name] and not (name == "planner" and self.station == "maptable") then
 		local appId = (LAPTOP_APP[name] == true) and nil or LAPTOP_APP[name]
 		if self.mode == "laptop" or self.mode == "menu" or self.mode == "world" then

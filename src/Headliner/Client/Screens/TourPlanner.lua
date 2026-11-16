@@ -20,6 +20,11 @@ TP.__index = TP
 
 local W, H = 1920, 1008
 local STEPS = { "Artist", "Shows", "Tickets", "Stage", "Announce" }
+-- a tour is planned in the rooms of the label, one after the other:
+-- the artist in the MEETING ROOM, the shows at the WORLD MAP table, tickets / stage / announce on the LAPTOP
+local STEP_PLACE = { "meeting", "maptable", "laptop", "laptop", "laptop" }
+local PLACE_NAME = { meeting = "Meeting room", maptable = "Map table", laptop = "Laptop" }
+local PLACE_LONG = { meeting = "MEETING ROOM", maptable = "WORLD MAP table", laptop = "LAPTOP" }
 local CLASS_ORDER = { "Club", "Theatre", "Arena", "Stadium" }
 local CLASS_TITLE = { Club = "CLUBS", Theatre = "THEATRES & HALLS", Arena = "ARENAS & AMPHITHEATRES", Stadium = "STADIUMS" }
 local LOOK_LABEL = { club = "CLUBS", theatre = "THEATRES & HALLS", arena = "ARENAS", amphi = "AMPHITHEATRES", stadium = "STADIUMS" }
@@ -197,13 +202,23 @@ function TP:buildHeader()
 	local ad = self.draft.artistId and Artists.byId[self.draft.artistId]
 	UI.Label(h, ad and (ad.name .. "  |  " .. #self.draft.shows .. " show" .. (#self.draft.shows == 1 and "" or "s")) or "Plan a new tour, step by step", UI.px(32, 52), UI.px(500, 24), { textSize = 16, color = T.sub })
 	local reach = self:reachable()
+	local place = self:place()
 	for i, name in ipairs(STEPS) do
 		local x = 640 + (i - 1) * 252
-		local active, done = i == self.step, i < reach
-		local open = i <= reach
-		local b = UI.Button(h, "", UI.px(x, 18), UI.px(240, 56), { color = active and T.accent or (done and Color3.fromRGB(220, 242, 228) or T.panel2), disabled = not open, radius = 28 }, function()
-			self:go(i)
+		local done = i < reach
+		local here = STEP_PLACE[i] == place
+		local open = i <= reach and here
+		local active = i == self.step and open
+		local b = UI.Button(h, "", UI.px(x, 18), UI.px(240, 56), { color = active and T.accent or (done and Color3.fromRGB(220, 242, 228) or T.panel2), radius = 28 }, function()
+			if not here then
+				self.app:toast(name .. ": at the <b>" .. PLACE_LONG[STEP_PLACE[i]] .. "</b>.", T.accent2)
+			elseif open then
+				self:go(i)
+			end
 		end)
+		if not open and not done then
+			b.BackgroundColor3 = T.panel2
+		end
 		b.Name = "Step" .. i
 		local fg = active and Color3.new(1, 1, 1) or (open and T.text or T.sub)
 		UI.Label(b, tostring(i), UI.px(10, 10), UI.px(36, 36), { textSize = 18, font = UI.FontBlack, color = active and T.accent or Color3.new(1, 1, 1), alignX = Enum.TextXAlignment.Center, bg = active and Color3.new(1, 1, 1) or (done and T.good or Color3.fromRGB(180, 186, 196)) }).ZIndex = 2
@@ -212,7 +227,8 @@ function TP:buildHeader()
 				UI.Corner(18).Parent = c
 			end
 		end
-		UI.Label(b, name, UI.px(56, 0), UI.px(170, 56), { textSize = 19, font = UI.FontBold, color = fg })
+		UI.Label(b, name, UI.px(56, 6), UI.px(170, 26), { textSize = 19, font = UI.FontBold, color = fg })
+		UI.Label(b, PLACE_NAME[STEP_PLACE[i]], UI.px(56, 30), UI.px(170, 18), { textSize = 12, color = active and Color3.fromRGB(220, 230, 255) or T.sub })
 	end
 end
 
@@ -232,8 +248,52 @@ function TP:buildFooter(backText, onBack, nextText, onNext, nextEnabled, hint)
 	end
 end
 
+-- where this planner is open: at the world map table or on the laptop
+function TP:place()
+	local app = self.app
+	if app.station == "maptable" and app.content and self.frame.Parent == app.content then
+		return "maptable"
+	end
+	return "laptop"
+end
+
+-- the first / last step that belongs to this place
+function TP:stepRange()
+	if self:place() == "maptable" then
+		return 2, 2
+	end
+	return 3, 5
+end
+
+-- a step of another room: say where to go (with a button that takes you on your way)
+function TP:buildElsewhere(target, title, text)
+	local body = self.body
+	local card = UI.Panel(body, UI.px(460, 150), UI.px(1000, 420), T.panel)
+	UI.Label(card, title, UI.px(48, 48), UI.px(904, 44), { textSize = 32, font = UI.FontBlack })
+	UI.Label(card, text, UI.px(48, 110), UI.px(904, 120), { textSize = 19, color = T.sub, wrap = true, rich = true, alignY = Enum.TextYAlignment.Top })
+	UI.Button(card, "Go to the " .. PLACE_LONG[target] .. "  >", UI.px(48, 300), UI.px(420, 64), { color = T.accent, textSize = 20 }, function()
+		self:leaveTo(target)
+	end).Name = "GoElsewhere"
+	self:buildFooter(nil, nil, nil, nil, false, nil)
+end
+
+-- close this screen / the laptop and walk to the next room (the arrow shows the way)
+function TP:leaveTo(target, msg)
+	local app = self.app
+	if app.mode == "laptop" then
+		app:closeLaptop()
+	elseif app.mode == "menu" then
+		app:closeScreen()
+	end
+	if app.world then
+		app.world.guide(target)
+	end
+	app:toast(msg or ("Go to the <b>" .. PLACE_LONG[target] .. "</b>."), T.accent2, 7)
+end
+
 function TP:go(i)
-	i = math.clamp(i, 1, self:reachable())
+	local lo, hi = self:stepRange()
+	i = math.clamp(i, lo, math.min(hi, self:reachable()))
 	self.step = i
 	if i == 2 then
 		self.sub = self.sub or "map"
@@ -331,7 +391,7 @@ function TP:buildShows()
 		local cid = Countries.venueById[s.venueId].countryId
 		counts[cid] = (counts[cid] or 0) + 1
 	end
-	self.map = Map2D.new(body, UI.px(28, 100), UI.px(1380, 680), {
+	local mapOpts = {
 		onClick = function(cid)
 			self.selected = cid
 			self.sub = "country"
@@ -343,7 +403,15 @@ function TP:buildShows()
 		countFn = function(cid)
 			return counts[cid] or 0
 		end,
-	})
+	}
+	-- the map is built once (thousands of little pieces) and kept between visits
+	if not self.keptMap then
+		self.keptMap = Map2D.new(body, UI.px(28, 100), UI.px(1380, 680), mapOpts)
+	else
+		self.keptMap.frame.Parent = body
+		self.keptMap:setOpts(mapOpts)
+	end
+	self.map = self.keptMap
 	-- fans legend under the map
 	local lx = 40
 	for _, k in ipairs({ { "very few fans", 100 }, { "few", 1000 }, { "some", 4000 }, { "good", 12000 }, { "many", 40000 }, { "huge", 90000 } }) do
@@ -352,11 +420,9 @@ function TP:buildShows()
 		lx = lx + 40 + #k[1] * 8
 	end
 	self:routePanel(body, 1432, 100, 460, 708)
-	self:buildFooter("< Artist", function()
-		self:go(1)
-	end, "Next: ticket prices  >", function()
-		self:go(3)
-	end, #self.draft.shows > 0, (#self.draft.shows == 0) and "Add at least one show." or nil)
+	self:buildFooter(nil, nil, "Done: on to the LAPTOP  >", function()
+		self:leaveTo("laptop", "Shows booked! Now the <b>LAPTOP</b>: Tour Planner for tickets, stage and the announcement.")
+	end, #self.draft.shows > 0, (#self.draft.shows == 0) and "Add at least one show." or "Next: tickets, stage and the announcement on the <b>LAPTOP</b>.")
 end
 
 -- the venues of a country as cards: picture, info, select. Sections per size, filters on the left.
@@ -435,8 +501,8 @@ function TP:buildCountry()
 	self:buildFooter("< World map", function()
 		self.sub = "map"
 		self:refresh()
-	end, "Next: ticket prices  >", function()
-		self:go(3)
+	end, "Done: on to the LAPTOP  >", function()
+		self:leaveTo("laptop", "Shows booked! Now the <b>LAPTOP</b>: Tour Planner for tickets, stage and the announcement.")
 	end, #self.draft.shows > 0, "Pick a venue, then a date.")
 end
 
@@ -731,9 +797,7 @@ function TP:buildTickets()
 	end
 	local est = self:estimate()
 	UI.Label(right, "Whole tour, promoter estimate: <b>" .. Util.money(est.grossLow or 0) .. " - " .. Util.money(est.grossHigh or 0) .. "</b> ticket money\nCosts (venues, production, travel, artist share): about <b>" .. Util.money(est.costs) .. "</b>", UI.px(28, math.min(y + 10, 680)), UI.px(830, 80), { textSize = 16, rich = true, wrap = true, alignY = Enum.TextYAlignment.Top })
-	self:buildFooter("< Shows", function()
-		self:go(2)
-	end, "Next: choose the stage  >", function()
+	self:buildFooter(nil, nil, "Next: choose the stage  >", function()
 		self:syncPrices()
 		self.draft.pricesSet = true
 		self:saveDraft()
@@ -842,7 +906,7 @@ function TP:buildAnnounce()
 		local res = GS.getTour(state, data.tourId)
 		SoundFX.sfx("cash", 0.6)
 		app:toast("<b>" .. UI.esc(res.name) .. "</b> is announced! Tickets are on sale now.", T.good, 8)
-		self.step, self.sub, self.selected, self.picked = 1, "map", nil, nil
+		self.step, self.sub, self.selected, self.picked = 2, "map", nil, nil
 		if self.onAnnounced then
 			self.onAnnounced(res)
 		end
@@ -860,11 +924,16 @@ function TP:show(args)
 		self:pickArtist(args.artistId)
 		return
 	end
-	-- an artist is chosen already (meeting room): go on with the shows
-	if (self.step or 1) == 1 and self.draft.artistId and not (args and args.step) then
-		self.step = 2
+	-- every room starts at its own first open step
+	if not (args and args.step) then
+		local lo, hi = self:stepRange()
+		if (self.step or 1) < lo or (self.step or 1) > hi then
+			self.step = lo
+		end
+		if lo == 3 then
+			self.step = math.max(self.step, math.min(hi, self:reachable()))
+		end
 	end
-	self.step = math.clamp(self.step or 1, 1, self:reachable())
 	self.frame.Visible = true
 	self:refresh()
 end
@@ -875,9 +944,27 @@ end
 
 function TP:refresh()
 	self:syncDraft()
-	self.step = math.clamp(self.step or 1, 1, self:reachable())
-	self:buildHeader()
+	if self.keptMap then
+		self.keptMap.frame.Parent = nil -- kept, not destroyed with the page
+	end
 	UI.ClearChildren(self.body)
+	-- what can be done here: the steps of this room; the others say where to go
+	local place = self:place()
+	local lo, hi = self:stepRange()
+	if not self.draft.artistId then
+		self.step = lo
+		self:buildHeader()
+		self:buildElsewhere("meeting", "First: who goes on tour?", "Choose the artist in the <b>MEETING ROOM</b>: sit down, press E and click <b>PLAN A TOUR</b> on an artist's card.")
+		return
+	end
+	if place == "laptop" and #self.draft.shows == 0 then
+		self.step = lo
+		self:buildHeader()
+		self:buildElsewhere("maptable", "First: book the shows", "The shows of <b>" .. UI.esc(Artists.byId[self.draft.artistId].name) .. "</b> are booked at the big <b>WORLD MAP</b> table: country, venue, date. Then come back here for tickets, stage and the announcement.")
+		return
+	end
+	self.step = math.clamp(self.step or lo, lo, math.max(lo, math.min(hi, self:reachable())))
+	self:buildHeader()
 	self.map = nil
 	if self.step == 1 then
 		self:buildArtist()

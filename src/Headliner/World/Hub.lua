@@ -17,6 +17,7 @@ Hub.GUIDE_SPOTS = {
 	meeting = Vector3.new(-54, 0, -8),
 	laptop = Vector3.new(6, 0, -28),
 	stagehall = Vector3.new(32, 0, 10),
+	maptable = Vector3.new(6, 0, -3),
 }
 Hub.STATIONS = {
 	laptop = { pos = Vector3.new(14, 3.6, -37), name = "LAPTOP", sub = "Overview & tours", action = "Open laptop" },

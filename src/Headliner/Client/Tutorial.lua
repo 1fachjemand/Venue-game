@@ -78,10 +78,27 @@ Tutorial.STEPS = {
 		end,
 	},
 	{
+		at = "maptable",
+		target = "maptable",
+		lines = { "The shows are booked at the big <b>world map</b> table. Follow me!" },
+		hint = "Walk to the WORLD MAP table and press E.",
+		done = function(app)
+			return app.station == "maptable" or #((app.state.draft or {}).shows or {}) > 0
+		end,
+	},
+	{
+		at = "maptable",
+		lines = { "Click a <b>country</b> on the map, SELECT a <b>club</b> and pick a <b>date</b>. Start small: clubs sell out!" },
+		hint = "Click a country, SELECT a club, pick a date, press Done.",
+		done = function(app)
+			return #((app.state.draft or {}).shows or {}) > 0 and not (app.screens.planner and app.screens.planner.overlay.Visible)
+		end,
+	},
+	{
 		at = "laptop",
 		target = "laptop",
-		lines = { "Tours are planned on the <b>laptop</b>. Come to my desk!" },
-		hint = "Walk to the LAPTOP and press E.",
+		lines = { "Booked! Tickets, the stage and the announcement are done on the <b>laptop</b>. Press <b>Done</b> and come to my desk." },
+		hint = "Press Done, walk to the LAPTOP and press E.",
 		done = function(app)
 			return app.mode == "laptop"
 		end,
@@ -96,16 +113,8 @@ Tutorial.STEPS = {
 	},
 	{
 		at = "laptop",
-		lines = { "Click a <b>country</b>, SELECT a <b>club</b> and pick a <b>date</b>. Start small: clubs sell out!" },
-		hint = "Click a country, SELECT a club, pick a date, press Done.",
-		done = function(app)
-			return #((app.state.draft or {}).shows or {}) > 0 and not (app.screens.planner and app.screens.planner.overlay.Visible)
-		end,
-	},
-	{
-		at = "laptop",
-		lines = { "Good! Press <b>Next</b>. The promoter already set fair ticket prices." },
-		hint = "Press Next (ticket prices), then Next again.",
+		lines = { "These are the ticket prices. The promoter already set fair ones: press <b>Next</b>." },
+		hint = "Press Next: choose the stage.",
 		done = function(app)
 			return (app.state.draft or {}).pricesSet == true
 		end,

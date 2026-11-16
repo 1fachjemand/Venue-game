@@ -82,7 +82,15 @@ local function render(inst, px, py, pw, ph, out, forced, ox, oy)
 	if corner then table.insert(st, "border-radius:" .. corner.CornerRadius.Offset .. "px;") end
 	local stroke = child(inst, "UIStroke")
 	if stroke then table.insert(st, string.format("box-shadow:0 0 0 %dpx %s;", stroke.Thickness, rgb(stroke.Color, stroke.Transparency))) end
-	if inst.Rotation ~= 0 then table.insert(st, "transform:rotate(" .. inst.Rotation .. "deg);") end
+	-- UIScale: scaled around the anchor point (like Roblox)
+	local uis = child(inst, "UIScale")
+	local tf = ""
+	if uis and math.abs(uis.Scale - 1) > 0.001 then
+		tf = tf .. string.format("scale(%.4f) ", uis.Scale)
+		table.insert(st, string.format("transform-origin:%.0f%% %.0f%%;", inst.AnchorPoint.X * 100, inst.AnchorPoint.Y * 100))
+	end
+	if inst.Rotation ~= 0 then tf = tf .. "rotate(" .. inst.Rotation .. "deg)" end
+	if tf ~= "" then table.insert(st, "transform:" .. tf .. ";") end
 	if inst.ClipsDescendants or inst:IsA("ScrollingFrame") then table.insert(st, "overflow:hidden;") end
 	local inner = ""
 	if inst:IsA("TextLabel") or inst:IsA("TextButton") or inst:IsA("TextBox") then

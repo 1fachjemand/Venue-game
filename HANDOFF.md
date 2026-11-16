@@ -157,7 +157,7 @@ python3 tools/screens.py api_classes.lua <ordner>    # rendert alle Menüs als H
 # 3D-Vorschau der Hauptmenü-Kamerafahrten und der Bühnen-Vorlagen (three.js + Playwright), siehe tools/render3d/README.md
 # Hinweis: Die Attrappe (mock_roblox.lua) bewegt bei Model:PivotTo jetzt alle Teile wie Roblox.
 # Weltkarte neu erzeugen: npm pack world-atlas@2.0.2 → countries-50m.json
-python3 tools/gen_worldmap.py <pfad>/countries-50m.json
+python3 tools/gen_map2d.py <pfad>/countries-50m.json      # -> Data/WorldMap2D.lua (Planer-Karte + 3D-Kartentisch)
 ```
 **Regeln, die sich bewährt haben:**
 - Code in **Lua-5.1-kompatiblem Luau** schreiben (keine `+=`, keine Typannotationen, kein `continue`), sonst schlägt der Syntax-Check fehl.

@@ -7,7 +7,7 @@ local ProximityPromptService = game:GetService("ProximityPromptService")
 local Root = script:FindFirstAncestor("Headliner")
 local Countries = require(Root.Data.Countries)
 local Artists = require(Root.Data.Artists)
-local WorldMap = require(Root.Data.WorldMap)
+local WorldMap2D = require(Root.Data.WorldMap2D)
 local Util = require(Root.Logic.Util)
 local GS = require(Root.Logic.GameState)
 local UI = require(Root.Client.UI)
@@ -180,13 +180,14 @@ end
 World.mapPos = mapPos
 
 local function buildTableMap()
+	-- the same land as the planner map (Data/WorldMap2D: continents and big islands, 1 degree cells)
 	local f = New("Folder", { Name = "TableMap", Parent = World.folder })
-	local deg = 360 / WorldMap.W
-	for _, r in ipairs(WorldMap.land) do
-		local row, col, w, h = r[1], r[2], r[3], r[4]
-		local lon = -180 + (col + w / 2) * deg
-		local lat = WorldMap.LAT_TOP - (row + h / 2) * deg
-		cpart(f, "Land", Vector3.new(w * deg * MAP_S, 0.06, h * deg * MAP_S), CFrame.new(mapPos(lat, lon)), Color3.fromRGB(150, 206, 132), Enum.Material.SmoothPlastic)
+	local t = WorldMap2D.table
+	for k = 1, #t, 4 do
+		local row, col, w, h = t[k], t[k + 1], t[k + 2], t[k + 3]
+		local lon = -180 + col + w / 2
+		local lat = WorldMap2D.LAT_TOP - (row + h / 2)
+		cpart(f, "Land", Vector3.new(w * MAP_S, 0.06, h * MAP_S), CFrame.new(mapPos(lat, lon)), Color3.fromRGB(150, 206, 132), Enum.Material.SmoothPlastic)
 	end
 	World.pinFolder = New("Folder", { Name = "Pins", Parent = World.folder })
 end
@@ -1037,7 +1038,7 @@ function World.drawBoard()
 	end
 end
 
--- PLAN A TOUR on the board: this artist goes on tour; next stop: the world map table
+-- PLAN A TOUR on the board (or an artist card): this artist goes on tour; next stop: the world map table
 function World.planTour(artistId)
 	local app = World.app
 	local d = app.state.draft or {}
@@ -1045,9 +1046,17 @@ function World.planTour(artistId)
 		if d.artistId ~= artistId then
 			app:act("setDraft", { draft = { artistId = artistId } })
 		end
-		World.standUp()
-		World.guide("laptop")
-		app:toast("<b>" .. Artists.byId[artistId].name .. "</b> goes on tour! Plan it on the <b>LAPTOP</b>: Tour Planner.", T.accent2, 7)
+		if World.meeting then
+			World.standUp()
+		end
+		local cur = app.state.draft or {}
+		if cur.artistId == artistId and #(cur.shows or {}) > 0 then
+			World.guide("laptop")
+			app:toast("The shows are booked. Go on at the <b>LAPTOP</b>: Tour Planner.", T.accent2, 7)
+			return
+		end
+		World.guide("maptable")
+		app:toast("<b>" .. Artists.byId[artistId].name .. "</b> goes on tour! Book the shows at the <b>WORLD MAP table</b>.", T.accent2, 7)
 	end
 	if d.artistId and d.artistId ~= artistId and #(d.shows or {}) > 0 then
 		app:confirm("New tour plan?", "The plan for <b>" .. Artists.byId[d.artistId].name .. "</b> (" .. #d.shows .. " shows) will be dropped.", go)
