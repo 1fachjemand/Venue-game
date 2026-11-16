@@ -231,6 +231,8 @@ Social.ITEM_NAMES = {
 	poplift = "pop-up lift", towerlift = "tower lift", stadiumroof = "giant stage", sparks = "spark fountains", co2 = "CO2 blasts",
 	piano = "piano part", lowfog = "cloud floor", streamers = "streamer rain", house = "little house set",
 	bubbles = "bubbles", snow = "snow", candles = "candle-light part", sofa = "living-room set", stringlights = "fairy lights", tvstack = "TV wall",
+	starcloth = "star cloth", panelwall = "light panel wall", bulbwall = "bulb wall", mirrorwall = "mirror wall", staircase = "grand staircase",
+	scaffold = "scaffold wall", scrim = "glowing scrim",
 }
 
 -- more posts from Data/SocialMore.lua

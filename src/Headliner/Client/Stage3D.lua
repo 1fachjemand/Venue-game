@@ -199,6 +199,21 @@ end
 -- side mounts: the closest Truss Tower within reach. Returns x, z (on the side of the tower that faces the
 -- point), r (the item looks away from the tower), the tower's base height - or nil if no tower is near
 Stage3D.TOWER_HALF = 1.05
+-- the Truss Tower closest to x, z (within 9 studs) or nil
+function Stage3D.nearestTower(x, z)
+	local best, bestD = nil, 9
+	for _, t in ipairs(Stage3D.items) do
+		if t.kind == "truss" then
+			local p = t.cf.Position
+			local d = math.sqrt((x - p.X) ^ 2 + (z - p.Z) ^ 2)
+			if d < bestD then
+				best, bestD = t, d
+			end
+		end
+	end
+	return best
+end
+
 function Stage3D.snapToTower(x, z, except)
 	local best, bestD = nil, 9
 	for _, t in ipairs(Stage3D.items) do

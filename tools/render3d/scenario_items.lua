@@ -39,6 +39,9 @@ local groups = {
 	{ { t = "truss", x = 0, z = 0 }, { t = "sidewash", x = 1.05, z = 0, r = 90, yo = 12, y = 0 }, { t = "sidebeam", x = -1.05, z = 0, r = 270, yo = 9, y = 0 }, { t = "sideblinder", x = 0, z = 1.05, r = 0, yo = 18, y = 0 }, { t = "sidespeaker", x = 0, z = 1.05, r = 0, yo = 30, y = 0 }, { t = "sidestrobe", x = 0, z = -1.05, r = 180, yo = 14, y = 0 } },
 	{ { t = "band_drums", x = -16, z = -4 }, { t = "band_guitar", x = -6, z = 0 }, { t = "band_bass", x = 4, z = 0 }, { t = "band_keys", x = 14, z = 0 }, { t = "band_backing", x = 24, z = 2 }, { t = "curtain", x = 4, z = -14, w = 50, d = 16, cc = "purple" } },
 	{ { t = "barrels", x = -16, z = 0 }, { t = "bookshelf", x = -6, z = -4 }, { t = "lanternline", x = 8, z = -6 }, { t = "golddiscs", x = 22, z = -2 }, { t = "plant", x = -12, z = 6 } },
+	{ { t = "backdrop", x = -30, z = -10, w = 18, d = 12 }, { t = "starcloth", x = -10, z = -10, w = 18, d = 12 }, { t = "scrim", x = 10, z = -10, w = 18, d = 12 }, { t = "panelwall", x = 30, z = -10, w = 18, d = 12 }, { t = "staircase", x = 0, z = 6, w = 20 } },
+	{ { t = "bulbwall", x = -30, z = -10, w = 18, d = 12 }, { t = "slatwall", x = -10, z = -10, w = 18, d = 12 }, { t = "brickwall", x = 10, z = -10, w = 18, d = 12 }, { t = "scaffold", x = 30, z = -10, w = 18, d = 12 }, { t = "mirrorwall", x = -20, z = 8, w = 14, d = 10 } },
+	{ { t = "ampwall", x = -18, z = 0 }, { t = "lightcube", x = -10, z = 2 }, { t = "planter", x = -2, z = 2 }, { t = "neonline", x = 10, z = 4 }, { t = "hedge", x = 10, z = -2 }, { t = "tvstack", x = 20, z = 0 }, { t = "rope", x = 0, z = 8 } },
 }
 for k, items in ipairs(groups) do
 	app.state.money = 90000000
@@ -74,6 +77,8 @@ for k, items in ipairs(groups) do
 		cams = { CFrame.lookAt(Vector3.new(4, y + 16, 40), Vector3.new(4, y + 4, 0)), CFrame.lookAt(Vector3.new(-6, y + 8, 14), Vector3.new(-8, y + 3, 0)) }
 	elseif k == 6 then
 		cams = { CFrame.lookAt(Vector3.new(22, y + 26, 30), Vector3.new(0, y + 18, 0)), CFrame.lookAt(Vector3.new(-20, y + 14, 16), Vector3.new(0, y + 14, 0)) }
+	elseif k == 9 or k == 10 then
+		cams = { CFrame.lookAt(Vector3.new(0, y + 22, 62), Vector3.new(0, y + 6, -4)), CFrame.lookAt(Vector3.new(-30, y + 10, 16), Vector3.new(-14, y + 5, -8)) }
 	elseif k >= 5 then
 		cams = { CFrame.lookAt(Vector3.new(2, y + 14, 44), Vector3.new(2, y + 5, 0)), CFrame.lookAt(Vector3.new(-26, y + 8, 6), Vector3.new(-16, y + 4, 0)) }
 	elseif k == 4 then

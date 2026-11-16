@@ -2691,6 +2691,240 @@ function B.rainbow(m, r)
 	end
 end
 
+------------------------------------------------------------------ big backdrops (resizable: width, and height with the top handle)
+local FABRIC = Color3.fromRGB(34, 34, 40)
+-- a pipe at the top and weighted feet at the bottom, as backdrops hang on stage
+local function backdropFrame(m, w, hh)
+	part(m, "Pipe", Vector3.new(w + 0.6, 0.35, 0.35), CFrame.new(0, hh + 0.2, 0), METAL, Enum.Material.Metal)
+	for _, x in ipairs({ -w / 2, w / 2 }) do
+		part(m, "Upright", Vector3.new(0.3, hh + 0.4, 0.3), CFrame.new(x, hh / 2 + 0.2, -0.3), METAL, Enum.Material.Metal)
+		part(m, "Foot", Vector3.new(1.2, 0.3, 2.4), CFrame.new(x, 0.15, -0.3), DARK, Enum.Material.Metal)
+	end
+end
+function B.backdrop(m, r)
+	-- plain stage cloth with soft vertical folds; the stage lights tint it with the song colours
+	local w, hh = dims(r, r.def)
+	backdropFrame(m, w, hh)
+	r.folds = {}
+	local n = math.max(2, math.floor(w / 2.4))
+	for i = 0, n - 1 do
+		local x = -w / 2 + (i + 0.5) * w / n
+		local shade = (i % 2 == 0) and 1 or 0.86
+		local p = part(m, "Cloth", Vector3.new(w / n + 0.05, hh, 0.3), CFrame.new(x, hh / 2 + 0.2, (i % 2 == 0) and 0 or 0.12), Color3.new(FABRIC.R * shade, FABRIC.G * shade, FABRIC.B * shade), Enum.Material.Fabric)
+		table.insert(r.folds, { p, shade })
+	end
+end
+function B.starcloth(m, r)
+	-- black cloth full of tiny twinkling lights
+	local w, hh = dims(r, r.def)
+	backdropFrame(m, w, hh)
+	part(m, "Cloth", Vector3.new(w, hh, 0.25), CFrame.new(0, hh / 2 + 0.2, 0), Color3.fromRGB(10, 10, 14), Enum.Material.Fabric)
+	r.stars = {}
+	local rng = Random.new(math.floor(w * 7 + hh))
+	local count = math.clamp(math.floor(w * hh / 9), 12, 160)
+	for _ = 1, count do
+		local s = part(m, "Star", Vector3.new(0.22, 0.22, 0.1), CFrame.new(rng:NextNumber(-w / 2 + 0.4, w / 2 - 0.4), rng:NextNumber(0.8, hh - 0.2), 0.15), Color3.fromRGB(255, 250, 235), Enum.Material.Neon)
+		table.insert(r.stars, { s, rng:NextNumber() * 6.28, rng:NextNumber(1.5, 4) })
+	end
+end
+function B.scrim(m, r)
+	-- a thin white gauze: lights shine through and colour it
+	local w, hh = dims(r, r.def)
+	backdropFrame(m, w, hh)
+	r.sheet = part(m, "Gauze", Vector3.new(w, hh, 0.1), CFrame.new(0, hh / 2 + 0.2, 0), Color3.fromRGB(235, 235, 240), Enum.Material.Fabric)
+	r.sheet.Transparency = 0.45
+end
+function B.panelwall(m, r)
+	-- a wall of square light panels in a black frame (patterns with the beat)
+	local w, hh = dims(r, r.def)
+	part(m, "Frame", Vector3.new(w, hh, 0.5), CFrame.new(0, hh / 2, 0), Color3.fromRGB(18, 18, 22), Enum.Material.Metal)
+	r.cells = {}
+	local cols, rows = math.max(1, math.floor(w / 3)), math.max(1, math.floor(hh / 3))
+	local cw, ch = w / cols, hh / rows
+	for i = 0, cols - 1 do
+		for j = 0, rows - 1 do
+			local c = part(m, "Panel", Vector3.new(cw - 0.5, ch - 0.5, 0.1), CFrame.new(-w / 2 + (i + 0.5) * cw, (j + 0.5) * ch, 0.28), Color3.fromRGB(230, 230, 236), Enum.Material.Neon)
+			c.Transparency = 0.3
+			table.insert(r.cells, { c, i, j })
+		end
+	end
+end
+function B.bulbwall(m, r)
+	-- a retro wall of round light bulbs (chasers run over it)
+	local w, hh = dims(r, r.def)
+	part(m, "Board", Vector3.new(w, hh, 0.4), CFrame.new(0, hh / 2, 0), Color3.fromRGB(30, 24, 20), Enum.Material.Wood)
+	r.bulbs = {}
+	local step = math.max(2.2, math.sqrt(w * hh / 140))
+	local cols, rows = math.max(1, math.floor(w / step)), math.max(1, math.floor(hh / step))
+	for i = 0, cols - 1 do
+		for j = 0, rows - 1 do
+			local x, y = -w / 2 + (i + 0.5) * w / cols, (j + 0.5) * hh / rows
+			part(m, "Socket", Vector3.new(0.8, 0.8, 0.2), CFrame.new(x, y, 0.28), METAL, Enum.Material.Metal)
+			local b = part(m, "Bulb", Vector3.new(0.75, 0.75, 0.75), CFrame.new(x, y, 0.55), WARM, Enum.Material.Neon, Enum.PartType.Ball)
+			table.insert(r.bulbs, { b, i, j })
+		end
+	end
+end
+function B.slatwall(m, r)
+	-- dark wooden slats with light shining through the gaps
+	local w, hh = dims(r, r.def)
+	r.glow = part(m, "Backlight", Vector3.new(w, hh, 0.1), CFrame.new(0, hh / 2, -0.4), r.color, Enum.Material.Neon)
+	local n = math.max(3, math.floor(w / 1.6))
+	for i = 0, n - 1 do
+		part(m, "Slat", Vector3.new(w / n * 0.62, hh, 0.5), CFrame.new(-w / 2 + (i + 0.5) * w / n, hh / 2, 0), Color3.fromRGB(58, 40, 28), Enum.Material.Wood)
+	end
+	part(m, "Top", Vector3.new(w + 0.4, 0.5, 1.2), CFrame.new(0, hh + 0.25, -0.2), Color3.fromRGB(40, 28, 20), Enum.Material.Wood)
+end
+function B.brickwall(m, r)
+	-- an old brick wall with pillars and a ledge: a club or warehouse look
+	local w, hh = dims(r, r.def)
+	part(m, "Bricks", Vector3.new(w, hh, 1), CFrame.new(0, hh / 2, 0), Color3.fromRGB(140, 66, 52), Enum.Material.Brick)
+	local n = math.max(1, math.floor(w / 12))
+	for i = 0, n do
+		local x = -w / 2 + i * w / n
+		part(m, "Pillar", Vector3.new(1.6, hh + 0.4, 1.6), CFrame.new(x, hh / 2 + 0.2, 0.2), Color3.fromRGB(120, 56, 44), Enum.Material.Brick)
+	end
+	part(m, "Ledge", Vector3.new(w + 1.6, 0.6, 1.8), CFrame.new(0, hh + 0.5, 0.2), Color3.fromRGB(150, 146, 140), Enum.Material.Concrete)
+	part(m, "Base", Vector3.new(w, 1.2, 1.3), CFrame.new(0, 0.6, 0.1), Color3.fromRGB(110, 106, 100), Enum.Material.Concrete)
+end
+function B.scaffold(m, r)
+	-- industrial scaffolding with LED strips on its bars
+	local w, hh = dims(r, r.def)
+	local cols, rows = math.max(1, math.floor(w / 8 + 0.5)), math.max(1, math.floor(hh / 6 + 0.5))
+	local cw, rh = w / cols, hh / rows
+	r.strips = {}
+	for i = 0, cols do
+		for _, z in ipairs({ -1.5, 1.5 }) do
+			tube(m, Vector3.new(-w / 2 + i * cw, 0, z), Vector3.new(-w / 2 + i * cw, hh, z), 0.3, METAL)
+		end
+	end
+	for j = 1, rows do
+		local y = j * rh
+		for _, z in ipairs({ -1.5, 1.5 }) do
+			tube(m, Vector3.new(-w / 2, y, z), Vector3.new(w / 2, y, z), 0.25, METAL)
+		end
+		local s = part(m, "LEDStrip", Vector3.new(w, 0.25, 0.15), CFrame.new(0, y - 0.3, 1.75), r.color, Enum.Material.Neon)
+		table.insert(r.strips, s)
+		for i = 0, cols - 1 do
+			local x0 = -w / 2 + i * cw
+			local a, b = Vector3.new(x0, y - rh, 1.5), Vector3.new(x0 + cw, y, 1.5)
+			if (i + j) % 2 == 0 then
+				a, b = Vector3.new(x0 + cw, y - rh, 1.5), Vector3.new(x0, y, 1.5)
+			end
+			tube(m, a, b, 0.18, METAL)
+			part(m, "Plank", Vector3.new(cw - 0.3, 0.2, 2.8), CFrame.new(x0 + cw / 2, y + 0.12, 0), Color3.fromRGB(150, 110, 70), Enum.Material.WoodPlanks)
+		end
+	end
+end
+function B.mirrorwall(m, r)
+	-- tilted mirror tiles: they throw the light back into the hall
+	local w, hh = dims(r, r.def)
+	part(m, "Back", Vector3.new(w, hh, 0.4), CFrame.new(0, hh / 2, 0), Color3.fromRGB(20, 20, 24), Enum.Material.Metal)
+	r.tiles = {}
+	local cols, rows = math.max(1, math.floor(w / 2.6)), math.max(1, math.floor(hh / 2.6))
+	for i = 0, cols - 1 do
+		for j = 0, rows - 1 do
+			local x, y = -w / 2 + (i + 0.5) * w / cols, (j + 0.5) * hh / rows
+			local t = part(m, "Mirror", Vector3.new(w / cols - 0.3, hh / rows - 0.3, 0.12), CFrame.new(x, y, 0.3) * CFrame.Angles(((i + j) % 3 - 1) * 0.035, ((i * 2 + j) % 3 - 1) * 0.045, 0), Color3.fromRGB(200, 210, 220), Enum.Material.Glass)
+			t.Reflectance = 0.5
+			table.insert(r.tiles, t)
+		end
+	end
+end
+function B.staircase(m, r)
+	-- a grand white staircase across the back of the stage, with light lines in the steps
+	local w = dims(r, r.def)
+	r.lines = {}
+	for k = 0, 7 do
+		local depth = 8 - k
+		part(m, "Step", Vector3.new(w - k * 0.8, 1, depth * 1.4), CFrame.new(0, 0.5 + k, -k * 0.7), Color3.fromRGB(238, 238, 242), Enum.Material.SmoothPlastic)
+		local l = part(m, "StepLight", Vector3.new(w - k * 0.8, 0.15, 0.1), CFrame.new(0, 0.85 + k, depth * 0.7 - k * 0.7 + 0.02), WARM, Enum.Material.Neon)
+		table.insert(r.lines, l)
+	end
+	for _, x in ipairs({ -1, 1 }) do
+		tube(m, Vector3.new(x * (w / 2 - 0.3), 3.2, 5.6), Vector3.new(x * (w / 2 - 3.1), 10.2, -4.2), 0.25, Color3.fromRGB(220, 190, 110))
+	end
+end
+
+------------------------------------------------------------------ neutral decor
+function B.ampwall(m, r)
+	-- a wall of guitar cabinets with amp heads on top (backline)
+	for col = -1, 1 do
+		for row = 0, 1 do
+			local c = CFrame.new(col * 3.1, 1.5 + row * 3, 0)
+			part(m, "Cab", Vector3.new(3, 2.95, 1.6), c, Color3.fromRGB(22, 22, 24))
+			part(m, "Grille", Vector3.new(2.5, 2.4, 0.08), c * CFrame.new(0, 0, 0.82), Color3.fromRGB(60, 58, 52), Enum.Material.Fabric)
+			part(m, "Badge", Vector3.new(0.7, 0.18, 0.05), c * CFrame.new(0.7, 1.05, 0.88), Color3.fromRGB(220, 220, 225), Enum.Material.Metal)
+		end
+		local h = CFrame.new(col * 3.1, 6.6, 0)
+		part(m, "AmpHead", Vector3.new(3, 1.2, 1.4), h, Color3.fromRGB(26, 26, 28))
+		part(m, "Panel", Vector3.new(2.7, 0.5, 0.06), h * CFrame.new(0, 0, 0.72), Color3.fromRGB(190, 170, 120), Enum.Material.Metal)
+		part(m, "PowerLight", Vector3.new(0.15, 0.15, 0.05), h * CFrame.new(1.1, 0, 0.76), Color3.fromRGB(255, 60, 60), Enum.Material.Neon)
+	end
+end
+function B.lightcube(m, r)
+	-- a glowing cube to sit on, changes colour with the music
+	r.cube = part(m, "Cube", Vector3.new(2, 2, 2), CFrame.new(0, 1, 0), Color3.fromRGB(240, 240, 255), Enum.Material.Neon)
+	r.cube.Transparency = 0.15
+end
+function B.planter(m, r)
+	-- a long planter box with grass and round shrubs
+	local w = dims(r, r.def)
+	part(m, "Box", Vector3.new(w, 1.6, 2.4), CFrame.new(0, 0.8, 0), Color3.fromRGB(70, 70, 74), Enum.Material.Concrete)
+	part(m, "Soil", Vector3.new(w - 0.4, 0.2, 2), CFrame.new(0, 1.62, 0), Color3.fromRGB(60, 44, 30), Enum.Material.Ground)
+	local n = math.max(1, math.floor(w / 3))
+	for i = 0, n - 1 do
+		local x = -w / 2 + (i + 0.5) * w / n
+		local s = 1.6 + (i % 3) * 0.3
+		part(m, "Shrub", Vector3.new(s, s, s), CFrame.new(x, 1.7 + s / 2 - 0.2, 0), Color3.fromRGB(60 + (i % 2) * 14, 120 + (i % 3) * 10, 60), Enum.Material.Grass, Enum.PartType.Ball)
+	end
+end
+function B.neonline(m, r)
+	-- a neon tube lying on the floor or along a stage edge
+	local w = dims(r, r.def)
+	r.tube = part(m, "Neon", Vector3.new(w, 0.3, 0.3), CFrame.new(0, 0.25, 0), r.color, Enum.Material.Neon)
+	for _, x in ipairs({ -w / 2 + 0.3, 0, w / 2 - 0.3 }) do
+		part(m, "Clip", Vector3.new(0.3, 0.2, 0.5), CFrame.new(x, 0.1, 0), DARK)
+	end
+end
+function B.hedge(m, r)
+	-- a trimmed green hedge
+	local w = dims(r, r.def)
+	part(m, "Hedge", Vector3.new(w, 4, 2.2), CFrame.new(0, 2, 0), Color3.fromRGB(56, 112, 52), Enum.Material.Grass)
+	part(m, "HedgeTop", Vector3.new(w - 0.4, 0.6, 1.8), CFrame.new(0, 4.25, 0), Color3.fromRGB(66, 126, 58), Enum.Material.Grass)
+end
+function B.tvstack(m, r)
+	-- a pile of old TVs, their screens flicker in the song's colours
+	r.screens = {}
+	local spots = { { -2.2, 0 }, { 0, 0 }, { 2.2, 0 }, { -1.1, 1 }, { 1.1, 1 }, { 0, 2 } }
+	for i, s in ipairs(spots) do
+		local c = CFrame.new(s[1], 1 + s[2] * 2, 0) * CFrame.Angles(0, ((i % 3) - 1) * 0.12, 0)
+		part(m, "TV", Vector3.new(2.1, 1.95, 1.8), c, (i % 2 == 0) and Color3.fromRGB(90, 70, 50) or Color3.fromRGB(40, 40, 44), (i % 2 == 0) and Enum.Material.Wood or Enum.Material.SmoothPlastic)
+		local scr = part(m, "Screen", Vector3.new(1.5, 1.2, 0.08), c * CFrame.new(-0.15, 0.05, 0.91), Color3.fromRGB(140, 160, 200), Enum.Material.Neon)
+		table.insert(r.screens, scr)
+		part(m, "Knob", Vector3.new(0.18, 0.18, 0.1), c * CFrame.new(0.8, 0.3, 0.92), Color3.fromRGB(200, 200, 200), Enum.Material.Metal)
+	end
+end
+function B.rope(m, r)
+	-- brass posts with a red velvet rope (VIP)
+	local w = dims(r, r.def)
+	local n = math.max(1, math.floor(w / 4))
+	for i = 0, n do
+		local x = -w / 2 + i * w / n
+		cyl(m, "PostFoot", 0.2, 1.1, CFrame.new(x, 0.1, 0), Color3.fromRGB(200, 165, 80), Enum.Material.Metal)
+		cyl(m, "Post", 3, 0.25, CFrame.new(x, 1.6, 0), Color3.fromRGB(200, 165, 80), Enum.Material.Metal)
+		part(m, "PostTop", Vector3.new(0.45, 0.45, 0.45), CFrame.new(x, 3.2, 0), Color3.fromRGB(220, 185, 95), Enum.Material.Metal, Enum.PartType.Ball)
+		if i < n then
+			local x2 = -w / 2 + (i + 1) * w / n
+			-- a soft curve: three short pieces
+			local pts = { Vector3.new(x, 2.9, 0), Vector3.new(x + (x2 - x) * 0.3, 2.35, 0), Vector3.new(x + (x2 - x) * 0.7, 2.35, 0), Vector3.new(x2, 2.9, 0) }
+			for k = 1, 3 do
+				tube(m, pts[k], pts[k + 1], 0.22, Color3.fromRGB(150, 20, 34)).Material = Enum.Material.Fabric
+			end
+		end
+	end
+end
+
 local artistMark
 -- where the artist is while playing an instrument (same places as in LiveShow): x, y, z, turned around, sitting
 local ARTIST_MARK = {
@@ -2920,7 +3154,18 @@ function Builder.animateKind(refs, ctx)
 		end
 		local bg = c1:Lerp(c2, 0.5 + 0.5 * math.sin(t * 1.3))
 		local live = (mode == "liveArtist" or mode == "liveCrowd") and ctx.liveFeed or nil
+		local visuals = mode == "visuals"
 		for fi, f in ipairs(refs.faces or {}) do
+			if visuals then
+				-- tour visuals: the song's colours flicker with the beat; with strobes and blinders white / black flashes
+				if ctx.strobe or (ctx.blind or 0) > 0.35 then
+					bg = (math.floor(t * 14 + fi) % 2 == 0) and WHITE or Color3.new(0, 0, 0)
+				else
+					local beatN = (ctx.beatCount or 0) + fi
+					local col = (beatN % 2 == 0) and c1 or c2
+					bg = col:Lerp(Color3.new(0, 0, 0), math.clamp(1 - (ctx.beat or 0), 0, 1) * 0.55)
+				end
+			end
 			f.frame.BackgroundColor3 = bg
 			if f.grad then
 				f.grad.Rotation = (t * 40) % 360
@@ -3154,6 +3399,62 @@ function Builder.animateKind(refs, ctx)
 		refs.moon.CFrame = refs.moon.CFrame * CFrame.Angles(0, (ctx.dt or 0.03) * 0.1, 0)
 		refs.halo.Color = Color3.fromRGB(255, 230, 170):Lerp(c1, 0.4)
 		refs.halo.Transparency = (ctx.seg == 3) and 0.7 or 0.86
+	elseif k == "backdrop" then
+		-- the lights tint the cloth a little with the song colours
+		local tint = c1:Lerp(c2, 0.5 + 0.5 * math.sin(t * 0.7))
+		for _, f in ipairs(refs.folds) do
+			local base = Color3.new(FABRIC.R * f[2], FABRIC.G * f[2], FABRIC.B * f[2])
+			f[1].Color = base:Lerp(tint, 0.18 + 0.1 * (ctx.beat or 0))
+		end
+	elseif k == "starcloth" then
+		for _, s in ipairs(refs.stars) do
+			s[1].Transparency = 0.15 + 0.75 * (0.5 + 0.5 * math.sin(t * s[3] + s[2]))
+		end
+	elseif k == "scrim" then
+		refs.sheet.Color = Color3.fromRGB(235, 235, 240):Lerp(c1, 0.55 + 0.25 * math.sin(t * 0.9))
+	elseif k == "panelwall" then
+		if refs.lastBeat ~= ctx.beatCount then
+			refs.lastBeat = ctx.beatCount
+			local pat = math.floor((ctx.beatCount or 0) / 8) % 3
+			for _, c in ipairs(refs.cells) do
+				local on
+				if pat == 0 then
+					on = (c[2] + c[3] + ctx.beatCount) % 2 == 0
+				elseif pat == 1 then
+					on = (c[2] % 4) == (ctx.beatCount % 4)
+				else
+					on = (c[3] + ctx.beatCount) % 3 == 0
+				end
+				c[1].Color = on and c1 or c2:Lerp(Color3.new(0, 0, 0), 0.7)
+				c[1].Transparency = on and 0.05 or 0.5
+			end
+		end
+	elseif k == "bulbwall" then
+		local run = t * 6
+		for _, b in ipairs(refs.bulbs) do
+			local on = math.floor(run + b[2] * 0.7 + b[3] * 0.4) % 4 ~= 0
+			b[1].Transparency = on and 0 or 0.7
+			b[1].Color = (ctx.seg == 3) and c1 or WARM
+		end
+	elseif k == "slatwall" then
+		refs.glow.Color = c1:Lerp(c2, 0.5 + 0.5 * math.sin(t * 0.8))
+	elseif k == "scaffold" then
+		for i, s in ipairs(refs.strips) do
+			s.Color = ((i + (ctx.beatCount or 0)) % 2 == 0) and c1 or c2
+		end
+	elseif k == "staircase" then
+		for i, l in ipairs(refs.lines) do
+			l.Color = ((i + (ctx.beatCount or 0)) % 4 == 0) and c1 or WARM
+		end
+	elseif k == "lightcube" then
+		refs.cube.Color = c1:Lerp(c2, 0.5 + 0.5 * math.sin(t * 1.1 + refs.phase))
+	elseif k == "neonline" then
+		refs.tube.Color = c1
+	elseif k == "tvstack" then
+		for i, sc in ipairs(refs.screens) do
+			local flick = math.floor(t * 8 + i * 1.7) % 5 == 0
+			sc.Color = flick and WHITE or (((i + (ctx.beatCount or 0)) % 2 == 0) and c1 or c2)
+		end
 	elseif k == "skyline" or k == "house" then
 		if refs.lastBeat ~= ctx.beatCount and ctx.beatCount % 2 == 0 then
 			refs.lastBeat = ctx.beatCount
@@ -3350,7 +3651,7 @@ end
 
 -- What a screen shows at a spot (falls back to the default, then to the old single setting)
 Builder.SCREEN_KINDS = { led = true, led_side = true, ledcube = true, ledtower = true, ledpillar = true }
-local SCREEN_NAMES = { song = "SONG TITLE", artist = "ARTIST NAME", text = "TEXT", image = "IMAGE", liveArtist = "LIVE CAM: ARTIST", liveCrowd = "LIVE CAM: CROWD" }
+local SCREEN_NAMES = { song = "SONG TITLE", artist = "ARTIST NAME", visuals = "TOUR VISUALS", text = "TEXT", image = "IMAGE", liveArtist = "LIVE CAM: ARTIST", liveCrowd = "LIVE CAM: CROWD" }
 Builder.SCREEN_NAMES = SCREEN_NAMES
 function Builder.screenConfig(refs, spot)
 	local rec = refs.rec or {}

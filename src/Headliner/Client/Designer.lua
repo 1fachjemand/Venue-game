@@ -45,10 +45,10 @@ Designer.FX_SONG_KINDS = FX_SONG_KINDS
 
 local HELP = table.concat({
 	"<b>Place</b>   pick an item below, point at the spot and press  <b>Q</b>  (or click, then Q / Enter)",
-	"<b>Line up</b>   drag the arrows: <font color='#eb463c'>red</font> / <font color='#3c8cff'>blue</font> move, <font color='#5ad250'>green</font> lifts it up",
+	"<b>Line up</b>   drag the arrows: <font color='#eb463c'>red</font> / <font color='#3c8cff'>blue</font> move, <font color='#5ad250'>green</font> lifts it up / down. A click never moves a piece",
 	"<b>Turn</b>   drag the <font color='#ff9628'>orange ring</font> or press R (E = other way)      <b>Size</b>   drag the <font color='#ffcd3c'>gold cubes</font>",
 	"<b>Select</b>   click a placed item, <b>Shift + click</b> more items (a group)      <b>Copy</b>  C (same place)      <b>Mirror</b>  M      <b>Delete</b>  X",
-	"<b>Size</b>   pulls one side; hold <b>Shift</b> to grow both sides      <b>Cancel</b>  Esc / F      Side lights and hanging speakers clamp onto Truss Towers",
+	"<b>Size</b>   pulls one side (the top cube: height); hold <b>Shift</b> to grow both sides      <b>Cancel</b>  Esc / F      Side lights clamp onto Truss Towers, R takes them round the tower",
 	"<b>Camera</b>   right mouse = turn, wheel = zoom, WASD = move, T = top view, H = hide menus",
 	"<b>Two steps</b>   1. build the stage   2. SETLIST & SHOW: artist spots, what screens show, effects per song",
 }, "\n")
@@ -86,6 +86,7 @@ function Designer.open(app, designId)
 	local overHandle = false
 	local drag = nil
 	local screenSong = 0 -- 0 = what screens show for the whole show, n = change for song n
+	local copyPick = nil -- choosing screens that get the same settings: { src = rec, recs = { [rec] = true }, boxes = {} }
 	local phase = "build" -- "build" (the stage itself) | "show" (setlist & show: spots, screens, effects per song)
 
 	local function grid()
@@ -460,7 +461,42 @@ function Designer.open(app, designId)
 		refreshToolbar()
 	end
 
+	-- marks the screens chosen for "Copy to chosen screens"
+	local function drawCopyPick()
+		for _, b in ipairs(copyPick and copyPick.boxes or {}) do
+			b:Destroy()
+		end
+		if not copyPick then
+			return
+		end
+		copyPick.boxes = {}
+		for _, r in ipairs(Stage3D.items) do
+			if copyPick.recs[r.rec] or r.rec == copyPick.src then
+				local src = r.rec == copyPick.src
+				table.insert(copyPick.boxes, UI.New("SelectionBox", { Adornee = r.model, Color3 = src and T.accent or T.accent2, LineThickness = 0.12, SurfaceColor3 = T.accent2, SurfaceTransparency = src and 1 or 0.75, Parent = Stage3D.world }))
+			end
+		end
+	end
+	local function endCopyPick()
+		if copyPick then
+			for _, b in ipairs(copyPick.boxes) do
+				b:Destroy()
+			end
+			copyPick = nil
+		end
+	end
+	self.endCopyPick = endCopyPick
+	self.copyPickToggle = function(hit)
+		if copyPick and hit and Builder.SCREEN_KINDS[hit.def.id] and hit.rec ~= copyPick.src then
+			copyPick.recs[hit.rec] = (not copyPick.recs[hit.rec]) or nil
+			drawCopyPick()
+			if refreshInspector then
+				refreshInspector()
+			end
+		end
+	end
 	local function select(refs)
+		endCopyPick()
 		drag = nil
 		overHandle = false
 		clearGhost()
@@ -768,6 +804,21 @@ function Designer.open(app, designId)
 			render()
 			return
 		end
+		-- a light / speaker on a truss tower goes round the tower: R = the next side of the tower
+		local sideT = pending or selected
+		if sideT and sideT.def.mount == "side" then
+			local rec = sideT.rec
+			local tower = Stage3D.nearestTower(rec.x, rec.z)
+			if tower then
+				local c = tower.cf.Position
+				local off = CFrame.Angles(0, math.rad((delta >= 0) and 90 or -90), 0) * Vector3.new(rec.x - c.X, 0, rec.z - c.Z)
+				local nx, nz, nr = Stage3D.snapToTower(c.X + off.X * 3, c.Z + off.Z * 3)
+				if nx then
+					applyChange({ x = nx, z = nz, r = nr })
+				end
+				return
+			end
+		end
 		local cur = (pending and pending.rec.r) or (mode == "place" and ghostRec and ghostRec.r) or (selected and selected.rec.r)
 		if cur == nil then
 			return
@@ -995,33 +1046,23 @@ function Designer.open(app, designId)
 		nextOrder(UI.Label(inspScroll, def.desc, nil, UI.px(296, 0), { textSize = 13, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
 
 		local build = phase == "build"
-		if build and def.size then
+		if build and (def.size or def.heights) then
+			-- the size is changed with the white handles on the piece itself
 			local sz = def.size
-			local wLabel = (def.shape == "round" or def.id == "portal" or def.id == "moon") and "Diameter" or ((def.mount == "rig") and "Length" or "Width")
-			stepper(wLabel, (rec.w or sz.w) .. " st", function()
-				applyChange({ w = math.max(sz.minW, (rec.w or sz.w) - 2) })
-			end, function()
-				applyChange({ w = math.min(sz.maxW, (rec.w or sz.w) + 2) })
-			end)
-			if sz.d then
-				stepper(sz.dLabel or "Depth", (rec.d or sz.d) .. " st", function()
-					applyChange({ d = math.max(sz.minD, (rec.d or sz.d) - 2) })
-				end, function()
-					applyChange({ d = math.min(sz.maxD, (rec.d or sz.d) + 2) })
-				end)
+			local parts = {}
+			if sz then
+				local wLabel = (def.shape == "round" or def.id == "portal" or def.id == "moon") and "across" or ((def.mount == "rig") and "long" or "wide")
+				table.insert(parts, (rec.w or sz.w) .. " " .. wLabel)
+				if sz.d then
+					table.insert(parts, (rec.d or sz.d) .. ((sz.dLabel == "Height") and " high" or " deep"))
+				end
 			end
-		end
-		if build and def.heights then
-			nextOrder(section("HEIGHT"))
-			local list = {}
-			for _, h in ipairs(def.heights) do
-				table.insert(list, { h, tostring(h) })
+			if def.heights and not (sz and sz.dLabel == "Height") then
+				table.insert(parts, (rec.h or def.h) .. " high")
 			end
-			chips(list, function(it)
-				return (rec.h or def.h) == it[1]
-			end, function(it)
-				applyChange({ h = it[1] })
-			end, 7, 38)
+			nextOrder(section("SIZE"))
+			nextOrder(UI.Label(inspScroll, table.concat(parts, "  x  ") .. " studs", nil, UI.px(296, 22), { textSize = 16, font = UI.FontBold }))
+			nextOrder(UI.Label(inspScroll, "Pull the gold cubes on the piece to resize (the top cube changes the height). Hold Shift: both sides grow.", nil, UI.px(296, 0), { textSize = 13, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
 		end
 		if build and def.deck then
 			nextOrder(section("SURFACE"))
@@ -1214,7 +1255,7 @@ function Designer.open(app, designId)
 				refreshInspector()
 			end)
 			local curCfg = scr[slot]
-			local modes = { { "song", "Song title" }, { "artist", "Artist name" }, { "text", "Own text" }, { "image", "Image ID" }, { "liveArtist", "Live: artist" }, { "liveCrowd", "Live: fans" } }
+			local modes = { { "song", "Song title" }, { "artist", "Artist name" }, { "visuals", "Tour visuals" }, { "text", "Own text" }, { "image", "Image ID" }, { "liveArtist", "Live: artist" }, { "liveCrowd", "Live: fans" } }
 			local function setSlot(cfg)
 				local new = Util.deepCopy(scr)
 				new[slot] = cfg
@@ -1267,7 +1308,33 @@ function Designer.open(app, designId)
 					applyChange({ scr = new })
 				end))
 			end
-			if selected and not pending then
+			if selected and not pending and copyPick and copyPick.src == rec then
+				-- choosing the screens that get the same settings
+				local n = 0
+				for _ in pairs(copyPick.recs) do
+					n = n + 1
+				end
+				nextOrder(UI.Label(inspScroll, "Click the screens on the stage that should show the same. Chosen: " .. n, nil, UI.px(296, 0), { textSize = 14, font = UI.FontBold, color = T.accent2, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
+				local f = nextOrder(row(40))
+				UI.Button(f, "Cancel", UI.px(0, 2), UI.px(110, 36), { textSize = 14 }, function()
+					endCopyPick()
+					refreshInspector()
+				end)
+				UI.Button(f, "Finish (" .. n .. ")", UI.px(116, 2), UI.px(180, 36), { textSize = 15, color = T.good, disabled = n == 0 }, function()
+					for other in pairs(copyPick.recs) do
+						other.scr = Util.deepCopy(scr)
+					end
+					endCopyPick()
+					app:toast(n + 1 .. " screens now show the same.", T.good)
+					render()
+					refreshInspector()
+				end).Name = "CopyFinish"
+			elseif selected and not pending then
+				nextOrder(UI.Button(inspScroll, "Copy to chosen screens...", nil, UI.px(296, 32), { textSize = 13 }, function()
+					copyPick = { src = rec, recs = {}, boxes = {} }
+					drawCopyPick()
+					refreshInspector()
+				end))
 				nextOrder(UI.Button(inspScroll, "Use on all screens", nil, UI.px(296, 32), { textSize = 13, color = T.accent2 }, function()
 					local n = 0
 					for _, other in ipairs(self.design.items) do
@@ -1563,11 +1630,39 @@ function Designer.open(app, designId)
 	local moveBox = UI.New("Part", { Name = "GizmoMove", Size = Vector3.new(4, 4, 4), Transparency = 1, Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, Parent = Stage3D.world })
 	local sizeBox = UI.New("Part", { Name = "GizmoSize", Size = Vector3.new(4, 4, 4), Transparency = 1, Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, Parent = Stage3D.world })
 	local moveX = UI.New("Handles", { Adornee = moveBox, Style = Enum.HandlesStyle.Movement, Faces = Faces.new(Enum.NormalId.Left, Enum.NormalId.Right), Color3 = AXIS.x, Visible = false, Parent = app.gui })
-	local moveY = UI.New("Handles", { Adornee = moveBox, Style = Enum.HandlesStyle.Movement, Faces = Faces.new(Enum.NormalId.Top), Color3 = AXIS.y, Visible = false, Parent = app.gui })
+	local moveY = UI.New("Handles", { Adornee = moveBox, Style = Enum.HandlesStyle.Movement, Faces = Faces.new(Enum.NormalId.Top, Enum.NormalId.Bottom), Color3 = AXIS.y, Visible = false, Parent = app.gui })
 	local moveZ = UI.New("Handles", { Adornee = moveBox, Style = Enum.HandlesStyle.Movement, Faces = Faces.new(Enum.NormalId.Front, Enum.NormalId.Back), Color3 = AXIS.z, Visible = false, Parent = app.gui })
 	local sizeH = UI.New("Handles", { Adornee = sizeBox, Style = Enum.HandlesStyle.Resize, Faces = Faces.new(Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right), Color3 = AXIS.size, Visible = false, Parent = app.gui })
 	local rotH = UI.New("ArcHandles", { Adornee = moveBox, Axes = Axes.new(Enum.Axis.Y), Color3 = AXIS.rot, Visible = false, Parent = app.gui })
 	self.handles = { moveX = moveX, moveY = moveY, moveZ = moveZ, size = sizeH, rotate = rotH }
+
+	-- which white resize handles a piece has: width (left/right), depth (front/back), height (top)
+	local sizeFacesKey = nil
+	local function sizeFaces(def)
+		local list = {}
+		local sz = def.size
+		if sz then
+			if def.shape == "round" or def.id == "portal" or def.id == "moon" then
+				list = { Enum.NormalId.Left, Enum.NormalId.Right, Enum.NormalId.Front, Enum.NormalId.Back }
+			else
+				list = { Enum.NormalId.Left, Enum.NormalId.Right }
+				if sz.d and sz.dLabel == "Height" then
+					table.insert(list, Enum.NormalId.Top)
+				elseif sz.d then
+					table.insert(list, Enum.NormalId.Front)
+					table.insert(list, Enum.NormalId.Back)
+				end
+			end
+		end
+		if def.heights and not (sz and sz.dLabel == "Height") then
+			table.insert(list, Enum.NormalId.Top)
+		end
+		if #list == 0 then
+			return nil
+		end
+		return list
+	end
+	self.sizeFaces = sizeFaces
 
 	-- a group: one box around all of its pieces, the arrows sit in its middle
 	local function groupBox()
@@ -1599,7 +1694,12 @@ function Designer.open(app, designId)
 		moveY.Visible = show
 		moveZ.Visible = show
 		rotH.Visible = show
-		sizeH.Visible = show and tgt.def.size ~= nil and group == nil
+		local faces = show and sizeFaces(tgt.def) or nil
+		if faces and sizeFacesKey ~= tgt.def.id then
+			sizeH.Faces = Faces.new((table.unpack or unpack)(faces))
+			sizeFacesKey = tgt.def.id
+		end
+		sizeH.Visible = show and faces ~= nil and group == nil
 		if not show then
 			-- hidden handles never send MouseLeave: forget the hover, or every click would be ignored
 			overHandle = false
@@ -1638,7 +1738,7 @@ function Designer.open(app, designId)
 			return
 		end
 		local rec = tgt.rec
-		drag = { kind = kind, refs = tgt, rec = rec, x = rec.x, z = rec.z, y = rec.y or tgt.cf.Position.Y, yo = rec.yo or 0, r = rec.r or 0, w = rec.w, d = rec.d, boxCF = moveBox.CFrame, riders = (tgt == selected and tgt.def.deck) and itemsOnDeck(tgt) or {} }
+		drag = { kind = kind, refs = tgt, rec = rec, x = rec.x, z = rec.z, y = rec.y or tgt.cf.Position.Y, yo = rec.yo or 0, r = rec.r or 0, w = rec.w, d = rec.d, h = rec.h, boxCF = moveBox.CFrame, riders = (tgt == selected and tgt.def.deck) and itemsOnDeck(tgt) or {} }
 	end
 
 	local function endDrag()
@@ -1678,11 +1778,18 @@ function Designer.open(app, designId)
 			return
 		end
 		if d.kind == "size" then
-			local nw, nd, nx, nz = rec.w, rec.d, rec.x, rec.z
-			rec.w, rec.d, rec.x, rec.z = d.w, d.d, d.x, d.z
-			local ok, msg = GS.changeItem(state, rec, { w = nw, d = nd, x = nx, z = nz })
+			local nw, nd, nx, nz, nh = rec.w, rec.d, rec.x, rec.z, rec.h
+			rec.w, rec.d, rec.x, rec.z, rec.h = d.w, d.d, d.x, d.z, d.h
+			local ok, msg = GS.changeItem(state, rec, { w = nw, d = nd, x = nx, z = nz, h = nh })
 			if not ok then
 				app:toast(msg, T.bad)
+			elseif nh and d.h and nh ~= d.h then
+				-- what stands on the deck goes up / down with it
+				for _, rr in ipairs(d.riders) do
+					if rr.y then
+						rr.y = rr.y + (nh - d.h)
+					end
+				end
 			end
 		elseif d.kind == "move" and def.mount == "side" then
 			floorY(rec, def) -- back onto the closest tower
@@ -1774,7 +1881,23 @@ function Designer.open(app, designId)
 		local rec = drag.rec
 		-- the side you pull grows, the other side stays where it is. Hold Shift: both sides grow (centre stays)
 		local both = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
-		if def.shape == "round" then
+		if face == Enum.NormalId.Top and def.heights and sz.dLabel ~= "Height" then
+			-- pull the top up / down: the deck gets higher / lower (in its height steps)
+			local want = (drag.h or def.h or 6) + distance
+			local best = def.heights[1]
+			for _, h in ipairs(def.heights) do
+				if math.abs(h - want) < math.abs(best - want) then
+					best = h
+				end
+			end
+			if rec.h ~= best then
+				rec.h = best
+				livePlace()
+				drag.refs = target()
+			end
+			return
+		end
+		if def.shape == "round" or def.id == "portal" or def.id == "moon" then
 			rec.w = math.clamp((drag.w or sz.w) + step * 2, sz.minW, sz.maxW)
 		elseif not sz.d or math.abs(n.X) > 0.5 then
 			if math.abs(n.X) > 0.5 then
@@ -1858,19 +1981,17 @@ function Designer.open(app, designId)
 			if mouseOverUI() or (overHandle and moveX.Visible) or drag then
 				return
 			end
+			if copyPick then
+				-- choosing screens: a click adds / removes a screen
+				self.copyPickToggle(itemUnderMouse())
+				return
+			end
 			if mode == "place" and placeDef then
 				putDown()
 			elseif mode == "pending" and pending then
-				-- clicking somewhere else moves the new piece there
-				local x, z, rr = mousePoint(pending, pending.def, pending.rec)
-				if x and Stage3D.inBounds(x, z) then
-					pending.rec.x, pending.rec.z = x, z
-					if rr then
-						pending.rec.r = rr
-					end
-					floorY(pending.rec, pending.def)
-					placePending()
-				end
+				-- a click somewhere else does nothing: the new piece only moves with the arrows
+				-- (an accidental click must never move it away)
+				return
 			else
 				local hit = itemUnderMouse()
 				local shift = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
@@ -1980,6 +2101,7 @@ function Designer.open(app, designId)
 		for _, b in ipairs(groupBoxes) do
 			b:Destroy()
 		end
+		endCopyPick()
 		for _, inst in ipairs({ selHighlight, hoverHighlight, pendingHighlight, moveX, moveY, moveZ, sizeH, rotH, moveBox, sizeBox }) do
 			inst:Destroy()
 		end

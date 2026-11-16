@@ -388,7 +388,6 @@ for _, cat in ipairs(StageItems.CATEGORIES) do
 			i = i + 1
 			MOCK.clickExact(def.name)
 			MOCK.mouse = Vector2.new(700 + (i % 12) * 45, 420 + math.floor(i / 12) * 6)
-			if def.size then MOCK.clickExact("+", 1) end -- bigger before placing
 			key(Enum.KeyCode.E)
 			steps(2)
 			click3D()
@@ -409,8 +408,6 @@ local deck = nil
 for _, r in ipairs(Stage3D.items) do if r.def.deck then deck = r break end end
 Designer.current.select(deck)
 log("inspector title", MOCK.texts("^SELECTED$")[1] or "none")
-MOCK.clickExact("+", 1) -- diameter
-MOCK.clickExact("10")
 MOCK.clickExact("LED screen")
 MOCK.click("Edge lights")
 MOCK.clickExact("Use on all decks")
@@ -449,6 +446,22 @@ H.size.MouseButton1Up:Fire(Enum.NormalId.Right)
 MOCK.keys = {}
 log("shift resize w", w1, "->", selRec.w, "x", xs1, "->", selRec.x)
 assert(selRec.w == w1 + 4 and math.abs(selRec.x - xs1) < 0.01, "Shift: both sides grow")
+-- the top handle makes the deck higher (in its height steps)
+for _, r in ipairs(Stage3D.items) do if r.rec == selRec then Designer.current.select(r) end end
+local h0 = selRec.h or 6
+H.size.MouseButton1Down:Fire(Enum.NormalId.Top)
+H.size.MouseDrag:Fire(Enum.NormalId.Top, 3.6)
+H.size.MouseButton1Up:Fire(Enum.NormalId.Top)
+log("deck height with the top handle", h0, "->", selRec.h)
+assert(selRec.h == 10 and h0 == 6, "top handle sets the height")
+-- the green arrow also points down
+for _, r in ipairs(Stage3D.items) do if r.rec == selRec then Designer.current.select(r) end end
+local yo0 = selRec.yo
+H.moveY.MouseButton1Down:Fire(Enum.NormalId.Bottom)
+H.moveY.MouseDrag:Fire(Enum.NormalId.Bottom, 2)
+H.moveY.MouseButton1Up:Fire(Enum.NormalId.Bottom)
+log("lowered deck yo", yo0, "->", selRec.yo)
+assert(selRec.yo == yo0 - 2, "down arrow")
 for _, r in ipairs(Stage3D.items) do if r.rec == selRec then Designer.current.select(r) end end
 H.rotate.MouseButton1Down:Fire(Enum.Axis.Y)
 H.rotate.MouseDrag:Fire(Enum.Axis.Y, 0.8, 0)
@@ -467,6 +480,19 @@ for _, r in ipairs(Stage3D.items) do if r.kind == "led" then Designer.current.se
 MOCK.clickExact("Live: artist")
 MOCK.clickExact("+", 1) -- "For": song 1
 MOCK.clickExact("Live: fans")
+MOCK.clickExact("-", 1) -- back to the whole show
+MOCK.clickExact("Tour visuals")
+local ledRec, pillar = nil, nil
+for _, r in ipairs(Stage3D.items) do if r.kind == "led" then ledRec = r.rec end end
+log("tour visuals", ledRec.scr.default.m)
+assert(ledRec.scr.default.m == "visuals", "tour visuals mode")
+MOCK.clickExact("Copy to chosen screens...")
+for _, r in ipairs(Stage3D.items) do if r.kind == "ledpillar" then pillar = r end end
+Designer.current.copyPickToggle(pillar)
+MOCK.clickExact("Finish (1)")
+log("copied to chosen screen", pillar.rec.scr and pillar.rec.scr.default.m)
+assert(pillar.rec.scr.default.m == "visuals", "copy to chosen screens")
+for _, r in ipairs(Stage3D.items) do if r.kind == "led" then Designer.current.select(r) break end end
 for _, r in ipairs(Stage3D.items) do if r.kind == "led" then log("screen config", r.rec.scr.default.m, r.rec.scr["1"] and r.rec.scr["1"].m) break end end
 for _, r in ipairs(Stage3D.items) do if r.kind == "piano" then Designer.current.select(r) break end end
 MOCK.clickExact("+", 1)
@@ -514,6 +540,11 @@ do
 	local sw = design0.items[#design0.items]
 	log("side wash", #design0.items - n1, sw.t, sw.x, sw.z, sw.r, sw.yo)
 	assert(#design0.items == n1 + 1 and sw.t == "sidewash" and math.abs(sw.x - 61.05) < 0.1 and sw.r == 90, "side wash clamps onto the tower")
+	-- R takes it round the tower to the next side
+	for _, r in ipairs(Stage3D.items) do if r.rec == sw then Designer.current.select(r) end end
+	key(Enum.KeyCode.R)
+	log("side wash after R", sw.x, sw.z, sw.r)
+	assert(sw.r ~= 90 and math.abs(sw.x - 60) < 0.1 and math.abs(math.abs(sw.z + 18) - 1.05) < 0.1, "R moves a side mount round the tower")
 	key(Enum.KeyCode.F)
 	key(Enum.KeyCode.F)
 	-- groups: Shift + click, copy in place, mirror, move together, delete
@@ -548,6 +579,21 @@ do
 	log("group deleted", n4, "->", #design0.items)
 	assert(#design0.items < n4, "group delete")
 end
+-- an accidental click never moves a new piece (only the arrows do)
+MOCK.clickExact("Decor")
+MOCK.clickExact("Planter Box")
+MOCK.mouse = Vector2.new(900, 520)
+steps(2)
+click3D()
+local pend = Designer.current.target()
+local px, pz = pend.rec.x, pend.rec.z
+MOCK.mouse = Vector2.new(1100, 600)
+steps(2)
+click3D()
+log("pending after a second click", px, "->", pend.rec.x, pz, "->", pend.rec.z)
+assert(pend.rec.x == px and pend.rec.z == pz, "a click must not move the new piece")
+key(Enum.KeyCode.F)
+key(Enum.KeyCode.F)
 -- Q places an item in one go (build step)
 MOCK.clickExact("Decor")
 MOCK.clickExact("Velvet Drapes")
