@@ -21,6 +21,7 @@ local SHIRT_COLORS = { Color3.fromRGB(230, 230, 235), Color3.fromRGB(30, 30, 36)
 local MOOD_COLOR = { [1] = T.good, [0] = T.sub, [-1] = T.bad }
 
 function SocialScreen.new(app)
+	SocialScreen.app = app
 	local self = setmetatable({ app = app, filter = "all" }, SocialScreen)
 	self.frame = UI.New("Frame", { Parent = app.content, Size = UI.px(1920, 1008), BackgroundTransparency = 1, Visible = false, Name = "Social" })
 	self.body = UI.New("Frame", { Parent = self.frame, Size = UI.px(1920, 1008), BackgroundTransparency = 1 })
@@ -87,6 +88,97 @@ local function stageSet(vp, color, rng, opts)
 	end
 	mk(vp, Vector3.new(80, 6, 30), CFrame.new(0, 3, -20), color, Enum.Material.Neon, nil, 0.93) -- haze
 	return Vector3.new(rng:NextNumber(-6, 6), 5, -30)
+end
+
+-- the real stage of the tour (the design the show used): decks, screens, set pieces and lights, set up like
+-- in the venue, in front of the crowd. Big stages are shown from further back (returns artistPos, zoom).
+local function realStage(vp, design, color, artistName)
+	local Builder = require(Root.Client.Builder)
+	local StageItems = require(Root.Data.StageItems)
+	local Config = require(Root.Config)
+	if not design or type(design.items) ~= "table" then
+		return nil
+	end
+	local decks, others = {}, {}
+	for _, rec in ipairs(design.items) do
+		local def = StageItems.byId[rec.t]
+		if def and not def.hidden and rec.t ~= "spot" then
+			if def.deck then
+				table.insert(decks, { def = def, rec = rec })
+			else
+				table.insert(others, { def = def, rec = rec })
+			end
+		end
+	end
+	if #decks == 0 then
+		return nil
+	end
+	-- the biggest pieces first, at most 60 (a photo does not need every little light)
+	table.sort(others, function(a, b)
+		return (a.def.cost or 0) > (b.def.cost or 0)
+	end)
+	local x0, x1, z0, z1 = math.huge, -math.huge, math.huge, -math.huge
+	local function topAt(x, z)
+		local top = 0
+		for _, d in ipairs(decks) do
+			local r, def = d.rec, d.def
+			local w, dd = r.w or (def.size and def.size.w) or 10, r.d or (def.size and (def.size.d or def.size.w)) or 10
+			if math.abs(((r.r or 0) % 180) - 90) < 1 then
+				w, dd = dd, w
+			end
+			if math.abs(x - r.x) <= w / 2 and math.abs(z - r.z) <= dd / 2 then
+				top = math.max(top, (r.y or 0) + (r.yo or 0) + (r.h or def.h or 6))
+			end
+		end
+		return top
+	end
+	for _, d in ipairs(decks) do
+		local r, def = d.rec, d.def
+		local w = math.max(r.w or (def.size and def.size.w) or 10, r.d or (def.size and (def.size.d or def.size.w)) or 10)
+		x0, x1 = math.min(x0, r.x - w / 2), math.max(x1, r.x + w / 2)
+		z0, z1 = math.min(z0, r.z - w / 2), math.max(z1, r.z + w / 2)
+	end
+	-- the front of the main stage goes to z = -22 in the photo
+	local dz = -22 - math.min(z1, z0 + 40)
+	local cx = (x0 + x1) / 2
+	local cls = Config.STAGE_CLASS_BY_ID[design.class or "Arena"] or Config.STAGE_CLASS_BY_ID.Arena
+	local saveRig = Builder.rigTop
+	Builder.rigTop = cls.rigY - 1.9
+	local function put(e)
+		local def, rec = e.def, e.rec
+		local ok, refs = pcall(Builder.build, def, { color = color, artistName = artistName, rec = rec, preview = true })
+		if not ok or not refs then
+			return
+		end
+		local y
+		if def.mount == "rig" then
+			y = cls.rigY - ((def.id == "truss_beam") and 0 or 2)
+		elseif def.deck then
+			y = rec.y or 0
+		elseif def.ground then
+			y = 0
+		else
+			y = rec.y or topAt(rec.x, rec.z)
+		end
+		y = y + (rec.yo or 0)
+		Builder.place(refs, CFrame.new(rec.x - cx, y, rec.z + dz) * CFrame.Angles(0, math.rad(rec.r or 0), 0))
+		if Builder.hideMarker then
+			Builder.hideMarker(refs)
+		end
+		refs.model.Parent = vp
+	end
+	for _, e in ipairs(decks) do
+		put(e)
+	end
+	for i = 1, math.min(30, #others) do
+		put(others[i])
+	end
+	Builder.rigTop = saveRig
+	mk(vp, Vector3.new(400, 1, 400), CFrame.new(0, -0.5, -20), Color3.fromRGB(12, 12, 18))
+	mk(vp, Vector3.new(math.max(80, x1 - x0 + 20), 6, 30), CFrame.new(0, 3, -20), color, Enum.Material.Neon, nil, 0.93) -- haze
+	local top = topAt(cx, (z0 + z1) / 2)
+	local zoom = math.clamp((x1 - x0) / 46, 1, 4)
+	return Vector3.new(0, math.max(1, top) - 1, -26), zoom
 end
 
 local function star(vp, ad, color, seed, rng, pos, move)
@@ -218,7 +310,22 @@ local function photo(parent, ad, seed, kind, p)
 		cam.CFrame = CFrame.lookAt(Vector3.new(10, 7, 30), Vector3.new(-2, 15, -12))
 		return vp
 	end
-	local artistPos = stageSet(vp, color, rng, { beams = (kind == "phones") and 0.88 or 0.75 })
+	-- a photo from the show: the real stage of the tour (if the post knows it), else a typical stage
+	local artistPos, zoom = nil, 1
+	local design = nil
+	if p and p.designId and SocialScreen.app then
+		local GS = require(Root.Logic.GameState)
+		design = GS.getDesign(SocialScreen.app.state, p.designId)
+	end
+	-- (only the newest few photos build the real stage: the feed stays light)
+	if design and kind ~= "selfie" and kind ~= "closeup" and kind ~= "barricade" and (SocialScreen.realBudget or 0) > 0 then
+		SocialScreen.realBudget = SocialScreen.realBudget - 1
+		local ok, pos, z = pcall(realStage, vp, design, color, ad and string.upper(ad.name) or nil)
+		if ok and pos then
+			artistPos, zoom = pos, z
+		end
+	end
+	artistPos = artistPos or stageSet(vp, color, rng, { beams = (kind == "phones") and 0.88 or 0.75 })
 	if kind == "selfie" then
 		star(vp, ad, color, seed, rng, artistPos)
 		local n = rng:NextInteger(2, 4)
@@ -319,6 +426,11 @@ local function photo(parent, ad, seed, kind, p)
 		end
 		cam.CFrame = CFrame.lookAt(Vector3.new(rng:NextNumber(-8, 8), 6.5, 12), Vector3.new(0, 9, -30))
 	end
+	if zoom > 1 then
+		-- a big stage: step back (and up) so the whole stage is in the photo
+		local c = cam.CFrame
+		cam.CFrame = c - c.LookVector * (zoom - 1) * 34 + Vector3.new(0, (zoom - 1) * 6, 0)
+	end
 	return vp
 end
 SocialScreen.photo = photo
@@ -362,6 +474,7 @@ function SocialScreen:post(list, p, order)
 end
 
 function SocialScreen:refresh()
+	SocialScreen.realBudget = 4
 	local state = self.app.state
 	local body = self.body
 	UI.ClearChildren(body)

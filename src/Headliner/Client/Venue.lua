@@ -678,21 +678,56 @@ function Venue.build(lookKey, fill, merchColor, opts)
 	-- mixing desk (FOH) in the middle of the floor at end stages
 	local foh = nil
 	if not center and not opts.empty and (L.d or 0) >= 70 then
-		local fz = z0 + (z1 - z0) * 0.6
-		foh = { x = 0, z = fz, w = 14, d = 9 }
-		blk(folder, "FOHRiser", Vector3.new(14, 1.2, 9), CFrame.new(0, 0.6, fz), Color3.fromRGB(30, 30, 34))
-		blk(folder, "FOHDesk", Vector3.new(10, 1.6, 2.4), CFrame.new(0, 2, fz - 1.5), Color3.fromRGB(22, 22, 26))
-		blk(folder, "FOHFaders", Vector3.new(9.4, 0.15, 1.8), CFrame.new(0, 2.85, fz - 1.5), Color3.fromRGB(60, 120, 200), Enum.Material.Neon)
-		blk(folder, "FOHRoof", Vector3.new(15, 0.4, 10), CFrame.new(0, 9, fz), Color3.fromRGB(18, 18, 22))
-		for _, bx in ipairs({ -7.2, 7.2 }) do
-			blk(folder, "FOHBarrier", Vector3.new(0.35, 3.2, 11), CFrame.new(bx, 1.8, fz), Color3.fromRGB(150, 155, 165), Enum.Material.DiamondPlate)
+		-- the FOH (sound and light desks with the show computers) keeps clear of the stage: a big stage or a
+		-- runway pushes it back (or to the side), it never stands in a deck
+		local function clearAt(x, z)
+			for dx = -13, 13, 3.25 do
+				for dz = -10.5, 10.5, 3.5 do
+					if Stage3D.surfaceY(x + dx, z + dz) > 0.3 then
+						return false
+					end
+				end
+			end
+			return math.abs(x) + 9 < halfW and z + 6 < z1 and z - 6 > z0
 		end
-		for _, bz in ipairs({ -5.5, 5.5 }) do
-			blk(folder, "FOHBarrier", Vector3.new(14.4, 3.0, 0.35), CFrame.new(0, 1.7, fz + bz), Color3.fromRGB(150, 155, 165), Enum.Material.DiamondPlate)
+		local fx, fz = 0, z0 + (z1 - z0) * 0.6
+		if not clearAt(fx, fz) then
+			local found = false
+			for _, zz in ipairs({ fz + 10, fz + 20, fz + 30, fz + 45, fz - 10 }) do
+				for _, xx in ipairs({ 0, -24, 24, -40, 40, -56, 56 }) do
+					if not found and clearAt(xx, zz) then
+						fx, fz, found = xx, zz, true
+					end
+				end
+			end
+			if not found then
+				fz = nil
+			end
 		end
-		for _, px in ipairs({ -6.7, 6.7 }) do
-			for _, pz in ipairs({ -4.05, 4.05 }) do
-				blk(folder, "FOHPole", Vector3.new(0.4, 8, 0.4), CFrame.new(px, 4.8, fz + pz), METAL, Enum.Material.Metal)
+		if fz then
+			foh = { x = fx, z = fz, w = 14, d = 9 }
+			local function at(x, y, z)
+				return CFrame.new(fx + x, y, fz + z)
+			end
+			blk(folder, "FOHRiser", Vector3.new(14, 1.2, 9), at(0, 0.6, 0), Color3.fromRGB(30, 30, 34))
+			blk(folder, "FOHDesk", Vector3.new(10, 1.6, 2.4), at(0, 2, -1.5), Color3.fromRGB(22, 22, 26))
+			blk(folder, "FOHFaders", Vector3.new(9.4, 0.15, 1.8), at(0, 2.85, -1.5), Color3.fromRGB(60, 120, 200), Enum.Material.Neon)
+			-- the show computers with the cue lists
+			for k, sx in ipairs({ -3.6, -1.2, 1.2, 3.6 }) do
+				blk(folder, "FOHScreen", Vector3.new(2, 1.3, 0.12), at(sx, 3.65, -0.6) * CFrame.Angles(math.rad(-12), 0, 0), Color3.fromRGB(10, 12, 18))
+				blk(folder, "FOHScreenGlow", Vector3.new(1.8, 1.1, 0.05), at(sx, 3.65, -0.7) * CFrame.Angles(math.rad(-12), 0, 0), (k % 2 == 0) and Color3.fromRGB(40, 90, 160) or Color3.fromRGB(30, 140, 110), Enum.Material.Neon)
+			end
+			blk(folder, "FOHRoof", Vector3.new(15, 0.4, 10), at(0, 9, 0), Color3.fromRGB(18, 18, 22))
+			for _, bx in ipairs({ -7.2, 7.2 }) do
+				blk(folder, "FOHBarrier", Vector3.new(0.35, 3.2, 11), at(bx, 1.8, 0), Color3.fromRGB(150, 155, 165), Enum.Material.DiamondPlate)
+			end
+			for _, bz in ipairs({ -5.5, 5.5 }) do
+				blk(folder, "FOHBarrier", Vector3.new(14.4, 3.0, 0.35), at(0, 1.7, bz), Color3.fromRGB(150, 155, 165), Enum.Material.DiamondPlate)
+			end
+			for _, px in ipairs({ -6.7, 6.7 }) do
+				for _, pz in ipairs({ -4.05, 4.05 }) do
+					blk(folder, "FOHPole", Vector3.new(0.4, 8, 0.4), at(px, 4.8, pz), METAL, Enum.Material.Metal)
+				end
 			end
 		end
 	end
@@ -777,6 +812,30 @@ function Venue.build(lookKey, fill, merchColor, opts)
 			-- roof canopy all around with a row of floodlights
 			band(folder, path, true, ctr, uOut - 18, uTop + 14, 1.5, 44, Color3.fromRGB(200, 205, 215), Enum.Material.Metal, "Canopy")
 			band(folder, path, true, ctr, uOut - 38, uTop + 12.6, 1, 1, Color3.fromRGB(255, 250, 230), Enum.Material.Neon, "Floodlights")
+			-- points along the inner edge of the roof: Roof Fireworks go up from there, all around the stadium
+			local rim = {}
+			local np = #path
+			for si = 1, np do
+				local a, b = path[si], path[si % np + 1]
+				local dir = Vector3.new(b.X - a.X, 0, b.Z - a.Z)
+				local len = dir.Magnitude
+				if len > 1 then
+					dir = dir.Unit
+					local nrm = Vector3.new(dir.Z, 0, -dir.X)
+					local mid = (a + b) / 2
+					if (Vector3.new(mid.X, 0, mid.Z) - Vector3.new(ctr.X, 0, ctr.Z)):Dot(nrm) < 0 then
+						nrm = -nrm
+					end
+					local k = math.max(1, math.floor(len / 34))
+					for j = 0, k - 1 do
+						local q = a + dir * (len * (j + 0.5) / k)
+						table.insert(rim, Vector3.new(q.X, uTop + 15.6, q.Z) + nrm * (uOut - 36))
+					end
+				end
+			end
+			info.rim = rim
+			Venue.rimPoints = rim
+			require(Root.Client.Builder).rimPoints = rim
 			-- video screens behind the last row of the end stand, under the roof, on a steel frame
 			local sz = z1 + 2 + uOut - 3
 			for _, x in ipairs({ -1, 1 }) do
@@ -1151,6 +1210,10 @@ function Venue.animate(info, t, energy, speed, phonesOn, c1, c2, beatCount)
 end
 
 function Venue.destroy(info)
+	if info and info.rim and Venue.rimPoints == info.rim then
+		Venue.rimPoints = nil
+		require(Root.Client.Builder).rimPoints = nil
+	end
 	if info and info.folder then
 		info.folder:Destroy()
 	end

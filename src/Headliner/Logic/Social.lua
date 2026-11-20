@@ -77,6 +77,7 @@ function Social.add(state, kind, c, n, rnd)
 			pkind = pkind,
 			look = v and Countries.VENUE_TYPES[v.type] and Countries.VENUE_TYPES[v.type].look or nil,
 			venue = v and v.name or nil,
+			designId = c.designId, -- photos of the show show this stage
 			seed = math.floor(rnd() * 100000),
 			avatar = math.floor(rnd() * 8) + 1,
 		})
@@ -118,7 +119,7 @@ end
 function Social.onShow(state, tour, idx, r, design, rnd)
 	rnd = rnd or math.random
 	local s = tour.shows[idx]
-	local c = { artistId = tour.artistId, venueId = s.venueId, tour = tour, price = s.price, reach = reach(state, tour.artistId) }
+	local c = { artistId = tour.artistId, venueId = s.venueId, tour = tour, price = s.price, reach = reach(state, tour.artistId), designId = design and design.id }
 	local kind = (r.stars >= 4) and "show_great" or ((r.stars == 3) and "show_ok" or "show_bad")
 	Social.add(state, kind, c, (r.stars >= 4) and 3 or 2, rnd)
 	if r.stars >= 3 then

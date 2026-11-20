@@ -141,7 +141,7 @@ local function buildTimeline(ad, rng, songCount, hasRoof)
 end
 
 -- effect items and the hit that fires them (laser / low fog follow ctx.lasers / ctx.fog)
-local FX_HIT = { pyro = "pyro", flamebar = "pyro", sparks = "sparks", sparkrain = "sparks", confetti = "confetti", streamers = "streamers", co2 = "co2", fireworks = "fireworks", balls = "balls", laser = "laser", lowfog = "fog" }
+local FX_HIT = { pyro = "pyro", flamebar = "pyro", sparks = "sparks", sparkrain = "sparks", confetti = "confetti", streamers = "streamers", co2 = "co2", fireworks = "fireworks", rimfireworks = "fireworks", balls = "balls", laser = "laser", lowfog = "fog", raincurtain = "rain" }
 
 -- the moves of the artist at an instrument (they change every 4 seconds)
 local PLAY_MOVES = {
@@ -359,8 +359,34 @@ local function showParts(job, frac)
 		crewHidden[e[1]] = (i > k) or nil
 	end
 end
-function LiveShow.planSetups(items, segments, navC, navD, onSurface)
+-- the two stage hands walk in from the sides of the stage (left and right wing), fading in as they come
+-- out of the dark, build the piece bit by bit, turn round and walk off again, fading out. The same after
+-- the song when they take it away. nav = StageNav (path over the decks)
+local CREW_SPEED = 9
+local CREW_BUILD = 2.5
+local CREW_TURN = 0.5
+local function polyLen(pts)
+	local len = 0
+	for k = 2, #pts do
+		len = len + (pts[k] - pts[k - 1]).Magnitude
+	end
+	return len
+end
+local function polyAt(pts, d)
+	for k = 2, #pts do
+		local seg = (pts[k] - pts[k - 1]).Magnitude
+		if d <= seg or k == #pts then
+			local f = (seg > 0) and math.clamp(d / seg, 0, 1) or 1
+			local dir = pts[k] - pts[k - 1]
+			return pts[k - 1]:Lerp(pts[k], f), math.atan2(dir.X, dir.Z)
+		end
+		d = d - seg
+	end
+	return pts[#pts], 0
+end
+function LiveShow.planSetups(items, segments, navC, navD, onSurface, nav)
 	local jobs = {}
+	local navW = (nav and nav.navW) or navD
 	for _, r in ipairs(items) do
 		local rec = r.rec
 		if rec and rec.setup == "crew" and type(rec.play) == "number" and rec.play > 1 then
@@ -381,17 +407,30 @@ function LiveShow.planSetups(items, segments, navC, navD, onSurface)
 					return a[3] < b[3]
 				end)
 				local p = r.cf.Position
-				local back = navC.Z - navD / 2 - 3
 				local hands = {}
+				local walk = 0
 				for i = 1, 2 do
 					local look = { worker = true, top = { 249, 115, 22 }, pants = { 40, 44, 56 }, shoes = { 30, 30, 30 }, hair = "short" }
 					local fig = People.new(Stage3D.peopleFolder, Color3.fromRGB(249, 115, 22), 1.35, "dancer", 300 + #jobs * 2 + i, look)
 					fig:setVisible(false)
 					local side = (i == 1) and -1 or 1
-					table.insert(hands, { p = fig, from = onSurface(Vector3.new(p.X + side * 2.5, 0, back)), to = onSurface(Vector3.new(p.X + side * 2.4, 0, p.Z + 1.5)) })
+					-- from the wing on this side of the stage, level with the piece (a little behind it)
+					local wingX = navC.X + side * (navW / 2 - 1)
+					local from = onSurface(Vector3.new(wingX, 0, math.clamp(p.Z - 2, navC.Z - navD / 2 + 2, navC.Z + navD / 2 - 2)))
+					local to = onSurface(Vector3.new(p.X + side * 2.4, 0, p.Z + 1.5))
+					local way = nav and nav.findPath(from, to)
+					way = (way and nav.smooth(way)) or { from, to }
+					local back = {}
+					for k = #way, 1, -1 do
+						table.insert(back, way[k])
+					end
+					local len = polyLen(way)
+					walk = math.max(walk, math.clamp(len / CREW_SPEED, 1.2, 6))
+					table.insert(hands, { p = fig, way = way, back = back, len = len })
 				end
-				local tIn = math.max(segments[1].t0 + 1, seg.t0 - 6.5)
-				local job = { item = r, parts = parts, hands = hands, tIn = tIn, tOut = seg.t1 + 0.5 }
+				local total = walk * 2 + CREW_BUILD + CREW_TURN
+				local tIn = math.max(segments[1].t0 + 1, seg.t0 - total - 0.3)
+				local job = { item = r, parts = parts, hands = hands, tIn = tIn, tOut = seg.t1 + 0.5, walk = walk, total = total }
 				showParts(job, 0)
 				table.insert(jobs, job)
 			end
@@ -401,34 +440,47 @@ function LiveShow.planSetups(items, segments, navC, navD, onSurface)
 end
 function LiveShow.updateSetups(jobs, t)
 	for _, job in ipairs(jobs) do
-		-- 0..2 walk on, 2..4.5 build, 4.5..6.5 walk off (and the same after the song)
+		-- walk on (fading in), build, turn round, walk off (fading out); the same after the song
+		local W, total = job.walk or 2, job.total or 6.5
 		local u, phase = nil, nil
-		if t >= job.tIn and t < job.tIn + 6.5 then
+		if t >= job.tIn and t < job.tIn + total then
 			u, phase = t - job.tIn, "on"
-		elseif t >= job.tOut and t < job.tOut + 6.5 then
+		elseif t >= job.tOut and t < job.tOut + total then
 			u, phase = t - job.tOut, "off"
 		end
 		if phase then
-			local frac = math.clamp((u - 2) / 2.5, 0, 1)
+			local frac = math.clamp((u - W) / CREW_BUILD, 0, 1)
 			showParts(job, (phase == "on") and frac or (1 - frac))
 			for i, h in ipairs(job.hands) do
-				local pos, walking, yaw
-				if u < 2 then
-					local f = u / 2
-					pos, walking = h.from:Lerp(h.to, f), true
-					local d = h.to - h.from
+				local pos, walking, yaw, fade
+				if u < W then
+					-- coming in: out of the dark of the wing, more and more visible
+					local d = h.len * (u / W)
+					pos, yaw = polyAt(h.way, d)
+					walking = true
+					fade = math.clamp(1 - (u / W) / 0.45, 0, 0.9)
+				elseif u < W + CREW_BUILD then
+					pos, walking = h.way[#h.way], false
+					local d = job.item.cf.Position - pos
 					yaw = math.atan2(d.X, d.Z)
-				elseif u < 4.5 then
-					pos, walking = h.to, false
-					local d = job.item.cf.Position - h.to
-					yaw = math.atan2(d.X, d.Z)
+					fade = 0
+				elseif u < W + CREW_BUILD + CREW_TURN then
+					-- turn round to the wing
+					pos, walking = h.way[#h.way], false
+					local d1 = job.item.cf.Position - pos
+					local _, y2 = polyAt(h.back, 0.5)
+					local y1 = math.atan2(d1.X, d1.Z)
+					local f = (u - W - CREW_BUILD) / CREW_TURN
+					local dy = ((y2 - y1 + math.pi) % (2 * math.pi)) - math.pi
+					yaw = y1 + dy * f
+					fade = 0
 				else
-					local f = math.clamp((u - 4.5) / 2, 0, 1)
-					pos, walking = h.to:Lerp(h.from, f), true
-					local d = h.from - h.to
-					yaw = math.atan2(d.X, d.Z)
+					local f = math.clamp((u - W - CREW_BUILD - CREW_TURN) / W, 0, 1)
+					pos, yaw = polyAt(h.back, h.len * f)
+					walking = true
+					fade = math.clamp((f - 0.55) / 0.45, 0, 1)
 				end
-				h.p:setVisible(true)
+				h.p:setFade(fade)
 				h.p:update(pos, yaw, { t = t + i, beat = 0, energy = 0.4, walking = walking, armsUp = 0, move = walking and "walk" or "carry" })
 			end
 		else
@@ -436,9 +488,9 @@ function LiveShow.updateSetups(jobs, t)
 				h.p:setVisible(false)
 			end
 			-- before it is built and after it is taken away nothing is there; in between it stays as it is
-			if t < job.tIn or t >= job.tOut + 6.5 then
+			if t < job.tIn or t >= job.tOut + total then
 				showParts(job, 0)
-			elseif job.shown ~= #job.parts and t >= job.tIn + 6.5 and t < job.tOut then
+			elseif job.shown ~= #job.parts and t >= job.tIn + total and t < job.tOut then
 				showParts(job, 1)
 			end
 		end
@@ -529,6 +581,26 @@ function LiveShow.run(app, opts)
 	end
 	local crowd = Venue.build(look, fill, artistColor, { layout = centerStage and "center" or "end", pits = pits, wristbands = wristbands })
 	local deckCenter = Stage3D.deckBox()
+	-- a soft white stage wash from above the front of the stage (like the key light of a real show): the
+	-- stage and the artist are always easy to see, the coloured show lights come on top
+	do
+		local c, w, d = Stage3D.deckBox()
+		local n = math.clamp(math.ceil(w / 36), 1, 6)
+		for i = 1, n do
+			local x = c.X - w / 2 + (i - 0.5) * w / n
+			local holder = Instance.new("Part")
+			holder.Name = "StageWash"
+			holder.Anchored, holder.CanCollide, holder.CanQuery, holder.CanTouch, holder.CastShadow = true, false, false, false, false
+			holder.Transparency = 1
+			holder.Size = Vector3.new(1, 1, 1)
+			holder.CFrame = CFrame.lookAt(Vector3.new(x, 34, c.Z + d / 2 + 18), Vector3.new(x, 4, c.Z))
+			holder.Parent = crowd.folder
+			local sl = Instance.new("SpotLight")
+			sl.Brightness, sl.Range, sl.Angle, sl.Shadows = 1.1, 60, 75, false
+			sl.Color = Color3.fromRGB(255, 244, 228)
+			sl.Parent = holder
+		end
+	end
 
 	local function onSurface(p)
 		return Vector3.new(p.X, Stage3D.surfaceY(p.X, p.Z), p.Z)
@@ -743,7 +815,7 @@ function LiveShow.run(app, opts)
 	end
 	LiveShow.lastCrew = crew -- for the automated tests
 	-- instruments the crew sets up for their song (and takes away after it): rec.setup = "crew"
-	local setupJobs = LiveShow.planSetups(items, segments, navC, navD, onSurface)
+	local setupJobs = LiveShow.planSetups(items, segments, navC, navD, onSurface, nav)
 	LiveShow.lastSetups = setupJobs
 	LiveShow.lastBand = #band -- for the automated tests
 	local performers = { lead }
@@ -874,7 +946,7 @@ function LiveShow.run(app, opts)
 		camButtons[0] = UI.Button(bar, "Walk [V]", nil, UI.px(100, 38), { order = 0, textSize = 14 }, function()
 			camMode = 0
 		end)
-		UI.Label(overlay, "WASD = walk around the venue   |   V = walk   |   0 - 5 = show cameras", UI.px(0, 976), UI.px(1920, 30), { textSize = 17, font = UI.FontBold, alignX = Enum.TextXAlignment.Center }).TextStrokeTransparency = 0.5
+		UI.Label(overlay, "WASD = walk around the venue   |   V = walk   |   F = first person   |   0 - 5 = show cameras", UI.px(0, 976), UI.px(1920, 30), { textSize = 17, font = UI.FontBold, alignX = Enum.TextXAlignment.Center }).TextStrokeTransparency = 0.5
 	end
 	for i, name in ipairs(CAMERA_NAMES) do
 		camButtons[i] = UI.Button(bar, name .. " [" .. (i - 1) .. "]", nil, UI.px(104, 38), { order = i, textSize = 14 }, function()
@@ -994,6 +1066,7 @@ function LiveShow.run(app, opts)
 		Stage3D.setLighting("designer")
 		overlay:Destroy()
 		if walkMode then
+			W.toggleFirstPerson(false)
 			W.setZoom()
 			W.toSpawn()
 		end
@@ -1160,6 +1233,7 @@ function LiveShow.run(app, opts)
 		ctx.beat = beat
 		ctx.beatCount = beatCount
 		ctx.seg = (seg.kind == "ballad") and 3 or ((seg.kind == "finale") and 4 or 1)
+		ctx.songNum = seg.song
 		ctx.c1 = seg.c1
 		ctx.c2 = seg.c2
 		ctx.intensity = seg.intensity

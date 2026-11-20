@@ -41,7 +41,7 @@ local GEOMETRY_KEYS = { flip = true, w = true, d = true, h = true, skin = true, 
 -- settings that only change the show (no new model needed)
 local SHOW_KEYS = { play = true, songs = true, cs = true, anim = true, mid = true, song = true, setup = true }
 -- effects that can fire in chosen songs (rec.songs = { 1, 4, ... }; false / nil = automatic)
-local FX_SONG_KINDS = { flamebar = true, sparkrain = true, pyro = true, sparks = true, confetti = true, streamers = true, co2 = true, fireworks = true, balls = true, laser = true, lowfog = true }
+local FX_SONG_KINDS = { flamebar = true, sparkrain = true, pyro = true, sparks = true, confetti = true, streamers = true, co2 = true, fireworks = true, rimfireworks = true, balls = true, laser = true, lowfog = true, raincurtain = true }
 Designer.FX_SONG_KINDS = FX_SONG_KINDS
 
 local HELP = table.concat({

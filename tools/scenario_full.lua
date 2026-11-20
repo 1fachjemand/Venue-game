@@ -843,14 +843,18 @@ do
 		local t = LS.debugT and LS.debugT() or nil
 		if t then
 			if t < job.tIn - 0.5 and seen.before == nil then seen.before = shownNow() end
-			if t > job.tIn + 7 and t < job.tOut - 0.5 then seen.during = shownNow(true) end
-			if t > job.tIn + 0.5 and t < job.tIn + 6 then
+			if t > job.tIn + job.total + 0.5 and t < job.tOut - 0.5 then seen.during = shownNow(true) end
+			if t > job.tIn + 0.5 and t < job.tIn + job.total - 0.5 then
 				for _, h in ipairs(job.hands) do if h.p.visible then seen.hands = true end end
+				-- coming in from a side of the stage (not from the back wall), fading in
+				local h1 = job.hands[1]
+				if t < job.tIn + 0.2 * job.walk then seen.fadeIn = (h1.p.fade or 0) > 0.2 end
 			end
-			if t > job.tOut + 7 then seen.after = shownNow() end
+			if t > job.tOut + job.total + 0.5 then seen.after = shownNow() end
 		end
 	end
-	log("crew set-up: before", seen.before, "during", seen.during, "of", #job.parts, "crew seen", seen.hands, "after", seen.after)
+	log("crew set-up: before", seen.before, "during", seen.during, "of", #job.parts, "crew seen", seen.hands, "after", seen.after, "from x", job.hands[1].way[1].X, job.hands[2].way[1].X, "fade in", seen.fadeIn)
+	assert(job.hands[1].way[1].X < -10 and job.hands[2].way[1].X > 10, "the stage hands come from both sides")
 	assert(doneC and seen.before == 0 and seen.during == #job.parts and seen.hands and seen.after == 0, "the crew sets the acoustic set up and takes it away")
 	for _ = 1, 10 do MOCK.step(1 / 30) end
 end

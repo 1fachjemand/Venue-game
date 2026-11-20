@@ -1476,6 +1476,73 @@ function B.haze(m, r)
 	r.smoke = New("Smoke", { Color = Color3.fromRGB(180, 180, 200), Opacity = 0.08, RiseVelocity = 1.5, Size = 18, Enabled = false, Parent = r.nozzle })
 end
 
+-- rain curtain: a pipe in the rig with nozzles; in its songs (or automatically in the ballad) rain pours down
+-- in a long sheet onto the stage, glittering in the light, with a little mist where it lands
+function B.raincurtain(m, r)
+	local w = dims(r, r.def)
+	part(m, "Pipe", Vector3.new(w, 0.5, 0.5), CFrame.new(0, 0, 0), METAL, Enum.Material.Metal)
+	part(m, "Hanger", Vector3.new(0.2, 1.6, 0.2), CFrame.new(-w / 2 + 1, 0.8, 0), METAL, Enum.Material.Metal)
+	part(m, "Hanger", Vector3.new(0.2, 1.6, 0.2), CFrame.new(w / 2 - 1, 0.8, 0), METAL, Enum.Material.Metal)
+	local n = math.max(2, math.floor(w / 1.5))
+	for i = 0, n - 1 do
+		part(m, "Nozzle", Vector3.new(0.22, 0.3, 0.22), CFrame.new(-w / 2 + (i + 0.5) * w / n, -0.35, 0), DARK, Enum.Material.Metal)
+	end
+	local fall = math.clamp((Builder.rigTop or 36) - 6, 8, 90)
+	r.rainSrc = part(m, "RainSource", Vector3.new(w, 0.1, 0.6), CFrame.new(0, -0.55, 0), DARK)
+	r.rainSrc.Transparency = 1
+	r.rain = New("ParticleEmitter", {
+		Enabled = false,
+		Rate = math.floor(36 * w),
+		EmissionDirection = Enum.NormalId.Bottom,
+		Lifetime = NumberRange.new(fall / 62, fall / 54),
+		Speed = NumberRange.new(54, 62),
+		SpreadAngle = Vector2.new(0, 2),
+		Size = NumberSequence.new(0.09),
+		Squash = NumberSequence.new(2.6),
+		Orientation = Enum.ParticleOrientation.VelocityParallel,
+		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(0.85, 0.35), NumberSequenceKeypoint.new(1, 1) }),
+		Color = ColorSequence.new(Color3.fromRGB(210, 230, 255)),
+		LightEmission = 0.55,
+		LightInfluence = 0.6,
+		Parent = r.rainSrc,
+	})
+	r.mistSrc = part(m, "MistSource", Vector3.new(w, 0.1, 1.2), CFrame.new(0, -fall + 0.6, 0), DARK)
+	r.mistSrc.Transparency = 1
+	r.mist = New("ParticleEmitter", {
+		Enabled = false,
+		Rate = math.floor(2 * w),
+		Texture = "rbxasset://textures/particles/smoke_main.dds",
+		Lifetime = NumberRange.new(1, 1.8),
+		Speed = NumberRange.new(1, 3),
+		SpreadAngle = Vector2.new(60, 60),
+		Size = NumberSequence.new(2, 5),
+		Transparency = NumberSequence.new(0.8, 1),
+		Color = ColorSequence.new(Color3.fromRGB(220, 230, 245)),
+		Parent = r.mistSrc,
+	})
+end
+function B.rimfireworks(m, r)
+	-- the firing system: a case with a key switch and an antenna; the shells start from the stadium roof
+	part(m, "Case", Vector3.new(2.4, 1.4, 1.6), CFrame.new(0, 0.7, 0), Color3.fromRGB(30, 32, 36), Enum.Material.Metal)
+	part(m, "Panel", Vector3.new(2, 0.08, 1.2), CFrame.new(0, 1.44, 0), Color3.fromRGB(60, 62, 70), Enum.Material.Metal)
+	part(m, "ArmLight", Vector3.new(0.25, 0.12, 0.25), CFrame.new(-0.6, 1.52, 0.2), Color3.fromRGB(255, 60, 50), Enum.Material.Neon)
+	part(m, "Antenna", Vector3.new(0.08, 2.2, 0.08), CFrame.new(0.9, 2.5, -0.5), DARK, Enum.Material.Metal)
+	r.burst = part(m, "Burst", Vector3.new(1, 1, 1), CFrame.new(0, 75, 0), DARK)
+	r.burst.Transparency = 1
+	r.emitter = New("ParticleEmitter", {
+		Enabled = false,
+		Rate = 0,
+		Lifetime = NumberRange.new(1.2, 2.2),
+		Speed = NumberRange.new(30, 46),
+		SpreadAngle = Vector2.new(180, 180),
+		Size = NumberSequence.new(2, 0),
+		Color = ColorSequence.new(r.color, Color3.fromRGB(255, 245, 210)),
+		LightEmission = 1,
+		Drag = 0.8,
+		Acceleration = Vector3.new(0, -12, 0),
+		Parent = r.burst,
+	})
+end
 function B.fireworks(m, r)
 	part(m, "Rack", Vector3.new(4, 2, 2), CFrame.new(0, 1, 0), DARK)
 	for i = -1, 1 do
@@ -1486,10 +1553,10 @@ function B.fireworks(m, r)
 	r.emitter = New("ParticleEmitter", {
 		Enabled = false,
 		Rate = 0,
-		Lifetime = NumberRange.new(1.4, 2.4),
-		Speed = NumberRange.new(28, 40),
+		Lifetime = NumberRange.new(1.6, 2.6),
+		Speed = NumberRange.new(36, 54),
 		SpreadAngle = Vector2.new(180, 180),
-		Size = NumberSequence.new(1.6, 0),
+		Size = NumberSequence.new(2.4, 0),
 		Color = ColorSequence.new(r.color, Color3.fromRGB(255, 240, 200)),
 		LightEmission = 1,
 		Drag = 0.8,
@@ -3315,19 +3382,23 @@ local function setNeon(refs, c)
 	end
 end
 
-local function launchShell(refs)
-	local start = refs.cf * CFrame.new(0, 3, 0)
+-- one firework shell: flies up from `from` (default: the rack) and bursts high in the sky
+local function launchShell(refs, from, height)
+	local start = from and CFrame.new(from) or (refs.cf * CFrame.new(0, 3, 0))
+	height = height or (120 + math.random() * 40)
 	local shell = part(refs.model, "Shell", Vector3.new(0.8, 0.8, 0.8), start, WARM, Enum.Material.Neon, Enum.PartType.Ball)
-	local tw = TweenService:Create(shell, TweenInfo.new(1.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = refs.cf * CFrame.new(math.random(-6, 6), 75, math.random(-6, 6)) })
+	local tw = TweenService:Create(shell, TweenInfo.new(1.2 + height / 120, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = start * CFrame.new(math.random(-8, 8), height, math.random(-8, 8)) })
 	tw.Completed:Connect(function()
 		if refs.burst and refs.burst.Parent then
 			refs.burst.CFrame = shell.CFrame
-			refs.emitter:Emit(140)
+			refs.emitter:Emit(height > 90 and 220 or 150)
 		end
 		shell:Destroy()
 	end)
 	tw:Play()
 end
+-- the stadium roof edge (set by Venue.lua while a stadium stands): Roof Fireworks start from there
+Builder.rimPoints = nil
 
 -- Called every frame during a show. ctx: see LiveShow.lua
 -- side-mounted lights move like their rig / floor versions
@@ -3687,12 +3758,54 @@ function Builder.animateKind(refs, ctx)
 		refs.smoke.Enabled = true
 	elseif k == "fireworks" then
 		if hit.fireworks then
-			for i = 0, 2 do
+			for i = 0, 3 do
 				task.delay(i * 0.35, function()
 					if refs.model.Parent then
 						launchShell(refs)
 					end
 				end)
+			end
+		end
+	elseif k == "raincurtain" then
+		-- rains in its songs; without chosen songs in the ballad
+		local songs = refs.rec and refs.rec.songs
+		local on = false
+		if type(songs) == "table" and #songs > 0 then
+			for _, n in ipairs(songs) do
+				if n == ctx.songNum then
+					on = true
+				end
+			end
+		else
+			on = ctx.seg == 3
+		end
+		if refs.rain.Enabled ~= on then
+			refs.rain.Enabled = on
+			refs.mist.Enabled = on
+		end
+		if on then
+			refs.rain.Color = ColorSequence.new(Color3.fromRGB(210, 230, 255):Lerp(c1, 0.25))
+		end
+	elseif k == "rimfireworks" then
+		-- a volley all round the top of the stadium roof (in other venues: from the box itself)
+		if hit.fireworks then
+			local rim = Builder.rimPoints
+			if rim and #rim > 0 then
+				for i, p in ipairs(rim) do
+					task.delay((i % 6) * 0.18 + math.random() * 0.1, function()
+						if refs.model.Parent then
+							launchShell(refs, p, 45 + math.random() * 35)
+						end
+					end)
+				end
+			else
+				for i = 0, 3 do
+					task.delay(i * 0.3, function()
+						if refs.model.Parent then
+							launchShell(refs, nil, 60)
+						end
+					end)
+				end
 			end
 		end
 	elseif k == "inflatable" then

@@ -121,7 +121,8 @@ local function buildCrowd(self, vp)
 			look.top = { math.floor(shirt.R * 255), math.floor(shirt.G * 255), math.floor(shirt.B * 255) }
 			local fig = People.new(vp, shirt, 1, "crowd", gi * 10 + i, look)
 			-- side by side with room for the arms (friends arm in arm stand a bit closer)
-			local spacing = (kind == "couple") and 3.3 or 4.3
+			-- (checked by tools/checks/scenario_livefeed.lua: no arm ever reaches into the neighbour)
+			local spacing = (kind == "couple") and 4.2 or ((kind == "dance") and 5.6 or 4.6)
 			local fo = { fig = fig, off = (i - (#lk + 1) / 2) * spacing, ph = rng:NextNumber() * 6 }
 			if kind == "phones" then
 				fo.phone = mk(vp, "PhoneLight", Vector3.new(0.45, 0.75, 0.1), CFrame.new(), Color3.fromRGB(255, 255, 235), Enum.Material.Neon)
@@ -184,7 +185,7 @@ local function updateCrowd(sc, face, ctx)
 				opts.armsUp = 1
 			elseif g.kind == "couple" then
 				opts.move = "wave"
-				yaw = math.pi + ((i == 1) and 0.25 or -0.25) + math.sin(t * 1.5) * 0.1
+				yaw = math.pi + ((i == 1) and 0.15 or -0.15) + math.sin(t * 1.5) * 0.06
 			end
 			fo.fig:update(pos, yaw, opts)
 			if fo.phone then

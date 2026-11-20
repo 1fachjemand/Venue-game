@@ -575,13 +575,29 @@ function People:holdAcoustic(on, hip, s)
 end
 
 function People:setVisible(on)
-	if self.visible == on then
+	if self.visible == on and self.fade == nil then
 		return
 	end
 	self.visible = on
+	self.fade = nil
 	for _, p in ipairs(self.model:GetChildren()) do
 		if p:IsA("BasePart") then
 			p.Transparency = on and 0 or 1
+		end
+	end
+end
+
+-- 0 = fully there, 1 = gone; in between see-through (stage hands coming out of the dark)
+function People:setFade(a)
+	a = math.clamp(a or 0, 0, 1)
+	if self.fade == a and self.visible == (a < 1) then
+		return
+	end
+	self.fade = a
+	self.visible = a < 1
+	for _, p in ipairs(self.model:GetChildren()) do
+		if p:IsA("BasePart") then
+			p.Transparency = a
 		end
 	end
 end

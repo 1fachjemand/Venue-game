@@ -67,8 +67,26 @@ end
 World.MAX_ZOOM = 22
 function World.setZoom(maxZoom)
 	local player = Players.LocalPlayer
-	player.CameraMinZoomDistance = 2
+	-- zoom all the way in (mouse wheel) = first person; F switches first person on / off
+	player.CameraMinZoomDistance = 0.5
 	player.CameraMaxZoomDistance = maxZoom or World.MAX_ZOOM
+	player.CameraMode = World.firstPerson and Enum.CameraMode.LockFirstPerson or Enum.CameraMode.Classic
+end
+World.firstPerson = false
+function World.toggleFirstPerson(on)
+	if on == nil then
+		on = not World.firstPerson
+	end
+	World.firstPerson = on
+	local player = Players.LocalPlayer
+	player.CameraMode = on and Enum.CameraMode.LockFirstPerson or Enum.CameraMode.Classic
+	if not on then
+		player.CameraMinZoomDistance = 8 -- step back out of the head, then the wheel works again
+		task.delay(0.2, function()
+			player.CameraMinZoomDistance = 0.5
+		end)
+	end
+	return on
 end
 
 local function onCharacter(char)
@@ -1303,6 +1321,17 @@ function World.start(app)
 		old:Destroy()
 	end
 	World.folder = New("Folder", { Name = "HubClient", Parent = workspace })
+	-- F = first person on / off while walking around (not while a page, the laptop or the builder is open)
+	table.insert(World.conns, game:GetService("UserInputService").InputBegan:Connect(function(input, gp)
+		if gp or input.KeyCode ~= Enum.KeyCode.F then
+			return
+		end
+		local mode = app.mode
+		if mode == "world" or mode == "live" then
+			local on = World.toggleFirstPerson()
+			app:toast(on and "First person: on (F = off)" or "First person: off", UI.Theme.accent2, 2)
+		end
+	end))
 	if World.root then
 		for _, d in ipairs(World.root:GetDescendants()) do
 			if d:IsA("ProximityPrompt") then

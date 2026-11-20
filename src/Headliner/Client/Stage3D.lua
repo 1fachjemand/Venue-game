@@ -140,9 +140,10 @@ function Stage3D.setLighting(mode)
 		Lighting.EnvironmentDiffuseScale = 0.8
 		Lighting.EnvironmentSpecularScale = 0.5
 	elseif mode == "show" then
-		Lighting.Brightness = 1.5
-		Lighting.Ambient = Color3.fromRGB(62, 60, 80)
-		Lighting.OutdoorAmbient = Color3.fromRGB(70, 70, 92)
+		-- a show is dark, but the stage must always be easy to see (see also the stage wash in LiveShow)
+		Lighting.Brightness = 1.7
+		Lighting.Ambient = Color3.fromRGB(88, 86, 108)
+		Lighting.OutdoorAmbient = Color3.fromRGB(92, 92, 116)
 		Lighting.EnvironmentDiffuseScale = 0.35
 		Lighting.EnvironmentSpecularScale = 0.4
 	else
