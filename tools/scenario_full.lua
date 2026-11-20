@@ -510,6 +510,44 @@ H.moveY.MouseDrag:Fire(Enum.NormalId.Bottom, 2)
 H.moveY.MouseButton1Up:Fire(Enum.NormalId.Bottom)
 log("lowered deck yo", yo0, "->", selRec.yo)
 assert(selRec.yo == yo0 - 2, "down arrow")
+-- moving with an arrow goes straight along the arrow (no sideways slide), also for a turned piece
+for _, r in ipairs(Stage3D.items) do if r.rec == selRec then Designer.current.select(r) end end
+selRec.r = 30
+for _, r in ipairs(Stage3D.items) do if r.rec == selRec then Designer.current.select(r) end end
+Designer.current.render()
+for _, r in ipairs(Stage3D.items) do if r.rec == selRec then Designer.current.select(r) end end
+steps(2)
+local ax0, az0 = selRec.x, selRec.z
+local adir = H.moveX.Adornee.CFrame:VectorToWorldSpace(Vector3.new(1, 0, 0))
+H.moveX.MouseButton1Down:Fire(Enum.NormalId.Right)
+H.moveX.MouseDrag:Fire(Enum.NormalId.Right, 6.3)
+H.moveX.MouseButton1Up:Fire(Enum.NormalId.Right)
+local mdx, mdz = selRec.x - ax0, selRec.z - az0
+log("turned deck moved", mdx, mdz)
+assert(math.abs(mdx - adir.X * 6) < 0.05 and math.abs(mdz - adir.Z * 6) < 0.05, "a deck moves straight along its arrow, exactly in grid steps")
+selRec.r = 0
+Designer.current.render()
+-- decks line up with the edges of decks next to them
+do
+	local def = StageItems.byId.deck
+	local a = { t = "deck", x = 200, z = 300, r = 0, w = 20, d = 10 }
+	table.insert(design.items, a)
+	local test = { t = "deck", x = 200 + 10 + 5 + 0.9, z = 301, r = 0, w = 10, d = 10 }
+	local x0 = test.x
+	Designer.current.edgeSnap(test, def)
+	table.remove(design.items, #design.items)
+	log("edge snap", x0, "->", test.x, test.z)
+	assert(math.abs(test.x - (x0 - 0.9)) < 0.01 and math.abs(test.z - 300) < 0.01, "a deck next to another one snaps flush to its edges")
+end
+-- a truss beam turned on purpose keeps its angle next to another beam
+do
+	local beam = nil
+	for _, r in ipairs(Stage3D.items) do if r.kind == "truss_beam" then beam = r break end end
+	local p = beam.cf.Position
+	local _, _, rr = Stage3D.alignTruss(p.X + 2, p.Z + 3, ((beam.rec.r or 0) + 15) % 360, 24)
+	log("turned beam keeps", rr, "beam", beam.rec.r)
+	assert(math.abs(((rr - (beam.rec.r or 0)) % 360) - 15) < 0.01, "R turns a truss beam")
+end
 for _, r in ipairs(Stage3D.items) do if r.rec == selRec then Designer.current.select(r) end end
 H.rotate.MouseButton1Down:Fire(Enum.Axis.Y)
 H.rotate.MouseDrag:Fire(Enum.Axis.Y, 0.8, 0)
@@ -626,6 +664,37 @@ do
 	key(Enum.KeyCode.X)
 	log("group deleted", n4, "->", #design0.items)
 	assert(#design0.items < n4, "group delete")
+end
+-- undo: Ctrl + Z takes the last change back
+do
+	steps(12)
+	local nU = #design.items
+	MOCK.clickExact("Decor")
+	MOCK.clickExact("Hedge")
+	MOCK.mouse = Vector2.new(930, 520)
+	steps(2)
+	key(Enum.KeyCode.Q)
+	steps(12)
+	log("before undo", nU, "->", #design.items)
+	assert(#design.items == nU + 1, "placed for the undo test")
+	MOCK.keys = { [Enum.KeyCode.LeftControl] = true }
+	key(Enum.KeyCode.Z)
+	MOCK.keys = {}
+	steps(2)
+	log("after undo", #design.items)
+	assert(#design.items == nU, "Ctrl + Z takes the piece back")
+	key(Enum.KeyCode.F)
+	key(Enum.KeyCode.F)
+end
+-- the LED cube hangs on cables from the roof (longer when it hangs lower)
+do
+	local Builder = require(root.Client.Builder)
+	local hi = Builder.build(StageItems.byId.ledcube, { rec = { t = "ledcube", yo = 0 } })
+	local lo = Builder.build(StageItems.byId.ledcube, { rec = { t = "ledcube", yo = -10 } })
+	local free = Builder.build(StageItems.byId.ledcube, { rec = { t = "ledcube", yo = -10, roof = false } })
+	log("cube cables", #hi.cables, hi.cables[1][1].Size.Y, lo.cables[1][1].Size.Y, #free.cables)
+	assert(#hi.cables == 4 and lo.cables[1][1].Size.Y > hi.cables[1][1].Size.Y + 9 and #free.cables == 0, "LED cube: connect to roof")
+	hi.model:Destroy() lo.model:Destroy() free.model:Destroy()
 end
 -- an accidental click never moves a new piece (only the arrows do)
 MOCK.clickExact("Decor")

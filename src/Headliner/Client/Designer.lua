@@ -36,7 +36,7 @@ local AXIS = {
 local GRIDS = { 1, 2, 4, 8 }
 local TURNS = { 15, 45, 90 }
 local BLACK = Color3.new(0, 0, 0)
-local GEOMETRY_KEYS = { w = true, d = true, h = true, skin = true, edge = true, scr = true, cc = true, anim = true }
+local GEOMETRY_KEYS = { w = true, d = true, h = true, skin = true, edge = true, scr = true, cc = true, anim = true, roof = true, yo = true }
 -- settings that only change the show (no new model needed)
 local SHOW_KEYS = { play = true, songs = true, cs = true, anim = true, mid = true, song = true }
 -- effects that can fire in chosen songs (rec.songs = { 1, 4, ... }; false / nil = automatic)
@@ -351,7 +351,23 @@ function Designer.open(app, designId)
 		params.FilterType = Enum.RaycastFilterType.Include
 		params.FilterDescendantsInstances = { Stage3D.designFolder }
 		local hit = workspace:Raycast(ray.Origin, ray.Direction * 3000, params)
-		return hit and Stage3D.itemFromPart(hit.Instance) or nil
+		local item = hit and Stage3D.itemFromPart(hit.Instance) or nil
+		if item and item.kind == "truss_beam" then
+			-- a beam lies on top of the towers: when a tower is right there, the click means the tower
+			local list = {}
+			for _, r in ipairs(Stage3D.items) do
+				if r.kind ~= "truss_beam" then
+					table.insert(list, r.model)
+				end
+			end
+			params.FilterDescendantsInstances = list
+			local hit2 = workspace:Raycast(ray.Origin, ray.Direction * 3000, params)
+			local other = hit2 and Stage3D.itemFromPart(hit2.Instance)
+			if other and other.kind == "truss" and (hit2.Position - hit.Position).Magnitude < 4 then
+				return other
+			end
+		end
+		return item
 	end
 
 	-- items standing on a deck move together with it
@@ -381,6 +397,17 @@ function Designer.open(app, designId)
 			end
 		end
 		return out
+	end
+
+	-- artist spots that make a song (moments like 2.5 inside a song do not count)
+	local function songSpots()
+		local n = 0
+		for _, rec in ipairs(self.design.items) do
+			if rec.t == "spot" and not GS.isMoment(rec) then
+				n = n + 1
+			end
+		end
+		return n
 	end
 
 	-- the design as it would be with the pending piece (song numbers while placing)
@@ -415,8 +442,106 @@ function Designer.open(app, designId)
 			elseif rec.y == nil then
 				rec.y = Stage3D.surfaceY(rec.x, rec.z)
 			end
+		elseif def.deck then
+			-- stage decks never stack by themselves: they stand on the floor (or where they already are);
+			-- higher decks are made with the green arrow or the height handle
+			if rec.y == nil then
+				rec.y = 0
+			end
 		elseif def.mount ~= "rig" then
 			rec.y = Stage3D.surfaceY(rec.x, rec.z)
+		end
+	end
+
+	-- stage decks snap flush to the edges of decks nearby (also when the grid would leave a little gap)
+	local EDGE_SNAP = 1.6
+	local function deckRect(rec, def)
+		if not def or not def.deck or not def.size or def.shape == "round" or def.shape == "tri" or def.shape == "corner" then
+			return nil
+		end
+		local r = (rec.r or 0) % 180
+		local hw, hd = (rec.w or def.size.w) / 2, (rec.d or def.size.d or def.size.w) / 2
+		if math.abs(r - 90) < 0.5 then
+			hw, hd = hd, hw
+		elseif math.abs(r) > 0.5 and math.abs(r - 180) > 0.5 then
+			return nil
+		end
+		return { x = rec.x, z = rec.z, hx = hw, hz = hd }
+	end
+	-- lo / hi = the piece's two edges on this axis, other / otherHalf = its middle and half size on the other axis
+	local function edgeDelta(lo, hi, axis, other, otherHalf, rec)
+		local best = nil
+		for _, o in ipairs(self.design.items) do
+			if o ~= rec then
+				local b = deckRect(o, StageItems.byId[o.t])
+				if b then
+					-- only decks that are side by side (they touch or almost touch on the other axis)
+					local near
+					if axis == "x" then
+						near = math.abs(other - b.z) < otherHalf + b.hz + EDGE_SNAP
+					else
+						near = math.abs(other - b.x) < otherHalf + b.hx + EDGE_SNAP
+					end
+					if near then
+						local blo = (axis == "x") and (b.x - b.hx) or (b.z - b.hz)
+						local bhi = (axis == "x") and (b.x + b.hx) or (b.z + b.hz)
+						for _, a in ipairs({ lo, hi }) do
+							for _, e in ipairs({ blo, bhi }) do
+								local dl = e - a
+								if math.abs(dl) < EDGE_SNAP and math.abs(dl) > 0.001 and (not best or math.abs(dl) < math.abs(best)) then
+									best = dl
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+		return best
+	end
+	-- moves a deck so its edges line up with the decks next to it; returns the shift
+	local function edgeSnap(rec, def)
+		local a = deckRect(rec, def)
+		if not a then
+			return 0, 0
+		end
+		local dx = edgeDelta(a.x - a.hx, a.x + a.hx, "x", a.z, a.hz, rec) or 0
+		local dz = edgeDelta(a.z - a.hz, a.z + a.hz, "z", a.x, a.hx, rec) or 0
+		rec.x, rec.z = rec.x + dx, rec.z + dz
+		return dx, dz
+	end
+	self.edgeSnap = edgeSnap
+	-- after pulling one side of a deck: that side lines up with a deck edge nearby
+	local function resizeSnap(rec, def, face, boxCF)
+		local a = deckRect(rec, def)
+		if not a or not face or not boxCF then
+			return
+		end
+		local dir = boxCF:VectorToWorldSpace(Vector3.FromNormalId(face))
+		local sz = def.size
+		local turned = math.abs(((rec.r or 0) % 180) - 90) < 0.5
+		if math.abs(dir.X) > 0.5 then
+			local sign = (dir.X > 0) and 1 or -1
+			local edge = a.x + sign * a.hx
+			local dl = edgeDelta(edge, edge, "x", a.z, a.hz, rec)
+			if dl then
+				local key = turned and "d" or "w"
+				local cur = rec[key] or sz[key] or sz.w
+				local new = math.clamp(cur + dl * sign, (key == "w") and sz.minW or (sz.minD or sz.minW), (key == "w") and sz.maxW or (sz.maxD or sz.maxW))
+				rec[key] = new
+				rec.x = rec.x + sign * (new - cur) / 2
+			end
+		elseif math.abs(dir.Z) > 0.5 then
+			local sign = (dir.Z > 0) and 1 or -1
+			local edge = a.z + sign * a.hz
+			local dl = edgeDelta(edge, edge, "z", a.x, a.hx, rec)
+			if dl then
+				local key = turned and "w" or "d"
+				local cur = rec[key] or sz[key] or sz.w
+				local new = math.clamp(cur + dl * sign, (key == "w") and sz.minW or (sz.minD or sz.minW), (key == "w") and sz.maxW or (sz.maxD or sz.maxW))
+				rec[key] = new
+				rec.z = rec.z + sign * (new - cur) / 2
+			end
 		end
 	end
 
@@ -662,7 +787,7 @@ function Designer.open(app, designId)
 			app:toast("This " .. self.design.class .. " stage is full (" .. cls().maxItems .. " items).", T.warn)
 			return
 		end
-		if def.id == "spot" and #spotRecs() >= StageItems.MAX_SPOTS then
+		if def.id == "spot" and songSpots() >= StageItems.MAX_SPOTS then
 			app:toast("A setlist has at most " .. StageItems.MAX_SPOTS .. " songs (artist spots).", T.warn)
 			return
 		end
@@ -1064,6 +1189,15 @@ function Designer.open(app, designId)
 			nextOrder(UI.Label(inspScroll, table.concat(parts, "  x  ") .. " studs", nil, UI.px(296, 22), { textSize = 16, font = UI.FontBold }))
 			nextOrder(UI.Label(inspScroll, "Pull the gold cubes on the piece to resize (the top cube changes the height). Hold Shift: both sides grow.", nil, UI.px(296, 0), { textSize = 13, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
 		end
+		if build and def.id == "ledcube" then
+			-- steel cables up to the roof, or the cube hangs free
+			nextOrder(section("ROOF"))
+			chips({ { true, "Connect to roof" }, { false, "No cables" } }, function(it)
+				return (rec.roof ~= false) == it[1]
+			end, function(it)
+				applyChange({ roof = it[1] })
+			end, 2)
+		end
 		if build and def.deck then
 			nextOrder(section("SURFACE"))
 			local list = {}
@@ -1434,7 +1568,7 @@ function Designer.open(app, designId)
 			UI.Label(b, "SONG " .. n .. tag, UI.px(14, 4), UI.px(360, 22), { textSize = 15, font = UI.FontBlack, color = isSel and T.text or T.gold })
 			UI.Label(b, what, UI.px(14, 26), UI.px(360, 24), { textSize = 16, color = def and T.text or T.sub })
 		end
-		local spots = #spotRecs()
+		local spots = songSpots()
 		UI.Button(setlistPanel, "+ ADD ARTIST SPOT (a new song)", UI.px(18, 594), UI.px(394, 48), { textSize = 16, color = T.good, disabled = spots >= StageItems.MAX_SPOTS }, function()
 			setMode("place", spotDef)
 		end)
@@ -1551,6 +1685,11 @@ function Designer.open(app, designId)
 			app:enterMode("menu")
 			app:go(app.returnScreen or "stages")
 		end))
+		tag(UI.Button(topInner, "Undo", UI.px(1690, 10), UI.px(70, 44), { textSize = 15 }, function()
+			if self.undo then
+				self.undo()
+			end
+		end)).Name = "UndoButton"
 	end
 
 	local lastMoney = nil
@@ -1614,6 +1753,11 @@ function Designer.open(app, designId)
 		if not x then
 			clearGhost()
 			return
+		end
+		if def.deck then
+			local tmpRec = { t = def.id, x = x, z = z, r = rec.r, w = rec.w, d = rec.d }
+			edgeSnap(tmpRec, def)
+			x, z = tmpRec.x, tmpRec.z
 		end
 		local ok = Stage3D.inBounds(x, z) and #self.design.items < cls().maxItems and state.money >= Sim.itemPrice(def, rec) and (def.mount ~= "side" or onTower == true)
 		local key = def.id .. tostring(ok) .. tostring(rec.w) .. tostring(rec.d) .. tostring(rec.h) .. tostring(rec.skin)
@@ -1789,7 +1933,7 @@ function Designer.open(app, designId)
 				local def = m.refs.def
 				if def.mount == "side" then
 					floorY(m.refs.rec, def)
-				elseif def.mount ~= "rig" then
+				elseif def.mount ~= "rig" and not def.deck then
 					m.refs.rec.y = Stage3D.surfaceY(m.refs.rec.x, m.refs.rec.z, m.refs)
 				end
 			end
@@ -1801,7 +1945,12 @@ function Designer.open(app, designId)
 		local tgt, rec, def = d.refs, d.rec, d.refs.def
 		if tgt == pending then
 			floorY(rec, def)
-			if d.kind == "size" then
+			if d.kind == "move" and def.deck then
+				edgeSnap(rec, def)
+			elseif d.kind == "size" and def.deck and not d.both then
+				resizeSnap(rec, def, d.face, d.boxCF)
+			end
+			if d.kind == "size" or def.id == "ledcube" then
 				buildPending(rec)
 			else
 				placePending()
@@ -1811,6 +1960,9 @@ function Designer.open(app, designId)
 			return
 		end
 		if d.kind == "size" then
+			if def.deck and not d.both then
+				resizeSnap(rec, def, d.face, d.boxCF)
+			end
 			local nw, nd, nx, nz, nh = rec.w, rec.d, rec.x, rec.z, rec.h
 			rec.w, rec.d, rec.x, rec.z, rec.h = d.w, d.d, d.x, d.z, d.h
 			local ok, msg = GS.changeItem(state, rec, { w = nw, d = nd, x = nx, z = nz, h = nh })
@@ -1828,6 +1980,11 @@ function Designer.open(app, designId)
 			floorY(rec, def) -- back onto the closest tower
 		elseif d.kind == "move" and def.mount ~= "rig" then
 			local newY = Stage3D.surfaceY(rec.x, rec.z, tgt)
+			if def.deck then
+				-- a deck keeps its own height (it never jumps onto another deck) and lines up with its neighbours
+				newY = d.y
+				edgeSnap(rec, def)
+			end
 			local dy = newY - d.y + ((rec.yo or 0) - d.yo)
 			rec.y = newY
 			for _, rr in ipairs(d.riders) do
@@ -1869,8 +2026,10 @@ function Designer.open(app, designId)
 			if face == Enum.NormalId.Top or face == Enum.NormalId.Bottom then
 				dy = math.floor(((face == Enum.NormalId.Top) and 1 or -1) * distance / grid() + 0.5) * grid()
 			else
+				-- along the arrow in whole grid steps: pieces move in a straight line (also turned ones)
 				local dir = drag.boxCF:VectorToWorldSpace(Vector3.FromNormalId(face))
-				dx, dz = snapG(dir.X * distance), snapG(dir.Z * distance)
+				local steps = math.floor(distance / grid() + 0.5) * grid()
+				dx, dz = dir.X * steps, dir.Z * steps
 			end
 			for _, m in ipairs(drag.group) do
 				if not Stage3D.inBounds(m.x + dx, m.z + dz) then
@@ -1891,9 +2050,17 @@ function Designer.open(app, designId)
 			local minY = (tgt.def.mount == "rig") and -20 or 0
 			rec.yo = math.clamp(math.floor((drag.yo + sign * distance) / grid() + 0.5) * grid(), minY, 40)
 		else
+			-- along the arrow in whole grid steps from where the piece was: it never slides sideways
 			local dir = drag.boxCF:VectorToWorldSpace(Vector3.FromNormalId(face))
-			local nx = snapG(drag.x + dir.X * distance)
-			local nz = snapG(drag.z + dir.Z * distance)
+			local steps = math.floor(distance / grid() + 0.5) * grid()
+			local nx = drag.x + dir.X * steps
+			local nz = drag.z + dir.Z * steps
+			if math.abs(nx - math.floor(nx + 0.5)) < 0.001 then
+				nx = math.floor(nx + 0.5)
+			end
+			if math.abs(nz - math.floor(nz + 0.5)) < 0.001 then
+				nz = math.floor(nz + 0.5)
+			end
 			if Stage3D.inBounds(nx, nz) then
 				rec.x, rec.z = nx, nz
 			end
@@ -1914,6 +2081,7 @@ function Designer.open(app, designId)
 		local rec = drag.rec
 		-- the side you pull grows, the other side stays where it is. Hold Shift: both sides grow (centre stays)
 		local both = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
+		drag.face, drag.both = face, both
 		if face == Enum.NormalId.Top and def.heights and sz.dLabel ~= "Height" then
 			-- pull the top up / down: the deck gets higher / lower (in its height steps)
 			local want = (drag.h or def.h or 6) + distance
@@ -2050,6 +2218,8 @@ function Designer.open(app, designId)
 				end
 			elseif k == Enum.KeyCode.Return or k == Enum.KeyCode.KeypadEnter then
 				confirm()
+			elseif k == Enum.KeyCode.Z and (UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl)) then
+				self.undo()
 			elseif k == Enum.KeyCode.C and building then
 				copySelected()
 			elseif k == Enum.KeyCode.M and building and (selected or group) and not pending then
@@ -2086,7 +2256,63 @@ function Designer.open(app, designId)
 		end
 	end))
 
+	------------------------------------------------------------ undo (Ctrl + Z or the Undo button)
+	-- every finished change of the stage (placed, moved, resized, deleted, settings) is remembered
+	local HttpService = game:GetService("HttpService")
+	local undoStack = {}
+	local function sigOf(items)
+		local ok, j = pcall(function()
+			return HttpService:JSONEncode(items)
+		end)
+		return ok and j or tostring(#items)
+	end
+	local lastSnap = { items = Util.deepCopy(self.design.items), money = state.money }
+	local lastSig = sigOf(self.design.items)
+	local undoT = 0
+	local function watchUndo(dt)
+		undoT = undoT + dt
+		if undoT < 0.25 or drag or pending then
+			return
+		end
+		undoT = 0
+		local sig = sigOf(self.design.items)
+		if sig ~= lastSig then
+			table.insert(undoStack, lastSnap)
+			if #undoStack > 40 then
+				table.remove(undoStack, 1)
+			end
+			lastSnap = { items = Util.deepCopy(self.design.items), money = state.money }
+			lastSig = sig
+		end
+	end
+	self.undo = function()
+		watchUndo(1)
+		local prev = table.remove(undoStack)
+		if not prev then
+			app:toast("Nothing to undo.", T.warn, 2)
+			return
+		end
+		select(nil)
+		setMode("idle")
+		self.design.items = Util.deepCopy(prev.items)
+		state.money = prev.money
+		lastSnap = { items = Util.deepCopy(prev.items), money = prev.money }
+		lastSig = sigOf(self.design.items)
+		render()
+		Stage3D.numberSpots(self.design)
+		refreshStats()
+		refreshList()
+		refreshInspector()
+		refreshToolbar()
+		app:refreshHud()
+	end
+	self.undoCount = function()
+		return #undoStack
+	end
+	self.watchUndo = watchUndo
+
 	table.insert(self.conns, RunService.RenderStepped:Connect(function(dt)
+		watchUndo(dt)
 		if not app.modalOpen and not UserInputService:GetFocusedTextBox() then
 			local fwd = Vector3.new(-math.sin(yaw), 0, -math.cos(yaw))
 			local right = Vector3.new(math.cos(yaw), 0, -math.sin(yaw))
@@ -2145,6 +2371,7 @@ function Designer.open(app, designId)
 	end
 	self.previewArtist = previewArtist
 	self.select = select
+	self.render = render
 	self.toggleInGroup = toggleInGroup
 	self.group = function()
 		return group

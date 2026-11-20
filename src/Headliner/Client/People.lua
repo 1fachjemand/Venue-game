@@ -85,12 +85,12 @@ function People.new(parent, outfit, scale, role, seed, look)
 	local style = look.hair or ((rng:NextNumber() < 0.5) and "short" or "messy")
 	local hat = look.acc == "cap" or look.acc == "beanie" or look.acc == "cowboy" or look.worker
 	if style ~= "buzz" and style ~= "afro" and style ~= "mohawk" and not hat then
-		extra("Hair", Vector3.new(1.3, 0.45, 1.3), "head", CFrame.new(0, 0.7, -0.05), hair)
+		extra("Hair", Vector3.new(1.3, 0.45, 1.3), "head", CFrame.new(0, 0.7, -0.08), hair)
 	end
 	if style == "buzz" then
 		extra("Hair", Vector3.new(1.24, 0.2, 1.24), "head", CFrame.new(0, 0.55, -0.02), hair)
 	elseif style == "long" then
-		extra("HairBack", Vector3.new(1.3, 1.7, 0.4), "head", CFrame.new(0, -0.15, -0.55), hair)
+		extra("HairBack", Vector3.new(1.26, 1.7, 0.4), "head", CFrame.new(0, -0.15, -0.58), hair)
 	elseif style == "bun" then
 		-- a knot on top: two crossed blocks
 		extra("HairBun", Vector3.new(0.72, 0.5, 0.72), "head", CFrame.new(0, 1.05, -0.3) * CFrame.Angles(0, math.rad(45), 0), hair)
@@ -106,7 +106,7 @@ function People.new(parent, outfit, scale, role, seed, look)
 		extra("Afro", Vector3.new(1.36, 0.36, 1.3), "head", CFrame.new(0, 1.28, -0.12), hair)
 		extra("Afro", Vector3.new(0.3, 1.0, 1.4), "head", CFrame.new(-0.76, 0.25, -0.12), hair)
 		extra("Afro", Vector3.new(0.3, 1.0, 1.4), "head", CFrame.new(0.76, 0.25, -0.12), hair)
-		extra("Afro", Vector3.new(1.6, 1.1, 0.35), "head", CFrame.new(0, 0.2, -0.8), hair)
+		extra("Afro", Vector3.new(1.6, 1.04, 0.35), "head", CFrame.new(0, 0.18, -0.8), hair)
 	elseif style == "messy" then
 		extra("HairFringe", Vector3.new(1.32, 0.35, 0.3), "head", CFrame.new(0, 0.42, 0.55) * CFrame.Angles(-0.4, 0, 0), hair)
 	elseif style == "mohawk" then
@@ -124,7 +124,7 @@ function People.new(parent, outfit, scale, role, seed, look)
 		extra("ShadesArm", Vector3.new(0.04, 0.05, 0.62), "head", CFrame.new(0.62, 0.2, 0.32), frame)
 	elseif acc == "cap" then
 		extra("Cap", Vector3.new(1.32, 0.35, 1.32), "head", CFrame.new(0, 0.72, 0), top)
-		extra("CapBrim", Vector3.new(1.2, 0.1, 0.7), "head", CFrame.new(0, 0.58, 0.85), top)
+		extra("CapBrim", Vector3.new(1.14, 0.1, 0.7), "head", CFrame.new(0, 0.58, 0.85), top)
 	elseif acc == "cowboy" then
 		extra("HatBrim", Vector3.new(2.2, 0.1, 2.2), "head", CFrame.new(0, 0.62, 0), Color3.fromRGB(150, 110, 70), nil)
 		extra("HatCrown", Vector3.new(1.25, 0.7, 1.25), "head", CFrame.new(0, 0.98, 0), Color3.fromRGB(150, 110, 70))
@@ -151,17 +151,17 @@ function People.new(parent, outfit, scale, role, seed, look)
 	if look.worker then
 		-- stage crew: yellow hard hat, reflective stripes on the vest
 		extra("HardHat", Vector3.new(1.4, 0.5, 1.4), "head", CFrame.new(0, 0.78, 0), Color3.fromRGB(250, 204, 21))
-		extra("HardHatBrim", Vector3.new(1.6, 0.1, 1.7), "head", CFrame.new(0, 0.55, -0.05), Color3.fromRGB(250, 204, 21))
-		extra("VestStripe", Vector3.new(2.04, 0.18, 1.04), "torso", CFrame.new(0, -0.35, 0), Color3.fromRGB(220, 224, 230), Enum.Material.Foil)
-		extra("VestStripe", Vector3.new(2.04, 0.18, 1.04), "torso", CFrame.new(0, 0.25, 0), Color3.fromRGB(220, 224, 230), Enum.Material.Foil)
+		extra("HardHatBrim", Vector3.new(1.6, 0.1, 1.7), "head", CFrame.new(0, 0.52, -0.05), Color3.fromRGB(250, 204, 21))
+		extra("VestStripe", Vector3.new(2.08, 0.18, 1.08), "torso", CFrame.new(0, -0.35, 0), Color3.fromRGB(220, 224, 230), Enum.Material.Foil)
+		extra("VestStripe", Vector3.new(2.08, 0.18, 1.08), "torso", CFrame.new(0, 0.25, 0), Color3.fromRGB(220, 224, 230), Enum.Material.Foil)
 	end
 	if look.jacket then
-		extra("JacketL", Vector3.new(0.6, 2.02, 1.06), "torso", CFrame.new(-0.72, 0, 0), c3(look.jacket))
-		extra("JacketR", Vector3.new(0.6, 2.02, 1.06), "torso", CFrame.new(0.72, 0, 0), c3(look.jacket))
+		extra("JacketL", Vector3.new(0.6, 2.06, 1.08), "torso", CFrame.new(-0.72, 0, 0), c3(look.jacket))
+		extra("JacketR", Vector3.new(0.6, 2.06, 1.08), "torso", CFrame.new(0.72, 0, 0), c3(look.jacket))
 	end
 	if look.shoes then
-		self.shoeL = mk(model, "ShoeL", Vector3.new(0.95, 0.35, 1.1) * s, c3(look.shoes))
-		self.shoeR = mk(model, "ShoeR", Vector3.new(0.95, 0.35, 1.1) * s, c3(look.shoes))
+		self.shoeL = mk(model, "ShoeL", Vector3.new(0.98, 0.35, 1.12) * s, c3(look.shoes))
+		self.shoeR = mk(model, "ShoeR", Vector3.new(0.98, 0.35, 1.12) * s, c3(look.shoes))
 	end
 	if self.role == "lead" then
 		self.prop = mk(model, "Mic", Vector3.new(0.25, 0.9, 0.25) * s, Color3.fromRGB(20, 20, 20), Enum.Material.Metal)
@@ -317,8 +317,8 @@ function People:update(pos, yaw, opts)
 	self.legL.CFrame = root * CFrame.new(-0.5 * s, 2 * s, 0) * CFrame.Angles(legLA, 0, 0) * CFrame.new(0, -1 * s, 0)
 	self.legR.CFrame = root * CFrame.new(0.5 * s, 2 * s, 0) * CFrame.Angles(legRA, 0, 0) * CFrame.new(0, -1 * s, 0)
 	if self.shoeL then
-		self.shoeL.CFrame = self.legL.CFrame * CFrame.new(0, -0.85 * s, 0.1 * s)
-		self.shoeR.CFrame = self.legR.CFrame * CFrame.new(0, -0.85 * s, 0.1 * s)
+		self.shoeL.CFrame = self.legL.CFrame * CFrame.new(0, -0.85 * s, 0.05 * s)
+		self.shoeR.CFrame = self.legR.CFrame * CFrame.new(0, -0.85 * s, 0.05 * s)
 	end
 	-- upper body bends at the hips
 	local hip = root * CFrame.new(0, 2 * s, 0) * CFrame.Angles(lean, 0, sway)

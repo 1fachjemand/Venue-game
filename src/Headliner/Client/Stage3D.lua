@@ -265,7 +265,9 @@ function Stage3D.alignTruss(x, z, r, w, except)
 	local half = (best.rec.w or 24) / 2
 	local lp = best.cf:PointToObjectSpace(Vector3.new(x, best.cf.Position.Y, z))
 	local lx, lz = lp.X, lp.Z
-	if diff < 25 or diff > 155 then
+	-- only when the beam is (almost) parallel or square to the other one: a beam turned on purpose
+	-- (R / E, the orange ring) keeps its angle
+	if diff < 3 or diff > 177 then
 		-- parallel: on the same line (if close) or at a whole-stud distance; ends meet when they are close
 		r = orot
 		if math.abs(lz) < 5 then
@@ -280,7 +282,7 @@ function Stage3D.alignTruss(x, z, r, w, except)
 				lx = 0
 			end
 		end
-	elseif diff > 65 and diff < 115 then
+	elseif diff > 87 and diff < 93 then
 		-- square to it: one end touches the other beam
 		r = orot + 90
 		if math.abs(lx) <= half + 2 then

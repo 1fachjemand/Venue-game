@@ -880,7 +880,18 @@ function B.ledcube(m, r)
 		table.insert(r.cubeParts, { p, p.CFrame })
 		return p
 	end
-	part(m, "Cable", Vector3.new(0.25, 10, 0.25), CFrame.new(0, -5, 0), METAL, Enum.Material.Metal)
+	-- steel cables from the cube up to the roof rig ("Connect to roof", on unless switched off); they get
+	-- longer when the cube hangs lower (Lift up < 0) and when it lowers in the ballad
+	local rec = r.rec or {}
+	r.cables = {}
+	if rec.roof ~= false then
+		local top = -(rec.yo or 0) -- the rig, seen from the cube's own height
+		for _, c in ipairs({ { -6, -6 }, { 6, -6 }, { -6, 6 }, { 6, 6 } }) do
+			local len = math.max(0.5, top - (cy + 4.5))
+			local cable = part(m, "Cable", Vector3.new(0.18, len, 0.18), CFrame.new(c[1], cy + 4.5 + len / 2, c[2]), METAL, Enum.Material.Metal)
+			table.insert(r.cables, { cable, c[1], c[2], top })
+		end
+	end
 	add(part(m, "CubeFrame", Vector3.new(14, 9, 14), CFrame.new(0, cy, 0), Color3.fromRGB(16, 16, 20)))
 	for i = 0, 3 do
 		add(screenFace(m, r, Vector3.new(13, 8, 0.3), CFrame.new(0, cy, 0) * CFrame.Angles(0, i * math.pi / 2, 0) * CFrame.new(0, 0, 7.05)).panel)
@@ -3191,6 +3202,14 @@ function Builder.animateKind(refs, ctx)
 			local off = CFrame.new(0, -refs.cubeLift * 5, 0) * CFrame.Angles(0, t * 0.15, 0)
 			for _, cp in ipairs(refs.cubeParts) do
 				cp[1].CFrame = refs.cf * off * cp[2]
+			end
+			-- the cables stay at the roof and reach down to the cube (they turn with it)
+			for _, c in ipairs(refs.cables or {}) do
+				local low = -15 + 4.5 - refs.cubeLift * 5
+				local len = math.max(0.5, c[4] - low)
+				local corner = (CFrame.Angles(0, t * 0.15, 0) * Vector3.new(c[2], 0, c[3]))
+				c[1].Size = Vector3.new(0.18, len, 0.18)
+				c[1].CFrame = refs.cf * CFrame.new(corner.X, low + len / 2, corner.Z)
 			end
 		elseif k == "ledtower" then
 			setNeon(refs, c1)
