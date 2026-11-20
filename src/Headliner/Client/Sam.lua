@@ -1,14 +1,20 @@
 -- Sam, the label manager (the R15 character "Guide" in the building, made by Hub.buildGuide).
 -- He walks from room to room on checked ways (Hub.SAM_ROUTES), talks and waves in the tutorial,
--- works at the desk of his own office after it, and joins your meetings on a meeting chair.
+-- works at the desk of his own office after it, and stands next to the board in your meetings
+-- (click an artist on the board: Sam says a few words about them, Sam.say).
+-- In Roblox he moves with the real character animations (walk / idle / sit, the same ones your own
+-- character has: they are read from its Animate script); the hands (clipboard, talking, typing) are
+-- set on top of them every frame (PreSimulation). Without an Animator (tests) he is posed by hand.
 --   Sam.start(app)  Sam.stop()
---   Sam.walkTo(spot)            "start" | "meeting" | "laptop" | "maptable" | "stagehall" | "office"
---   Sam.sitDown(kind)           "office" | "meeting" (walks there first)
+--   Sam.walkTo(spot)            "start" | "meeting" | "board" | "laptop" | "maptable" | "stagehall" | "office"
+--   Sam.sitDown("office")       walks there first
 --   Sam.setTalk(talking, wave)  the tutorial bubble: hands move while he talks, wave = 0..1
+--   Sam.say(app, text)          a short speech bubble at the bottom
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local Root = script:FindFirstAncestor("Headliner")
 local Hub = require(Root.World.Hub)
+local UI = require(Root.Client.UI)
 
 local O = Hub.ORIGIN
 local SPEED = 9 -- studs per second (a calm walk)
@@ -28,7 +34,17 @@ end
 
 -- height of the root above the floor when standing, and above the hips (for sitting)
 local function heights(g)
-	local h = g:GetAttribute("RootHeight") or 3
+	if not Sam.rootHeight then
+		-- measured from the feet (the character stands on the floor, never above it)
+		local hrp, foot = g.PrimaryPart, g:FindFirstChild("LeftFoot")
+		if hrp and foot then
+			-- the character was built with its root at RootHeight above the floor
+			Sam.rootHeight = math.clamp(hrp.CFrame.Position.Y - (foot.CFrame.Position.Y - foot.Size.Y / 2), 1, 6)
+		else
+			Sam.rootHeight = g:GetAttribute("RootHeight") or 3
+		end
+	end
+	local h = Sam.rootHeight
 	if not Sam.hipOffset then
 		local hrp = g.PrimaryPart
 		local leg = g:FindFirstChild("LeftUpperLeg")
@@ -147,42 +163,16 @@ function Sam.walkTo(spot, onDone)
 	end)
 end
 
--- walk to a chair and sit down (office: at his desk, meeting: a free meeting chair)
+-- walk to his office chair and sit down at the desk
 function Sam.sitDown(kind)
 	if Sam.sitting and Sam.sitting.kind == kind then
 		return
 	end
-	local seat, spot, way
-	if kind == "office" then
-		seat, spot, way = Hub.SAM_SEATS.office, "office", {}
-	else
-		local occupied = {}
-		local char = Players.LocalPlayer.Character
-		local hum = char and char:FindFirstChildOfClass("Humanoid")
-		if hum and hum.SeatPart then
-			occupied[hum.SeatPart.Name] = true
-		end
-		for _, m in ipairs(Hub.SAM_SEATS.meeting) do
-			if not occupied[m.seat] then
-				seat = m
-				break
-			end
-		end
-		seat = seat or Hub.SAM_SEATS.meeting[1]
-		spot, way = "meeting", seat.way or {}
-	end
+	local seat, spot = Hub.SAM_SEATS.office, "office"
 	Sam.walkTo(spot, function()
-		follow(way, function()
-			local h, hip = heights(model() or Instance.new("Model"))
-			local standAt = (#way > 0) and way[#way] or Hub.GUIDE_SPOTS[spot]
-			local back = {}
-			for i = #way - 1, 1, -1 do
-				table.insert(back, way[i])
-			end
-			Sam.sitting = { kind = kind, spot = spot, standAt = standAt, wayBack = back, pos = seat.pos, look = seat.look, y = seat.seatTop + hip + 0.25, t = 0 }
-			Sam.at = nil
-			local _ = h
-		end)
+		local _, hip = heights(model() or Instance.new("Model"))
+		Sam.sitting = { kind = kind, spot = spot, standAt = Hub.GUIDE_SPOTS[spot], wayBack = {}, pos = seat.pos, look = seat.look, y = seat.seatTop + hip + 0.25, t = 0 }
+		Sam.at = nil
 	end)
 end
 
@@ -191,6 +181,102 @@ function Sam.setTalk(talking, wave)
 end
 
 ------------------------------------------------------------------ animation
+-- the real animations: the same ones the player's character uses (its Animate script), else Roblox's defaults
+local FALLBACK = { walk = "rbxassetid://507777826", idle = "rbxassetid://507766388", sit = "rbxassetid://2506281703" }
+local ANIMATE_NAMES = { walk = { "walk", "WalkAnim" }, idle = { "idle", "Animation1" }, sit = { "sit", "SitAnim" } }
+local function animationId(kind)
+	local char = Players.LocalPlayer.Character
+	local animate = char and char:FindFirstChild("Animate")
+	local folder = animate and animate:FindFirstChild(ANIMATE_NAMES[kind][1])
+	local a = folder and folder:FindFirstChild(ANIMATE_NAMES[kind][2])
+	if a and a:IsA("Animation") and a.AnimationId ~= "" then
+		return a.AnimationId
+	end
+	return nil
+end
+local function loadTracks(g)
+	if Sam.tracks ~= nil then
+		return Sam.tracks
+	end
+	local hum = g:FindFirstChildOfClass("Humanoid")
+	if not hum then
+		Sam.tracks = false
+		return false
+	end
+	-- wait up to 4 s for the player's own animations, then take the defaults
+	local ready = animationId("walk") ~= nil
+	if not ready and (Sam.t or 0) < 4 then
+		return nil
+	end
+	local ok, tracks = pcall(function()
+		local animator = hum:FindFirstChildOfClass("Animator")
+		if not animator then
+			animator = Instance.new("Animator")
+			animator.Parent = hum
+		end
+		local out = {}
+		for kind in pairs(FALLBACK) do
+			local anim = Instance.new("Animation")
+			anim.AnimationId = animationId(kind) or FALLBACK[kind]
+			local tr = animator:LoadAnimation(anim)
+			tr.Looped = true
+			tr.Priority = (kind == "idle") and Enum.AnimationPriority.Idle or Enum.AnimationPriority.Movement
+			out[kind] = tr
+		end
+		return out
+	end)
+	Sam.tracks = ok and tracks or false
+	return Sam.tracks
+end
+local function playTrack(kind, speed)
+	local tracks = Sam.tracks
+	if not tracks then
+		return
+	end
+	if Sam.playing ~= kind then
+		for k, tr in pairs(tracks) do
+			if k ~= kind and tr.IsPlaying then
+				tr:Stop(0.25)
+			end
+		end
+		tracks[kind]:Play(0.25)
+		Sam.playing = kind
+	end
+	if speed then
+		tracks[kind]:AdjustSpeed(speed)
+	end
+end
+
+-- hands on top of the animations: the clipboard arm, talking, waving, typing at the desk
+local function overlay(g, t, mode)
+	local rs, ls = joint(g, "RightUpperArm", "RightShoulder"), joint(g, "LeftUpperArm", "LeftShoulder")
+	local re, le = joint(g, "RightLowerArm", "RightElbow"), joint(g, "LeftLowerArm", "LeftElbow")
+	local neck = joint(g, "Head", "Neck")
+	local function set(j, cf)
+		if j then
+			j.Transform = cf
+		end
+	end
+	local rad = math.rad
+	if mode == "type" then
+		set(rs, CFrame.Angles(rad(52 + math.sin(t * 11) * 3), 0, rad(6)))
+		set(ls, CFrame.Angles(rad(52 + math.sin(t * 13 + 1) * 3), 0, rad(-6)))
+		set(re, CFrame.Angles(rad(25), 0, 0))
+		set(le, CFrame.Angles(rad(25), 0, 0))
+		set(neck, CFrame.Angles(rad(-8 + math.sin(t * 0.4) * 4), rad(math.sin(t * 0.3) * 10), 0))
+		return
+	end
+	set(ls, CFrame.Angles(rad(55 + math.sin(t * 1.3) * 2), 0, rad(-6))) -- the clipboard stays in front
+	set(le, CFrame.Angles(rad(20), 0, 0))
+	local wave = math.min(1, Sam.wave or 0)
+	if mode == "stand" and wave > 0 then
+		set(rs, CFrame.Angles(0, 0, rad(150 + math.sin(t * 9) * 18) * wave))
+	elseif mode == "stand" and Sam.talking then
+		set(rs, CFrame.Angles(rad(35 + math.sin(t * 3.1) * 14), 0, rad(8 + math.sin(t * 2.3) * 6)))
+		set(neck, CFrame.Angles(rad(math.sin(t * 5) * 5), rad(math.sin(t * 1.7) * 8), 0))
+	end
+end
+
 local function pose(g, t, mode)
 	local rs, ls = joint(g, "RightUpperArm", "RightShoulder"), joint(g, "LeftUpperArm", "LeftShoulder")
 	local re = joint(g, "RightLowerArm", "RightElbow")
@@ -262,6 +348,9 @@ local function step(dt)
 	Sam.t = (Sam.t or 0) + dt
 	Sam.wave = math.max(0, (Sam.wave or 0) - dt)
 	local h = heights(g)
+	if Sam.tracks == nil then
+		loadTracks(g)
+	end
 	local w = Sam.walk
 	if w then
 		local target = w.pts[w.i]
@@ -276,7 +365,12 @@ local function step(dt)
 		end
 		local look = (d.Magnitude > 0.05) and d or (Sam.look or Vector3.new(0, 0, 1))
 		place(cur, look, h)
-		pose(g, Sam.t, "walk")
+		Sam.mode = "walk"
+		if Sam.tracks then
+			playTrack("walk", 0.75)
+		else
+			pose(g, Sam.t, "walk")
+		end
 		if w.i > #w.pts then
 			Sam.walk = nil
 			if w.onDone then
@@ -293,10 +387,20 @@ local function step(dt)
 		local p = from:Lerp(s.pos, s.t)
 		local y = h + (s.y - h) * s.t
 		place(p, s.look, y)
-		pose(g, Sam.t, (s.kind == "office") and "type" or "sit")
+		Sam.mode = (s.kind == "office") and "type" or "sit"
+		if Sam.tracks then
+			playTrack("sit")
+		else
+			pose(g, Sam.t, Sam.mode)
+		end
 		return
 	end
-	pose(g, Sam.t, "stand")
+	Sam.mode = "stand"
+	if Sam.tracks then
+		playTrack("idle")
+	else
+		pose(g, Sam.t, "stand")
+	end
 end
 
 function Sam.start(app)
@@ -308,21 +412,46 @@ function Sam.start(app)
 		local p = g.PrimaryPart.CFrame.Position - O
 		Sam.pos = Vector3.new(p.X, 0, p.Z)
 	end
+	Sam.tracks, Sam.playing = nil, nil
 	Sam.conn = RunService.Heartbeat:Connect(function(dt)
 		step(math.min(dt, 0.1))
 		Sam.behave()
 	end)
+	-- the hands go on top of the animations, after the Animator wrote the joints for this frame
+	local ok, ev = pcall(function()
+		return RunService.PreSimulation
+	end)
+	Sam.conn2 = (ok and ev or RunService.Stepped):Connect(function()
+		local g2 = model()
+		if g2 and Sam.tracks then
+			overlay(g2, Sam.t or 0, Sam.mode or "stand")
+		end
+	end)
 end
 
 function Sam.stop()
-	if Sam.conn then
-		Sam.conn:Disconnect()
-		Sam.conn = nil
+	for _, k in ipairs({ "conn", "conn2" }) do
+		if Sam[k] then
+			Sam[k]:Disconnect()
+			Sam[k] = nil
+		end
+	end
+	if Sam.tracks then
+		for _, tr in pairs(Sam.tracks) do
+			pcall(function()
+				tr:Stop(0)
+			end)
+		end
+	end
+	Sam.tracks, Sam.playing = nil, nil
+	if Sam.bubble then
+		Sam.bubble:Destroy()
+		Sam.bubble = nil
 	end
 	Sam.walk, Sam.sitting = nil, nil
 end
 
--- after the tutorial: Sam works in his office, and sits in when you hold a meeting
+-- after the tutorial: Sam works in his office, and stands next to the board when you hold a meeting
 function Sam.behave()
 	local app = Sam.app
 	if not app or not app.state then
@@ -333,9 +462,8 @@ function Sam.behave()
 		return
 	end
 	if app.mode == "meeting" then
-		if not (Sam.sitting and Sam.sitting.kind == "meeting") and Sam.goal ~= "meeting" then
-			Sam.goal = "meeting"
-			Sam.sitDown("meeting")
+		if Sam.goal ~= "board" then
+			Sam.walkTo("board")
 		end
 	elseif Sam.goal ~= "office" then
 		Sam.goal = "office"
@@ -356,6 +484,66 @@ function Sam.placeAtDesk()
 	Sam.goal = "office"
 	Sam.pos = Hub.GUIDE_SPOTS.office
 	Sam.sitting = { kind = "office", spot = "office", standAt = Hub.GUIDE_SPOTS.office, wayBack = {}, pos = s.pos, look = s.look, y = s.seatTop + hip + 0.25, t = 1 }
+end
+
+------------------------------------------------------------------ what Sam knows about an artist (1-2 sentences)
+function Sam.artistLine(ad, state)
+	local Util = require(Root.Logic.Util)
+	local GS = require(Root.Logic.GameState)
+	local a = state.artists[ad.id]
+	local fans = Util.short(Util.totalFans(a.fans))
+	local who = (ad.members > 1) and (ad.genre .. " group of " .. ad.members) or (ad.genre .. ", solo")
+	local name = "<b>" .. UI.esc(ad.name) .. "</b>"
+	if a.signed then
+		local tour = GS.activeTour(state, ad.id)
+		local next
+		if tour then
+			next = "On tour right now: keep an eye on the ticket sales."
+		elseif a.hype >= 60 then
+			next = "The fans are hungry: book bigger venues this time!"
+		else
+			next = "A tour in small clubs would build the hype."
+		end
+		return name .. " is one of ours (" .. who .. "), " .. fans .. " fans, hype " .. math.floor(a.hype) .. ". " .. next
+	end
+	local lvl = GS.level(state)
+	local about = ad.pitch or ad.bio
+	if ad.level > lvl then
+		return name .. " (" .. who .. ", " .. fans .. " fans): " .. about .. " They only talk to labels of level " .. ad.level .. " and up."
+	end
+	return name .. " (" .. who .. ", " .. fans .. " fans): " .. about .. " Signing costs " .. Util.money(ad.signCost) .. "."
+end
+
+------------------------------------------------------------------ Sam says something (a short bubble at the bottom)
+function Sam.say(app, text, seconds)
+	if Sam.bubble then
+		Sam.bubble:Destroy()
+	end
+	local T = UI.Theme
+	local f = UI.New("TextButton", { Parent = app.canvas, Name = "SamSays", AnchorPoint = Vector2.new(0.5, 1), Position = UI.px(960, 1010), Size = UI.px(900, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = T.panel, AutoButtonColor = false, Text = "", BorderSizePixel = 0, ZIndex = 84, UI.Corner(16), UI.Stroke(T.accent, 2, 0), UI.Padding(24, 24, 14, 16) })
+	UI.New("UIListLayout", { Parent = f, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder })
+	local name = UI.Label(f, "SAM  |  LABEL MANAGER", nil, UI.px(852, 22), { textSize = 15, font = UI.FontBlack, color = T.accent })
+	name.LayoutOrder = 1
+	name.ZIndex = 85
+	local body = UI.New("TextLabel", { Parent = f, Size = UI.px(852, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, Text = text, RichText = true, TextWrapped = true, TextColor3 = T.text, TextSize = 21, Font = UI.Font, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 2, ZIndex = 85 })
+	Sam.bubble = f
+	Sam.sayText = text
+	Sam.talking = true
+	local token = {}
+	Sam.sayToken = token
+	local function close()
+		if Sam.sayToken == token then
+			Sam.talking = false
+			if Sam.bubble == f then
+				Sam.bubble = nil
+			end
+		end
+		f:Destroy()
+	end
+	f.MouseButton1Click:Connect(close)
+	task.delay(seconds or 8, close)
+	local _ = body
+	return f
 end
 
 return Sam

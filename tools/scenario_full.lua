@@ -98,7 +98,7 @@ for _ = 1, 400 do
 end
 local sp = guide.PrimaryPart.CFrame.Position - require(root.World.Hub).ORIGIN
 log("Sam in his office", samWalked, Sam.sitting and Sam.sitting.kind, sp)
-assert(samWalked and Sam.sitting and Sam.sitting.kind == "office" and (Vector3.new(sp.X, 0, sp.Z) - Vector3.new(33, 0, -40)).Magnitude < 0.5, "Sam walks to his office and sits at his desk")
+assert(samWalked and Sam.sitting and Sam.sitting.kind == "office" and (Vector3.new(sp.X, 0, sp.Z) - Vector3.new(33, 0, -42)).Magnitude < 0.5, "Sam walks to his office and sits at his desk")
 assert(app.mode == "world", "not walking in the building")
 assert(MOCK.player.Character and MOCK.player.Character:FindFirstChild("Humanoid"), "no character")
 assert(app.hud.Visible and #MOCK.buttons("^OFFICE$") == 0, "old tab bar still there")
@@ -225,7 +225,7 @@ local tp = app.screens.planner
 assert(app.current == "planner" and #MOCK.buttons("^Go to the MEETING ROOM") == 1, "no artist yet: the map table sends you to the meeting room")
 MOCK.clickExact("Go to the MEETING ROOM  >")
 assert(app.mode == "world", "back to walking")
--- Sam joins a meeting: he walks to the meeting room and sits down on a free chair
+-- Sam joins a meeting: he walks to the board in the meeting room
 do
 	local Sam = require(root.Client.Sam)
 	MOCK.sit(workspace.StarlightRecords:FindFirstChild("MeetingSeat3", true))
@@ -234,10 +234,15 @@ do
 	assert(app.mode == "meeting", "meeting")
 	for _ = 1, 600 do
 		steps(1, 0.05)
-		if Sam.sitting and Sam.sitting.kind == "meeting" and Sam.sitting.t >= 1 then break end
+		if Sam.at == "board" then break end
 	end
-	log("Sam in the meeting", Sam.sitting and Sam.sitting.kind)
-	assert(Sam.sitting and Sam.sitting.kind == "meeting", "Sam sits in the meeting")
+	log("Sam in the meeting", Sam.at)
+	assert(Sam.at == "board", "Sam stands next to the board in the meeting")
+	-- a click on an artist card: Sam says a few words about them
+	local ask = app.world.boardGui:FindFirstChild("AskSam", true)
+	ask.MouseButton1Click:Fire() MOCK.runTasks()
+	log("Sam says", Sam.sayText)
+	assert(Sam.bubble and Sam.sayText and #Sam.sayText > 30, "Sam talks about the artist")
 	MOCK.sit(nil)
 	steps(2)
 	assert(app.mode == "world", "meeting over")

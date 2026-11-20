@@ -97,14 +97,9 @@ end
 for _, p in pairs(Hub.GUIDE_SPOTS) do
 	paths[#paths + 1] = { p, p + Vector3.new(0.2, 0, 0.2) }
 end
--- Sam's ways from room to room, into his office and to the meeting chairs
+-- Sam's ways from room to room, into his office and to the board in the meeting room
 for _, r in pairs(Hub.SAM_ROUTES) do
 	if #r > 1 then paths[#paths + 1] = r end
-end
-for _, m in ipairs(Hub.SAM_SEATS.meeting) do
-	local q = { Hub.GUIDE_SPOTS.meeting }
-	for _, w in ipairs(m.way) do q[#q + 1] = w end
-	paths[#paths + 1] = q
 end
 print("checked walking paths", #paths)
 for wi, path in ipairs(paths) do

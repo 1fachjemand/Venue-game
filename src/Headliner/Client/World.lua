@@ -1022,7 +1022,13 @@ local function boardCard(parent, ad, state, signed, y, x)
 	local app = World.app
 	local a = state.artists[ad.id]
 	local total = Util.totalFans(a.fans)
-	local card = New("Frame", { Parent = parent, Position = UI.px(x, y), Size = UI.px(372, 270), BackgroundColor3 = T.panel2, BorderSizePixel = 0, UI.Corner(14) })
+	local card = New("Frame", { Parent = parent, Position = UI.px(x, y), Size = UI.px(372, 270), BackgroundColor3 = T.panel, BorderSizePixel = 0, UI.Corner(14), UI.Stroke(T.stroke, 1, 0) })
+	-- a click on the card (not on its buttons): Sam says a few words about this artist
+	local talk = New("TextButton", { Parent = card, Name = "AskSam", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "", AutoButtonColor = false, ZIndex = 0 })
+	talk.MouseButton1Click:Connect(function()
+		local Sam = require(Root.Client.Sam)
+		Sam.say(app, Sam.artistLine(ad, state), 9)
+	end)
 	New("Frame", { Parent = card, Size = UI.px(372, 8), BackgroundColor3 = UI.rgb(ad.color), BorderSizePixel = 0, UI.Corner(14) })
 	People.preview(card, ad.look, UI.rgb(ad.color), UI.px(10, 16), UI.px(110, 170), Color3.fromRGB(32, 36, 54))
 	UI.Label(card, ad.name, UI.px(130, 16), UI.px(236, 32), { textSize = 26, font = UI.FontBlack })
@@ -1074,9 +1080,9 @@ function World.drawBoard()
 	end
 	g:ClearAllChildren()
 	local state = World.app.state
-	local bg = New("Frame", { Parent = g, Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(16, 18, 30), BorderSizePixel = 0 })
-	UI.Label(bg, "MEETING  |  " .. string.upper(state.labelName), UI.px(30, 14), UI.px(1000, 44), { textSize = 34, font = UI.FontBlack, color = T.text })
-	UI.Label(bg, "Stand up (SPACE) to end the meeting", UI.px(1040, 22), UI.px(530, 30), { textSize = 18, color = T.sub, alignX = Enum.TextXAlignment.Right })
+	local bg = New("Frame", { Parent = g, Size = UDim2.fromScale(1, 1), BackgroundColor3 = T.bg, BorderSizePixel = 0 })
+	UI.Label(bg, "MEETING  |  " .. string.upper(state.labelName), UI.px(30, 14), UI.px(900, 44), { textSize = 34, font = UI.FontBlack, color = T.text })
+	UI.Label(bg, "Click an artist: Sam tells you about them   |   SPACE: end the meeting", UI.px(820, 22), UI.px(750, 30), { textSize = 18, color = T.sub, alignX = Enum.TextXAlignment.Right })
 	local cols = { { "YOUR ROSTER", GS.signedArtists(state), true, 30 }, { "AVAILABLE TALENT", GS.unsignedArtists(state), false, 818 } }
 	for _, c in ipairs(cols) do
 		UI.Label(bg, c[1] .. "  (" .. #c[2] .. ")", UI.px(c[4], 70), UI.px(700, 30), { textSize = 22, font = UI.FontBlack, color = c[3] and T.accent2 or T.gold })

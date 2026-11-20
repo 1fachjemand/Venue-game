@@ -18,7 +18,8 @@ Hub.GUIDE_SPOTS = {
 	laptop = Vector3.new(6, 0, -28),
 	stagehall = Vector3.new(32, 0, 10),
 	maptable = Vector3.new(6, 0, -3),
-	office = Vector3.new(30.2, 0, -40.5), -- next to Sam's chair in his own office
+	office = Vector3.new(36.2, 0, -42), -- next to Sam's chair in his own office
+	board = Vector3.new(-49, 0, -40), -- in the meeting room, next to the board
 }
 -- Sam walks from room to room: every spot has a way from the start spot (the middle of the office);
 -- a walk from A to B goes A -> start -> B. Checked against the building by scenario_hub.
@@ -29,30 +30,31 @@ Hub.SAM_ROUTES = {
 	laptop = { SAM_HUB, Vector3.new(2, 0, -22), Vector3.new(6, 0, -28) },
 	meeting = { SAM_HUB, Vector3.new(-30, 0, -12), Vector3.new(-44, 0, -12), Vector3.new(-54, 0, -8) },
 	stagehall = { SAM_HUB, Vector3.new(18.9, 0, -10), Vector3.new(18.9, 0, 8), Vector3.new(32, 0, 10) },
-	office = { SAM_HUB, Vector3.new(10, 0, -24), Vector3.new(28.6, 0, -24), Vector3.new(27.7, 0, -30), Vector3.new(27.6, 0, -40.5), Vector3.new(30.2, 0, -40.5) },
+	office = { SAM_HUB, Vector3.new(10, 0, -21.7), Vector3.new(36, 0, -21.7), Vector3.new(36, 0, -27), Vector3.new(38.5, 0, -30), Vector3.new(38.5, 0, -42), Vector3.new(36.2, 0, -42) },
+	board = { SAM_HUB, Vector3.new(-30, 0, -12), Vector3.new(-44, 0, -12), Vector3.new(-54, 0, -8), Vector3.new(-49, 0, -40) },
 }
 function Hub.samRoute(from, to)
 	local a, b = Hub.SAM_ROUTES[from or "start"], Hub.SAM_ROUTES[to or "start"]
 	if not a or not b or from == to then
 		return {}
 	end
+	-- the ways share their first points: turn round at the last point they have in common
+	local k = 1
+	while a[k + 1] and b[k + 1] and (a[k + 1] - b[k + 1]).Magnitude < 0.01 do
+		k = k + 1
+	end
 	local pts = {}
-	for i = #a, 1, -1 do
+	for i = #a, k, -1 do
 		table.insert(pts, a[i])
 	end
-	for i = 2, #b do
+	for i = k + 1, #b do
 		table.insert(pts, b[i])
 	end
 	return pts
 end
--- where Sam sits: his office chair (facing the door) and meeting chairs (from the meeting spot: a free floor
--- point next to the chair, then he sits down); seatTop = height of the cushion
+-- where Sam sits: his office chair (facing the door); seatTop = height of the cushion
 Hub.SAM_SEATS = {
-	office = { pos = Vector3.new(33, 0, -40), look = Vector3.new(0, 0, 1), seatTop = 2.3 },
-	meeting = {
-		{ seat = "MeetingSeat6", pos = Vector3.new(-56.4, 0, -18), look = Vector3.new(-1, 0, 0), seatTop = 2.1, way = { Vector3.new(-56.4, 0, -14.8) } },
-		{ seat = "MeetingSeat4", pos = Vector3.new(-56.4, 0, -24), look = Vector3.new(-1, 0, 0), seatTop = 2.1, way = { Vector3.new(-53.2, 0, -21), Vector3.new(-56.4, 0, -21) } },
-	},
+	office = { pos = Vector3.new(33, 0, -42), look = Vector3.new(0, 0, 1), seatTop = 2.3 },
 }
 Hub.STATIONS = {
 	laptop = { pos = Vector3.new(14, 3.6, -37), name = "LAPTOP", sub = "Overview & tours", action = "Open laptop" },
@@ -705,7 +707,7 @@ function Hub.build(parentFolder)
 	box(dk, "Lamp", 20.85, 3.5, -35.75, 21.15, 5.6, -35.45, C.dark)
 	part(dk, "LampShade", Vector3.new(1.2, 0.9, 1.2), Vector3.new(21, 6.05, -35.6), C.yellow, Enum.Material.SmoothPlastic, { collide = false })
 	-- painted accent wall behind the desk + shelves + label logo
-	box(deco, "AccentWall", 2, 0, -46, 25.7, H, -45.94, C.purple)
+	box(deco, "AccentWall", 2, 0, -46, 24.2, H, -45.94, C.purple)
 	shelf(deco, 4, -45.94, 13, 6, 2, 1)
 	shelf(deco, 15, -45.94, 24, 6, 2, 1)
 	local logo = box(deco, "LogoBoard", 5, 13.2, -45.9, 23, 16.8, -45.7, C.white, nil, { collide = false })
@@ -740,18 +742,32 @@ function Hub.build(parentFolder)
 
 	------------------------------------------------------------ OFFICE: Sam's own office (glass room, back right)
 	local so = new("Folder", { Name = "SamOffice" }, deco)
-	box(shell, "SamGlassFront", 31, 0, -28.2, 40, H - 0.02, -27.8, C.glass, Enum.Material.Glass, { transparency = 0.6 })
-	box(shell, "SamGlassSide", 25.8, 0, -46, 26.2, H - 0.02, -28.2, C.glass, Enum.Material.Glass, { transparency = 0.6 })
-	box(shell, "SamPost", 25.6, 0, -28.4, 26.4, H, -27.6, C.white)
-	box(shell, "SamDoorPost", 30.6, 0, -28.4, 31.4, 10, -27.6, C.white)
-	box(shell, "SamDoorTop", 26.4, 10, -28.4, 31.4, H, -27.6, C.wall)
-	local sam = box(deco, "SamSign", 26.8, 10.6, -27.56, 31, 12.2, -27.4, C.teal, nil, { collide = false })
+	-- glass walls (front with a door on the right, left side), the hall wall and back wall close the room
+	box(shell, "SamGlassFront", 24.7, 0, -23.2, 33.6, H - 0.02, -22.8, C.glass, Enum.Material.Glass, { transparency = 0.6 })
+	box(shell, "SamGlassFront", 38.4, 0, -23.2, 40, H - 0.02, -22.8, C.glass, Enum.Material.Glass, { transparency = 0.6 })
+	box(shell, "SamGlassSide", 24.3, 0, -46, 24.7, H - 0.02, -23.4, C.glass, Enum.Material.Glass, { transparency = 0.6 })
+	box(shell, "SamPost", 24.2, 0, -23.4, 24.8, H, -22.6, C.white)
+	box(shell, "SamDoorPost", 33.6, 0, -23.4, 34.4, 10, -22.6, C.white)
+	box(shell, "SamDoorPost", 37.6, 0, -23.4, 38.4, 10, -22.6, C.white)
+	box(shell, "SamDoorTop", 33.6, 10, -23.4, 38.4, H, -22.6, C.wall)
+	local sam = box(deco, "SamSign", 34.2, 10.6, -22.56, 37.8, 12.4, -22.4, C.teal, nil, { collide = false })
 	sign(sam, Enum.NormalId.Back, "SAM  |  LABEL MANAGER", C.white)
-	box(so, "SamRug", 27, 0, -45.5, 39.5, 0.06, -29, Color3.fromRGB(200, 214, 230), Enum.Material.Fabric, { collide = false })
-	desk(so, Vector3.new(33, 0, -36), math.pi, true)
-	chair(so, Vector3.new(33, 0, -40), math.pi, C.teal)
-	shelf(so, 28, -46, 37, 0, 2, 1)
-	plant(so, Vector3.new(38, 0, -44), true)
+	box(so, "SamRug", 25.5, 0, -45.5, 39.5, 0.06, -24, Color3.fromRGB(200, 214, 230), Enum.Material.Fabric, { collide = false })
+	-- his desk at the back (he faces the door), two chairs for visitors
+	desk(so, Vector3.new(33, 0, -38), math.pi, true)
+	chair(so, Vector3.new(33, 0, -42), math.pi, C.teal)
+	chair(so, Vector3.new(31, 0, -33.5), 0, C.coral)
+	chair(so, Vector3.new(35, 0, -33.5), 0, C.coral)
+	-- a sofa corner on the left with a little table and a floor lamp
+	sofa(so, Vector3.new(26.9, 0, -30), -math.pi / 2, C.purple, 8)
+	box(so, "SofaTable", 30, 1.2, -31, 32, 1.5, -27, C.woodDark, Enum.Material.Wood)
+	box(so, "SofaTableLeg", 30.8, 0, -29.6, 31.2, 1.2, -28.4, C.dark, Enum.Material.Metal)
+	part(so, "LampPole", Vector3.new(0.25, 6, 0.25), Vector3.new(26, 3, -36), C.dark, Enum.Material.Metal)
+	part(so, "LampFoot", Vector3.new(1.4, 0.2, 1.4), Vector3.new(26, 0.1, -36), C.dark, Enum.Material.Metal)
+	local shade = part(so, "LampShade", Vector3.new(1.6, 1.2, 1.6), Vector3.new(26, 6.6, -36), C.yellow, Enum.Material.Fabric, { collide = false })
+	light(shade, 14, 0.8)
+	shelf(so, 25, -46, 30.5, 0, 2, 1)
+	plant(so, Vector3.new(38.6, 0, -44.6), false)
 
 	------------------------------------------------------------ OFFICE: staff desks (people work here)
 	local staff = new("Folder", { Name = "StaffDesks" }, deco)
@@ -765,7 +781,6 @@ function Hub.build(parentFolder)
 		box(staff, "Divider", 20, 0, z - 0.2, 36, 5.2, z, C.teal)
 	end
 	chair(deco, Vector3.new(-22, 0, 25.2), math.pi, C.coral)
-	plant(deco, Vector3.new(36, 0, -24), true)
 	plant(deco, Vector3.new(37, 0, 22), false)
 
 	------------------------------------------------------------ OFFICE: coffee bar (front right)
@@ -832,6 +847,41 @@ function Hub.build(parentFolder)
 	plant(deco, Vector3.new(-85, 0, -42), true)
 	plant(deco, Vector3.new(-44, 0, -42), false)
 	plant(deco, Vector3.new(-85, 0, 0), false)
+	-- a warmer meeting room: dark accent wall with a light strip behind the board, pendant lamps over the
+	-- table, notebooks and glasses at every seat, a sideboard with coffee, sound panels, gold records
+	local md = new("Folder", { Name = "MeetingDecor" }, deco)
+	box(md, "MeetAccent", -86, 0, -45.98, -42, H - 0.02, -45.95, Color3.fromRGB(44, 52, 86))
+	box(md, "BoardGlow", -79, 1.4, -45.9, -47, 1.7, -45.7, Color3.fromRGB(120, 160, 255), Enum.Material.Neon, { collide = false })
+	for _, z in ipairs({ -30, -24, -18 }) do
+		part(md, "LampCord", Vector3.new(0.08, 4.9, 0.08), Vector3.new(-63, H - 2.55, z), C.dark, nil, { collide = false })
+		local sh = part(md, "PendantShade", Vector3.new(1.2, 2.4, 2.4), CFrame.new(Vector3.new(-63, H - 5.6, z)) * CFrame.Angles(0, 0, math.pi / 2), C.dark, Enum.Material.Metal, { shape = Enum.PartType.Cylinder, collide = false })
+		part(md, "PendantBulb", Vector3.new(1, 1, 1), Vector3.new(-63, H - 6.25, z), Color3.fromRGB(255, 236, 200), Enum.Material.Neon, { shape = Enum.PartType.Ball, collide = false })
+		light(sh, 18, 0.9, Color3.fromRGB(255, 226, 180))
+	end
+	for _, z in ipairs({ -30, -24, -18 }) do
+		for _, sx in ipairs({ -1, 1 }) do
+			local x = -63 + sx * 3
+			part(md, "Notebook", Vector3.new(1.4, 0.08, 1.8), CFrame.new(Vector3.new(x, 3.56, z)) * CFrame.Angles(0, sx * 0.15, 0), (sx > 0) and C.teal or C.coral, nil, { collide = false })
+			part(md, "Glass", Vector3.new(0.7, 0.4, 0.4), CFrame.new(Vector3.new(x - sx * 0.2, 3.92, z + 1.4)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(200, 225, 240), Enum.Material.Glass, { shape = Enum.PartType.Cylinder, collide = false, transparency = 0.3 })
+		end
+	end
+	part(md, "Vase", Vector3.new(1.2, 1, 1), CFrame.new(Vector3.new(-63, 4.12, -24)) * CFrame.Angles(0, 0, math.pi / 2), C.white, nil, { shape = Enum.PartType.Cylinder, collide = false })
+	part(md, "Flowers", Vector3.new(1.8, 1.4, 1.8), Vector3.new(-63, 5.2, -24), C.coral, Enum.Material.Grass, { shape = Enum.PartType.Ball, collide = false })
+	-- sideboard on the left wall (under the whiteboard): coffee machine, water, cups
+	box(md, "Sideboard", -87.9, 0, -18.5, -85.6, 3, -10, C.woodDark, Enum.Material.Wood)
+	box(md, "SideboardTop", -88, 3, -18.7, -85.4, 3.2, -9.8, C.wood, Enum.Material.Wood)
+	box(md, "CoffeeMachine", -87.6, 3.2, -17.6, -85.9, 5.6, -15.6, C.dark, Enum.Material.Metal)
+	for i = 0, 2 do
+		part(md, "WaterBottle", Vector3.new(1.4, 0.5, 0.5), CFrame.new(Vector3.new(-86.8, 3.9, -13.6 + i * 0.8)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(150, 200, 230), Enum.Material.Glass, { shape = Enum.PartType.Cylinder, collide = false, transparency = 0.25 })
+	end
+	part(md, "Cups", Vector3.new(0.8, 0.6, 0.6), CFrame.new(Vector3.new(-86.6, 3.6, -11)) * CFrame.Angles(0, 0, math.pi / 2), C.white, nil, { shape = Enum.PartType.Cylinder, collide = false })
+	-- sound panels on the left wall and gold records on the wall to the lounge
+	for _, z in ipairs({ -44, -41, -17, -14 }) do
+		box(md, "SoundPanel", -87.95, 6, z - 1.2, -87.7, 13, z + 1.2, (z < -30) and C.teal or C.purple, Enum.Material.Fabric, { collide = false })
+	end
+	for i, x in ipairs({ -80, -72, -54, -46 }) do
+		record(md, Vector3.new(x, 8.5, 3.86), math.pi, i % 2 == 1)
+	end
 
 	------------------------------------------------------------ LOUNGE: sofas, ping pong, arcade, records
 	sofa(deco, Vector3.new(-63, 0, 38), 0, C.coral, 14)

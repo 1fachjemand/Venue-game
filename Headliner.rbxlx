@@ -1,10 +1,10 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
 <External>null</External>
 <External>nil</External>
-<Item class="Workspace" referent="RBXE402123507E84BB5B2D15E2ABAF6D9F2"><Properties><string name="Name">Workspace</string><bool name="StreamingEnabled">false</bool></Properties></Item>
-<Item class="Lighting" referent="RBX7396B68C582C4F678F5E0820D52501BB"><Properties><string name="Name">Lighting</string><token name="Technology">4</token><bool name="GlobalShadows">false</bool></Properties></Item>
-<Item class="Players" referent="RBX4F1DA0EE10734A5089EAC98B5338CB02"><Properties><string name="Name">Players</string><bool name="CharacterAutoLoads">false</bool></Properties></Item>
-<Item class="ReplicatedStorage" referent="RBXD1918A11A4ED48358DA3EB6568511B20"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="Folder" referent="RBXBDBD39BB8F1345BBAC51F8DCFF8D0B6C"><Properties><string name="Name">Headliner</string></Properties><Item class="Folder" referent="RBX838B35C84B274351A5C7ED2B39FD4F17"><Properties><string name="Name">Client</string></Properties><Item class="ModuleScript" referent="RBX53D86357925146FFA93B0BBDF427CF76"><Properties><string name="Name">App</string><ProtectedString name="Source"><![CDATA[-- Main client controller: talks to the server, HUD, the station screens, popups, shows.
+<Item class="Workspace" referent="RBXD9D0BC87387E4685A4B873BF5C52F946"><Properties><string name="Name">Workspace</string><bool name="StreamingEnabled">false</bool></Properties></Item>
+<Item class="Lighting" referent="RBXBBAC086D4F8844AB88260C6E81B7BBF5"><Properties><string name="Name">Lighting</string><token name="Technology">4</token><bool name="GlobalShadows">false</bool></Properties></Item>
+<Item class="Players" referent="RBX2FC99B30348248809F597DC0803C4245"><Properties><string name="Name">Players</string><bool name="CharacterAutoLoads">false</bool></Properties></Item>
+<Item class="ReplicatedStorage" referent="RBX3C25462998E449E193B33B8ADF5634EB"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="Folder" referent="RBX6EA7D98D525047BC94756607AD4C8D9C"><Properties><string name="Name">Headliner</string></Properties><Item class="Folder" referent="RBXC65F011FF3154B368B90801DA39B0D5C"><Properties><string name="Name">Client</string></Properties><Item class="ModuleScript" referent="RBX26217981504B4AE88E4464004BF05DAA"><Properties><string name="Name">App</string><ProtectedString name="Source"><![CDATA[-- Main client controller: talks to the server, HUD, the station screens, popups, shows.
 -- The game state lives on the server (src/server/GameServer). `app.state` is a copy that the
 -- server keeps up to date; every change goes through app:act(name, args).
 local Players = game:GetService("Players")
@@ -1638,7 +1638,7 @@ end
 
 return App
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXB358CC8467EC419385EC9D8E0D06FE1C"><Properties><string name="Name">Builder</string><ProtectedString name="Source"><![CDATA[-- Builds 3D models for stage items and animates them during shows.
+<Item class="ModuleScript" referent="RBX73700BAC72F846E98600C20D6B51E5A7"><Properties><string name="Name">Builder</string><ProtectedString name="Source"><![CDATA[-- Builds 3D models for stage items and animates them during shows.
 -- Every item is built around the local origin (bottom centre for floor items, hanging point for rig items)
 -- and then moved into place with Builder.place().
 local TweenService = game:GetService("TweenService")
@@ -5342,7 +5342,7 @@ end
 
 return Builder
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX868746AB6BD1405EA6D8E998EDDCBF66"><Properties><string name="Name">Designer</string><ProtectedString name="Source"><![CDATA[-- STAGE BUILDER: build a stage in 3D.
+<Item class="ModuleScript" referent="RBX1F20B93615004834ABFBE4B2516A3F54"><Properties><string name="Name">Designer</string><ProtectedString name="Source"><![CDATA[-- STAGE BUILDER: build a stage in 3D.
 -- Works like park builder games: pick an item in the catalog at the bottom, click into the world to put it down,
 -- line it up with the coloured gizmo (red = X, green = height, blue = Z, orange ring = turn, gold cubes = size)
 -- and confirm with the green tick. Click a placed item to select and change it.
@@ -7552,7 +7552,7 @@ end
 
 return Designer
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX397C3F50194342928310DEBEF9F25F81"><Properties><string name="Name">Laptop</string><ProtectedString name="Source"><![CDATA[-- The laptop in the office: a little computer of its own.
+<Item class="ModuleScript" referent="RBX6B648DC860EF456C916A54B03B05E5D0"><Properties><string name="Name">Laptop</string><ProtectedString name="Source"><![CDATA[-- The laptop in the office: a little computer of its own.
 -- Power on -> start screen with the label name -> LOG IN -> desktop with apps.
 -- Apps open in windows: move them (title bar), resize them (corner), full screen (double click or the
 -- square button), minimise, close, several at once. The taskbar shows the open windows, the time and money.
@@ -8157,7 +8157,7 @@ end
 
 return Laptop
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX4B7F695ACBC1427DAE3B7997AC0131A0"><Properties><string name="Name">LiveFeed</string><ProtectedString name="Source"><![CDATA[-- Live camera pictures for LED screens ("Live: artist" / "Live: crowd").
+<Item class="ModuleScript" referent="RBX40D26B7DF5E848D387364CAC49914A17"><Properties><string name="Name">LiveFeed</string><ProtectedString name="Source"><![CDATA[-- Live camera pictures for LED screens ("Live: artist" / "Live: crowd").
 -- Every screen face gets its own little 3D scene inside its ViewportFrame:
 --   artist: copies of the performers (synced every frame) in front of a glowing LED wall, the camera slowly circles them
 --   crowd:  a crowd of fans with raised arms, light sticks and phone lights, the camera pans along the rows
@@ -8453,7 +8453,7 @@ end
 
 return LiveFeed
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX97280EA699094DDEB0F8F30074D52FB0"><Properties><string name="Name">LiveShow</string><ProtectedString name="Source"><![CDATA[-- Plays a concert in 3D: venue + crowd + your stage design + the artist.
+<Item class="ModuleScript" referent="RBXC56695190AFA4F06B31F136DAC31C6BF"><Properties><string name="Name">LiveShow</string><ProtectedString name="Source"><![CDATA[-- Plays a concert in 3D: venue + crowd + your stage design + the artist.
 -- Every show gets its own running order: the songs, the ballad position, effects and colours change.
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -9713,7 +9713,7 @@ end
 
 return LiveShow
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX787C5EE935824E2CBC2DB3BC71A13A5D"><Properties><string name="Name">MainMenu</string><ProtectedString name="Source"><![CDATA[-- Title screen: menu on the left, a famous venue at night on the right (see MenuScene).
+<Item class="ModuleScript" referent="RBX0A1B6979E8C44203B9414C6EF987A6A3"><Properties><string name="Name">MainMenu</string><ProtectedString name="Source"><![CDATA[-- Title screen: menu on the left, a famous venue at night on the right (see MenuScene).
 -- New game: name your label, then pick your first artist.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
@@ -10018,7 +10018,7 @@ end
 
 return MainMenu
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXB99D85F45BC94E7A8A9F57D28A4DEF5B"><Properties><string name="Name">Map2D</string><ProtectedString name="Source"><![CDATA[-- The world map of the tour planner: a real top-down map (Natural Earth borders, Data/WorldMap2D.lua,
+<Item class="ModuleScript" referent="RBX0DCEC1E6E78D418AA8CA915D48324D65"><Properties><string name="Name">Map2D</string><ProtectedString name="Source"><![CDATA[-- The world map of the tour planner: a real top-down map (Natural Earth borders, Data/WorldMap2D.lua,
 -- made by tools/gen_map2d.py) on a light sea. Only the continents and the big islands are drawn.
 -- The countries you can tour are lighter; under the mouse they light up, a click opens them.
 -- Mouse wheel / + - zoom, drag moves the map; it always fills the frame (no empty sky around it).
@@ -10335,7 +10335,7 @@ end
 
 return Map2D
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX04798EFABCE94ED4B59778647369B4CD"><Properties><string name="Name">MenuScene</string><ProtectedString name="Source"><![CDATA[-- Main menu background: detailed parody versions of famous venues at night.
+<Item class="ModuleScript" referent="RBXE51E4B50AC1B43C4B059364B8EC5E6CD"><Properties><string name="Name">MenuScene</string><ProtectedString name="Source"><![CDATA[-- Main menu background: detailed parody versions of famous venues at night.
 -- Every scene is a whole city district built from parts. The camera flies through the streets
 -- (Catmull-Rom spline through key points) and ends at the venue. Between scenes the 3D view
 -- fades to black (ColorCorrection, so the menu UI stays visible) while the next district is built.
@@ -12392,7 +12392,7 @@ end
 
 return MenuScene
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXCDF6CB31A8FB4CCF93F55E797B65C068"><Properties><string name="Name">People</string><ProtectedString name="Source"><![CDATA[-- Blocky performer figures (no external assets needed). Figures face +Z (towards the crowd) at yaw 0.
+<Item class="ModuleScript" referent="RBX9E806B27639045F4965B87066C2FAAB4"><Properties><string name="Name">People</string><ProtectedString name="Source"><![CDATA[-- Blocky performer figures (no external assets needed). Figures face +Z (towards the crowd) at yaw 0.
 local Root = script:FindFirstAncestor("Headliner")
 local UI = require(Root.Client.UI)
 local New = UI.New
@@ -12937,17 +12937,23 @@ end
 
 return People
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXD5AE48C8D55348798CD744A66F495B11"><Properties><string name="Name">Sam</string><ProtectedString name="Source"><![CDATA[-- Sam, the label manager (the R15 character "Guide" in the building, made by Hub.buildGuide).
+<Item class="ModuleScript" referent="RBX1D8B3DFC1512445D869FD569B76B3ABB"><Properties><string name="Name">Sam</string><ProtectedString name="Source"><![CDATA[-- Sam, the label manager (the R15 character "Guide" in the building, made by Hub.buildGuide).
 -- He walks from room to room on checked ways (Hub.SAM_ROUTES), talks and waves in the tutorial,
--- works at the desk of his own office after it, and joins your meetings on a meeting chair.
+-- works at the desk of his own office after it, and stands next to the board in your meetings
+-- (click an artist on the board: Sam says a few words about them, Sam.say).
+-- In Roblox he moves with the real character animations (walk / idle / sit, the same ones your own
+-- character has: they are read from its Animate script); the hands (clipboard, talking, typing) are
+-- set on top of them every frame (PreSimulation). Without an Animator (tests) he is posed by hand.
 --   Sam.start(app)  Sam.stop()
---   Sam.walkTo(spot)            "start" | "meeting" | "laptop" | "maptable" | "stagehall" | "office"
---   Sam.sitDown(kind)           "office" | "meeting" (walks there first)
+--   Sam.walkTo(spot)            "start" | "meeting" | "board" | "laptop" | "maptable" | "stagehall" | "office"
+--   Sam.sitDown("office")       walks there first
 --   Sam.setTalk(talking, wave)  the tutorial bubble: hands move while he talks, wave = 0..1
+--   Sam.say(app, text)          a short speech bubble at the bottom
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local Root = script:FindFirstAncestor("Headliner")
 local Hub = require(Root.World.Hub)
+local UI = require(Root.Client.UI)
 
 local O = Hub.ORIGIN
 local SPEED = 9 -- studs per second (a calm walk)
@@ -12967,7 +12973,17 @@ end
 
 -- height of the root above the floor when standing, and above the hips (for sitting)
 local function heights(g)
-	local h = g:GetAttribute("RootHeight") or 3
+	if not Sam.rootHeight then
+		-- measured from the feet (the character stands on the floor, never above it)
+		local hrp, foot = g.PrimaryPart, g:FindFirstChild("LeftFoot")
+		if hrp and foot then
+			-- the character was built with its root at RootHeight above the floor
+			Sam.rootHeight = math.clamp(hrp.CFrame.Position.Y - (foot.CFrame.Position.Y - foot.Size.Y / 2), 1, 6)
+		else
+			Sam.rootHeight = g:GetAttribute("RootHeight") or 3
+		end
+	end
+	local h = Sam.rootHeight
 	if not Sam.hipOffset then
 		local hrp = g.PrimaryPart
 		local leg = g:FindFirstChild("LeftUpperLeg")
@@ -13086,42 +13102,16 @@ function Sam.walkTo(spot, onDone)
 	end)
 end
 
--- walk to a chair and sit down (office: at his desk, meeting: a free meeting chair)
+-- walk to his office chair and sit down at the desk
 function Sam.sitDown(kind)
 	if Sam.sitting and Sam.sitting.kind == kind then
 		return
 	end
-	local seat, spot, way
-	if kind == "office" then
-		seat, spot, way = Hub.SAM_SEATS.office, "office", {}
-	else
-		local occupied = {}
-		local char = Players.LocalPlayer.Character
-		local hum = char and char:FindFirstChildOfClass("Humanoid")
-		if hum and hum.SeatPart then
-			occupied[hum.SeatPart.Name] = true
-		end
-		for _, m in ipairs(Hub.SAM_SEATS.meeting) do
-			if not occupied[m.seat] then
-				seat = m
-				break
-			end
-		end
-		seat = seat or Hub.SAM_SEATS.meeting[1]
-		spot, way = "meeting", seat.way or {}
-	end
+	local seat, spot = Hub.SAM_SEATS.office, "office"
 	Sam.walkTo(spot, function()
-		follow(way, function()
-			local h, hip = heights(model() or Instance.new("Model"))
-			local standAt = (#way > 0) and way[#way] or Hub.GUIDE_SPOTS[spot]
-			local back = {}
-			for i = #way - 1, 1, -1 do
-				table.insert(back, way[i])
-			end
-			Sam.sitting = { kind = kind, spot = spot, standAt = standAt, wayBack = back, pos = seat.pos, look = seat.look, y = seat.seatTop + hip + 0.25, t = 0 }
-			Sam.at = nil
-			local _ = h
-		end)
+		local _, hip = heights(model() or Instance.new("Model"))
+		Sam.sitting = { kind = kind, spot = spot, standAt = Hub.GUIDE_SPOTS[spot], wayBack = {}, pos = seat.pos, look = seat.look, y = seat.seatTop + hip + 0.25, t = 0 }
+		Sam.at = nil
 	end)
 end
 
@@ -13130,6 +13120,102 @@ function Sam.setTalk(talking, wave)
 end
 
 ------------------------------------------------------------------ animation
+-- the real animations: the same ones the player's character uses (its Animate script), else Roblox's defaults
+local FALLBACK = { walk = "rbxassetid://507777826", idle = "rbxassetid://507766388", sit = "rbxassetid://2506281703" }
+local ANIMATE_NAMES = { walk = { "walk", "WalkAnim" }, idle = { "idle", "Animation1" }, sit = { "sit", "SitAnim" } }
+local function animationId(kind)
+	local char = Players.LocalPlayer.Character
+	local animate = char and char:FindFirstChild("Animate")
+	local folder = animate and animate:FindFirstChild(ANIMATE_NAMES[kind][1])
+	local a = folder and folder:FindFirstChild(ANIMATE_NAMES[kind][2])
+	if a and a:IsA("Animation") and a.AnimationId ~= "" then
+		return a.AnimationId
+	end
+	return nil
+end
+local function loadTracks(g)
+	if Sam.tracks ~= nil then
+		return Sam.tracks
+	end
+	local hum = g:FindFirstChildOfClass("Humanoid")
+	if not hum then
+		Sam.tracks = false
+		return false
+	end
+	-- wait up to 4 s for the player's own animations, then take the defaults
+	local ready = animationId("walk") ~= nil
+	if not ready and (Sam.t or 0) < 4 then
+		return nil
+	end
+	local ok, tracks = pcall(function()
+		local animator = hum:FindFirstChildOfClass("Animator")
+		if not animator then
+			animator = Instance.new("Animator")
+			animator.Parent = hum
+		end
+		local out = {}
+		for kind in pairs(FALLBACK) do
+			local anim = Instance.new("Animation")
+			anim.AnimationId = animationId(kind) or FALLBACK[kind]
+			local tr = animator:LoadAnimation(anim)
+			tr.Looped = true
+			tr.Priority = (kind == "idle") and Enum.AnimationPriority.Idle or Enum.AnimationPriority.Movement
+			out[kind] = tr
+		end
+		return out
+	end)
+	Sam.tracks = ok and tracks or false
+	return Sam.tracks
+end
+local function playTrack(kind, speed)
+	local tracks = Sam.tracks
+	if not tracks then
+		return
+	end
+	if Sam.playing ~= kind then
+		for k, tr in pairs(tracks) do
+			if k ~= kind and tr.IsPlaying then
+				tr:Stop(0.25)
+			end
+		end
+		tracks[kind]:Play(0.25)
+		Sam.playing = kind
+	end
+	if speed then
+		tracks[kind]:AdjustSpeed(speed)
+	end
+end
+
+-- hands on top of the animations: the clipboard arm, talking, waving, typing at the desk
+local function overlay(g, t, mode)
+	local rs, ls = joint(g, "RightUpperArm", "RightShoulder"), joint(g, "LeftUpperArm", "LeftShoulder")
+	local re, le = joint(g, "RightLowerArm", "RightElbow"), joint(g, "LeftLowerArm", "LeftElbow")
+	local neck = joint(g, "Head", "Neck")
+	local function set(j, cf)
+		if j then
+			j.Transform = cf
+		end
+	end
+	local rad = math.rad
+	if mode == "type" then
+		set(rs, CFrame.Angles(rad(52 + math.sin(t * 11) * 3), 0, rad(6)))
+		set(ls, CFrame.Angles(rad(52 + math.sin(t * 13 + 1) * 3), 0, rad(-6)))
+		set(re, CFrame.Angles(rad(25), 0, 0))
+		set(le, CFrame.Angles(rad(25), 0, 0))
+		set(neck, CFrame.Angles(rad(-8 + math.sin(t * 0.4) * 4), rad(math.sin(t * 0.3) * 10), 0))
+		return
+	end
+	set(ls, CFrame.Angles(rad(55 + math.sin(t * 1.3) * 2), 0, rad(-6))) -- the clipboard stays in front
+	set(le, CFrame.Angles(rad(20), 0, 0))
+	local wave = math.min(1, Sam.wave or 0)
+	if mode == "stand" and wave > 0 then
+		set(rs, CFrame.Angles(0, 0, rad(150 + math.sin(t * 9) * 18) * wave))
+	elseif mode == "stand" and Sam.talking then
+		set(rs, CFrame.Angles(rad(35 + math.sin(t * 3.1) * 14), 0, rad(8 + math.sin(t * 2.3) * 6)))
+		set(neck, CFrame.Angles(rad(math.sin(t * 5) * 5), rad(math.sin(t * 1.7) * 8), 0))
+	end
+end
+
 local function pose(g, t, mode)
 	local rs, ls = joint(g, "RightUpperArm", "RightShoulder"), joint(g, "LeftUpperArm", "LeftShoulder")
 	local re = joint(g, "RightLowerArm", "RightElbow")
@@ -13201,6 +13287,9 @@ local function step(dt)
 	Sam.t = (Sam.t or 0) + dt
 	Sam.wave = math.max(0, (Sam.wave or 0) - dt)
 	local h = heights(g)
+	if Sam.tracks == nil then
+		loadTracks(g)
+	end
 	local w = Sam.walk
 	if w then
 		local target = w.pts[w.i]
@@ -13215,7 +13304,12 @@ local function step(dt)
 		end
 		local look = (d.Magnitude > 0.05) and d or (Sam.look or Vector3.new(0, 0, 1))
 		place(cur, look, h)
-		pose(g, Sam.t, "walk")
+		Sam.mode = "walk"
+		if Sam.tracks then
+			playTrack("walk", 0.75)
+		else
+			pose(g, Sam.t, "walk")
+		end
 		if w.i > #w.pts then
 			Sam.walk = nil
 			if w.onDone then
@@ -13232,10 +13326,20 @@ local function step(dt)
 		local p = from:Lerp(s.pos, s.t)
 		local y = h + (s.y - h) * s.t
 		place(p, s.look, y)
-		pose(g, Sam.t, (s.kind == "office") and "type" or "sit")
+		Sam.mode = (s.kind == "office") and "type" or "sit"
+		if Sam.tracks then
+			playTrack("sit")
+		else
+			pose(g, Sam.t, Sam.mode)
+		end
 		return
 	end
-	pose(g, Sam.t, "stand")
+	Sam.mode = "stand"
+	if Sam.tracks then
+		playTrack("idle")
+	else
+		pose(g, Sam.t, "stand")
+	end
 end
 
 function Sam.start(app)
@@ -13247,21 +13351,46 @@ function Sam.start(app)
 		local p = g.PrimaryPart.CFrame.Position - O
 		Sam.pos = Vector3.new(p.X, 0, p.Z)
 	end
+	Sam.tracks, Sam.playing = nil, nil
 	Sam.conn = RunService.Heartbeat:Connect(function(dt)
 		step(math.min(dt, 0.1))
 		Sam.behave()
 	end)
+	-- the hands go on top of the animations, after the Animator wrote the joints for this frame
+	local ok, ev = pcall(function()
+		return RunService.PreSimulation
+	end)
+	Sam.conn2 = (ok and ev or RunService.Stepped):Connect(function()
+		local g2 = model()
+		if g2 and Sam.tracks then
+			overlay(g2, Sam.t or 0, Sam.mode or "stand")
+		end
+	end)
 end
 
 function Sam.stop()
-	if Sam.conn then
-		Sam.conn:Disconnect()
-		Sam.conn = nil
+	for _, k in ipairs({ "conn", "conn2" }) do
+		if Sam[k] then
+			Sam[k]:Disconnect()
+			Sam[k] = nil
+		end
+	end
+	if Sam.tracks then
+		for _, tr in pairs(Sam.tracks) do
+			pcall(function()
+				tr:Stop(0)
+			end)
+		end
+	end
+	Sam.tracks, Sam.playing = nil, nil
+	if Sam.bubble then
+		Sam.bubble:Destroy()
+		Sam.bubble = nil
 	end
 	Sam.walk, Sam.sitting = nil, nil
 end
 
--- after the tutorial: Sam works in his office, and sits in when you hold a meeting
+-- after the tutorial: Sam works in his office, and stands next to the board when you hold a meeting
 function Sam.behave()
 	local app = Sam.app
 	if not app or not app.state then
@@ -13272,9 +13401,8 @@ function Sam.behave()
 		return
 	end
 	if app.mode == "meeting" then
-		if not (Sam.sitting and Sam.sitting.kind == "meeting") and Sam.goal ~= "meeting" then
-			Sam.goal = "meeting"
-			Sam.sitDown("meeting")
+		if Sam.goal ~= "board" then
+			Sam.walkTo("board")
 		end
 	elseif Sam.goal ~= "office" then
 		Sam.goal = "office"
@@ -13297,9 +13425,69 @@ function Sam.placeAtDesk()
 	Sam.sitting = { kind = "office", spot = "office", standAt = Hub.GUIDE_SPOTS.office, wayBack = {}, pos = s.pos, look = s.look, y = s.seatTop + hip + 0.25, t = 1 }
 end
 
+------------------------------------------------------------------ what Sam knows about an artist (1-2 sentences)
+function Sam.artistLine(ad, state)
+	local Util = require(Root.Logic.Util)
+	local GS = require(Root.Logic.GameState)
+	local a = state.artists[ad.id]
+	local fans = Util.short(Util.totalFans(a.fans))
+	local who = (ad.members > 1) and (ad.genre .. " group of " .. ad.members) or (ad.genre .. ", solo")
+	local name = "<b>" .. UI.esc(ad.name) .. "</b>"
+	if a.signed then
+		local tour = GS.activeTour(state, ad.id)
+		local next
+		if tour then
+			next = "On tour right now: keep an eye on the ticket sales."
+		elseif a.hype >= 60 then
+			next = "The fans are hungry: book bigger venues this time!"
+		else
+			next = "A tour in small clubs would build the hype."
+		end
+		return name .. " is one of ours (" .. who .. "), " .. fans .. " fans, hype " .. math.floor(a.hype) .. ". " .. next
+	end
+	local lvl = GS.level(state)
+	local about = ad.pitch or ad.bio
+	if ad.level > lvl then
+		return name .. " (" .. who .. ", " .. fans .. " fans): " .. about .. " They only talk to labels of level " .. ad.level .. " and up."
+	end
+	return name .. " (" .. who .. ", " .. fans .. " fans): " .. about .. " Signing costs " .. Util.money(ad.signCost) .. "."
+end
+
+------------------------------------------------------------------ Sam says something (a short bubble at the bottom)
+function Sam.say(app, text, seconds)
+	if Sam.bubble then
+		Sam.bubble:Destroy()
+	end
+	local T = UI.Theme
+	local f = UI.New("TextButton", { Parent = app.canvas, Name = "SamSays", AnchorPoint = Vector2.new(0.5, 1), Position = UI.px(960, 1010), Size = UI.px(900, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = T.panel, AutoButtonColor = false, Text = "", BorderSizePixel = 0, ZIndex = 84, UI.Corner(16), UI.Stroke(T.accent, 2, 0), UI.Padding(24, 24, 14, 16) })
+	UI.New("UIListLayout", { Parent = f, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder })
+	local name = UI.Label(f, "SAM  |  LABEL MANAGER", nil, UI.px(852, 22), { textSize = 15, font = UI.FontBlack, color = T.accent })
+	name.LayoutOrder = 1
+	name.ZIndex = 85
+	local body = UI.New("TextLabel", { Parent = f, Size = UI.px(852, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, Text = text, RichText = true, TextWrapped = true, TextColor3 = T.text, TextSize = 21, Font = UI.Font, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 2, ZIndex = 85 })
+	Sam.bubble = f
+	Sam.sayText = text
+	Sam.talking = true
+	local token = {}
+	Sam.sayToken = token
+	local function close()
+		if Sam.sayToken == token then
+			Sam.talking = false
+			if Sam.bubble == f then
+				Sam.bubble = nil
+			end
+		end
+		f:Destroy()
+	end
+	f.MouseButton1Click:Connect(close)
+	task.delay(seconds or 8, close)
+	local _ = body
+	return f
+end
+
 return Sam
 ]]></ProtectedString></Properties></Item>
-<Item class="Folder" referent="RBX2A915E8B39894C80A2666842FF20B8E5"><Properties><string name="Name">Screens</string></Properties><Item class="ModuleScript" referent="RBX319325657B364882BE80AFF74B1CD941"><Properties><string name="Name">ArtistsScreen</string><ProtectedString name="Source"><![CDATA[-- ARTISTS screen: your roster and the talent scout.
+<Item class="Folder" referent="RBX2C7F53E8A7E14E9E800ABF37816D344E"><Properties><string name="Name">Screens</string></Properties><Item class="ModuleScript" referent="RBX26750F0D49C3421D85328092FFF18326"><Properties><string name="Name">ArtistsScreen</string><ProtectedString name="Source"><![CDATA[-- ARTISTS screen: your roster and the talent scout.
 local Root = script:FindFirstAncestor("Headliner")
 local Achievements = require(Root.Data.Achievements)
 local Config = require(Root.Config)
@@ -13425,7 +13613,7 @@ end
 
 return ArtistsScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX1148AB005CAB498C8FB3F007DFD33528"><Properties><string name="Name">ChartsScreen</string><ProtectedString name="Source"><![CDATA[-- CHARTS screen: Top grossing tours of all time + achievements + records.
+<Item class="ModuleScript" referent="RBX85D301D8DECC4E0EBF8EAFE1A2ABF0BD"><Properties><string name="Name">ChartsScreen</string><ProtectedString name="Source"><![CDATA[-- CHARTS screen: Top grossing tours of all time + achievements + records.
 local Root = script:FindFirstAncestor("Headliner")
 local Achievements = require(Root.Data.Achievements)
 local Util = require(Root.Logic.Util)
@@ -13507,7 +13695,7 @@ end
 
 return ChartsScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX042AFFD7FF8740A0B4D0703C63734B7F"><Properties><string name="Name">PhoneScreen</string><ProtectedString name="Source"><![CDATA[-- The phone (SOCIAL): opens from the phone button at any time while walking around.
+<Item class="ModuleScript" referent="RBX1EE2807712D544A9829271DA68411661"><Properties><string name="Name">PhoneScreen</string><ProtectedString name="Source"><![CDATA[-- The phone (SOCIAL): opens from the phone button at any time while walking around.
 -- A smartphone on the right side of the screen with the fan feed, the fan mood and trending hashtags.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
@@ -13624,7 +13812,7 @@ end
 
 return PhoneScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX3DB7075272CE4AFD851DC880DAB77300"><Properties><string name="Name">SocialScreen</string><ProtectedString name="Source"><![CDATA[-- SOCIAL: what fans post about your artists. Good shows get love, bad shows and high prices get criticism.
+<Item class="ModuleScript" referent="RBX200B35C553EC41D18F8DFAC78D6DAE6A"><Properties><string name="Name">SocialScreen</string><ProtectedString name="Source"><![CDATA[-- SOCIAL: what fans post about your artists. Good shows get love, bad shows and high prices get criticism.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local Artists = require(Root.Data.Artists)
@@ -14062,7 +14250,7 @@ end
 
 return SocialScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXB367D6191FF04F30BFC5047404485C69"><Properties><string name="Name">StagesScreen</string><ProtectedString name="Source"><![CDATA[-- MY STAGES: all your stage designs in one place. Edit, copy, delete or start a new one.
+<Item class="ModuleScript" referent="RBX4179C044BB2A43BFBF5CB546D6F3505B"><Properties><string name="Name">StagesScreen</string><ProtectedString name="Source"><![CDATA[-- MY STAGES: all your stage designs in one place. Edit, copy, delete or start a new one.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local StageItems = require(Root.Data.StageItems)
@@ -14382,7 +14570,7 @@ end
 
 return StagesScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX460DE9DAD14543858279C217B6AF340E"><Properties><string name="Name">StatsScreen</string><ProtectedString name="Source"><![CDATA[-- STATISTICS (laptop app): the label in numbers, every artist and every tour.
+<Item class="ModuleScript" referent="RBX2C1B0559AC7F4D129BED439F40DB4417"><Properties><string name="Name">StatsScreen</string><ProtectedString name="Source"><![CDATA[-- STATISTICS (laptop app): the label in numbers, every artist and every tour.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local Util = require(Root.Logic.Util)
@@ -14464,7 +14652,7 @@ end
 
 return StatsScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX00C0594F3AC54CC7A2332A449F74CD71"><Properties><string name="Name">TourPlanner</string><ProtectedString name="Source"><![CDATA[-- TOUR PLANNER (an app on the laptop): one thing after the other.
+<Item class="ModuleScript" referent="RBX9D5CF1CF7DBB4011B27284A1272260DF"><Properties><string name="Name">TourPlanner</string><ProtectedString name="Source"><![CDATA[-- TOUR PLANNER (an app on the laptop): one thing after the other.
 -- 1 Artist  ->  2 Shows (map -> venues of a country -> date)  ->  3 Tickets  ->  4 Stage  ->  5 Announce
 -- The plan lives on the server (state.draft, action setDraft) so it survives closing the laptop.
 local Root = script:FindFirstAncestor("Headliner")
@@ -15447,7 +15635,7 @@ end
 
 return TP
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX2CE95A0CC7F34289B5DEF9DE547F4407"><Properties><string name="Name">ToursScreen</string><ProtectedString name="Source"><![CDATA[-- TOURS screen: ticket sales, prices, marketing and results of your tours.
+<Item class="ModuleScript" referent="RBX4A19247FCE8E4D80B2583280D38A3ED6"><Properties><string name="Name">ToursScreen</string><ProtectedString name="Source"><![CDATA[-- TOURS screen: ticket sales, prices, marketing and results of your tours.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local Countries = require(Root.Data.Countries)
@@ -15659,7 +15847,7 @@ end
 return ToursScreen
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="ModuleScript" referent="RBX52D2F7F306064368809DC5AC06B09BB3"><Properties><string name="Name">ShowTasks</string><ProtectedString name="Source"><![CDATA[-- Mini tasks during a live show (planned for a later update: fix a spotlight, refill the merch stand ...).
+<Item class="ModuleScript" referent="RBX5F967B2E51724545B347C4B8B5B2E04F"><Properties><string name="Name">ShowTasks</string><ProtectedString name="Source"><![CDATA[-- Mini tasks during a live show (planned for a later update: fix a spotlight, refill the merch stand ...).
 -- The live show calls start / update / stop; every task registered here gets the show context:
 --   ctx = { app, venue, look, crowd (Venue.build info), items (stage items), overlay (UI frame),
 --           character, t (show time), seg (current part of the show), timeScale }
@@ -15698,7 +15886,7 @@ end
 
 return ShowTasks
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX5C4AACBBF1914796BE4AC0CAEBD90BA9"><Properties><string name="Name">SoundFX</string><ProtectedString name="Source"><![CDATA[-- Music and sound effects. Every sound is a part (PlaybackRegion) of a few uploaded files, see Data/Audio.lua.
+<Item class="ModuleScript" referent="RBX5D7EB26137064ACAA822AEA2D2498E46"><Properties><string name="Name">SoundFX</string><ProtectedString name="Source"><![CDATA[-- Music and sound effects. Every sound is a part (PlaybackRegion) of a few uploaded files, see Data/Audio.lua.
 -- Without uploaded IDs every function quietly does nothing.
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
@@ -15880,7 +16068,7 @@ end
 
 return SoundFX
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXD79082FAF00B448F8E4DD2B7624B50FC"><Properties><string name="Name">Stage3D</string><ProtectedString name="Source"><![CDATA[-- The 3D world: ground, the build area of the current stage design, and the placed design items.
+<Item class="ModuleScript" referent="RBXED044542212343F2B0976A07ECFC0C1E"><Properties><string name="Name">Stage3D</string><ProtectedString name="Source"><![CDATA[-- The 3D world: ground, the build area of the current stage design, and the placed design items.
 -- There is no fixed stage: everything (decks, catwalks, center stages) is built from items.
 local Lighting = game:GetService("Lighting")
 local Root = script:FindFirstAncestor("Headliner")
@@ -16302,7 +16490,7 @@ end
 
 return Stage3D
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXE385FF2F3C9046EE9CECEECB21B102CC"><Properties><string name="Name">Tutorial</string><ProtectedString name="Source"><![CDATA[-- The tutorial: Sam, the label manager, walks you through your first tour and your first stage.
+<Item class="ModuleScript" referent="RBX21978DE63E5048A594C8DA840640A5CC"><Properties><string name="Name">Tutorial</string><ProtectedString name="Source"><![CDATA[-- The tutorial: Sam, the label manager, walks you through your first tour and your first stage.
 -- A speech bubble at the bottom: click to go on. When you have to do something, the bubble gets small,
 -- shows what to do, and the golden arrow shows the way. Skip any time; the progress is saved
 -- (state.tutorial, action "tutorial").
@@ -16710,7 +16898,7 @@ end
 
 return Tutorial
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX191497BBE6284F0E99D675E55F17C579"><Properties><string name="Name">UI</string><ProtectedString name="Source"><![CDATA[-- Tiny UI toolkit. All layouts are designed for a 1920x1080 canvas that gets scaled to the screen.
+<Item class="ModuleScript" referent="RBX14F0E74F49B748919417C12008060684"><Properties><string name="Name">UI</string><ProtectedString name="Source"><![CDATA[-- Tiny UI toolkit. All layouts are designed for a 1920x1080 canvas that gets scaled to the screen.
 local TweenService = game:GetService("TweenService")
 
 local UI = {}
@@ -16980,7 +17168,7 @@ end
 
 return UI
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX1066A9571E2848E0AAB7550F3298D27E"><Properties><string name="Name">Venue</string><ProtectedString name="Source"><![CDATA[-- Builds the inside of a venue around the stage and fills it with a crowd.
+<Item class="ModuleScript" referent="RBX7067E35FA949489CA353A84C06C693D2"><Properties><string name="Name">Venue</string><ProtectedString name="Source"><![CDATA[-- Builds the inside of a venue around the stage and fills it with a crowd.
 --   arena:   oval bowl with lower and upper tier, sections with stairs, concourse, suites, LED ribbon, roof rig,
 --            black drapes behind an end stage (or a full bowl around a center stage)
 --   stadium: football stadium with pitch and floor cover, two tiers all around, roof with floodlights
@@ -18139,7 +18327,7 @@ end
 
 return Venue
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXD41E6520315C48F4983AFD338EBCE0C6"><Properties><string name="Name">VenueModels</string><ProtectedString name="Source"><![CDATA[-- Small 3D pictures of venues from the outside (tour planner cards): a ViewportFrame with a simple model
+<Item class="ModuleScript" referent="RBX45F488182C014B83ABD4E103541F1D76"><Properties><string name="Name">VenueModels</string><ProtectedString name="Source"><![CDATA[-- Small 3D pictures of venues from the outside (tour planner cards): a ViewportFrame with a simple model
 -- per venue type (Club, Theatre, Hall, Arena, Amphitheatre, Stadium).
 local Root = script:FindFirstAncestor("Headliner")
 local UI = require(Root.Client.UI)
@@ -18279,7 +18467,7 @@ end
 
 return VenueModels
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXCC4B8B0503C1433DB42E48A99200A4E1"><Properties><string name="Name">World</string><ProtectedString name="Source"><![CDATA[-- The label building on the client: the player's character, the stations (ProximityPrompts),
+<Item class="ModuleScript" referent="RBX128BFD097A6C48969B7725163437D10A"><Properties><string name="Name">World</string><ProtectedString name="Source"><![CDATA[-- The label building on the client: the player's character, the stations (ProximityPrompts),
 -- name tags over the stations, the guide arrow, the world map on the table, the charts wall and
 -- the stage hall door. The building itself is built by the server (World/Hub.lua).
 local Players = game:GetService("Players")
@@ -19303,7 +19491,13 @@ local function boardCard(parent, ad, state, signed, y, x)
 	local app = World.app
 	local a = state.artists[ad.id]
 	local total = Util.totalFans(a.fans)
-	local card = New("Frame", { Parent = parent, Position = UI.px(x, y), Size = UI.px(372, 270), BackgroundColor3 = T.panel2, BorderSizePixel = 0, UI.Corner(14) })
+	local card = New("Frame", { Parent = parent, Position = UI.px(x, y), Size = UI.px(372, 270), BackgroundColor3 = T.panel, BorderSizePixel = 0, UI.Corner(14), UI.Stroke(T.stroke, 1, 0) })
+	-- a click on the card (not on its buttons): Sam says a few words about this artist
+	local talk = New("TextButton", { Parent = card, Name = "AskSam", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "", AutoButtonColor = false, ZIndex = 0 })
+	talk.MouseButton1Click:Connect(function()
+		local Sam = require(Root.Client.Sam)
+		Sam.say(app, Sam.artistLine(ad, state), 9)
+	end)
 	New("Frame", { Parent = card, Size = UI.px(372, 8), BackgroundColor3 = UI.rgb(ad.color), BorderSizePixel = 0, UI.Corner(14) })
 	People.preview(card, ad.look, UI.rgb(ad.color), UI.px(10, 16), UI.px(110, 170), Color3.fromRGB(32, 36, 54))
 	UI.Label(card, ad.name, UI.px(130, 16), UI.px(236, 32), { textSize = 26, font = UI.FontBlack })
@@ -19355,9 +19549,9 @@ function World.drawBoard()
 	end
 	g:ClearAllChildren()
 	local state = World.app.state
-	local bg = New("Frame", { Parent = g, Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(16, 18, 30), BorderSizePixel = 0 })
-	UI.Label(bg, "MEETING  |  " .. string.upper(state.labelName), UI.px(30, 14), UI.px(1000, 44), { textSize = 34, font = UI.FontBlack, color = T.text })
-	UI.Label(bg, "Stand up (SPACE) to end the meeting", UI.px(1040, 22), UI.px(530, 30), { textSize = 18, color = T.sub, alignX = Enum.TextXAlignment.Right })
+	local bg = New("Frame", { Parent = g, Size = UDim2.fromScale(1, 1), BackgroundColor3 = T.bg, BorderSizePixel = 0 })
+	UI.Label(bg, "MEETING  |  " .. string.upper(state.labelName), UI.px(30, 14), UI.px(900, 44), { textSize = 34, font = UI.FontBlack, color = T.text })
+	UI.Label(bg, "Click an artist: Sam tells you about them   |   SPACE: end the meeting", UI.px(820, 22), UI.px(750, 30), { textSize = 18, color = T.sub, alignX = Enum.TextXAlignment.Right })
 	local cols = { { "YOUR ROSTER", GS.signedArtists(state), true, 30 }, { "AVAILABLE TALENT", GS.unsignedArtists(state), false, 818 } }
 	for _, c in ipairs(cols) do
 		UI.Label(bg, c[1] .. "  (" .. #c[2] .. ")", UI.px(c[4], 70), UI.px(700, 30), { textSize = 22, font = UI.FontBlack, color = c[3] and T.accent2 or T.gold })
@@ -19645,7 +19839,7 @@ end
 return World
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="ModuleScript" referent="RBXE64B399D991E472A80B09525996DD597"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[-- HEADLINER :: global tuning values
+<Item class="ModuleScript" referent="RBXE208CF2ACDBA42AEB6030D5E04D6900A"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[-- HEADLINER :: global tuning values
 local Config = {}
 
 Config.GAME_TITLE = "HEADLINER"
@@ -19741,7 +19935,7 @@ Config.MARKETING = {
 
 return Config
 ]]></ProtectedString></Properties></Item>
-<Item class="Folder" referent="RBX0E77DA9983E6463B867D44ACE2D51121"><Properties><string name="Name">Data</string></Properties><Item class="ModuleScript" referent="RBX200505E523DA447F9AF58D135E8EB2C2"><Properties><string name="Name">Achievements</string><ProtectedString name="Source"><![CDATA[-- Goals. Checked after every show / tour.
+<Item class="Folder" referent="RBXC90DE8418C634E34977A89594C9D98E9"><Properties><string name="Name">Data</string></Properties><Item class="ModuleScript" referent="RBX440042DB454746B2AD9ADE3960901B8B"><Properties><string name="Name">Achievements</string><ProtectedString name="Source"><![CDATA[-- Goals. Checked after every show / tour.
 local Achievements = {
 	list = {
 		{ id = "first_show", name = "Opening Night", desc = "Play your first show." },
@@ -19769,7 +19963,7 @@ for _, a in ipairs(Achievements.list) do
 end
 return Achievements
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXA6F47A246C2E4F78B893E7DEF1EEB870"><Properties><string name="Name">Artists</string><ProtectedString name="Source"><![CDATA[-- Fictional artists. fans = starting fan count per region.
+<Item class="ModuleScript" referent="RBXA604CF13AD5B4ABEA66488BB05C35133"><Properties><string name="Name">Artists</string><ProtectedString name="Source"><![CDATA[-- Fictional artists. fans = starting fan count per region.
 -- skill (0-100) = live performance quality. pricePower = how much fans pay compared to an average act.
 -- members: 1 = solo, 2+ = band/group. level = label level needed to sign. starter = can be picked for free at game start.
 
@@ -19906,7 +20100,7 @@ end
 
 return Artists
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX704D3F7CABC6407F9858D8479819F407"><Properties><string name="Name">Audio</string><ProtectedString name="Source"><![CDATA[-- Roblox asset IDs of the uploaded audio files (folder audio/ in the project, made by tools/music/make_audio.py).
+<Item class="ModuleScript" referent="RBX82DA2EDE5E814A46ABB697A19E5276D7"><Properties><string name="Name">Audio</string><ProtectedString name="Source"><![CDATA[-- Roblox asset IDs of the uploaded audio files (folder audio/ in the project, made by tools/music/make_audio.py).
 -- 0 = not uploaded yet: the game simply stays silent for that part.
 -- Every artist file holds 12 songs of 30 s (song n starts at (n - 1) * 30 s), see Data/AudioMap.lua.
 local Audio = {}
@@ -19930,7 +20124,7 @@ Audio.IDS = {
 
 return Audio
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX0FF39ECC666F44B183F50820E01E59A9"><Properties><string name="Name">AudioMap</string><ProtectedString name="Source"><![CDATA[-- Generated by tools/music/make_audio.py: where each sound sits inside the uploaded files (seconds).
+<Item class="ModuleScript" referent="RBX2C481F4336AB47E292A7D25ABACB1896"><Properties><string name="Name">AudioMap</string><ProtectedString name="Source"><![CDATA[-- Generated by tools/music/make_audio.py: where each sound sits inside the uploaded files (seconds).
 local AudioMap = {}
 AudioMap.SONG_LEN = 30
 AudioMap.BALLAD_INDEX = 4
@@ -19956,7 +20150,7 @@ AudioMap.SFX = {
 }
 return AudioMap
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX5CD718E6CC43467B8DF050B8E741B1D1"><Properties><string name="Name">Countries</string><ProtectedString name="Source"><![CDATA[-- Countries and venues.
+<Item class="ModuleScript" referent="RBX27ABB37A2635439AA058449830F4016B"><Properties><string name="Name">Countries</string><ProtectedString name="Source"><![CDATA[-- Countries and venues.
 -- Venue names are parody names inspired by real venues. Capacities follow the real venues'
 -- concert capacities (source: Wikipedia infoboxes, checked Nov 2026). Venues marked "fictional" are made up.
 --
@@ -20500,7 +20694,7 @@ end
 
 return Countries
 ]]></ProtectedString></Properties></Item>
-<Item class="Folder" referent="RBXA06BEA6C6EF84BC684123AED40D87C70"><Properties><string name="Name">MenuCity</string></Properties><Item class="ModuleScript" referent="RBXA92BCCA9AF974E829DD56518AD4877C1"><Properties><string name="Name">lanxus</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="Folder" referent="RBXA45BD61ED6DD4B629B10711FE8FE31D7"><Properties><string name="Name">MenuCity</string></Properties><Item class="ModuleScript" referent="RBX901155D549DC4D719B5EC21A5DB1C871"><Properties><string name="Name">lanxus</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -21453,7 +21647,7 @@ return {
 	A = { dom = { -3472, -646 }, bridge = { -2455, -424 } },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX6E04031D93924F7BBA8D8BAA9FB7D64D"><Properties><string name="Name">madrid</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBX8D00CD4FE50240FC827E837B28CB2D04"><Properties><string name="Name">madrid</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -21962,7 +22156,7 @@ return {
 	A = {  },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX9DABDC003B06468B88D40F199502622C"><Properties><string name="Name">msg</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBX95573128C20542C5B6718B683F1061C0"><Properties><string name="Name">msg</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z (map turned -29 deg)
 return {
@@ -22563,7 +22757,7 @@ return {
 	A = { empire = { 1365, -233 }, penn = { -238, 159 } },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXFA6A23FFB0174C3D968BF6FAE4A15B3C"><Properties><string name="Name">o3</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBX7D9DFFB198514CC488639AD64353EC5C"><Properties><string name="Name">o3</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -23153,7 +23347,7 @@ return {
 	A = {  },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXAC5D650214244E51B1097F6BDE22D377"><Properties><string name="Name">paris</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBX9A55FD004C604FCB86C1D7606F16BC23"><Properties><string name="Name">paris</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -23841,7 +24035,7 @@ return {
 	A = {  },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX37EB53E001FF473EAE597EFA9849F03B"><Properties><string name="Name">wembley</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBXA56074D965AB42469B6942367A882CB6"><Properties><string name="Name">wembley</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -24261,7 +24455,7 @@ return {
 	A = { station = { 12, -1636 } },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX72BB84793D8341149C9A703EB5E1244F"><Properties><string name="Name">zurich</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBX3B1878678A824523853F189FD5406C70"><Properties><string name="Name">zurich</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -24897,7 +25091,7 @@ return {
 }
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="ModuleScript" referent="RBX72A2E0CE2AA24408A06DE4199B464EDC"><Properties><string name="Name">Regions</string><ProtectedString name="Source"><![CDATA[-- World regions. Artists have a fan count per region.
+<Item class="ModuleScript" referent="RBXBC906E53871A490E9F9A73D74007F54B"><Properties><string name="Name">Regions</string><ProtectedString name="Source"><![CDATA[-- World regions. Artists have a fan count per region.
 local Regions = {
 	list = {
 		{ id = "EU", name = "Europe" },
@@ -24916,7 +25110,7 @@ end
 
 return Regions
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX71BD8FF0A6CA463E84B43C5646BF4992"><Properties><string name="Name">Reviews</string><ProtectedString name="Source"><![CDATA[-- Review quotes by star rating. {artist} {venue} {city} are replaced.
+<Item class="ModuleScript" referent="RBX92E4D928831B41F6B8FC772B267FFAF8"><Properties><string name="Name">Reviews</string><ProtectedString name="Source"><![CDATA[-- Review quotes by star rating. {artist} {venue} {city} are replaced.
 return {
 	[1] = {
 		"\"A night to forget. {artist} looked lost at {venue}.\"",
@@ -24941,7 +25135,7 @@ return {
 	},
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX3A782843D4BE497C83F3EAC80689D1C0"><Properties><string name="Name">Rivals</string><ProtectedString name="Source"><![CDATA[-- Fictional rival tours for the "Top Grossing Tours" chart. Beat them all!
+<Item class="ModuleScript" referent="RBXCD28F9A93D1E4ADEB3C14B4923DFC18A"><Properties><string name="Name">Rivals</string><ProtectedString name="Source"><![CDATA[-- Fictional rival tours for the "Top Grossing Tours" chart. Beat them all!
 return {
 	{ artist = "Aurora Vale", tour = "The Celestial Tour", gross = 520000000, shows = 120, attendance = 6100000 },
 	{ artist = "The Midnight Kings", tour = "Crown & Glory Tour", gross = 410000000, shows = 88, attendance = 4200000 },
@@ -24958,7 +25152,7 @@ return {
 	{ artist = "The Weekend Plans", tour = "Small Rooms Tour", gross = 600000, shows = 24, attendance = 30000 },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX4AF37F86FEA442A8A6E3E894D0377098"><Properties><string name="Name">Social</string><ProtectedString name="Source"><![CDATA[-- Fan posts for the SOCIAL feed. Placeholders: {artist} {venue} {city} {country} {tour} {song} {price} {tag} {item} {label}
+<Item class="ModuleScript" referent="RBX69268EFC22F54659BED2EBF28BBCE818"><Properties><string name="Name">Social</string><ProtectedString name="Source"><![CDATA[-- Fan posts for the SOCIAL feed. Placeholders: {artist} {venue} {city} {country} {tour} {song} {price} {tag} {item} {label}
 -- mood: 1 = positive, 0 = neutral, -1 = negative. photo = the post shows a concert photo.
 local Social = {}
 
@@ -25208,7 +25402,7 @@ end
 
 return Social
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX1504A754C2D742D78A7296586E589611"><Properties><string name="Name">SocialMore</string><ProtectedString name="Source"><![CDATA[-- More fan posts (merged into Social.POSTS by Data/Social.lua). Same format: { mood, text }.
+<Item class="ModuleScript" referent="RBXA263FB3BCDD647E38DC315710818372E"><Properties><string name="Name">SocialMore</string><ProtectedString name="Source"><![CDATA[-- More fan posts (merged into Social.POSTS by Data/Social.lua). Same format: { mood, text }.
 -- Placeholders: {artist} {venue} {city} {country} {tour} {song} {price} {tag} {item} {label}
 return {
 	announce = {
@@ -25376,7 +25570,7 @@ return {
 	},
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX3860C0CF87F844F5B7396851B5C12704"><Properties><string name="Name">StageItems</string><ProtectedString name="Source"><![CDATA[-- Stage design catalog.
+<Item class="ModuleScript" referent="RBXE14206CFF27C4A84AE8B43F234641E1F"><Properties><string name="Name">StageItems</string><ProtectedString name="Source"><![CDATA[-- Stage design catalog.
 -- cost  = production cost per show (crew, transport, power)
 -- pts   = production value points (more points = more impressive show)
 -- tags  = used for genre bonuses
@@ -25709,7 +25903,7 @@ end
 
 return StageItems
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX75672C2D779D48239BB88301FB4731EA"><Properties><string name="Name">WorldMap2D</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/gen_map2d.py from Natural Earth borders (world-atlas 2.0.2, public domain).
+<Item class="ModuleScript" referent="RBXBCD2FB6C64BB48E1A35915AF9CA140E5"><Properties><string name="Name">WorldMap2D</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/gen_map2d.py from Natural Earth borders (world-atlas 2.0.2, public domain).
 -- Top-down world map, 4 cells per degree, longitude -170..190, latitude 76..-56. Small islands are left out.
 -- rects = { row, col, width, height } in cells (0-based). tone 1..4 = neutral land, cid = playable country.
 return {
@@ -25865,7 +26059,7 @@ return {
 }
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="Folder" referent="RBX2A6AEFEAB6F54C1FA43E91FA5345F6BE"><Properties><string name="Name">Logic</string></Properties><Item class="ModuleScript" referent="RBX8C0D7E67B9844882A1493A278CA95F4D"><Properties><string name="Name">Actions</string><ProtectedString name="Source"><![CDATA[-- Everything that changes the game state, by name. The server runs these on the real game state
+<Item class="Folder" referent="RBX22235EA22C164EB8885A43F8603511FA"><Properties><string name="Name">Logic</string></Properties><Item class="ModuleScript" referent="RBX2D9E44FE3EAF4FCD9126B1555DD1DF1B"><Properties><string name="Name">Actions</string><ProtectedString name="Source"><![CDATA[-- Everything that changes the game state, by name. The server runs these on the real game state
 -- (the client only asks for them). Pure Lua (no Roblox APIs), so the logic tests can run it too.
 -- Actions.run(state, name, args) -> ok, message, data
 local Root = script:FindFirstAncestor("Headliner")
@@ -26370,7 +26564,7 @@ end
 local _ = Artists
 return Actions
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXD85F20F0A7F545DF844BB45CF30B07AF"><Properties><string name="Name">GameState</string><ProtectedString name="Source"><![CDATA[-- Game state: everything that gets saved. Pure Lua (no Roblox APIs).
+<Item class="ModuleScript" referent="RBX0F84C9CDF3534F7BB810675E8A658F9D"><Properties><string name="Name">GameState</string><ProtectedString name="Source"><![CDATA[-- Game state: everything that gets saved. Pure Lua (no Roblox APIs).
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local Countries = require(Root.Data.Countries)
@@ -27483,7 +27677,7 @@ end
 
 return GS
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX00465C5D49E449DE8A8C486A95A8B8EC"><Properties><string name="Name">Sim</string><ProtectedString name="Source"><![CDATA[-- Simulation formulas: demand, ticket sales, production value, show results.
+<Item class="ModuleScript" referent="RBX092E54B86C344BE1BAB3F1F1E8F7AD6C"><Properties><string name="Name">Sim</string><ProtectedString name="Source"><![CDATA[-- Simulation formulas: demand, ticket sales, production value, show results.
 -- Pure Lua (no Roblox APIs) so it can be unit tested outside of Roblox.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
@@ -28008,7 +28202,7 @@ end
 
 return Sim
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX15DF579767CF4882BFBDB5E098AAD1BE"><Properties><string name="Name">Social</string><ProtectedString name="Source"><![CDATA[-- Generates fan posts for the SOCIAL feed. Pure Lua (no Roblox APIs).
+<Item class="ModuleScript" referent="RBX66944EC405C340F2AFACBDD31C317880"><Properties><string name="Name">Social</string><ProtectedString name="Source"><![CDATA[-- Generates fan posts for the SOCIAL feed. Pure Lua (no Roblox APIs).
 local Root = script:FindFirstAncestor("Headliner")
 local Data = require(Root.Data.Social)
 local Countries = require(Root.Data.Countries)
@@ -28209,7 +28403,7 @@ end
 
 return Social
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX4B6A2F4F4A324FF4B49554C8E289DC8E"><Properties><string name="Name">Util</string><ProtectedString name="Source"><![CDATA[-- Small helpers (pure Lua, no Roblox APIs)
+<Item class="ModuleScript" referent="RBXCDB5BE733C0147DAB0F80F882F4247C6"><Properties><string name="Name">Util</string><ProtectedString name="Source"><![CDATA[-- Small helpers (pure Lua, no Roblox APIs)
 local Util = {}
 
 function Util.clamp(x, a, b)
@@ -28459,7 +28653,7 @@ end
 return Util
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="Folder" referent="RBX5042A89AD8A9490D9EB9E8AB871C53E3"><Properties><string name="Name">World</string></Properties><Item class="ModuleScript" referent="RBXFFD6C13797314078B812057EAC07F29D"><Properties><string name="Name">Hub</string><ProtectedString name="Source"><![CDATA[-- The label building "Starlight Records" and its little street: the walkable hub.
+<Item class="Folder" referent="RBXCFE22AF02A44485EBCE77020C9E0C72E"><Properties><string name="Name">World</string></Properties><Item class="ModuleScript" referent="RBX7428A05227C148F292A1D571DDE41F74"><Properties><string name="Name">Hub</string><ProtectedString name="Source"><![CDATA[-- The label building "Starlight Records" and its little street: the walkable hub.
 -- Built once by the server (so seats and prompts work); the client adds name tags, posters, people,
 -- the table map and the charts screen (Client/World.lua).
 -- Style: bright and friendly (daylight, light wood, white walls, painted colour accents, no neon strips).
@@ -28479,7 +28673,8 @@ Hub.GUIDE_SPOTS = {
 	laptop = Vector3.new(6, 0, -28),
 	stagehall = Vector3.new(32, 0, 10),
 	maptable = Vector3.new(6, 0, -3),
-	office = Vector3.new(30.2, 0, -40.5), -- next to Sam's chair in his own office
+	office = Vector3.new(36.2, 0, -42), -- next to Sam's chair in his own office
+	board = Vector3.new(-49, 0, -40), -- in the meeting room, next to the board
 }
 -- Sam walks from room to room: every spot has a way from the start spot (the middle of the office);
 -- a walk from A to B goes A -> start -> B. Checked against the building by scenario_hub.
@@ -28490,30 +28685,31 @@ Hub.SAM_ROUTES = {
 	laptop = { SAM_HUB, Vector3.new(2, 0, -22), Vector3.new(6, 0, -28) },
 	meeting = { SAM_HUB, Vector3.new(-30, 0, -12), Vector3.new(-44, 0, -12), Vector3.new(-54, 0, -8) },
 	stagehall = { SAM_HUB, Vector3.new(18.9, 0, -10), Vector3.new(18.9, 0, 8), Vector3.new(32, 0, 10) },
-	office = { SAM_HUB, Vector3.new(10, 0, -24), Vector3.new(28.6, 0, -24), Vector3.new(27.7, 0, -30), Vector3.new(27.6, 0, -40.5), Vector3.new(30.2, 0, -40.5) },
+	office = { SAM_HUB, Vector3.new(10, 0, -21.7), Vector3.new(36, 0, -21.7), Vector3.new(36, 0, -27), Vector3.new(38.5, 0, -30), Vector3.new(38.5, 0, -42), Vector3.new(36.2, 0, -42) },
+	board = { SAM_HUB, Vector3.new(-30, 0, -12), Vector3.new(-44, 0, -12), Vector3.new(-54, 0, -8), Vector3.new(-49, 0, -40) },
 }
 function Hub.samRoute(from, to)
 	local a, b = Hub.SAM_ROUTES[from or "start"], Hub.SAM_ROUTES[to or "start"]
 	if not a or not b or from == to then
 		return {}
 	end
+	-- the ways share their first points: turn round at the last point they have in common
+	local k = 1
+	while a[k + 1] and b[k + 1] and (a[k + 1] - b[k + 1]).Magnitude < 0.01 do
+		k = k + 1
+	end
 	local pts = {}
-	for i = #a, 1, -1 do
+	for i = #a, k, -1 do
 		table.insert(pts, a[i])
 	end
-	for i = 2, #b do
+	for i = k + 1, #b do
 		table.insert(pts, b[i])
 	end
 	return pts
 end
--- where Sam sits: his office chair (facing the door) and meeting chairs (from the meeting spot: a free floor
--- point next to the chair, then he sits down); seatTop = height of the cushion
+-- where Sam sits: his office chair (facing the door); seatTop = height of the cushion
 Hub.SAM_SEATS = {
-	office = { pos = Vector3.new(33, 0, -40), look = Vector3.new(0, 0, 1), seatTop = 2.3 },
-	meeting = {
-		{ seat = "MeetingSeat6", pos = Vector3.new(-56.4, 0, -18), look = Vector3.new(-1, 0, 0), seatTop = 2.1, way = { Vector3.new(-56.4, 0, -14.8) } },
-		{ seat = "MeetingSeat4", pos = Vector3.new(-56.4, 0, -24), look = Vector3.new(-1, 0, 0), seatTop = 2.1, way = { Vector3.new(-53.2, 0, -21), Vector3.new(-56.4, 0, -21) } },
-	},
+	office = { pos = Vector3.new(33, 0, -42), look = Vector3.new(0, 0, 1), seatTop = 2.3 },
 }
 Hub.STATIONS = {
 	laptop = { pos = Vector3.new(14, 3.6, -37), name = "LAPTOP", sub = "Overview & tours", action = "Open laptop" },
@@ -29166,7 +29362,7 @@ function Hub.build(parentFolder)
 	box(dk, "Lamp", 20.85, 3.5, -35.75, 21.15, 5.6, -35.45, C.dark)
 	part(dk, "LampShade", Vector3.new(1.2, 0.9, 1.2), Vector3.new(21, 6.05, -35.6), C.yellow, Enum.Material.SmoothPlastic, { collide = false })
 	-- painted accent wall behind the desk + shelves + label logo
-	box(deco, "AccentWall", 2, 0, -46, 25.7, H, -45.94, C.purple)
+	box(deco, "AccentWall", 2, 0, -46, 24.2, H, -45.94, C.purple)
 	shelf(deco, 4, -45.94, 13, 6, 2, 1)
 	shelf(deco, 15, -45.94, 24, 6, 2, 1)
 	local logo = box(deco, "LogoBoard", 5, 13.2, -45.9, 23, 16.8, -45.7, C.white, nil, { collide = false })
@@ -29201,18 +29397,32 @@ function Hub.build(parentFolder)
 
 	------------------------------------------------------------ OFFICE: Sam's own office (glass room, back right)
 	local so = new("Folder", { Name = "SamOffice" }, deco)
-	box(shell, "SamGlassFront", 31, 0, -28.2, 40, H - 0.02, -27.8, C.glass, Enum.Material.Glass, { transparency = 0.6 })
-	box(shell, "SamGlassSide", 25.8, 0, -46, 26.2, H - 0.02, -28.2, C.glass, Enum.Material.Glass, { transparency = 0.6 })
-	box(shell, "SamPost", 25.6, 0, -28.4, 26.4, H, -27.6, C.white)
-	box(shell, "SamDoorPost", 30.6, 0, -28.4, 31.4, 10, -27.6, C.white)
-	box(shell, "SamDoorTop", 26.4, 10, -28.4, 31.4, H, -27.6, C.wall)
-	local sam = box(deco, "SamSign", 26.8, 10.6, -27.56, 31, 12.2, -27.4, C.teal, nil, { collide = false })
+	-- glass walls (front with a door on the right, left side), the hall wall and back wall close the room
+	box(shell, "SamGlassFront", 24.7, 0, -23.2, 33.6, H - 0.02, -22.8, C.glass, Enum.Material.Glass, { transparency = 0.6 })
+	box(shell, "SamGlassFront", 38.4, 0, -23.2, 40, H - 0.02, -22.8, C.glass, Enum.Material.Glass, { transparency = 0.6 })
+	box(shell, "SamGlassSide", 24.3, 0, -46, 24.7, H - 0.02, -23.4, C.glass, Enum.Material.Glass, { transparency = 0.6 })
+	box(shell, "SamPost", 24.2, 0, -23.4, 24.8, H, -22.6, C.white)
+	box(shell, "SamDoorPost", 33.6, 0, -23.4, 34.4, 10, -22.6, C.white)
+	box(shell, "SamDoorPost", 37.6, 0, -23.4, 38.4, 10, -22.6, C.white)
+	box(shell, "SamDoorTop", 33.6, 10, -23.4, 38.4, H, -22.6, C.wall)
+	local sam = box(deco, "SamSign", 34.2, 10.6, -22.56, 37.8, 12.4, -22.4, C.teal, nil, { collide = false })
 	sign(sam, Enum.NormalId.Back, "SAM  |  LABEL MANAGER", C.white)
-	box(so, "SamRug", 27, 0, -45.5, 39.5, 0.06, -29, Color3.fromRGB(200, 214, 230), Enum.Material.Fabric, { collide = false })
-	desk(so, Vector3.new(33, 0, -36), math.pi, true)
-	chair(so, Vector3.new(33, 0, -40), math.pi, C.teal)
-	shelf(so, 28, -46, 37, 0, 2, 1)
-	plant(so, Vector3.new(38, 0, -44), true)
+	box(so, "SamRug", 25.5, 0, -45.5, 39.5, 0.06, -24, Color3.fromRGB(200, 214, 230), Enum.Material.Fabric, { collide = false })
+	-- his desk at the back (he faces the door), two chairs for visitors
+	desk(so, Vector3.new(33, 0, -38), math.pi, true)
+	chair(so, Vector3.new(33, 0, -42), math.pi, C.teal)
+	chair(so, Vector3.new(31, 0, -33.5), 0, C.coral)
+	chair(so, Vector3.new(35, 0, -33.5), 0, C.coral)
+	-- a sofa corner on the left with a little table and a floor lamp
+	sofa(so, Vector3.new(26.9, 0, -30), -math.pi / 2, C.purple, 8)
+	box(so, "SofaTable", 30, 1.2, -31, 32, 1.5, -27, C.woodDark, Enum.Material.Wood)
+	box(so, "SofaTableLeg", 30.8, 0, -29.6, 31.2, 1.2, -28.4, C.dark, Enum.Material.Metal)
+	part(so, "LampPole", Vector3.new(0.25, 6, 0.25), Vector3.new(26, 3, -36), C.dark, Enum.Material.Metal)
+	part(so, "LampFoot", Vector3.new(1.4, 0.2, 1.4), Vector3.new(26, 0.1, -36), C.dark, Enum.Material.Metal)
+	local shade = part(so, "LampShade", Vector3.new(1.6, 1.2, 1.6), Vector3.new(26, 6.6, -36), C.yellow, Enum.Material.Fabric, { collide = false })
+	light(shade, 14, 0.8)
+	shelf(so, 25, -46, 30.5, 0, 2, 1)
+	plant(so, Vector3.new(38.6, 0, -44.6), false)
 
 	------------------------------------------------------------ OFFICE: staff desks (people work here)
 	local staff = new("Folder", { Name = "StaffDesks" }, deco)
@@ -29226,7 +29436,6 @@ function Hub.build(parentFolder)
 		box(staff, "Divider", 20, 0, z - 0.2, 36, 5.2, z, C.teal)
 	end
 	chair(deco, Vector3.new(-22, 0, 25.2), math.pi, C.coral)
-	plant(deco, Vector3.new(36, 0, -24), true)
 	plant(deco, Vector3.new(37, 0, 22), false)
 
 	------------------------------------------------------------ OFFICE: coffee bar (front right)
@@ -29293,6 +29502,41 @@ function Hub.build(parentFolder)
 	plant(deco, Vector3.new(-85, 0, -42), true)
 	plant(deco, Vector3.new(-44, 0, -42), false)
 	plant(deco, Vector3.new(-85, 0, 0), false)
+	-- a warmer meeting room: dark accent wall with a light strip behind the board, pendant lamps over the
+	-- table, notebooks and glasses at every seat, a sideboard with coffee, sound panels, gold records
+	local md = new("Folder", { Name = "MeetingDecor" }, deco)
+	box(md, "MeetAccent", -86, 0, -45.98, -42, H - 0.02, -45.95, Color3.fromRGB(44, 52, 86))
+	box(md, "BoardGlow", -79, 1.4, -45.9, -47, 1.7, -45.7, Color3.fromRGB(120, 160, 255), Enum.Material.Neon, { collide = false })
+	for _, z in ipairs({ -30, -24, -18 }) do
+		part(md, "LampCord", Vector3.new(0.08, 4.9, 0.08), Vector3.new(-63, H - 2.55, z), C.dark, nil, { collide = false })
+		local sh = part(md, "PendantShade", Vector3.new(1.2, 2.4, 2.4), CFrame.new(Vector3.new(-63, H - 5.6, z)) * CFrame.Angles(0, 0, math.pi / 2), C.dark, Enum.Material.Metal, { shape = Enum.PartType.Cylinder, collide = false })
+		part(md, "PendantBulb", Vector3.new(1, 1, 1), Vector3.new(-63, H - 6.25, z), Color3.fromRGB(255, 236, 200), Enum.Material.Neon, { shape = Enum.PartType.Ball, collide = false })
+		light(sh, 18, 0.9, Color3.fromRGB(255, 226, 180))
+	end
+	for _, z in ipairs({ -30, -24, -18 }) do
+		for _, sx in ipairs({ -1, 1 }) do
+			local x = -63 + sx * 3
+			part(md, "Notebook", Vector3.new(1.4, 0.08, 1.8), CFrame.new(Vector3.new(x, 3.56, z)) * CFrame.Angles(0, sx * 0.15, 0), (sx > 0) and C.teal or C.coral, nil, { collide = false })
+			part(md, "Glass", Vector3.new(0.7, 0.4, 0.4), CFrame.new(Vector3.new(x - sx * 0.2, 3.92, z + 1.4)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(200, 225, 240), Enum.Material.Glass, { shape = Enum.PartType.Cylinder, collide = false, transparency = 0.3 })
+		end
+	end
+	part(md, "Vase", Vector3.new(1.2, 1, 1), CFrame.new(Vector3.new(-63, 4.12, -24)) * CFrame.Angles(0, 0, math.pi / 2), C.white, nil, { shape = Enum.PartType.Cylinder, collide = false })
+	part(md, "Flowers", Vector3.new(1.8, 1.4, 1.8), Vector3.new(-63, 5.2, -24), C.coral, Enum.Material.Grass, { shape = Enum.PartType.Ball, collide = false })
+	-- sideboard on the left wall (under the whiteboard): coffee machine, water, cups
+	box(md, "Sideboard", -87.9, 0, -18.5, -85.6, 3, -10, C.woodDark, Enum.Material.Wood)
+	box(md, "SideboardTop", -88, 3, -18.7, -85.4, 3.2, -9.8, C.wood, Enum.Material.Wood)
+	box(md, "CoffeeMachine", -87.6, 3.2, -17.6, -85.9, 5.6, -15.6, C.dark, Enum.Material.Metal)
+	for i = 0, 2 do
+		part(md, "WaterBottle", Vector3.new(1.4, 0.5, 0.5), CFrame.new(Vector3.new(-86.8, 3.9, -13.6 + i * 0.8)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(150, 200, 230), Enum.Material.Glass, { shape = Enum.PartType.Cylinder, collide = false, transparency = 0.25 })
+	end
+	part(md, "Cups", Vector3.new(0.8, 0.6, 0.6), CFrame.new(Vector3.new(-86.6, 3.6, -11)) * CFrame.Angles(0, 0, math.pi / 2), C.white, nil, { shape = Enum.PartType.Cylinder, collide = false })
+	-- sound panels on the left wall and gold records on the wall to the lounge
+	for _, z in ipairs({ -44, -41, -17, -14 }) do
+		box(md, "SoundPanel", -87.95, 6, z - 1.2, -87.7, 13, z + 1.2, (z < -30) and C.teal or C.purple, Enum.Material.Fabric, { collide = false })
+	end
+	for i, x in ipairs({ -80, -72, -54, -46 }) do
+		record(md, Vector3.new(x, 8.5, 3.86), math.pi, i % 2 == 1)
+	end
 
 	------------------------------------------------------------ LOUNGE: sofas, ping pong, arcade, records
 	sofa(deco, Vector3.new(-63, 0, 38), 0, C.coral, 14)
@@ -29867,11 +30111,11 @@ end
 return Hub
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="Folder" referent="RBX8F6A190EBD1D460086EFA2AB98E479EB"><Properties><string name="Name">Remotes</string></Properties><Item class="RemoteFunction" referent="RBXC9FABCF0885243F087605680209D93CA"><Properties><string name="Name">Action</string></Properties></Item>
+<Item class="Folder" referent="RBX41C10178D22A4F7AA331B56C813C6239"><Properties><string name="Name">Remotes</string></Properties><Item class="RemoteFunction" referent="RBXBFA7A0BE06684685BE7EF1F248AD88C4"><Properties><string name="Name">Action</string></Properties></Item>
 </Item>
 </Item>
 </Item>
-<Item class="ServerScriptService" referent="RBX444056DF184A40B780C4C6759E94CCC6"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBX4A394379574B41A2BFA126887DC47818"><Properties><string name="Name">GameServer</string><bool name="Disabled">false</bool><ProtectedString name="Source"><![CDATA[-- HEADLINER server: owns the game state of every player, runs all actions (Logic/Actions.lua),
+<Item class="ServerScriptService" referent="RBXA5E3356E35CD4A21AC056516971D3352"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBX38CE0127F9324007BB9FE8753576C651"><Properties><string name="Name">GameServer</string><bool name="Disabled">false</bool><ProtectedString name="Source"><![CDATA[-- HEADLINER server: owns the game state of every player, runs all actions (Logic/Actions.lua),
 -- saves to the DataStore (only works in a published place) and builds the label building.
 -- The client only shows the state: after every action the server sends the parts that changed.
 local Players = game:GetService("Players")
@@ -30213,7 +30457,7 @@ Remotes.Action.OnServerInvoke = function(player, name, args)
 end
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="StarterPlayer" referent="RBX804EEE5392554987A17EA0B979C2237A"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX0E58BA594D2A4EDA89C2F239729C6136"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX0FB8CCE4FCEB4F6FA31DC9CADD3497B9"><Properties><string name="Name">Main</string><bool name="Disabled">false</bool><ProtectedString name="Source"><![CDATA[-- HEADLINER client entry point
+<Item class="StarterPlayer" referent="RBX49D862819B374450BA011E84C845CD27"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX6CE2655053AA4197A25FA1011A64D066"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX6528504003B2482F9C2581F672D3DCD9"><Properties><string name="Name">Main</string><bool name="Disabled">false</bool><ProtectedString name="Source"><![CDATA[-- HEADLINER client entry point
 if not game:IsLoaded() then
 	game.Loaded:Wait()
 end
