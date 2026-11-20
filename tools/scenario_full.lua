@@ -561,7 +561,8 @@ MOCK.click("PLACE", 1)
 log("copy placed", n0, "->", #design.items)
 -- step 2 (setlist & show): screens: live camera, per-song change; instruments: song number; effects per song
 MOCK.clickExact("2  SETLIST & SHOW")
-log("phase show, catalog visible", Designer.current.panels[3].Visible)
+log("phase show, catalog visible", Designer.current.panels[3].Visible, "artist path pieces", Designer.current.artistPathCount())
+assert(Designer.current.artistPathCount() > 0, "step 2 shows the way of the artist")
 for _, r in ipairs(Stage3D.items) do if r.kind == "led" then Designer.current.select(r) break end end
 MOCK.clickExact("Live: artist")
 MOCK.clickExact("+", 1) -- "For": song 1
@@ -801,6 +802,41 @@ do
 	assert(doneExit, "exit-lift preview did not finish")
 	for _ = 1, 10 do MOCK.step(1 / 30) end
 end
+-- the crew sets up the acoustic set before its song and takes it away after it
+do
+	local crewDesign = { id = "crew_test", name = "Crew", class = "Arena", layout = "end", items = {
+		{ t = "deck", x = 0, z = -14, r = 0, w = 60, d = 24, h = 6 },
+		{ t = "spot", x = -10, z = -10, r = 0 }, { t = "spot", x = 10, z = -10, r = 0 },
+		{ t = "acoustic", x = 0, z = -12, r = 0, play = 2, setup = "crew" },
+	} }
+	local doneC = false
+	LiveShow.run(app, { artistId = "lila", design = crewDesign, look = "arena", cap = 1000, sold = 900, tourName = "Crew", preview = true, onDone = function() doneC = true end })
+	local job = LiveShow.lastSetups[1]
+	assert(job and #job.parts > 5, "a crew job for the acoustic set")
+	-- the guitar itself leaves the stand while the artist strums it, so it does not count
+	local inHands = { Body = true, SoundHole = true, Bridge = true, Neck = true, Headstock = true }
+	local function shownNow(hands) local n = 0 for _, e in ipairs(job.parts) do if e[1].Transparency < 1 or (hands and inHands[e[1].Name]) then n = n + 1 end end return n end
+	MOCK.click("^Speed") MOCK.click("^Speed")
+	local seen = { before = nil, during = nil, hands = false, after = nil }
+	local f = 0
+	local LS = LiveShow
+	while not doneC and f < 9000 do
+		MOCK.step(1 / 30)
+		f = f + 1
+		local t = LS.debugT and LS.debugT() or nil
+		if t then
+			if t < job.tIn - 0.5 and seen.before == nil then seen.before = shownNow() end
+			if t > job.tIn + 7 and t < job.tOut - 0.5 then seen.during = shownNow(true) end
+			if t > job.tIn + 0.5 and t < job.tIn + 6 then
+				for _, h in ipairs(job.hands) do if h.p.visible then seen.hands = true end end
+			end
+			if t > job.tOut + 7 then seen.after = shownNow() end
+		end
+	end
+	log("crew set-up: before", seen.before, "during", seen.during, "of", #job.parts, "crew seen", seen.hands, "after", seen.after)
+	assert(doneC and seen.before == 0 and seen.during == #job.parts and seen.hands and seen.after == 0, "the crew sets the acoustic set up and takes it away")
+	for _ = 1, 10 do MOCK.step(1 / 30) end
+end
 -- a group (STARLYTE, K-Pop): the other members dance on their own on the decks; a "2.5" spot (a moment in song 2)
 do
 	local grpDesign = { id = "group_test", name = "Group", class = "Arena", layout = "end", items = {
@@ -823,7 +859,8 @@ do
 	while not doneG and f < 8000 do
 		MOCK.step(1 / 30)
 		f = f + 1
-		if f % 15 == 0 then
+		-- (only while the stage still stands: at the very end the show clears the world)
+		if f % 15 == 0 and Stage3D.surfaceY(0, -14) > 0.5 then
 			for _, c in ipairs(crew) do
 				movesSeen[c.move or "?"] = true
 				if c.move == "walk" then walked = true end

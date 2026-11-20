@@ -200,7 +200,8 @@ local function band(folder, path, closed, center, offset, y, h, thick, color, ma
 			if (Vector3.new(mid.X, 0, mid.Z) - Vector3.new(center.X, 0, center.Z)):Dot(nrm) < 0 then
 				nrm = -nrm
 			end
-			local c = Vector3.new(mid.X, y + (s % 2) * 0.06, mid.Z) + nrm * (offset + (s % 2) * 0.05)
+			-- neighbours overlap at the corners: every segment a little higher / further out than the last two
+			local c = Vector3.new(mid.X, y + (s % 7) * 0.05, mid.Z) + nrm * (offset + (s % 7) * 0.05)
 			local p = blk(folder, name or "Band", Vector3.new(len + offset * 0.8, h, thick), CFrame.new(c) * CFrame.Angles(0, math.atan2(dir.X, dir.Z) + math.pi / 2, 0), color, material)
 			p.CanCollide = false
 			table.insert(parts, p)
@@ -790,7 +791,7 @@ function Venue.build(lookKey, fill, merchColor, opts)
 			roofY = uTop + 16
 		else
 			-- roof, rig catwalks, centre-hung scoreboard
-			local roof = blk(folder, "Roof", Vector3.new(outer * 2, 2, (z1 + 2 - bz0) + uOut * 2 + 10), CFrame.new(0, roofY, bcz), Color3.fromRGB(14, 14, 20))
+			local roof = blk(folder, "Roof", Vector3.new(outer * 2 + 0.4, 2, (z1 + 2 - bz0) + uOut * 2 + 10), CFrame.new(0, roofY, bcz), Color3.fromRGB(14, 14, 20))
 			roof.CanCollide = false
 			if opts.noRoof then
 				roof:Destroy()
@@ -824,7 +825,7 @@ function Venue.build(lookKey, fill, merchColor, opts)
 			blk(folder, "BackDrape", Vector3.new(halfW * 2 + 4, dh, 1), CFrame.new(0, dh / 2, zBack + 1), DRAPE, Enum.Material.Fabric).CanCollide = false
 			for _, x in ipairs({ -1, 1 }) do
 				blk(folder, "SideDrape", Vector3.new(1, dh - 0.3, 1.3 - zBack), CFrame.new(x * (halfW + 1), (dh - 0.3) / 2, (zBack + 1.3) / 2), DRAPE, Enum.Material.Fabric).CanCollide = false
-				blk(folder, "SideDrape", Vector3.new(outer - halfW, dh - 0.6, 1.2), CFrame.new(x * (halfW + (outer - halfW) / 2), (dh - 0.6) / 2, 2), DRAPE, Enum.Material.Fabric).CanCollide = false
+				blk(folder, "SideDrape", Vector3.new(outer - halfW - 0.4, dh - 0.6, 1.2), CFrame.new(x * (halfW + (outer - halfW - 0.4) / 2), (dh - 0.6) / 2, 2), DRAPE, Enum.Material.Fabric).CanCollide = false
 			end
 			blk(folder, "BackstageFloor", Vector3.new(halfW * 2 - 0.4, 0.2, 2 - zBack), CFrame.new(0, -0.03, (zBack + 2) / 2), Color3.fromRGB(20, 20, 24), Enum.Material.Concrete).CanCollide = false
 		end
@@ -885,7 +886,7 @@ function Venue.build(lookKey, fill, merchColor, opts)
 		end
 		blk(folder, "Valance", Vector3.new(halfW * 2, 10, 2), CFrame.new(0, wallH - 10, -30.7), Color3.fromRGB(150, 18, 30), Enum.Material.Fabric).CanCollide = false
 		blk(folder, "ProsceniumGold", Vector3.new(halfW * 2, 1, 2.2), CFrame.new(0, wallH - 15.5, -30), Color3.fromRGB(210, 170, 70), Enum.Material.Metal).CanCollide = false
-		blk(folder, "Backdrop", Vector3.new(halfW * 2, wallH, 1), CFrame.new(0, wallH / 2, -46), DRAPE, Enum.Material.Fabric).CanCollide = false
+		blk(folder, "Backdrop", Vector3.new(halfW * 2 - 0.3, wallH - 0.1, 1), CFrame.new(0, (wallH - 0.1) / 2, -46), DRAPE, Enum.Material.Fabric).CanCollide = false
 		blk(folder, "BackWall", Vector3.new(halfW * 2 + 4, wallH, 2), CFrame.new(0, wallH / 2, z1 + out1 + 1), Color3.fromRGB(70, 18, 24), Enum.Material.Fabric).CanCollide = false
 		if not opts.noRoof then
 			blk(folder, "Ceiling", Vector3.new(halfW * 2 + 7.4, 2, z1 + out1 + 91), CFrame.new(0, wallH + 0.3, (z1 + out1 + 1.5 - 89.5) / 2), Color3.fromRGB(60, 30, 30)).CanCollide = false
@@ -932,7 +933,7 @@ function Venue.build(lookKey, fill, merchColor, opts)
 			blk(folder, "Bottle", Vector3.new(0.4, 1.2, 0.4), CFrame.new(-halfW + 1.8, 9.2, z0 + 21 + i * 2), Color3.fromRGB(60 + i * 15, 140, 90), Enum.Material.Glass).CanCollide = false
 		end
 		if not opts.noRoof then
-			blk(folder, "Ceiling", Vector3.new(halfW * 2 + 6, 2, z1 + 33), CFrame.new(0, wallH + 0.3, (z1 + 3 - 30) / 2), Color3.fromRGB(18, 18, 22)).CanCollide = false
+			blk(folder, "Ceiling", Vector3.new(halfW * 2 + 6.4, 2, z1 + 33.4), CFrame.new(0, wallH + 0.3, (z1 + 3 - 30) / 2), Color3.fromRGB(18, 18, 22)).CanCollide = false
 		end
 		Venue.clubDetails(folder, { halfW = halfW, z0 = z0, z1 = z1, wallH = wallH, accent = accent, center = center })
 		outer = halfW + 4

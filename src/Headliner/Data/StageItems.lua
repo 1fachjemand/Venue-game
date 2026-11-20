@@ -100,6 +100,9 @@ StageItems.list = {
 	{ id = "neonbolt", name = "Neon Lightning", cat = "Screens", cost = 600, pts = 3, tags = { "retro", "energy" }, mount = "floor", deck = false, desc = "Glowing lightning bolt." },
 	-- Special effects
 	{ id = "pyro", name = "Flame Pyro", cat = "FX", cost = 2000, pts = 8, tags = { "pyro", "energy" }, mount = "floor", deck = false, desc = "Huge flame bursts." },
+	{ id = "flamebar", name = "Flame Bar", cat = "FX", cost = 3200, pts = 9, tags = { "pyro", "energy" }, mount = "floor", deck = false, size = { w = 16, minW = 6, maxW = 60 }, desc = "A row of flame jets: they fire one after the other, then all at once." },
+	{ id = "sparkrain", name = "Spark Rain", cat = "FX", cost = 2600, pts = 7, tags = { "pyro", "spectacle" }, mount = "rig", deck = false, size = { w = 24, minW = 8, maxW = 100 }, desc = "Hangs in the rig: a curtain of sparks rains down." },
+	{ id = "halo", name = "Light Halo", cat = "Lights", cost = 3800, pts = 9, tags = { "lights", "spectacle" }, mount = "rig", deck = false, size = { w = 20, minW = 10, maxW = 60 }, desc = "A big turning ring of lights in the rig. A light runs round it, everything flashes on the beat." },
 	{ id = "sparks", name = "Spark Fountain", cat = "FX", cost = 1400, pts = 6, tags = { "pyro" }, mount = "floor", deck = false, desc = "Golden spark fountain." },
 	{ id = "confetti", name = "Confetti Cannon", cat = "FX", cost = 1100, pts = 5, tags = { "party" }, mount = "floor", deck = false, desc = "Confetti for the finale." },
 	{ id = "streamers", name = "Streamer Cannon", cat = "FX", cost = 1300, pts = 5, tags = { "party" }, mount = "floor", deck = false, desc = "Long shiny streamers rain down on the crowd." },
@@ -155,7 +158,6 @@ StageItems.list = {
 	{ id = "planter", name = "Planter Box", cat = "Decor", cost = 350, pts = 1, tags = { "intimate" }, mount = "floor", deck = false, size = { w = 12, minW = 4, maxW = 60 }, desc = "A long box with round green shrubs." },
 	{ id = "neonline", name = "Neon Line", cat = "Decor", cost = 250, pts = 1, tags = { "lights" }, mount = "floor", deck = false, size = { w = 16, minW = 2, maxW = 120 }, desc = "A neon tube for stage edges and floor lines." },
 	{ id = "hedge", name = "Hedge", cat = "Decor", cost = 300, pts = 1, tags = { "intimate" }, mount = "floor", deck = false, size = { w = 12, minW = 4, maxW = 80 }, desc = "A trimmed green hedge." },
-	{ id = "tvstack", name = "TV Stack", cat = "Decor", cost = 700, pts = 2, tags = { "retro", "screens" }, mount = "floor", deck = false, desc = "A pile of old TVs. The screens flicker in the song colours." },
 	{ id = "rope", name = "Velvet Rope", cat = "Decor", cost = 250, pts = 1, tags = { "intimate" }, mount = "floor", deck = false, size = { w = 12, minW = 4, maxW = 60 }, desc = "Brass posts with a red velvet rope." },
 	{ id = "sofa", name = "Sofa", cat = "Decor", cost = 500, pts = 2, tags = { "intimate" }, mount = "floor", deck = false, desc = "Cosy sofa for a living-room set." },
 	{ id = "rug", name = "Rug", cat = "Decor", cost = 150, pts = 1, tags = { "intimate" }, mount = "floor", deck = false, desc = "Round rug in the artist's colour." },

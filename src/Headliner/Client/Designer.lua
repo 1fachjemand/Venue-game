@@ -38,9 +38,9 @@ local TURNS = { 15, 45, 90 }
 local BLACK = Color3.new(0, 0, 0)
 local GEOMETRY_KEYS = { w = true, d = true, h = true, skin = true, edge = true, scr = true, cc = true, anim = true, roof = true, yo = true }
 -- settings that only change the show (no new model needed)
-local SHOW_KEYS = { play = true, songs = true, cs = true, anim = true, mid = true, song = true }
+local SHOW_KEYS = { play = true, songs = true, cs = true, anim = true, mid = true, song = true, setup = true }
 -- effects that can fire in chosen songs (rec.songs = { 1, 4, ... }; false / nil = automatic)
-local FX_SONG_KINDS = { pyro = true, sparks = true, confetti = true, streamers = true, co2 = true, fireworks = true, balls = true, laser = true, lowfog = true }
+local FX_SONG_KINDS = { flamebar = true, sparkrain = true, pyro = true, sparks = true, confetti = true, streamers = true, co2 = true, fireworks = true, balls = true, laser = true, lowfog = true }
 Designer.FX_SONG_KINDS = FX_SONG_KINDS
 
 local HELP = table.concat({
@@ -130,6 +130,9 @@ function Designer.open(app, designId)
 		end
 		if group and setGroup then
 			setGroup(newGroup)
+		end
+		if self.drawArtistPath then
+			self.drawArtistPath()
 		end
 		-- an empty venue of this size around the stage, so you can see where the fans stand
 		local sig = self.design.class .. self.design.layout
@@ -1403,6 +1406,15 @@ function Designer.open(app, designId)
 			end, function()
 				applyChange({ play = math.min(StageItems.MAX_SPOTS, (cur or 0) + 1) })
 			end)
+			if not isLift and not isTower and cur then
+				-- like on real tours: the crew brings it on before the song and takes it off again after it
+				nextOrder(UI.Label(inspScroll, "ON STAGE", nil, UI.px(296, 18), { textSize = 13, color = T.sub, font = UI.FontBold }))
+				chips({ { "stay", "Stay on stage" }, { "crew", "Crew sets it up" } }, function(it)
+					return (rec.setup or "stay") == it[1]
+				end, function(it)
+					applyChange({ setup = it[1] })
+				end, 2)
+			end
 		end
 		if not build and Builder.SCREEN_KINDS[def.id] then
 			local scr = rec.scr and Util.deepCopy(rec.scr) or { default = Builder.screenConfig({ rec = rec, kind = def.id }, nil) }
@@ -1542,9 +1554,86 @@ function Designer.open(app, designId)
 		end
 		return nil
 	end
+	-- the way of the artist through the show (step 2): a dashed golden line from place to place in song order,
+	-- with small arrows; moments inside a song (2.5) are on the way too
+	local pathFolder = nil
+	local function drawArtistPath()
+		if pathFolder then
+			pathFolder:Destroy()
+			pathFolder = nil
+		end
+		if phase ~= "show" then
+			return
+		end
+		pathFolder = UI.New("Folder", { Name = "ArtistPath", Parent = Stage3D.world })
+		local plan = GS.songPlan(self.design)
+		local function posOf(rec)
+			for _, r in ipairs(Stage3D.items) do
+				if r.rec == rec then
+					local p = r.cf.Position
+					return Vector3.new(p.X, Stage3D.surfaceY(p.X, p.Z) + 0.35, p.Z)
+				end
+			end
+			return nil
+		end
+		local pts = {}
+		for n = 1, plan.count do
+			local rec = plan.place[n]
+			local p = rec and posOf(rec)
+			if p then
+				table.insert(pts, p)
+			end
+			for _, m in ipairs((plan.moments or {})[n] or {}) do
+				local q = posOf(m.rec)
+				if q then
+					table.insert(pts, q)
+				end
+			end
+		end
+		local gold = Color3.fromRGB(250, 204, 21)
+		local function bar(a, b, w)
+			local d = b - a
+			if d.Magnitude < 0.05 then
+				return
+			end
+			local p = Instance.new("Part")
+			p.Name = "PathDash"
+			p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+			p.Material = Enum.Material.Neon
+			p.Color = gold
+			p.Size = Vector3.new(w or 0.3, 0.08, d.Magnitude)
+			p.CFrame = CFrame.lookAt((a + b) / 2, b)
+			p.Parent = pathFolder
+		end
+		for i = 2, #pts do
+			local a, b = pts[i - 1], pts[i]
+			local d = b - a
+			local len = d.Magnitude
+			if len > 1.5 then
+				local dir = d.Unit
+				-- dashes: 1.2 long, 0.8 gap (no dash right on the spots)
+				local x = 1
+				while x + 1.2 < len - 1 do
+					bar(a + dir * x, a + dir * (x + 1.2))
+					x = x + 2
+				end
+				-- an arrow head in the middle shows which way the artist goes
+				local mid = a + dir * (len / 2)
+				local side = dir:Cross(Vector3.new(0, 1, 0))
+				bar(mid - dir * 1 + side * 0.8, mid + dir * 0.2, 0.25)
+				bar(mid - dir * 1 - side * 0.8, mid + dir * 0.2, 0.25)
+			end
+		end
+	end
+	self.drawArtistPath = drawArtistPath
+	self.artistPathCount = function()
+		return pathFolder and #pathFolder:GetChildren() or 0
+	end
+
 	refreshSetlist = function()
 		UI.ClearChildren(setlistPanel)
 		setlistPanel.Visible = phase == "show"
+		drawArtistPath()
 		if phase ~= "show" then
 			return
 		end
@@ -2361,6 +2450,10 @@ function Designer.open(app, designId)
 			b:Destroy()
 		end
 		endCopyPick()
+		local ap = Stage3D.world:FindFirstChild("ArtistPath")
+		if ap then
+			ap:Destroy()
+		end
 		for _, inst in ipairs({ selHighlight, hoverHighlight, pendingHighlight, moveX, moveY, moveZ, sizeH, rotH, moveBox, sizeBox }) do
 			inst:Destroy()
 		end

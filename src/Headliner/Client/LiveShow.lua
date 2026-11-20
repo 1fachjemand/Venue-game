@@ -140,7 +140,7 @@ local function buildTimeline(ad, rng, songCount, hasRoof)
 end
 
 -- effect items and the hit that fires them (laser / low fog follow ctx.lasers / ctx.fog)
-local FX_HIT = { pyro = "pyro", sparks = "sparks", confetti = "confetti", streamers = "streamers", co2 = "co2", fireworks = "fireworks", balls = "balls", laser = "laser", lowfog = "fog" }
+local FX_HIT = { pyro = "pyro", flamebar = "pyro", sparks = "sparks", sparkrain = "sparks", confetti = "confetti", streamers = "streamers", co2 = "co2", fireworks = "fireworks", balls = "balls", laser = "laser", lowfog = "fog" }
 
 -- the moves of the artist at an instrument (they change every 4 seconds)
 local PLAY_MOVES = {
@@ -337,6 +337,109 @@ function LiveShow.updateCrew(crew, t, seg, inSeg, beat, energy, leadMove, facing
 		end
 		c.p:update(pos, yaw, { t = t + c.phase, beat = beat, energy = energy, walking = walking, armsUp = 0, move = move })
 		c.move = move
+	end
+end
+
+------------------------------------------------------------------ the crew brings instruments on and off
+-- before the song: two stagehands walk on from behind the stage, the instrument appears piece by piece
+-- (from the bottom up), they walk off; after the song the same backwards
+local crewHidden = setmetatable({}, { __mode = "k" }) -- parts the crew has not built yet / already took away
+local function showParts(job, frac)
+	-- frac 0 = nothing, 1 = everything (pieces sorted from the bottom up)
+	local n = #job.parts
+	local k = math.floor(frac * n + 0.5)
+	if job.shown == k then
+		return
+	end
+	job.shown = k
+	for i, e in ipairs(job.parts) do
+		e[1].Transparency = (i <= k) and e[2] or 1
+		crewHidden[e[1]] = (i > k) or nil
+	end
+end
+function LiveShow.planSetups(items, segments, navC, navD, onSurface)
+	local jobs = {}
+	for _, r in ipairs(items) do
+		local rec = r.rec
+		if rec and rec.setup == "crew" and type(rec.play) == "number" and rec.play > 1 then
+			local seg = nil
+			for _, s2 in ipairs(segments) do
+				if s2.song == rec.play then
+					seg = s2
+				end
+			end
+			if seg then
+				local parts = {}
+				for _, d in ipairs(r.model:GetDescendants()) do
+					if d:IsA("BasePart") and d.Transparency < 1 then
+						table.insert(parts, { d, d.Transparency, d.CFrame.Position.Y })
+					end
+				end
+				table.sort(parts, function(a, b)
+					return a[3] < b[3]
+				end)
+				local p = r.cf.Position
+				local back = navC.Z - navD / 2 - 3
+				local hands = {}
+				for i = 1, 2 do
+					local look = { worker = true, top = { 249, 115, 22 }, pants = { 40, 44, 56 }, shoes = { 30, 30, 30 }, hair = "short" }
+					local fig = People.new(Stage3D.peopleFolder, Color3.fromRGB(249, 115, 22), 1.35, "dancer", 300 + #jobs * 2 + i, look)
+					fig:setVisible(false)
+					local side = (i == 1) and -1 or 1
+					table.insert(hands, { p = fig, from = onSurface(Vector3.new(p.X + side * 2.5, 0, back)), to = onSurface(Vector3.new(p.X + side * 2.4, 0, p.Z + 1.5)) })
+				end
+				local tIn = math.max(segments[1].t0 + 1, seg.t0 - 6.5)
+				local job = { item = r, parts = parts, hands = hands, tIn = tIn, tOut = seg.t1 + 0.5 }
+				showParts(job, 0)
+				table.insert(jobs, job)
+			end
+		end
+	end
+	return jobs
+end
+function LiveShow.updateSetups(jobs, t)
+	for _, job in ipairs(jobs) do
+		-- 0..2 walk on, 2..4.5 build, 4.5..6.5 walk off (and the same after the song)
+		local u, phase = nil, nil
+		if t >= job.tIn and t < job.tIn + 6.5 then
+			u, phase = t - job.tIn, "on"
+		elseif t >= job.tOut and t < job.tOut + 6.5 then
+			u, phase = t - job.tOut, "off"
+		end
+		if phase then
+			local frac = math.clamp((u - 2) / 2.5, 0, 1)
+			showParts(job, (phase == "on") and frac or (1 - frac))
+			for i, h in ipairs(job.hands) do
+				local pos, walking, yaw
+				if u < 2 then
+					local f = u / 2
+					pos, walking = h.from:Lerp(h.to, f), true
+					local d = h.to - h.from
+					yaw = math.atan2(d.X, d.Z)
+				elseif u < 4.5 then
+					pos, walking = h.to, false
+					local d = job.item.cf.Position - h.to
+					yaw = math.atan2(d.X, d.Z)
+				else
+					local f = math.clamp((u - 4.5) / 2, 0, 1)
+					pos, walking = h.to:Lerp(h.from, f), true
+					local d = h.from - h.to
+					yaw = math.atan2(d.X, d.Z)
+				end
+				h.p:setVisible(true)
+				h.p:update(pos, yaw, { t = t + i, beat = 0, energy = 0.4, walking = walking, armsUp = 0, move = walking and "walk" or "carry" })
+			end
+		else
+			for _, h in ipairs(job.hands) do
+				h.p:setVisible(false)
+			end
+			-- before it is built and after it is taken away nothing is there; in between it stays as it is
+			if t < job.tIn or t >= job.tOut + 6.5 then
+				showParts(job, 0)
+			elseif job.shown ~= #job.parts and t >= job.tIn + 6.5 and t < job.tOut then
+				showParts(job, 1)
+			end
+		end
 	end
 end
 
@@ -716,6 +819,9 @@ function LiveShow.run(app, opts)
 		})
 	end
 	LiveShow.lastCrew = crew -- for the automated tests
+	-- instruments the crew sets up for their song (and takes away after it): rec.setup = "crew"
+	local setupJobs = LiveShow.planSetups(items, segments, navC, navD, onSurface)
+	LiveShow.lastSetups = setupJobs
 	LiveShow.lastBand = #band -- for the automated tests
 	local performers = { lead }
 	for _, b in ipairs(band) do
@@ -899,6 +1005,9 @@ function LiveShow.run(app, opts)
 	ShowTasks.start(taskCtx)
 	local camCF = nil
 	local t = 0
+	LiveShow.debugT = function()
+		return t -- the show clock (for the automated tests)
+	end
 	local hitIndex = 1
 	local beatCount = 0
 	local lastBeatT = 0
@@ -1100,13 +1209,14 @@ function LiveShow.run(app, opts)
 				if it then
 					for _, pp in ipairs(it.model:GetChildren()) do
 						if pp:IsA("BasePart") and (pp.Name == "Body" or pp.Name == "SoundHole" or pp.Name == "Bridge" or pp.Name == "Neck" or pp.Name == "Headstock") then
-							pp.Transparency = (it == want) and 1 or 0
+							pp.Transparency = ((it == want) or crewHidden[pp]) and 1 or 0
 						end
 					end
 				end
 			end
 			hiddenStand = want
 		end
+		LiveShow.updateSetups(setupJobs, t)
 		local bandMove = (ad.genre == "K-Pop") and move or (((ad.genre == "Metal" or ad.genre == "Rock") and seg.kind == "banger") and "headbang" or "idle")
 		for _, b in ipairs(band) do
 			local pos = b.pos

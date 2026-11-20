@@ -232,7 +232,7 @@ Social.ITEM_NAMES = {
 	piano = "piano part", lowfog = "cloud floor", streamers = "streamer rain", house = "little house set",
 	bubbles = "bubbles", snow = "snow", candles = "candle-light part", sofa = "living-room set", stringlights = "fairy lights", tvstack = "TV wall",
 	starcloth = "star cloth", panelwall = "light panel wall", bulbwall = "bulb wall", mirrorwall = "mirror wall", staircase = "grand staircase",
-	scaffold = "scaffold wall", scrim = "glowing scrim",
+	scaffold = "scaffold wall", scrim = "glowing scrim", flamebar = "flame bars", sparkrain = "spark rain", halo = "light halo",
 }
 
 -- more posts from Data/SocialMore.lua
