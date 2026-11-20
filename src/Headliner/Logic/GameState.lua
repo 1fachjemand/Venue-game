@@ -169,6 +169,7 @@ function GS.signedArtists(state)
 	return out
 end
 
+-- not signed yet, the ones you can afford first (small to big)
 function GS.unsignedArtists(state)
 	local out = {}
 	for _, ad in ipairs(Artists.list) do
@@ -176,6 +177,12 @@ function GS.unsignedArtists(state)
 			table.insert(out, ad)
 		end
 	end
+	table.sort(out, function(a, b)
+		if a.signCost ~= b.signCost then
+			return a.signCost < b.signCost
+		end
+		return a.order < b.order
+	end)
 	return out
 end
 

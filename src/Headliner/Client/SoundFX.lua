@@ -19,6 +19,11 @@ local currentKey = nil
 
 local function id(key)
 	local n = Audio.IDS[key]
+	if n == nil then
+		-- a newer artist without an own recording plays the songs of a similar artist
+		local ad = require(Root.Data.Artists).byId[key]
+		n = ad and ad.audio and Audio.IDS[ad.audio]
+	end
 	if type(n) ~= "number" or n <= 0 then
 		return nil
 	end
