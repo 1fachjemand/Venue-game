@@ -195,6 +195,95 @@ function GS.activeTour(state, artistId)
 	return nil
 end
 
+-- tours that are announced or running (not finished)
+function GS.runningTours(state)
+	local n = 0
+	for _, t in ipairs(state.tours) do
+		if t.status ~= "done" then
+			n = n + 1
+		end
+	end
+	return n
+end
+function GS.maxTours(state)
+	if state.sandbox then
+		return 99
+	end
+	return Config.MAX_TOURS[GS.level(state)] or 1
+end
+-- the next level that allows one more tour at the same time (nil = none)
+function GS.moreToursAt(state)
+	local now = GS.maxTours(state)
+	for i = GS.level(state) + 1, #Config.LEVELS do
+		if (Config.MAX_TOURS[i] or 1) > now then
+			return i
+		end
+	end
+	return nil
+end
+
+-- how much rest an artist needs after a tour (some need a long break, some hardly any)
+local function seedOf(s)
+	local h = 7
+	for i = 1, #s do
+		h = (h * 31 + string.byte(s, i)) % 1000003
+	end
+	return h
+end
+function GS.restDays(artistId, showsPlayed)
+	local f = 0.25 + (seedOf(artistId) % 9) / 8 -- 0.25 .. 1.25
+	local d = (Config.REST_BASE + Config.REST_PER_SHOW * (showsPlayed or 0)) * f
+	return math.floor(Util.clamp(d, 2, Config.REST_MAX) + 0.5)
+end
+-- days left of an artist's break after a tour (0 = ready)
+function GS.restLeft(state, artistId)
+	local a = state.artists[artistId]
+	if state.sandbox or not a or not a.restUntil then
+		return 0
+	end
+	return math.max(0, a.restUntil - state.day)
+end
+-- unsigned artists are sometimes busy (album, another label's tour, holiday). Deterministic per artist
+-- and day, starters and roughly half of the artists are never busy, so there is always talent around.
+GS.BUSY_REASONS = { "is recording a new album", "is on tour with another label", "is taking a break", "is writing songs in the studio", "is on holiday" }
+function GS.artistBusy(state, artistId)
+	local ad = Artists.byId[artistId]
+	if state.sandbox or not ad or ad.starter or state.artists[artistId].signed then
+		return nil
+	end
+	local h = seedOf(artistId .. "busy")
+	if h % 2 == 0 then
+		return nil
+	end
+	local cycle = Config.ARTIST_BUSY_CYCLE
+	local phase = (state.day + h) % cycle
+	local busyLen = math.floor(cycle * (0.25 + (h % 5) / 20)) -- 25 .. 45 % of the time
+	if phase < busyLen then
+		return GS.BUSY_REASONS[h % #GS.BUSY_REASONS + 1], busyLen - phase
+	end
+	return nil
+end
+-- can a new tour be planned for this artist now? ok, reason
+function GS.canPlan(state, artistId)
+	local ad = Artists.byId[artistId or ""]
+	local a = ad and state.artists[ad.id]
+	if not a or not a.signed then
+		return false, "Pick an artist first."
+	end
+	if GS.activeTour(state, ad.id) then
+		return false, ad.name .. " is already on tour."
+	end
+	local rest = GS.restLeft(state, ad.id)
+	if rest > 0 then
+		return false, ad.name .. " needs a break after the last tour: " .. rest .. " more day" .. (rest == 1 and "" or "s") .. "."
+	end
+	if (state.draft or {}).artistId ~= ad.id and GS.runningTours(state) >= GS.maxTours(state) then
+		local nxt = GS.moreToursAt(state)
+		return false, "Your crew can only handle " .. GS.maxTours(state) .. " tour" .. (GS.maxTours(state) == 1 and "" or "s") .. " at a time" .. (nxt and (" (more at level " .. nxt .. ")") or "") .. "."
+	end
+	return true
+end
+
 function GS.level(state)
 	if state.sandbox then
 		local n = #Config.LEVELS
@@ -217,6 +306,10 @@ function GS.sign(state, artistId)
 	end
 	if ad.level > GS.level(state) then
 		return false, ad.name .. " only talks to a " .. Config.LEVELS[ad.level].name .. " (level " .. ad.level .. ")."
+	end
+	local busy, days = GS.artistBusy(state, ad.id)
+	if busy then
+		return false, ad.name .. " " .. busy .. ". Ask again in " .. days .. " days."
 	end
 	if state.money < ad.signCost then
 		return false, "Not enough money to sign " .. ad.name .. "."
@@ -315,7 +408,7 @@ function GS.objective(state)
 	end
 	local talent = false
 	for _, ad in ipairs(Artists.list) do
-		if not state.artists[ad.id].signed and ad.level <= GS.level(state) and ad.signCost <= state.money then
+		if not state.artists[ad.id].signed and ad.level <= GS.level(state) and ad.signCost <= state.money and not GS.artistBusy(state, ad.id) then
 			talent = true
 		end
 	end
@@ -359,7 +452,7 @@ function GS.addDesignFromTemplate(state, preset, name)
 end
 
 -- Places where the artist performs a song: artist spots, lifts and instruments the artist plays.
-GS.PLAY_ITEMS = { lift = true, poplift = true, towerlift = true, piano = true, keys = true, drums = true, djbooth = true, acoustic = true, harp = true }
+GS.PLAY_ITEMS = { lift = true, poplift = true, towerlift = true, piano = true, keys = true, drums = true, djbooth = true, acoustic = true, harp = true, micstand = true }
 -- lifts: the artist comes up out of the stage (lift, pop-up) or is lifted high into the air (tower)
 GS.LIFT_ITEMS = { lift = true, poplift = true, towerlift = true }
 
@@ -650,6 +743,12 @@ function GS.createTour(state, draft)
 	if GS.activeTour(state, ad.id) then
 		return false, ad.name .. " is already on tour."
 	end
+	if GS.restLeft(state, ad.id) > 0 then
+		return false, ad.name .. " needs a break after the last tour (" .. GS.restLeft(state, ad.id) .. " more days)."
+	end
+	if GS.runningTours(state) >= GS.maxTours(state) then
+		return false, "Your crew can only handle " .. GS.maxTours(state) .. " tour" .. (GS.maxTours(state) == 1 and "" or "s") .. " at a time. Wait until one is finished."
+	end
 	if #draft.shows == 0 then
 		return false, "Add at least one show (click a country, then + Add)."
 	end
@@ -918,6 +1017,13 @@ function GS.finishTour(state, tour)
 	do
 		tour.status = "done"
 		tour.endDay = state.day
+		local played = 0
+		for _, sh in ipairs(tour.shows) do
+			if sh.done and not sh.cancelled then
+				played = played + 1
+			end
+		end
+		a.restUntil = state.day + GS.restDays(tour.artistId, played)
 		local regions, nreg = {}, 0
 		for _, sh in ipairs(tour.shows) do
 			a.lastPlayed[sh.countryId] = state.day

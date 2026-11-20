@@ -446,9 +446,18 @@ function People:update(pos, yaw, opts)
 		rx, rz = -1.2 + math.sin(t * 3 + 1) * 0.06, -0.2
 	end
 	local micAtMouth = false
+	local boomMic, standMic = false, false
 	if self.role == "lead" and People.BUSY[move] then
-		-- hands are busy: the mic hangs from a stand at the mouth
-		micAtMouth = true
+		-- hands are busy (drums, piano, guitar ...): the hand mic is put away, the artist sings into a mic on a
+		-- boom stand in front of them
+		boomMic = true
+	elseif self.role == "lead" and move == "standmic" then
+		-- singing into the Mic Stand on the stage: both hands on the mic, the hand mic is put away
+		standMic = true
+		local rock = math.sin(t * 2.2) * 0.08 * e
+		lx, lz = -2.05 + rock, -0.55
+		rx, rz = -2.05 - rock, 0.55
+		lean = lean + 0.08
 	elseif self.role == "lead" then
 		if move == "micout" then
 			rx, rz = -1.6, 0.15 -- mic held out to the crowd for a sing-along
@@ -471,8 +480,12 @@ function People:update(pos, yaw, opts)
 	end
 	self.armL.CFrame = hip * CFrame.new(-1.45 * s, 2 * s, 0) * CFrame.Angles(0, 0, lz) * CFrame.Angles(lx, 0, 0) * CFrame.new(0, -1 * s, 0)
 	self.armR.CFrame = hip * CFrame.new(1.45 * s, 2 * s, 0) * CFrame.Angles(0, 0, rz) * CFrame.Angles(rx, 0, 0) * CFrame.new(0, -1 * s, 0)
+	if self.role == "lead" then
+		self:boomStand(boomMic and self.visible ~= false, root, headCF, s)
+	end
 	if self.prop then
 		if self.role == "lead" then
+			self.prop.Transparency = (boomMic or standMic or self.visible == false) and 1 or 0
 			if micAtMouth then
 				-- the grille end (top) is a hand's width in front of the mouth, never inside the head
 				self.prop.CFrame = headCF * CFrame.new(0.1 * s, -0.36 * s, 1.17 * s) * CFrame.Angles(math.rad(-70), 0, 0)
@@ -495,6 +508,46 @@ function People:update(pos, yaw, opts)
 	end
 	self.pos = pos
 	self.yaw = yaw
+end
+
+-- a mic on a boom stand in front of a lead artist who plays an instrument (made the first time it is needed):
+-- the mic is a hand's width in front of the mouth, the boom and the stand come from the front side
+function People:boomStand(on, root, headCF, s)
+	if not on and not self.boom then
+		return
+	end
+	if not self.boom then
+		local metal = Color3.fromRGB(150, 150, 158)
+		self.boom = {
+			mic = mk(self.model, "BoomMic", Vector3.new(0.24, 0.24, 0.75) * s, Color3.fromRGB(20, 20, 22), Enum.Material.Metal),
+			arm = mk(self.model, "BoomArm", Vector3.new(0.1, 0.1, 1) * s, metal, Enum.Material.Metal),
+			pole = mk(self.model, "BoomPole", Vector3.new(0.14, 1, 0.14) * s, metal, Enum.Material.Metal),
+			foot = mk(self.model, "BoomFoot", Vector3.new(1.2, 0.12, 1.2) * s, Color3.fromRGB(30, 30, 32), Enum.Material.Metal),
+		}
+	end
+	local b = self.boom
+	for _, p in pairs(b) do
+		p.Transparency = on and 0 or 1
+	end
+	if not on then
+		return
+	end
+	local mouth = (headCF * CFrame.new(0, -0.3 * s, 0.6 * s)).Position
+	local micPos = (headCF * CFrame.new(0.12 * s, -0.32 * s, 1.35 * s)).Position
+	b.mic.CFrame = CFrame.lookAt(micPos, mouth)
+	local back = (b.mic.CFrame * CFrame.new(0, 0, 0.4 * s)).Position
+	local joint = (headCF * CFrame.new(1.5 * s, -0.7 * s, 1.9 * s)).Position
+	local floorY = root.Position.Y
+	if joint.Y - floorY < 0.6 then
+		joint = Vector3.new(joint.X, floorY + 0.6, joint.Z)
+	end
+	local armLen = (joint - back).Magnitude
+	b.arm.Size = Vector3.new(0.1 * s, 0.1 * s, math.max(0.1, armLen))
+	b.arm.CFrame = CFrame.lookAt((joint + back) / 2, joint)
+	local poleLen = math.max(0.2, joint.Y - floorY)
+	b.pole.Size = Vector3.new(0.14 * s, poleLen, 0.14 * s)
+	b.pole.CFrame = CFrame.new(joint.X, floorY + poleLen / 2, joint.Z)
+	b.foot.CFrame = CFrame.new(joint.X, floorY + 0.06 * s, joint.Z)
 end
 
 function People:holdAcoustic(on, hip, s)

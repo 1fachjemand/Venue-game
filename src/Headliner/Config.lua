@@ -31,16 +31,30 @@ Config.SPEEDS = {
 Config.SANDBOX_MONEY = 1000000000
 
 -- Label level needed to book a venue type (level 1 = clubs)
-Config.VENUE_LEVEL = { Club = 1, Theatre = 2, Hall = 2, Arena = 3, Amphitheatre = 3, Stadium = 4 }
+Config.VENUE_LEVEL = { Club = 1, Theatre = 3, Hall = 3, Arena = 5, Amphitheatre = 5, Stadium = 8 }
 
 -- Label levels: unlocked by total tickets sold. Bigger artists need a higher level.
 Config.LEVELS = {
 	{ name = "Garage Label", tickets = 0 },
-	{ name = "Indie Label", tickets = 3000 },
-	{ name = "Rising Label", tickets = 25000 },
-	{ name = "Major Label", tickets = 200000 },
-	{ name = "Global Powerhouse", tickets = 1000000 },
+	{ name = "Indie Label", tickets = 1500 },
+	{ name = "Club Circuit Label", tickets = 6000 },
+	{ name = "Rising Label", tickets = 20000 },
+	{ name = "Hall Headliners", tickets = 55000 },
+	{ name = "Chart Label", tickets = 130000 },
+	{ name = "Major Label", tickets = 300000 },
+	{ name = "Arena Empire", tickets = 650000 },
+	{ name = "Stadium Label", tickets = 1400000 },
+	{ name = "Global Powerhouse", tickets = 3000000 },
 }
+
+-- An artist needs a break after a tour: rest days = REST_BASE + REST_PER_SHOW * shows played (max REST_MAX)
+Config.REST_BASE = 10
+Config.REST_PER_SHOW = 2
+Config.REST_MAX = 75
+-- How many tours can run (announced, not finished) at the same time, per label level
+Config.MAX_TOURS = { 1, 1, 1, 2, 2, 2, 3, 3, 3, 4 }
+-- Unsigned artists are sometimes busy (other label, album, holiday): days busy / days free (deterministic per artist)
+Config.ARTIST_BUSY_CYCLE = 120
 
 -- Stage equipment is bought once (price = catalog cost * ITEM_PRICE_MULT).
 -- Every show then costs PRODUCTION_RATE of the equipment value (crew, trucks, power).
@@ -50,7 +64,7 @@ Config.PRODUCTION_RATE = 0.08
 Config.RESALE = 0.7
 
 -- Promoter estimates are uncertain: real demand per show varies by this much (hidden from the player)
-Config.DEMAND_NOISE = 0.25
+Config.DEMAND_NOISE = 0.15
 
 Config.MAX_DESIGN_ITEMS = 260
 Config.MAX_DESIGNS = 8

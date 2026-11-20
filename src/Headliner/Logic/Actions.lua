@@ -154,7 +154,7 @@ end
 local function cleanDraft(state, d)
 	local out = { shows = {}, prices = {}, designs = {} }
 	local ad = Artists.byId[(type(d.artistId) == "string") and d.artistId or ""]
-	if ad and state.artists[ad.id].signed and not GS.activeTour(state, ad.id) then
+	if ad and GS.canPlan(state, ad.id) then
 		out.artistId = ad.id
 	end
 	if not out.artistId then
@@ -199,6 +199,13 @@ end
 function A.setDraft(state, a)
 	if type(a.draft) ~= "table" then
 		return false, "Bad plan."
+	end
+	local want = a.draft.artistId
+	if type(want) == "string" and want ~= (state.draft or {}).artistId then
+		local ok, why = GS.canPlan(state, want)
+		if not ok then
+			return false, why
+		end
 	end
 	state.draft = cleanDraft(state, a.draft)
 	return true

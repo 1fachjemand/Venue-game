@@ -1044,9 +1044,14 @@ local function boardCard(parent, ad, state, signed, y, x)
 	if signed then
 		local tour = GS.activeTour(state, ad.id)
 		local planned = (state.draft or {}).artistId == ad.id
-		UI.Label(card, tour and ("ON TOUR: " .. tour.name) or (planned and "Tour in planning" or "Ready for a tour"), UI.px(130, 168), UI.px(236, 22), { textSize = 15, color = tour and T.gold or T.good, font = UI.FontBold })
+		local rest = GS.restLeft(state, ad.id)
+		local can, why = GS.canPlan(state, ad.id)
+		local status = tour and ("ON TOUR: " .. tour.name) or (planned and "Tour in planning" or (rest > 0 and ("Resting: " .. rest .. " more days") or "Ready for a tour"))
+		UI.Label(card, status, UI.px(130, 168), UI.px(236, 22), { textSize = 15, color = tour and T.gold or ((rest > 0) and T.warn or T.good), font = UI.FontBold })
 		if tour then
 			UI.Label(card, ad.bio, UI.px(14, 204), UI.px(346, 58), { textSize = 15, color = T.sub, wrap = true, alignY = Enum.TextYAlignment.Top })
+		elseif not can and not planned then
+			UI.Label(card, why or "", UI.px(14, 204), UI.px(346, 58), { textSize = 15, color = T.sub, wrap = true, alignY = Enum.TextYAlignment.Top })
 		else
 			UI.Button(card, planned and "IN PLANNING  |  GO ON" or "PLAN A TOUR", UI.px(14, 204), UI.px(344, 52), { color = planned and T.panel3 or T.accent, textSize = 18 }, function()
 				World.planTour(ad.id)
@@ -1057,8 +1062,12 @@ local function boardCard(parent, ad, state, signed, y, x)
 		local locked = ad.level > lvl
 		local afford = state.money >= ad.signCost
 		UI.Label(card, "Costs " .. Util.money(ad.signCost), UI.px(130, 168), UI.px(236, 22), { textSize = 16, color = T.gold, font = UI.FontBold })
-		local txt = locked and ("LOCKED | needs level " .. ad.level) or (afford and "SIGN" or "NOT ENOUGH MONEY")
-		UI.Button(card, txt, UI.px(14, 204), UI.px(344, 52), { color = (not locked and afford) and T.good or T.panel3, disabled = locked or not afford, textSize = 18 }, function()
+		local busy, busyDays = GS.artistBusy(state, ad.id)
+		local txt = locked and ("LOCKED | needs level " .. ad.level) or (busy and ("NOT AVAILABLE | " .. busyDays .. " days") or (afford and "SIGN" or "NOT ENOUGH MONEY"))
+		if busy and not locked then
+			UI.Label(card, "Right now " .. ad.name .. " " .. busy .. ".", UI.px(130, 190), UI.px(236, 14), { textSize = 12, color = T.sub, wrap = true })
+		end
+		UI.Button(card, txt, UI.px(14, 210), UI.px(344, 48), { color = (not locked and afford and not busy) and T.good or T.panel3, disabled = locked or not afford or busy ~= nil, textSize = 18 }, function()
 			app:confirm("Sign " .. ad.name .. "?", "Signing costs <b>" .. Util.money(ad.signCost) .. "</b>. Then you can book their tours at the world map table.", function()
 				local ok, msg, data = app:act("sign", { artistId = ad.id })
 				app:toast(msg or "", ok and T.good or T.bad)
@@ -1104,7 +1113,11 @@ function World.planTour(artistId)
 	local d = app.state.draft or {}
 	local function go()
 		if d.artistId ~= artistId then
-			app:act("setDraft", { draft = { artistId = artistId } })
+			local ok, msg = app:act("setDraft", { draft = { artistId = artistId } })
+			if not ok then
+				app:toast(msg or "Not possible right now.", T.bad, 6)
+				return
+			end
 		end
 		if World.meeting then
 			World.standUp()

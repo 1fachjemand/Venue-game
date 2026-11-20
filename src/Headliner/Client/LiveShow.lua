@@ -10,6 +10,7 @@ local GS = require(Root.Logic.GameState)
 local UI = require(Root.Client.UI)
 local Builder = require(Root.Client.Builder)
 local Stage3D = require(Root.Client.Stage3D)
+local StageNav = require(Root.Client.StageNav)
 local People = require(Root.Client.People)
 local Venue = require(Root.Client.Venue)
 local LiveFeed = require(Root.Client.LiveFeed)
@@ -150,6 +151,7 @@ local PLAY_MOVES = {
 	dance = { "djmix", "djknob", "djhype", "djmix" },
 	harp = { "harp" },
 	strum = { "strum" },
+	standmic = { "standmic" },
 }
 
 ------------------------------------------------------------------ the dancers of a group (K-Pop & co.)
@@ -570,7 +572,7 @@ function LiveShow.run(app, opts)
 	local playProps = {}
 	for _, r in ipairs(items) do
 		local n = r.rec and r.rec.play
-		if n and (r.kind == "piano" or r.kind == "drums" or r.kind == "djbooth" or r.kind == "keys" or r.kind == "acoustic" or r.kind == "harp") then
+		if n and (r.kind == "piano" or r.kind == "drums" or r.kind == "djbooth" or r.kind == "keys" or r.kind == "acoustic" or r.kind == "harp" or r.kind == "micstand") then
 			local seat, move, yaw
 			if r.kind == "piano" then
 				seat, move, yaw = (r.cf * CFrame.new(0, 0, 5.2)).Position, "piano", math.rad(r.rec.r or 0) + math.pi
@@ -582,93 +584,18 @@ function LiveShow.run(app, opts)
 				seat, move, yaw = (r.cf * CFrame.new(0, 0, -2.2)).Position, "harp", math.rad(r.rec.r or 0)
 			elseif r.kind == "drums" then
 				seat, move, yaw = (r.cf * CFrame.new(0, 1, -1.8)).Position, "drumsolo", math.rad(r.rec.r or 0)
+			elseif r.kind == "micstand" then
+				seat, move, yaw = (r.cf * CFrame.new(0, 0, -2.3)).Position, "standmic", math.rad(r.rec.r or 0)
 			else
 				seat, move, yaw = (r.cf * CFrame.new(0, 0, -3.2)).Position, "dance", math.rad(r.rec.r or 0)
 			end
 			playProps[n] = { pos = seat, move = move, yaw = yaw, item = r }
 		end
 	end
-	------------------------------------------------------------ path finding on the stage
-	-- grid over all decks (2 studs per cell); the artist only walks where there is a deck
-	-- and can only step up/down small heights (stairs). Unreachable spots are reached "backstage".
-	local NAV = 2
-	local navC, navW, navD = Stage3D.deckBox()
-	local nx0, nz0 = navC.X - navW / 2 - 2, navC.Z - navD / 2 - 2
-	local ncols, nrows = math.max(1, math.ceil((navW + 4) / NAV)), math.max(1, math.ceil((navD + 4) / NAV))
-	local navH = {}
-	local function cellH(i, j)
-		local key = i * 10000 + j
-		local h = navH[key]
-		if h == nil then
-			-- a cell counts as stage if the centre or a point near it is on a deck (small gaps between decks are fine)
-			local cx, cz = nx0 + (i + 0.5) * NAV, nz0 + (j + 0.5) * NAV
-			h = Stage3D.surfaceY(cx, cz)
-			if h < 0.5 then
-				for _, o in ipairs({ { 0.8, 0 }, { -0.8, 0 }, { 0, 0.8 }, { 0, -0.8 } }) do
-					h = math.max(h, (Stage3D.surfaceY(cx + o[1], cz + o[2])))
-				end
-			end
-			navH[key] = h
-		end
-		return h
-	end
-	local function cellOf(p)
-		return math.clamp(math.floor((p.X - nx0) / NAV), 0, ncols - 1), math.clamp(math.floor((p.Z - nz0) / NAV), 0, nrows - 1)
-	end
-	local function findPath(from, to)
-		local si, sj = cellOf(from)
-		local ti, tj = cellOf(to)
-		if si == ti and sj == tj then
-			return { from, to }
-		end
-		if ncols * nrows > 40000 then
-			return nil
-		end
-		local prev, queue, head = {}, { si * 10000 + sj }, 1
-		prev[si * 10000 + sj] = -1
-		local goal = ti * 10000 + tj
-		while queue[head] do
-			local key = queue[head]
-			head = head + 1
-			if key == goal then
-				break
-			end
-			local i, j = math.floor(key / 10000), key % 10000
-			local h = cellH(i, j)
-			for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } }) do
-				local ni, nj = i + d[1], j + d[2]
-				local nk = ni * 10000 + nj
-				if ni >= 0 and nj >= 0 and ni < ncols and nj < nrows and not prev[nk] then
-					local nh = cellH(ni, nj)
-					local ok = nh > 0.5 and math.abs(nh - h) <= 4.2
-					if ok and d[1] ~= 0 and d[2] ~= 0 then
-						-- no cutting corners over gaps
-						ok = cellH(i + d[1], j) > 0.5 and cellH(i, j + d[2]) > 0.5
-					end
-					if ok then
-						prev[nk] = key
-						table.insert(queue, nk)
-					end
-				end
-			end
-		end
-		if not prev[goal] then
-			return nil
-		end
-		local cells = {}
-		local k = goal
-		while k ~= -1 do
-			table.insert(cells, 1, k)
-			k = prev[k]
-		end
-		local pts = { from }
-		for n = 2, #cells - 1 do
-			local i, j = math.floor(cells[n] / 10000), cells[n] % 10000
-			table.insert(pts, Vector3.new(nx0 + (i + 0.5) * NAV, cellH(i, j), nz0 + (j + 0.5) * NAV))
-		end
-		table.insert(pts, to)
-		return pts
-	end
+	------------------------------------------------------------ path finding on the stage (Client/StageNav.lua)
+	local nav = StageNav.new()
+	local findPath = nav.findPath
+	local NAV, navC, navD = nav.NAV, nav.navC, nav.navD
 	local function pathLength(pts)
 		local len = 0
 		for n = 2, #pts do
@@ -809,11 +736,7 @@ function LiveShow.run(app, opts)
 		crew = LiveShow.planCrew(ad, artistColor, segments, walks, {
 			findPath = findPath,
 			onSurface = onSurface,
-			walkable = function(p)
-				local i, j = cellOf(p)
-				local h = cellH(i, j)
-				return h > 0.5 and math.abs(h - p.Y) < 4.3, Vector3.new(nx0 + (i + 0.5) * NAV, h, nz0 + (j + 0.5) * NAV)
-			end,
+			walkable = nav.walkable,
 			nav = NAV,
 			start = home,
 		})

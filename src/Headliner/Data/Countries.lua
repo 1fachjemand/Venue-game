@@ -347,7 +347,7 @@ Countries.list = {
 	-- ===================== ASIA =====================
 	{
 		id = "jp", name = "Japan", region = "ASIA", lat = 35.68, lon = 139.69,
-		share = 0.286, priceLevel = 1.05, genres = { ["K-Pop"] = 1.2, Rock = 1.15, Metal = 1.1 },
+		share = 0.22, priceLevel = 1.05, genres = { ["K-Pop"] = 1.2, Rock = 1.15, Metal = 1.1 },
 		venues = {
 			{ id = "jp_komori", name = "Live House Komori", city = "Tokyo", type = "Club", cap = 300 },
 			{ id = "jp_budokon", name = "Nippon Budokon", city = "Tokyo", type = "Arena", cap = 14471 }, -- Nippon Budokan
@@ -362,7 +362,7 @@ Countries.list = {
 	},
 	{
 		id = "kr", name = "South Korea", region = "ASIA", lat = 37.57, lon = 126.98,
-		share = 0.234, priceLevel = 0.95, genres = { ["K-Pop"] = 1.4, ["R&B"] = 1.1 },
+		share = 0.16, priceLevel = 0.95, genres = { ["K-Pop"] = 1.4, ["R&B"] = 1.1 },
 		venues = {
 			{ id = "kr_byeol", name = "Club Byeol", city = "Seoul", type = "Club", cap = 400 },
 			{ id = "kr_kspa", name = "KSPA Dome", city = "Seoul", type = "Arena", cap = 15000 }, -- KSPO Dome
@@ -377,7 +377,7 @@ Countries.list = {
 	},
 	{
 		id = "in", name = "India", region = "ASIA", lat = 28.61, lon = 77.21,
-		share = 0.25, priceLevel = 0.5, genres = { Pop = 1.1, EDM = 1.1 },
+		share = 0.10, priceLevel = 0.5, genres = { Pop = 1.1, EDM = 1.1 },
 		venues = {
 			{ id = "in_bandra", name = "Bandra Base", city = "Mumbai", type = "Club", cap = 500 }, -- fictional
 			{ id = "in_patel", name = "Patel Indoor Stadium", city = "Mumbai", type = "Hall", cap = 6000 }, -- NSCI Dome
@@ -387,7 +387,7 @@ Countries.list = {
 	},
 	{
 		id = "ph", name = "Philippines", region = "ASIA", lat = 14.6, lon = 120.98,
-		share = 0.1, priceLevel = 0.55, genres = { ["K-Pop"] = 1.2, Pop = 1.2 },
+		share = 0.06, priceLevel = 0.55, genres = { ["K-Pop"] = 1.2, Pop = 1.2 },
 		venues = {
 			{ id = "ph_groove", name = "Manila Groove", city = "Manila", type = "Club", cap = 500 }, -- fictional
 			{ id = "ph_araneto", name = "Araneto Coliseum", city = "Quezon City", type = "Arena", cap = 9679 }, -- Araneta Coliseum (concerts)
@@ -397,7 +397,7 @@ Countries.list = {
 	},
 	{
 		id = "sg", name = "Singapore", region = "ASIA", lat = 1.35, lon = 103.82,
-		share = 0.05, priceLevel = 1.2, genres = { ["K-Pop"] = 1.1, EDM = 1.1 },
+		share = 0.04, priceLevel = 1.2, genres = { ["K-Pop"] = 1.1, EDM = 1.1 },
 		venues = {
 			{ id = "sg_marina", name = "Marina Club", city = "Singapore", type = "Club", cap = 600 }, -- fictional
 			{ id = "sg_starlight", name = "Starlight Theatre", city = "Singapore", type = "Theatre", cap = 5000 }, -- The Star Theatre
@@ -407,12 +407,64 @@ Countries.list = {
 	},
 	{
 		id = "th", name = "Thailand", region = "ASIA", lat = 13.76, lon = 100.5,
-		share = 0.08, priceLevel = 0.5, genres = { ["K-Pop"] = 1.2 },
+		share = 0.05, priceLevel = 0.5, genres = { ["K-Pop"] = 1.2 },
 		venues = {
 			{ id = "th_neon", name = "Bangkok Neon Club", city = "Bangkok", type = "Club", cap = 500 }, -- fictional
 			{ id = "th_siam", name = "Siam Live Hall", city = "Bangkok", type = "Theatre", cap = 3000 }, -- fictional
 			{ id = "th_impakt", name = "Impakt Arena", city = "Bangkok", type = "Arena", cap = 12000 }, -- Impact Arena
 			{ id = "th_rajamangla", name = "Rajamangla Stadium", city = "Bangkok", type = "Stadium", cap = 51560 }, -- Rajamangala Stadium
+		},
+	},
+	{
+		id = "cn", name = "China", region = "ASIA", lat = 31.23, lon = 121.47,
+		share = 0.17, priceLevel = 0.8, genres = { ["K-Pop"] = 1.15, Pop = 1.1 },
+		venues = {
+			{ id = "cn_hutong", name = "Hutong Livehouse", city = "Beijing", type = "Club", cap = 500 }, -- fictional
+			{ id = "cn_bund", name = "Bund Music Hall", city = "Shanghai", type = "Theatre", cap = 3000 }, -- fictional
+			{ id = "cn_mbarena", name = "Mercedez Arena Shanghai", city = "Shanghai", type = "Arena", cap = 18000 }, -- Mercedes-Benz Arena (AEG: 18,000 max)
+			{ id = "cn_wukesong", name = "Wukesung Arena", city = "Beijing", type = "Arena", cap = 19000 }, -- Cadillac Arena / Wukesong
+			{ id = "cn_kaitak", name = "Kai Tek Stadium", city = "Hong Kong", type = "Stadium", cap = 50000 }, -- Kai Tak Stadium
+			{ id = "cn_shanghai", name = "Shanghai Grand Stadium", city = "Shanghai", type = "Stadium", cap = 72000 }, -- Shanghai Stadium (rebuilt 2020-22)
+			{ id = "cn_nest", name = "The Birds Nest", city = "Beijing", type = "Stadium", cap = 80000 }, -- Beijing National Stadium
+		},
+	},
+	{
+		id = "tw", name = "Taiwan", region = "ASIA", lat = 25.03, lon = 121.56,
+		share = 0.06, priceLevel = 0.85, genres = { ["K-Pop"] = 1.2, Pop = 1.1 },
+		venues = {
+			{ id = "tw_legacy", name = "Legacy Taipeh", city = "Taipei", type = "Club", cap = 1200 }, -- Legacy Taipei
+			{ id = "tw_zepp", name = "Zap New Taipei", city = "New Taipei", type = "Theatre", cap = 2245 }, -- Zepp New Taipei
+			{ id = "tw_arena", name = "Taipeh Arena", city = "Taipei", type = "Arena", cap = 15082 }, -- Taipei Arena
+			{ id = "tw_dome", name = "Taipeh Dome", city = "Taipei", type = "Stadium", cap = 40575 }, -- Taipei Dome
+			{ id = "tw_kaohsiung", name = "Kaohsiung World Stadium", city = "Kaohsiung", type = "Stadium", cap = 55000 }, -- National Stadium Kaohsiung
+		},
+	},
+	{
+		id = "id", name = "Indonesia", region = "ASIA", lat = -6.21, lon = 106.85,
+		share = 0.07, priceLevel = 0.45, genres = { ["K-Pop"] = 1.3, Pop = 1.1 },
+		venues = {
+			{ id = "id_kemang", name = "Kemang Sound Club", city = "Jakarta", type = "Club", cap = 600 }, -- fictional
+			{ id = "id_istora", name = "Istora Senayam", city = "Jakarta", type = "Hall", cap = 7166 }, -- Istora Gelora Bung Karno
+			{ id = "id_arena", name = "Indonesian Arena", city = "Jakarta", type = "Arena", cap = 16500 }, -- Indonesia Arena
+			{ id = "id_gbk", name = "Gelora Bung Karto Stadium", city = "Jakarta", type = "Stadium", cap = 77193 }, -- Gelora Bung Karno Stadium
+		},
+	},
+	{
+		id = "my", name = "Malaysia", region = "ASIA", lat = 3.14, lon = 101.69,
+		share = 0.04, priceLevel = 0.55, genres = { ["K-Pop"] = 1.2 },
+		venues = {
+			{ id = "my_bangsar", name = "Bangsar Live Room", city = "Kuala Lumpur", type = "Club", cap = 500 }, -- fictional
+			{ id = "my_arena", name = "Bukit Jalil Arena", city = "Kuala Lumpur", type = "Arena", cap = 16000 }, -- Axiata / Unifi Arena
+			{ id = "my_national", name = "Bukit Jalil Grand Stadium", city = "Kuala Lumpur", type = "Stadium", cap = 87411 }, -- Bukit Jalil National Stadium
+		},
+	},
+	{
+		id = "vn", name = "Vietnam", region = "ASIA", lat = 21.03, lon = 105.85,
+		share = 0.03, priceLevel = 0.4, genres = { ["K-Pop"] = 1.25, Pop = 1.1 },
+		venues = {
+			{ id = "vn_lotus", name = "Lotus Lounge", city = "Hanoi", type = "Club", cap = 400 }, -- fictional
+			{ id = "vn_saigon", name = "Saigon Live Theatre", city = "Ho Chi Minh City", type = "Theatre", cap = 2500 }, -- fictional
+			{ id = "vn_mydinh", name = "My Din Stadium", city = "Hanoi", type = "Stadium", cap = 40192 }, -- My Dinh National Stadium
 		},
 	},
 	-- ===================== OCEANIA =====================
@@ -511,6 +563,12 @@ Countries.NEIGHBOURS = {
 	ar = { "br", "cl" },
 	cl = { "ar" },
 	co = { "br" },
+	cn = { "vn", "in" },
+	vn = { "cn" },
+	my = { "sg", "th", "id" },
+	sg = { "my" },
+	th = { "my" },
+	id = { "my" },
 }
 Countries.CONTINENT = {
 	uk = "Europe", ie = "Europe", fr = "Europe", nl = "Europe", de = "Europe", ch = "Europe", it = "Europe", es = "Europe",
@@ -518,6 +576,7 @@ Countries.CONTINENT = {
 	us = "North America", ca = "North America", mx = "North America",
 	br = "South America", ar = "South America", cl = "South America", co = "South America",
 	jp = "Asia", kr = "Asia", ["in"] = "Asia", ph = "Asia", sg = "Asia", th = "Asia", ae = "Asia",
+	cn = "Asia", tw = "Asia", id = "Asia", my = "Asia", vn = "Asia",
 	au = "Oceania", nz = "Oceania",
 	za = "Africa",
 }

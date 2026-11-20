@@ -257,6 +257,32 @@ Artists.BAND_STYLE = {
 	default = { hair = { "short", "messy", "bun" }, tops = { { 30, 30, 36 }, { 230, 230, 236 } }, pants = { { 30, 30, 36 } }, acc = { "none" } },
 }
 
+-- 10 label levels: every artist tier spans two levels (the bigger half of a tier needs the higher one)
+do
+	local BASE = { 1, 3, 5, 7, 9 }
+	local byOld = {}
+	for _, a in ipairs(Artists.list) do
+		byOld[a.level] = byOld[a.level] or {}
+		table.insert(byOld[a.level], a)
+	end
+	for old, list in pairs(byOld) do
+		local function total(a)
+			local n = 0
+			for _, f in pairs(a.fans) do
+				n = n + f
+			end
+			return n
+		end
+		table.sort(list, function(x, y)
+			return total(x) < total(y)
+		end)
+		local half = math.floor(#list / 2)
+		for i, a in ipairs(list) do
+			a.level = BASE[old] + ((i > half and not a.starter) and 1 or 0)
+		end
+	end
+end
+
 Artists.byId = {}
 for i, a in ipairs(Artists.list) do
 	a.order = i

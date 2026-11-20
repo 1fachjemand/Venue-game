@@ -62,6 +62,13 @@ function Stage3D.setDesign(design)
 	Stage3D.design = design
 	Stage3D.class = Config.STAGE_CLASS_BY_ID[(design and design.class) or "Arena"]
 	Stage3D.layout = (design and design.layout) or "end"
+	Builder.rigTop = Stage3D.class.rigY - Stage3D.BEAM_DROP
+end
+-- truss beams hang with their bottom this far below the rig height: towers end there
+Stage3D.BEAM_DROP = 1.9
+Stage3D.TOWERS = { truss = 1.05, truss_xl = 2.1 } -- tower kinds and half their width (side mounts clamp there)
+function Stage3D.isTower(r)
+	return r ~= nil and Stage3D.TOWERS[r.kind] ~= nil
 end
 
 -- Grid + glowing outline of the build area (designer only)
@@ -200,31 +207,42 @@ end
 -- point), r (the item looks away from the tower), the tower's base height - or nil if no tower is near
 Stage3D.TOWER_HALF = 1.05
 -- the Truss Tower closest to x, z (within 9 studs) or nil
-function Stage3D.nearestTower(x, z)
-	local best, bestD = nil, 9
+-- every post a side mount can clamp onto: Truss Towers and the front columns of a Stadium Structure
+-- returns a list of { refs, cf (post at its foot, in the item's turn), half (half the post's width) }
+function Stage3D.mountPosts(except)
+	local out = {}
 	for _, t in ipairs(Stage3D.items) do
-		if t.kind == "truss" then
-			local p = t.cf.Position
-			local d = math.sqrt((x - p.X) ^ 2 + (z - p.Z) ^ 2)
-			if d < bestD then
-				best, bestD = t, d
+		if t ~= except then
+			if Stage3D.TOWERS[t.kind] then
+				table.insert(out, { refs = t, cf = t.cf, half = Stage3D.TOWERS[t.kind], base = t.cf.Position.Y - (t.rec and t.rec.yo or 0) })
+			elseif t.mounts then
+				for _, mp in ipairs(t.mounts) do
+					local c = t.cf * mp.cf
+					table.insert(out, { refs = t, cf = c, half = mp.half, base = c.Position.Y })
+				end
 			end
+		end
+	end
+	return out
+end
+local function nearestPost(x, z, except)
+	local best, bestD = nil, 9
+	for _, p in ipairs(Stage3D.mountPosts(except)) do
+		local q = p.cf.Position
+		local d = math.sqrt((x - q.X) ^ 2 + (z - q.Z) ^ 2)
+		if d < bestD then
+			best, bestD = p, d
 		end
 	end
 	return best
 end
+-- the post (tower) closest to x, z (within 9 studs) or nil: { refs, cf, half, base }
+function Stage3D.nearestTower(x, z)
+	return nearestPost(x, z)
+end
 
 function Stage3D.snapToTower(x, z, except)
-	local best, bestD = nil, 9
-	for _, t in ipairs(Stage3D.items) do
-		if t.kind == "truss" and t ~= except then
-			local p = t.cf.Position
-			local d = math.sqrt((x - p.X) ^ 2 + (z - p.Z) ^ 2)
-			if d < bestD then
-				best, bestD = t, d
-			end
-		end
-	end
+	local best = nearestPost(x, z, except)
 	if not best then
 		return nil
 	end
@@ -236,10 +254,10 @@ function Stage3D.snapToTower(x, z, except)
 	else
 		dir = Vector3.new(0, 0, lp.Z >= 0 and 1 or -1)
 	end
-	local wp = best.cf * (dir * Stage3D.TOWER_HALF)
+	local wp = best.cf * (dir * best.half)
 	local wd = best.cf:VectorToWorldSpace(dir)
 	local r = math.floor(math.deg(math.atan2(wd.X, wd.Z)) + 0.5) % 360
-	return wp.X, wp.Z, r, best.cf.Position.Y - (best.rec and best.rec.yo or 0)
+	return wp.X, wp.Z, r, best.base
 end
 
 -- Lines a new truss beam up with the nearest other beam: same direction (or square to it), on one line,
@@ -298,11 +316,58 @@ function Stage3D.alignTruss(x, z, r, w, except)
 	return wp.X, wp.Z, r % 360
 end
 
+-- A truss beam near Truss Towers: its ends click onto the middle of the towers. With a tower at both ends
+-- it spans exactly from one to the other (centred, turned along the line). returns x, z, r, w (or nil)
+function Stage3D.beamToTowers(x, z, r, w)
+	local a = math.rad(r or 0)
+	local dir = Vector3.new(math.cos(a), 0, -math.sin(a))
+	local c = Vector3.new(x, 0, z)
+	local function near(p, skip)
+		local best, bestD = nil, 7
+		for _, t in ipairs(Stage3D.items) do
+			if Stage3D.TOWERS[t.kind] and t ~= skip then
+				local q = t.cf.Position
+				local d = (Vector3.new(q.X, 0, q.Z) - p).Magnitude
+				if d < bestD then
+					best, bestD = t, d
+				end
+			end
+		end
+		return best
+	end
+	local t1 = near(c - dir * w / 2)
+	local t2 = near(c + dir * w / 2, t1)
+	if t1 and t2 then
+		local p1, p2 = t1.cf.Position, t2.cf.Position
+		local d = Vector3.new(p2.X - p1.X, 0, p2.Z - p1.Z)
+		if d.Magnitude < 4 then
+			return nil
+		end
+		local nr = math.deg(math.atan2(-d.Z, d.X))
+		-- keep the beam's own direction (no 180 degree flip)
+		if math.abs(((nr - (r or 0)) % 360 + 540) % 360 - 180) > 90 then
+			nr = nr + 180
+		end
+		nr = math.floor(nr * 2 + 0.5) / 2 % 360
+		return (p1.X + p2.X) / 2, (p1.Z + p2.Z) / 2, nr, math.floor(d.Magnitude * 2 + 0.5) / 2
+	end
+	local t = t1 or t2
+	if t then
+		local q = t.cf.Position
+		local sign = (t == t1) and 1 or -1
+		local nc = Vector3.new(q.X, 0, q.Z) + dir * (w / 2) * sign
+		return nc.X, nc.Z, r, w
+	end
+	return nil
+end
+
 function Stage3D.itemCFrame(def, rec, except)
 	local y
 	if def.mount == "rig" then
 		-- truss beams sit at rig height, lights hang just below them
 		y = Stage3D.rigY() - ((def.id == "truss_beam") and 0 or 2)
+	elseif def.ground then
+		y = 0 -- big structures always stand on the ground (never on a deck)
 	else
 		y = rec.y or Stage3D.surfaceY(rec.x, rec.z, except)
 	end
@@ -323,6 +388,9 @@ function Stage3D.addItem(rec, opts)
 		return nil
 	end
 	local o = { color = opts and opts.color, artistName = opts and opts.artistName, rec = rec }
+	if Stage3D.TOWERS[def.id] then
+		o.rigTop = Stage3D.rigY() - Stage3D.BEAM_DROP - Stage3D.surfaceY(rec.x, rec.z) - (rec.yo or 0)
+	end
 	local refs = Builder.build(def, o)
 	Builder.place(refs, Stage3D.itemCFrame(def, rec))
 	refs.rec = rec

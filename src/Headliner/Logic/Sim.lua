@@ -152,15 +152,36 @@ end
 -- Splits ticket buyers over the sections: a section that is cheap for what it offers sells faster,
 -- an expensive one slower; fans who find a sold-out section partly move on to the others.
 -- returns soldBy = { [id] = n }, total sold, gross
-function Sim.splitSections(look, cap, prices, demand)
+-- How keen fans are on each section: its share of the room times how its price compares with what
+-- that section is worth (fair base price * the section's factor). A section at half its worth sells
+-- about 3x faster, one at double its worth hardly sells. Without `fair` the average price is the yardstick.
+function Sim.sectionWeights(look, prices, fair)
 	local secs = Sim.SECTIONS[look] or Sim.SECTIONS.arena
 	local avg = Sim.avgPrice(look, prices)
-	local want, room, weight, sumW = {}, {}, {}, 0
+	fair = fair or avg
+	local weight, sumW = {}, 0
 	for _, sec in ipairs(secs) do
 		local p = math.max(1, prices[sec.id] or avg * sec.mult)
-		weight[sec.id] = sec.share * Util.clamp((sec.mult * avg / p) ^ 1.6, 0.05, 4)
+		weight[sec.id] = sec.share * Sim.priceMult(fair * sec.mult, p)
 		sumW = sumW + weight[sec.id]
 	end
+	return weight, sumW
+end
+-- how many fans (of those who would come at a fair price) want a ticket at these prices: 1 = all of them
+function Sim.priceFactor(look, prices, fair)
+	local _, sumW = Sim.sectionWeights(look, prices, fair)
+	local share = 0
+	for _, sec in ipairs(Sim.SECTIONS[look] or Sim.SECTIONS.arena) do
+		share = share + sec.share
+	end
+	return sumW / math.max(0.01, share)
+end
+
+function Sim.splitSections(look, cap, prices, demand, fair)
+	local secs = Sim.SECTIONS[look] or Sim.SECTIONS.arena
+	local avg = Sim.avgPrice(look, prices)
+	local want, room = {}, {}
+	local weight, sumW = Sim.sectionWeights(look, prices, fair)
 	local spill = 0
 	for _, sec in ipairs(secs) do
 		local c = math.floor(cap * sec.share)
@@ -272,7 +293,12 @@ function Sim.demands(state, artistId, shows, mult)
 		local pm, need, alloc, full = {}, {}, {}, {}
 		for _, i in ipairs(idxs) do
 			local s = shows[i]
-			pm[i] = Sim.priceMult(fair, s.price) * (s.noise or 1)
+			local v = Countries.venueById[s.venueId]
+			if s.prices then
+				pm[i] = Sim.priceFactor(Sim.lookOf(v), s.prices, fair) * (s.noise or 1)
+			else
+				pm[i] = Sim.priceMult(fair, s.price or fair) * (s.noise or 1)
+			end
 			need[i] = Countries.venueById[s.venueId].cap / pm[i] -- fans needed to sell out
 			alloc[i] = 0
 		end
@@ -338,7 +364,7 @@ function Sim.updateTourSales(state, tour)
 			local total = s.day - tour.announcedDay
 			local elapsed = state.day - tour.announcedDay
 			local v = Countries.venueById[s.venueId]
-			local soldBy, target = Sim.splitSections(Sim.lookOf(v), s.cap, Sim.showPrices(s, v), d[i] * Sim.salesFraction(elapsed, total))
+			local soldBy, target = Sim.splitSections(Sim.lookOf(v), s.cap, Sim.showPrices(s, v), d[i] * Sim.salesFraction(elapsed, total), Sim.fairPrice(state, tour.artistId, v.countryId))
 			s.secSold = s.secSold or {}
 			local sum = 0
 			for id, n in pairs(soldBy) do
@@ -422,7 +448,8 @@ function Sim.estimate(state, draft, design)
 	for i, s in ipairs(draft.shows) do
 		local v = Countries.venueById[s.venueId]
 		local prices = Sim.showPrices(s, v)
-		local _, sold, gross = Sim.splitSections(Sim.lookOf(v), v.cap, prices, d[i])
+		local fair = Sim.fairPrice(state, draft.artistId, v.countryId)
+		local _, sold, gross = Sim.splitSections(Sim.lookOf(v), v.cap, prices, d[i], fair)
 		local rent = Sim.venueRent(v)
 		local st = stFor(v)
 		local travel = Sim.travelCost(prev, v, st.count)
@@ -431,8 +458,8 @@ function Sim.estimate(state, draft, design)
 		local n = Config.DEMAND_NOISE
 		local low = math.min(1, d[i] * (1 - n) / v.cap)
 		local high = math.min(1, d[i] * (1 + n) / v.cap)
-		local _, soldLo, grossLo = Sim.splitSections(Sim.lookOf(v), v.cap, prices, d[i] * (1 - n))
-		local _, soldHi, grossHi = Sim.splitSections(Sim.lookOf(v), v.cap, prices, d[i] * (1 + n))
+		local _, soldLo, grossLo = Sim.splitSections(Sim.lookOf(v), v.cap, prices, d[i] * (1 - n), fair)
+		local _, soldHi, grossHi = Sim.splitSections(Sim.lookOf(v), v.cap, prices, d[i] * (1 + n), fair)
 		low, high = soldLo / v.cap, soldHi / v.cap
 		res.rows[i] = { demand = d[i], sold = sold, fill = sold / v.cap, fillLow = low, fillHigh = high, gross = gross, costs = costs, net = gross - costs }
 		res.grossLow = (res.grossLow or 0) + grossLo

@@ -586,10 +586,23 @@ assert(pillar.rec.scr.default.m == "visuals", "copy to chosen screens")
 for _, r in ipairs(Stage3D.items) do if r.kind == "led" then Designer.current.select(r) break end end
 for _, r in ipairs(Stage3D.items) do if r.kind == "led" then log("screen config", r.rec.scr.default.m, r.rec.scr["1"] and r.rec.scr["1"].m) break end end
 for _, r in ipairs(Stage3D.items) do if r.kind == "piano" then Designer.current.select(r) break end end
-MOCK.clickExact("+", 1)
+-- the instrument is set up in the setlist on the left (no panel on the right)
+MOCK.clickExact(">", 1)
 local pl = nil
 for _, rec in ipairs(design.items) do if rec.t == "piano" then pl = rec.play end end
 log("piano plays in song", pl)
+assert(pl == 1, "piano song set in the setlist box")
+MOCK.clickExact("Crew sets it up")
+for _, rec in ipairs(design.items) do if rec.t == "piano" then assert(rec.setup == "crew", "crew setup from the setlist box") rec.setup = nil end end
+-- a screen set up for one song: only that song's spots show on the stage
+for _, r in ipairs(Stage3D.items) do if r.kind == "led" then Designer.current.select(r) break end end
+MOCK.clickExact("+", 1)
+local shown, hidden = 0, 0
+for _, r in ipairs(Stage3D.items) do if r.kind == "spot" then if r.marker.Transparency < 1 then shown = shown + 1 else hidden = hidden + 1 end end end
+log("spots for song 1: shown", shown, "hidden", hidden, "focus", Designer.current.focusSong())
+assert(Designer.current.focusSong() == 1 and (hidden > 0 or shown == 0), "only the spots of the chosen song")
+Designer.current.select(nil)
+for _, r in ipairs(Stage3D.items) do if r.kind == "spot" then assert(r.marker.Transparency == 0, "all spots back") end end
 local fxRec = nil
 for _, r in ipairs(Stage3D.items) do if r.kind == "pyro" or r.kind == "co2" or r.kind == "sparks" then Designer.current.select(r) fxRec = r.rec break end end
 if fxRec then
@@ -943,7 +956,12 @@ MOCK.clickExact("X")
 assert(app.mode == "world", "phone closed")
 
 -- 8) superstar stadium tour (needs level 4), watched live with skip
-cheat(function(s) s.money = 60000000 s.stats.tickets = 2000000 end)
+cheat(function(s)
+	s.money = 60000000 s.stats.tickets = 4000000
+	local GSx = require(root.Logic.GameState)
+	local busy, d = GSx.artistBusy(s, "nova")
+	if busy then s.day = s.day + d end
+end)
 log("sign nova", app:act("sign", { artistId = "nova" }))
 clearModals()
 planArtist("nova")
@@ -1049,7 +1067,7 @@ MOCK.click("^SANDBOX")
 MOCK.click("^NEW SANDBOX", 1)
 assert(#MOCK.texts("^SAM") == 0, "no tutorial in the sandbox")
 assert(app3.state.sandbox and app3.state.money >= 1000000000, "sandbox money")
-assert(GS.level(app3.state) == 5, "sandbox: every level")
+assert(GS.level(app3.state) == #require(root.Config).LEVELS, "sandbox: every level")
 local un = GS.unlocks(app3.state)
 assert(un.stagehall and un.charts, "sandbox: every room open")
 assert(app3.world.prompts.stagehall.Enabled, "sandbox: hall prompt")

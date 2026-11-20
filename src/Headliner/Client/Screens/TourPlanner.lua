@@ -46,8 +46,10 @@ local function heatColor(pool)
 	return Color3.fromRGB(22, 163, 74)
 end
 local function rangeText(lo, hi)
-	if lo >= 0.999 then
+	if lo >= 0.98 then
 		return "sells out"
+	elseif hi >= 0.98 then
+		return Util.percent(lo) .. " full, maybe sold out"
 	end
 	return Util.percent(lo) .. " - " .. Util.percent(hi) .. " full"
 end
@@ -323,8 +325,11 @@ function TP:buildArtist()
 		UI.Label(card, ad.genre .. ((ad.members > 1) and ("  |  " .. ad.members .. " members") or "  |  solo"), UI.px(184, 60), UI.px(240, 22), { textSize = 16, color = T.sub })
 		UI.Label(card, Util.short(Util.totalFans(state.artists[ad.id].fans)) .. " fans", UI.px(184, 100), UI.px(240, 26), { textSize = 19, font = UI.FontBold })
 		UI.Label(card, "Hype " .. math.floor(state.artists[ad.id].hype) .. " / 100", UI.px(184, 130), UI.px(240, 22), { textSize = 16, color = T.sub })
+		local rest = GS.restLeft(state, ad.id)
 		if touring then
 			UI.Pill(card, "ON TOUR NOW", UI.px(184, 168), UI.px(140, 28), T.warn, 13)
+		elseif rest > 0 then
+			UI.Pill(card, "RESTING " .. rest .. " DAYS", UI.px(184, 168), UI.px(170, 28), T.warn, 13)
 		end
 		if sel then
 			UI.Pill(card, "SELECTED", UI.px(184, 244), UI.px(120, 32), T.accent, 14)
@@ -337,6 +342,11 @@ end
 
 function TP:pickArtist(aid)
 	local d = self.draft
+	local okPlan, why = GS.canPlan(self.app.state, aid)
+	if not okPlan and d.artistId ~= aid then
+		self.app:toast(why or "Not possible right now.", T.bad, 6)
+		return
+	end
 	local function set()
 		d.artistId = aid
 		d.shows, d.prices, d.designs, d.name, d.price, d.pricesSet, d.stageSet = {}, {}, {}, nil, nil, nil, nil
@@ -522,10 +532,15 @@ function TP:venueCard(parent, v, i)
 	UI.Label(card, v.city .. "   |   " .. Util.number(v.cap) .. " seats", UI.px(12, 182), UI.px(224, 20), { textSize = 14, color = T.sub })
 	UI.Label(card, "Rent " .. Util.moneyShort(Sim.venueRent(v)), UI.px(12, 204), UI.px(224, 20), { textSize = 14, color = T.sub })
 	if open then
-		local shows = { { venueId = v.id, price = Sim.avgPrice(Sim.lookOf(v), self:pricesFor(Sim.lookOf(v))) } }
+		local lk = Sim.lookOf(v)
+		local pr = self:pricesFor(lk)
+		local shows = { { venueId = v.id, prices = pr, price = Sim.avgPrice(lk, pr) } }
 		local d = Sim.demands(state, aid, shows, 1)[1]
 		local n = Config.DEMAND_NOISE
-		local lo, hi = math.min(1, d * (1 - n) / v.cap), math.min(1, d * (1 + n) / v.cap)
+		local fair = Sim.fairPrice(state, aid, v.countryId)
+		local _, soldLo = Sim.splitSections(lk, v.cap, pr, d * (1 - n), fair)
+		local _, soldHi = Sim.splitSections(lk, v.cap, pr, d * (1 + n), fair)
+		local lo, hi = soldLo / v.cap, soldHi / v.cap
 		UI.Label(card, "Expected: " .. rangeText(lo, hi), UI.px(12, 230), UI.px(224, 22), { textSize = 15, font = UI.FontBold, color = rangeColor(lo, hi) })
 		-- select (blue)
 		local b = UI.Button(card, "SELECT", UI.px(12, 276), UI.px(224, 50), { color = T.accent, textSize = 18 }, function()
@@ -695,7 +710,7 @@ function TP:sectionForecast(look)
 	for i, s in ipairs(draft.shows) do
 		local v = Countries.venueById[s.venueId]
 		if Sim.lookOf(v) == look then
-			local by = Sim.splitSections(look, v.cap, s.prices, d[i])
+			local by = Sim.splitSections(look, v.cap, s.prices, d[i], Sim.fairPrice(state, draft.artistId, v.countryId))
 			for _, sec in ipairs(Sim.SECTIONS[look]) do
 				sold[sec.id] = (sold[sec.id] or 0) + (by[sec.id] or 0)
 				cap[sec.id] = (cap[sec.id] or 0) + math.floor(v.cap * sec.share)
@@ -773,7 +788,17 @@ function TP:buildTickets()
 	UI.Label(left, "The stronger the colour, the more tickets are expected to sell. Click a section.", UI.px(28, 736), UI.px(900, 24), { textSize = 15, color = T.sub })
 	local right = UI.Panel(body, UI.px(1004, 20), UI.px(888, 788), T.panel)
 	UI.Label(right, LOOK_LABEL[look] .. ": PRICE PER SECTION", UI.px(28, 18), UI.px(820, 30), { textSize = 20, font = UI.FontBlack })
-	UI.Label(right, "Same prices for all " .. string.lower(LOOK_LABEL[look]) .. " of this tour. The promoter suggests about " .. Util.money(Util.round(Sim.ticketBase(state, ad.id))) .. " for " .. ad.name .. ".", UI.px(28, 52), UI.px(830, 44), { textSize = 15, color = T.sub, wrap = true })
+	-- what a ticket is worth in the countries of these shows (fair price, average over the shows)
+	local fairSum, fairN = 0, 0
+	for _, s in ipairs(draft.shows) do
+		local v = Countries.venueById[s.venueId]
+		if Sim.lookOf(v) == look then
+			fairSum = fairSum + Sim.fairPrice(state, ad.id, v.countryId)
+			fairN = fairN + 1
+		end
+	end
+	local fairBase = fairN > 0 and fairSum / fairN or Sim.ticketBase(state, ad.id)
+	UI.Label(right, "Same prices for all " .. string.lower(LOOK_LABEL[look]) .. " of this tour. Every section sells on its own: below its fair price it sells faster, above it slower. Tickets keep selling until the show day.", UI.px(28, 50), UI.px(830, 48), { textSize = 14, color = T.sub, wrap = true })
 	local y = 106
 	for i, sec in ipairs(secs) do
 		local sel = sec.id == self.ticketSec
@@ -792,7 +817,15 @@ function TP:buildTickets()
 				self:refresh()
 			end)
 		end
-		UI.Label(row, Util.money(prices[sec.id]), UI.px(614, 22), UI.px(120, 48), { textSize = 22, font = UI.FontBlack, alignX = Enum.TextXAlignment.Center })
+		UI.Label(row, Util.money(prices[sec.id]), UI.px(614, 14), UI.px(120, 40), { textSize = 22, font = UI.FontBlack, alignX = Enum.TextXAlignment.Center })
+		local worth = math.max(5, Util.round(fairBase * sec.mult))
+		local fb = UI.Button(row, "fair " .. Util.money(worth), UI.px(614, 56), UI.px(120, 28), { textSize = 12, color = T.panel }, function()
+			prices[sec.id] = worth
+			self.ticketSec = sec.id
+			self:saveDraft()
+			self:refresh()
+		end)
+		fb.Name = "Fair_" .. sec.id
 		y = y + 100
 	end
 	local est = self:estimate()

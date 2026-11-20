@@ -1,6 +1,7 @@
 math.randomseed(42)
 local GS = require(ROOT.Logic.GameState)
 local Sim = require(ROOT.Logic.Sim)
+local Artists = require(ROOT.Data.Artists)
 local Util = require(ROOT.Logic.Util)
 local Countries = require(ROOT.Data.Countries)
 local Config = require(ROOT.Config)
@@ -127,11 +128,11 @@ do
   check(ok and st.money == m0 - 18000, "buy led " .. st.money)
   GS.sellItem(st, d, d.items[#d.items])
   check(st.money == m0 - 18000 + 12600, "resale 70%")
-  st.stats.tickets = 3500
-  check(GS.level(st) == 2 and GS.checkLevelUp(st) == "Indie Label", "level up")
+  st.stats.tickets = 25000
+  check(GS.level(st) == 4 and GS.checkLevelUp(st) == "Rising Label", "level up")
   st.money = 1000000
   local ok2 = GS.sign(st, "voltage")
-  check(ok2, "voltage signable at level 2")
+  check(ok2, "voltage signable at level 4")
   local okT, t = GS.createTour(st, { artistId = "juno", designId = d.id, firstIn = 20, gap = 2, price = 40, shows = { { venueId = "uk_fiddle" }, { venueId = "fr_neon" } } })
   check(okT and t.shows[1].price == 40 and t.shows[2].price == 40, "tour price")
   GS.setTourPrice(st, t.id, 45)
@@ -285,8 +286,36 @@ do
   check(GS.objective(fresh).target == "laptop", "tickets on the laptop")
   Actions.run(fresh, "setDraft", { draft = { artistId = "lila", shows = fresh.draft.shows, pricesSet = true } })
   check(GS.objective(fresh).target == "stagehall", "then the stage hall")
-  Actions.run(fresh, "setDraft", { draft = { artistId = "kai", shows = fresh.draft.shows } })
-  check(fresh.draft.artistId == nil and #fresh.draft.shows == 0, "an unsigned artist can't be planned")
+  local okKai = Actions.run(fresh, "setDraft", { draft = { artistId = "kai", shows = fresh.draft.shows } })
+  check(not okKai and fresh.draft.artistId == "lila", "an unsigned artist can't be planned (the plan stays)")
+  -- a finished tour: the artist needs a break, only one tour at a time at level 1
+  local rs = GS.new("Rest", "lila")
+  rs.artists.juno.signed = true
+  local okR, tr = GS.createTour(rs, { artistId = "lila", designId = rs.designs[1].id, shows = { { venueId = "uk_fiddle" } } })
+  check(okR, "first tour")
+  local okR2 = GS.createTour(rs, { artistId = "juno", designId = rs.designs[1].id, shows = { { venueId = "fr_neon" } } })
+  check(not okR2, "level 1: one tour at a time")
+  GS.finishTour(rs, tr)
+  check(GS.restLeft(rs, "lila") > 0 and not GS.canPlan(rs, "lila"), "lila rests after the tour")
+  check(GS.canPlan(rs, "juno"), "juno can tour")
+  -- unsigned artists: some are busy sometimes, but there is always someone
+  local busyN, freeN = 0, 0
+  for _, ad in ipairs(Artists.list) do
+    if GS.artistBusy(rs, ad.id) then busyN = busyN + 1 else freeN = freeN + 1 end
+  end
+  print("busy artists", busyN, "free", freeN)
+  check(busyN > 0 and freeN > busyN, "a few artists are busy")
+  -- tickets: a cheap golden circle sells out, the rest of the room does not change
+  local sp = GS.new("Tix", "lila")
+  local fair = Sim.fairPrice(sp, "lila", "uk")
+  local pr = Sim.defaultPrices(fair, "arena")
+  local _, _, _ = Sim.splitSections("arena", 20000, pr, 6000, fair)
+  local byA = Sim.splitSections("arena", 20000, pr, 6000, fair)
+  local pr2 = Sim.defaultPrices(fair, "arena")
+  pr2.golden = math.floor(pr2.golden / 3)
+  local d2 = 6000 * Sim.priceFactor("arena", pr2, fair) / Sim.priceFactor("arena", pr, fair)
+  local byB = Sim.splitSections("arena", 20000, pr2, d2, fair)
+  check(byB.golden > byA.golden and math.abs(byB.upper - byA.upper) < 5, "cheaper golden circle sells more golden tickets: " .. byA.golden .. " -> " .. byB.golden)
   Actions.run(fresh, "setDraft", { draft = { artistId = "lila", shows = { { venueId = "uk_fiddle", day = 30 } }, pricesSet = true, stageSet = true } })
   check(GS.planStage(fresh) == "announce", "ready to announce")
   local okA, _, dA = Actions.run(fresh, "announceTour", { name = "Moon Tour" })

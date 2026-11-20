@@ -497,8 +497,11 @@ function Sam.artistLine(ad, state)
 	if a.signed then
 		local tour = GS.activeTour(state, ad.id)
 		local next
+		local rest = GS.restLeft(state, ad.id)
 		if tour then
 			next = "On tour right now: keep an eye on the ticket sales."
+		elseif rest > 0 then
+			next = "After the last tour they need a break: " .. rest .. " more days, then we plan the next one."
 		elseif a.hype >= 60 then
 			next = "The fans are hungry: book bigger venues this time!"
 		else
@@ -510,6 +513,10 @@ function Sam.artistLine(ad, state)
 	local about = ad.pitch or ad.bio
 	if ad.level > lvl then
 		return name .. " (" .. who .. ", " .. fans .. " fans): " .. about .. " They only talk to labels of level " .. ad.level .. " and up."
+	end
+	local busy, days = GS.artistBusy(state, ad.id)
+	if busy then
+		return name .. " (" .. who .. ", " .. fans .. " fans): " .. about .. " But right now they " .. busy:gsub("^is ", "are ") .. ". Ask again in " .. days .. " days."
 	end
 	return name .. " (" .. who .. ", " .. fans .. " fans): " .. about .. " Signing costs " .. Util.money(ad.signCost) .. "."
 end

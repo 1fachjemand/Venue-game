@@ -13,6 +13,7 @@ local GS = require(Root.Logic.GameState)
 local UI = require(Root.Client.UI)
 local Builder = require(Root.Client.Builder)
 local Stage3D = require(Root.Client.Stage3D)
+local StageNav = require(Root.Client.StageNav)
 local SoundFX = require(Root.Client.SoundFX)
 
 local T = UI.Theme
@@ -36,7 +37,7 @@ local AXIS = {
 local GRIDS = { 1, 2, 4, 8 }
 local TURNS = { 15, 45, 90 }
 local BLACK = Color3.new(0, 0, 0)
-local GEOMETRY_KEYS = { w = true, d = true, h = true, skin = true, edge = true, scr = true, cc = true, anim = true, roof = true, yo = true }
+local GEOMETRY_KEYS = { flip = true, w = true, d = true, h = true, skin = true, edge = true, scr = true, cc = true, anim = true, roof = true, yo = true }
 -- settings that only change the show (no new model needed)
 local SHOW_KEYS = { play = true, songs = true, cs = true, anim = true, mid = true, song = true, setup = true }
 -- effects that can fire in chosen songs (rec.songs = { 1, 4, ... }; false / nil = automatic)
@@ -58,6 +59,7 @@ function Designer.open(app, designId)
 	local design = GS.getDesign(state, designId) or state.designs[1]
 	local self = { app = app, design = design, conns = {} }
 	Designer.current = self
+	Builder.editMode = true -- LED surfaces stay calm while building
 	app:enterMode("designer")
 	Stage3D.setLighting("designer")
 
@@ -87,6 +89,7 @@ function Designer.open(app, designId)
 	local overHandle = false
 	local drag = nil
 	local screenSong = 0 -- 0 = what screens show for the whole show, n = change for song n
+	local fxFocus = nil -- the song last picked for an effect: the stage then shows only that song's spots
 	local copyPick = nil -- choosing screens that get the same settings: { src = rec, recs = { [rec] = true }, boxes = {} }
 	local phase = "build" -- "build" (the stage itself) | "show" (setlist & show: spots, screens, effects per song)
 
@@ -134,6 +137,13 @@ function Designer.open(app, designId)
 		end
 		if self.drawArtistPath then
 			self.drawArtistPath()
+		end
+		-- the roof of a Stadium Structure is see-through while building, so you can see the stage under it
+		for _, r in ipairs(Stage3D.items) do
+			for _, p in ipairs(r.roofParts or {}) do
+				p.Transparency = math.max(p.Transparency, 0.8)
+				p.CastShadow = false
+			end
 		end
 		-- an empty venue of this size around the stage, so you can see where the fans stand
 		local sig = self.design.class .. self.design.layout
@@ -241,10 +251,6 @@ function Designer.open(app, designId)
 	end
 
 	local function defaultsFor(def)
-		local s = lastSettings[def.id]
-		if s then
-			return Util.deepCopy(s)
-		end
 		local rec = { t = def.id, r = 0 }
 		if def.size then
 			rec.w = def.size.w
@@ -255,6 +261,12 @@ function Designer.open(app, designId)
 		end
 		if def.mount == "side" then
 			rec.yo = 14 -- up on the tower
+		end
+		-- the look (surface, colour, turn ...) of the last piece of this kind is kept, never its size
+		for k, v in pairs(lastSettings[def.id] or {}) do
+			if rec[k] == nil and k ~= "uid" then
+				rec[k] = Util.deepCopy(v)
+			end
 		end
 		return rec
 	end
@@ -345,7 +357,16 @@ function Designer.open(app, designId)
 			x, z = Stage3D.snapToTruss(x, z) -- lights click onto truss beams
 		elseif def and def.id == "truss_beam" and rec then
 			local r
-			x, z, r = Stage3D.alignTruss(x, z, rec.r or 0, rec.w or (def.size and def.size.w) or 24, except)
+			local w = rec.w or (def.size and def.size.w) or 24
+			x, z, r = Stage3D.alignTruss(x, z, rec.r or 0, w, except)
+			-- ends on Truss Towers: the beam spans exactly from tower to tower
+			local tx, tz, tr, tw = Stage3D.beamToTowers(x, z, r or rec.r or 0, w)
+			if tx then
+				if tw and def.size and tw >= (def.size.minW or 1) and tw <= (def.size.maxW or 999) then
+					rec.w = tw
+				end
+				return tx, tz, tr
+			end
 			return x, z, r
 		end
 		return x, z
@@ -358,6 +379,25 @@ function Designer.open(app, designId)
 		params.FilterDescendantsInstances = { Stage3D.designFolder }
 		local hit = workspace:Raycast(ray.Origin, ray.Direction * 3000, params)
 		local item = hit and Stage3D.itemFromPart(hit.Instance) or nil
+		-- the roof and wings of a Stadium Structure let clicks through to what is under them (its columns don't)
+		local tries = 0
+		while item and item.roofParts and hit.Instance.Name ~= "Leg" and tries < 4 do
+			tries = tries + 1
+			local skip = {}
+			for _, r in ipairs(Stage3D.items) do
+				if r ~= item then
+					table.insert(skip, r.model)
+				end
+			end
+			params.FilterDescendantsInstances = skip
+			local below = workspace:Raycast(ray.Origin, ray.Direction * 3000, params)
+			if not below then
+				break
+			end
+			hit = below
+			item = Stage3D.itemFromPart(hit.Instance)
+		end
+		params.FilterDescendantsInstances = { Stage3D.designFolder }
 		if item and item.kind == "truss_beam" then
 			-- a beam lies on top of the towers: when a tower is right there, the click means the tower
 			local list = {}
@@ -369,7 +409,7 @@ function Designer.open(app, designId)
 			params.FilterDescendantsInstances = list
 			local hit2 = workspace:Raycast(ray.Origin, ray.Direction * 3000, params)
 			local other = hit2 and Stage3D.itemFromPart(hit2.Instance)
-			if other and other.kind == "truss" and (hit2.Position - hit.Position).Magnitude < 4 then
+			if other and Stage3D.isTower(other) and (hit2.Position - hit.Position).Magnitude < 4 then
 				return other
 			end
 		end
@@ -454,6 +494,8 @@ function Designer.open(app, designId)
 			if rec.y == nil then
 				rec.y = 0
 			end
+		elseif def.ground then
+			rec.y = 0
 		elseif def.mount ~= "rig" then
 			rec.y = Stage3D.surfaceY(rec.x, rec.z)
 		end
@@ -517,6 +559,94 @@ function Designer.open(app, designId)
 		return dx, dz
 	end
 	self.edgeSnap = edgeSnap
+	-- walls and backdrops (Stage Cloth, Bulb Wall, LED Wall ...) snap with their face flush to a deck edge
+	-- nearby: behind the stage, on its edge or beside it as side decoration. No gaps.
+	local WALL_SNAP = 5
+	local function isWall(def)
+		return def and not def.deck and def.size and def.size.dLabel == "Height" and def.id ~= "stadiumroof"
+	end
+	local function wallDepth(refs)
+		-- the wall's front and back (local z) measured on its parts
+		local zlo, zhi = nil, nil
+		if refs and refs.model then
+			local pivot = refs.model.PrimaryPart and refs.model.PrimaryPart.CFrame or refs.cf
+			local n = 0
+			for _, p in ipairs(refs.model:GetDescendants()) do
+				if p:IsA("BasePart") and p.Name ~= "HitBox" and p.Name ~= "Pivot" and p.Transparency < 1 then
+					n = n + 1
+					if n > 160 then
+						break
+					end
+					local hs = p.Size / 2
+					for _, c in ipairs({ { 1, 1, 1 }, { -1, -1, -1 }, { 1, -1, 1 }, { -1, 1, -1 }, { 1, 1, -1 }, { -1, -1, 1 }, { 1, -1, -1 }, { -1, 1, 1 } }) do
+						local w = p.CFrame * Vector3.new(hs.X * c[1], hs.Y * c[2], hs.Z * c[3])
+						local z = pivot:PointToObjectSpace(w).Z
+						zlo = zlo and math.min(zlo, z) or z
+						zhi = zhi and math.max(zhi, z) or z
+					end
+				end
+			end
+		end
+		return zlo or -0.5, zhi or 0.5
+	end
+	local function wallSnap(rec, def, refs)
+		if not isWall(def) then
+			return false
+		end
+		local r = (rec.r or 0) % 360
+		local axis, sign
+		if math.abs(r) < 0.5 or math.abs(r - 360) < 0.5 then
+			axis, sign = "z", 1
+		elseif math.abs(r - 180) < 0.5 then
+			axis, sign = "z", -1
+		elseif math.abs(r - 90) < 0.5 then
+			axis, sign = "x", 1
+		elseif math.abs(r - 270) < 0.5 then
+			axis, sign = "x", -1
+		else
+			return false
+		end
+		local zlo, zhi = wallDepth(refs)
+		-- world positions of the two faces (along the wall's thin axis) and its length range on the other axis
+		local c = (axis == "z") and rec.z or rec.x
+		-- local +z points to world +z at r = 0, to world +x at r = 90 (Roblox turns +z towards +x)
+		local f1, f2 = c + sign * zlo, c + sign * zhi
+		local half = (rec.w or def.size.w) / 2
+		local along = (axis == "z") and rec.x or rec.z
+		local best = nil
+		for _, o in ipairs(self.design.items) do
+			if o ~= rec then
+				local b = deckRect(o, StageItems.byId[o.t])
+				if b then
+					local blo = (axis == "z") and (b.x - b.hx) or (b.z - b.hz)
+					local bhi = (axis == "z") and (b.x + b.hx) or (b.z + b.hz)
+					-- the wall must reach over the deck along its length
+					if along + half > blo + 0.5 and along - half < bhi - 0.5 then
+						local e1 = (axis == "z") and (b.z - b.hz) or (b.x - b.hx)
+						local e2 = (axis == "z") and (b.z + b.hz) or (b.x + b.hx)
+						for _, face in ipairs({ f1, f2 }) do
+							for _, e in ipairs({ e1, e2 }) do
+								local dl = e - face
+								if math.abs(dl) < WALL_SNAP and (not best or math.abs(dl) < math.abs(best)) then
+									best = dl
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+		if not best or math.abs(best) < 0.001 then
+			return false
+		end
+		if axis == "z" then
+			rec.z = rec.z + best
+		else
+			rec.x = rec.x + best
+		end
+		return true
+	end
+	self.wallSnap = wallSnap
 	-- after pulling one side of a deck: that side lines up with a deck edge nearby
 	local function resizeSnap(rec, def, face, boxCF)
 		local a = deckRect(rec, def)
@@ -639,6 +769,7 @@ function Designer.open(app, designId)
 		placeDef = nil
 		mode = refs and "selected" or "idle"
 		screenSong = 0
+		fxFocus = nil
 		if not refs then
 			styleOpen = false
 		end
@@ -761,6 +892,10 @@ function Designer.open(app, designId)
 				local c = freshCopy(r.rec)
 				c.x = -c.x
 				c.r = (360 - (c.r or 0)) % 360
+				if c.t == "deck_corner" then
+					-- a right-angled deck is not symmetric: the mirror image has its corner on the other side
+					c.flip = not c.flip or nil
+				end
 				table.insert(recs, c)
 			end
 		end
@@ -815,6 +950,8 @@ function Designer.open(app, designId)
 		SoundFX.sfx("place", 0.7)
 		local keep = Util.deepCopy(rec)
 		keep.x, keep.z, keep.y = nil, nil, nil
+		-- a new piece always starts in its normal size (only the look and the turn are remembered)
+		keep.w, keep.d, keep.h, keep.yo, keep.flip = nil, nil, nil, nil, nil
 		lastSettings[def.id] = keep
 		if def.deck then
 			render()
@@ -863,7 +1000,9 @@ function Designer.open(app, designId)
 			for k, v in pairs(changes) do
 				ghostRec[k] = v
 			end
-			lastSettings[placeDef.id] = Util.deepCopy(ghostRec)
+			local keep = Util.deepCopy(ghostRec)
+			keep.w, keep.d, keep.h, keep.yo, keep.x, keep.z, keep.y = nil, nil, nil, nil, nil, nil, nil
+			lastSettings[placeDef.id] = keep
 			clearGhost()
 			refreshInspector()
 			return
@@ -1076,7 +1215,7 @@ function Designer.open(app, designId)
 	-- what you can do with the piece right now (name, size, price + a few buttons). Looks (surface, colour)
 	-- open on demand with "Style", grid and turn step are two quiet buttons at the end of the tab row.
 	local function hasStyle(def)
-		return def ~= nil and (def.deck or def.id == "curtain" or def.id == "ledcube")
+		return def ~= nil and (def.deck or def.id == "curtain" or def.id == "ledcube" or def.id == "staircase")
 	end
 	local function sizeText(def, rec)
 		local sz = def.size
@@ -1253,6 +1392,11 @@ function Designer.open(app, designId)
 			end, function(it)
 				applyChange({ skin = it[1] })
 			end)
+			if def.id == "deck_corner" then
+				nextOrder(UI.Button(inspScroll, "Flip: corner on the " .. (rec.flip and "right" or "left"), nil, UI.px(296, 32), { textSize = 13 }, function()
+					applyChange({ flip = not rec.flip })
+				end)).Name = "FlipCorner"
+			end
 			local f = nextOrder(row(34))
 			UI.Button(f, (rec.edge and "[X]" or "[ ]") .. "  Edge lights", UI.px(0, 0), UI.px(140, 32), { textSize = 13 }, function()
 				applyChange({ edge = not rec.edge })
@@ -1281,6 +1425,13 @@ function Designer.open(app, designId)
 			end, function(it)
 				applyChange({ cc = it[1] })
 			end, 3)
+		elseif def.id == "staircase" then
+			nextOrder(section("COLOUR"))
+			chips(Builder.STAIR_COLORS, function(it)
+				return (rec.cc or "white") == it[1]
+			end, function(it)
+				applyChange({ cc = it[1] })
+			end, 4)
 		elseif def.id == "ledcube" then
 			-- steel cables up to the roof, or the cube hangs free
 			nextOrder(section("CABLES"))
@@ -1330,6 +1481,11 @@ function Designer.open(app, designId)
 		if not def then
 			return
 		end
+		if GS.PLAY_ITEMS[def.id] and not pending then
+			-- instruments and lifts are set up right in the setlist on the left (next to their song)
+			inspector.Visible = false
+			return
+		end
 		nextOrder(UI.Label(inspScroll, def.name, nil, UI.px(296, 28), { textSize = 21, font = UI.FontBlack }))
 		local songs = GS.songCount(self.design)
 		local showThings = def.id == "spot" or GS.PLAY_ITEMS[def.id] or Builder.SCREEN_KINDS[def.id] or FX_SONG_KINDS[def.id] or def.id == "curtain"
@@ -1377,9 +1533,11 @@ function Designer.open(app, designId)
 				return has(it[1])
 			end, function(it)
 				if it[1] == "auto" then
+					fxFocus = nil
 					applyChange({ songs = false })
 					return
 				end
+				fxFocus = (not has(it[1])) and it[1] or nil
 				local new = {}
 				for _, v in ipairs(type(rec.songs) == "table" and rec.songs or {}) do
 					if v ~= it[1] then
@@ -1513,6 +1671,9 @@ function Designer.open(app, designId)
 				screenSong = math.min(songs, screenSong + 1)
 				refreshInspector()
 			end)
+			if screenSong > 0 then
+				nextOrder(UI.Label(inspScroll, "The stage now shows only the artist spots of song " .. screenSong .. ".", nil, UI.px(296, 0), { textSize = 12, color = T.accent2, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
+			end
 			local curCfg = scr[slot]
 			local modes = { { "song", "Song title" }, { "artist", "Artist name" }, { "visuals", "Tour visuals" }, { "text", "Own text" }, { "image", "Image ID" }, { "liveArtist", "Live: artist" }, { "liveCrowd", "Live: fans" } }
 			local function setSlot(cfg)
@@ -1680,24 +1841,52 @@ function Designer.open(app, designId)
 			p.CFrame = CFrame.lookAt((a + b) / 2, b)
 			p.Parent = pathFolder
 		end
+		-- the real way over the decks (the same path finding as in the show), with fewer corners
+		local nav = StageNav.new()
+		local function dashLine(line)
+			local total = 0
+			for k = 2, #line do
+				total = total + (line[k] - line[k - 1]).Magnitude
+			end
+			if total < 1.5 then
+				return
+			end
+			-- dashes: 1.2 long, 0.8 gap along the whole way (no dash right on the spots)
+			local walked = 0
+			local x = 1
+			local arrowAt = total / 2
+			for k = 2, #line do
+				local a, b = line[k - 1], line[k]
+				local seg = (b - a).Magnitude
+				if seg > 0.01 then
+					local dir = (b - a).Unit
+					while x < walked + seg and x + 1.2 < total - 1 do
+						local s0 = x - walked
+						local s1 = math.min(seg, s0 + 1.2)
+						bar(a + dir * s0, a + dir * s1)
+						x = x + 2
+					end
+					-- an arrow head in the middle of the way shows which way the artist goes
+					if arrowAt >= walked and arrowAt < walked + seg then
+						local mid = a + dir * (arrowAt - walked)
+						local side = dir:Cross(Vector3.new(0, 1, 0))
+						bar(mid - dir * 1 + side * 0.8, mid + dir * 0.2, 0.25)
+						bar(mid - dir * 1 - side * 0.8, mid + dir * 0.2, 0.25)
+					end
+					walked = walked + seg
+				end
+			end
+		end
 		for i = 2, #pts do
 			local a, b = pts[i - 1], pts[i]
-			local d = b - a
-			local len = d.Magnitude
-			if len > 1.5 then
-				local dir = d.Unit
-				-- dashes: 1.2 long, 0.8 gap (no dash right on the spots)
-				local x = 1
-				while x + 1.2 < len - 1 do
-					bar(a + dir * x, a + dir * (x + 1.2))
-					x = x + 2
-				end
-				-- an arrow head in the middle shows which way the artist goes
-				local mid = a + dir * (len / 2)
-				local side = dir:Cross(Vector3.new(0, 1, 0))
-				bar(mid - dir * 1 + side * 0.8, mid + dir * 0.2, 0.25)
-				bar(mid - dir * 1 - side * 0.8, mid + dir * 0.2, 0.25)
+			local way = nav.findPath(a, b)
+			way = way and nav.smooth(way) or { a, b }
+			local line = {}
+			for _, q in ipairs(way) do
+				table.insert(line, Vector3.new(q.X, Stage3D.surfaceY(q.X, q.Z) + 0.35, q.Z))
 			end
+			line[1], line[#line] = a, b
+			dashLine(line)
 		end
 	end
 	self.drawArtistPath = drawArtistPath
@@ -1705,7 +1894,40 @@ function Designer.open(app, designId)
 		return pathFolder and #pathFolder:GetChildren() or 0
 	end
 
+	-- while a screen or an effect is set up for one song, the stage shows only the artist spots of that song
+	-- (4, 4.25, 4.5, 4.75): then you know where the artist is at that moment. Otherwise every spot shows.
+	local function focusSong()
+		if phase ~= "show" or not selected or pending then
+			return nil
+		end
+		local k = selected.def and selected.def.id
+		if Builder.SCREEN_KINDS[k] and screenSong > 0 then
+			return screenSong
+		end
+		if FX_SONG_KINDS[k] and fxFocus then
+			return fxFocus
+		end
+		return nil
+	end
+	local function showFocusSpots()
+		local f = focusSong()
+		local plan = GS.songPlan(self.design)
+		for _, r in ipairs(Stage3D.items) do
+			if r.kind == "spot" and r.marker then
+				local song = r.rec and (plan.momentOf[r.rec] and r.rec.song or plan.songOf[r.rec])
+				local show = (f == nil) or song == f
+				r.marker.Transparency = show and 0 or 1
+				if r.gui then
+					r.gui.Enabled = show
+				end
+			end
+		end
+		return f
+	end
+	self.focusSong = focusSong
+
 	refreshSetlist = function()
+		showFocusSpots()
 		UI.ClearChildren(setlistPanel)
 		setlistPanel.Visible = phase == "show"
 		drawArtistPath()
@@ -1715,7 +1937,55 @@ function Designer.open(app, designId)
 		UI.Label(setlistPanel, "SETLIST & SHOW", UI.px(18, 12), UI.px(394, 32), { textSize = 24, font = UI.FontBlack, color = T.accent2 })
 		UI.Label(setlistPanel, "One song per place: artist spots, lifts and instruments. Click a song or an item on the stage to set it up: screens and effects too.", UI.px(18, 46), UI.px(394, 60), { textSize = 15, color = T.sub, wrap = true })
 		local plan = GS.songPlan(withPending())
-		local list = UI.Scroll(setlistPanel, UI.px(12, 112), UI.px(406, 470))
+		-- a chosen instrument / lift is set up right here: which song, and does it stay on stage or does the crew bring it
+		local listY, listH = 112, 470
+		local sDef, sRec = selected and selected.def, selected and selected.rec
+		if sDef and sRec and GS.PLAY_ITEMS[sDef.id] and not pending then
+			local isLift = sDef.id == "lift" or sDef.id == "poplift"
+			local isTower = sDef.id == "towerlift"
+			local cur = sRec.play
+			if isLift then
+				cur = cur or 1
+			elseif isTower and cur == nil then
+				cur = plan.songOf[sRec]
+			end
+			local box = UI.New("Frame", { Parent = setlistPanel, Name = "PlayBox", Position = UI.px(12, 108), Size = UI.px(406, (not isLift and not isTower and cur) and 178 or 122), BackgroundColor3 = Color3.fromRGB(219, 234, 254), BorderSizePixel = 0, UI.Corner(10), UI.Stroke(T.accent, 2, 0) })
+			UI.Label(box, "SELECTED: " .. string.upper(sDef.name), UI.px(14, 8), UI.px(380, 24), { textSize = 17, font = UI.FontBlack, color = T.accent })
+			UI.Label(box, isTower and "Lifts the artist up in song" or (isLift and "The artist comes up here in song" or "The artist plays it in song"), UI.px(14, 34), UI.px(230, 22), { textSize = 14, color = T.sub })
+			local function setSong(n)
+				applyChange({ play = n })
+			end
+			UI.Button(box, "<", UI.px(14, 60), UI.px(52, 46), { textSize = 20 }, function()
+				if not cur then
+					return
+				end
+				local n = cur - 1
+				if n < 1 then
+					setSong((isLift or isTower) and 1 or false)
+				else
+					setSong(n)
+				end
+			end).Name = "SongDown"
+			UI.Label(box, cur and ("SONG " .. cur) or "OFF", UI.px(70, 60), UI.px(150, 46), { textSize = 24, font = UI.FontBlack, alignX = Enum.TextXAlignment.Center })
+			UI.Button(box, ">", UI.px(224, 60), UI.px(52, 46), { textSize = 20 }, function()
+				setSong(math.min(StageItems.MAX_SPOTS, (cur or 0) + 1))
+			end).Name = "SongUp"
+			if not isLift and not isTower and cur then
+				UI.Button(box, "Off", UI.px(284, 60), UI.px(108, 46), { textSize = 15 }, function()
+					setSong(false)
+				end)
+				local stay = (sRec.setup or "stay") == "stay"
+				UI.Button(box, "On stage all show", UI.px(14, 116), UI.px(186, 50), { textSize = 14, color = stay and T.accent or T.panel }, function()
+					applyChange({ setup = "stay" })
+				end).Name = "SetupStay"
+				UI.Button(box, "Crew sets it up", UI.px(206, 116), UI.px(186, 50), { textSize = 14, color = (not stay) and T.accent or T.panel }, function()
+					applyChange({ setup = "crew" })
+				end).Name = "SetupCrew"
+			end
+			local used = box.Size.Y.Offset + 8
+			listY, listH = 108 + used, 470 - used + 4
+		end
+		local list = UI.Scroll(setlistPanel, UI.px(12, listY), UI.px(406, listH))
 		UI.List(true, 6).Parent = list
 		for n = 1, plan.count do
 			local rec = plan.place[n]
@@ -1922,9 +2192,13 @@ function Designer.open(app, designId)
 			local tmpRec = { t = def.id, x = x, z = z, r = rec.r, w = rec.w, d = rec.d }
 			edgeSnap(tmpRec, def)
 			x, z = tmpRec.x, tmpRec.z
+		elseif isWall(def) and ghost then
+			local tmpRec = { t = def.id, x = x, z = z, r = rec.r, w = rec.w, d = rec.d }
+			wallSnap(tmpRec, def, ghost)
+			x, z = tmpRec.x, tmpRec.z
 		end
 		local ok = Stage3D.inBounds(x, z) and #self.design.items < cls().maxItems and state.money >= Sim.itemPrice(def, rec) and (def.mount ~= "side" or onTower == true)
-		local key = def.id .. tostring(ok) .. tostring(rec.w) .. tostring(rec.d) .. tostring(rec.h) .. tostring(rec.skin)
+		local key = def.id .. tostring(ok) .. tostring(rec.w) .. tostring(rec.d) .. tostring(rec.h) .. tostring(rec.skin) .. tostring(rec.cc) .. tostring(rec.flip)
 		if not ghost or ghostKey ~= key then
 			clearGhost()
 			ghost = Builder.build(def, { color = itemOpts().color, artistName = itemOpts().artistName, rec = rec, preview = true })
@@ -2108,6 +2382,9 @@ function Designer.open(app, designId)
 		end
 		local tgt, rec, def = d.refs, d.rec, d.refs.def
 		if tgt == pending then
+			if d.kind == "move" and isWall(def) then
+				wallSnap(rec, def, tgt)
+			end
 			floorY(rec, def)
 			if d.kind == "move" and def.deck then
 				edgeSnap(rec, def)
@@ -2143,6 +2420,9 @@ function Designer.open(app, designId)
 		elseif d.kind == "move" and def.mount == "side" then
 			floorY(rec, def) -- back onto the closest tower
 		elseif d.kind == "move" and def.mount ~= "rig" then
+			if isWall(def) then
+				wallSnap(rec, def, tgt)
+			end
 			local newY = Stage3D.surfaceY(rec.x, rec.z, tgt)
 			if def.deck then
 				-- a deck keeps its own height (it never jumps onto another deck) and lines up with its neighbours
@@ -2561,6 +2841,7 @@ function Designer.close()
 		return
 	end
 	Designer.current = nil
+	Builder.editMode = false
 	self.cleanup()
 	self.app:saveDesign(self.design)
 end

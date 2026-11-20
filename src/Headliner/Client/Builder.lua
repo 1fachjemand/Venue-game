@@ -196,8 +196,15 @@ local function finishDeck(r)
 			top.Name = "LedTop"
 			top.Size = alongX and Vector3.new(0.12, p.Size.Y, p.Size.Z) or Vector3.new(p.Size.X, 0.12, p.Size.Z)
 			top.CFrame = p.CFrame + Vector3.new(0, h / 2 - 0.01, 0)
-			top.Material = Enum.Material.Neon
-			top.Color = SKINS.led[1]
+			if Builder.editMode then
+				-- while building: a dark screen panel with a soft tint (a big glowing blue floor is blinding)
+				top.Material = Enum.Material.Glass
+				top.Color = Color3.fromRGB(30, 34, 52)
+				top.Reflectance = 0.08
+			else
+				top.Material = Enum.Material.Neon
+				top.Color = SKINS.led[1]
+			end
 			top.Parent = p.Parent
 			table.insert(r.ledParts, top)
 		end
@@ -273,12 +280,14 @@ end
 function B.deck_corner(m, r)
 	local w, d, h = dims(r, r.def)
 	h = deckH(r, h)
-	-- right angle at the back-left corner
-	r.surfaces = { flatWedge(m, 0, 0, w, d, h, false) }
+	-- right angle at the back-left corner (rec.flip = mirrored: back-right corner)
+	local flip = r.rec and r.rec.flip == true
+	local f = flip and -1 or 1
+	r.surfaces = { flatWedge(m, 0, 0, w, d, h, flip) }
 	r.neon = {
 		edge(m, -w / 2, -d / 2, w / 2, -d / 2, h, r.color),
-		edge(m, -w / 2, -d / 2, -w / 2, d / 2, h, r.color),
-		edge(m, w / 2, -d / 2, -w / 2, d / 2, h, r.color),
+		edge(m, -w / 2 * f, -d / 2, -w / 2 * f, d / 2, h, r.color),
+		edge(m, w / 2 * f, -d / 2, -w / 2 * f, d / 2, h, r.color),
 	}
 	finishDeck(r)
 end
@@ -329,20 +338,25 @@ local function tube(m, a, b, d, color)
 end
 
 -- box truss along local X (length L) centred on `c` (local CFrame), 2x2 cross-section, zigzag bracing
-local function lattice(m, c, L)
-	local h = 0.9
+local function lattice(m, c, L, s)
+	s = s or 1
+	local h = 0.9 * s
 	local corners = { Vector3.new(0, h, h), Vector3.new(0, h, -h), Vector3.new(0, -h, h), Vector3.new(0, -h, -h) }
 	for _, k in ipairs(corners) do
-		tube(m, (c * CFrame.new(-L / 2, k.Y, k.Z)).Position, (c * CFrame.new(L / 2, k.Y, k.Z)).Position, 0.22)
+		tube(m, (c * CFrame.new(-L / 2, k.Y, k.Z)).Position, (c * CFrame.new(L / 2, k.Y, k.Z)).Position, 0.22 * math.sqrt(s))
 	end
-	local seg = math.max(1, math.floor(L / 3))
+	local seg = math.max(1, math.floor(L / (3 * s)))
 	local step = L / seg
 	for i = 0, seg - 1 do
 		local x0, x1 = -L / 2 + i * step, -L / 2 + (i + 1) * step
 		local flip = (i % 2 == 0) and 1 or -1
-		tube(m, (c * CFrame.new(x0, h * flip, h)).Position, (c * CFrame.new(x1, -h * flip, h)).Position, 0.12)
-		tube(m, (c * CFrame.new(x0, h * flip, -h)).Position, (c * CFrame.new(x1, -h * flip, -h)).Position, 0.12)
-		tube(m, (c * CFrame.new(x0, h, -h * flip)).Position, (c * CFrame.new(x1, h, h * flip)).Position, 0.12)
+		local t = 0.12 * math.sqrt(s)
+		tube(m, (c * CFrame.new(x0, h * flip, h)).Position, (c * CFrame.new(x1, -h * flip, h)).Position, t)
+		tube(m, (c * CFrame.new(x0, h * flip, -h)).Position, (c * CFrame.new(x1, -h * flip, -h)).Position, t)
+		tube(m, (c * CFrame.new(x0, h, -h * flip)).Position, (c * CFrame.new(x1, h, h * flip)).Position, t)
+		if s > 1.5 then
+			tube(m, (c * CFrame.new(x0, -h, -h * flip)).Position, (c * CFrame.new(x1, -h, h * flip)).Position, t)
+		end
 	end
 end
 
@@ -359,10 +373,37 @@ function B.truss_beam(m, r)
 	hitBox(m, Vector3.new(w, 2.2, 2.2), CFrame.new(0, -1, 0))
 end
 
+-- truss towers always reach up to the rig (the beams rest on top): height from the stage they stand on
+-- (refs.rigTop, set by Stage3D) or the rig of the stage size being built (Builder.rigTop)
+local function towerHeight(r)
+	return math.clamp(r.rigTop or Builder.rigTop or 38, 8, 140)
+end
 function B.truss(m, r)
+	local H = towerHeight(r)
 	part(m, "Foot", Vector3.new(3.4, 0.3, 3.4), CFrame.new(0, 0.15, 0), DARK)
-	lattice(m, CFrame.new(0, 20, 0) * CFrame.Angles(0, 0, math.pi / 2), 40)
-	hitBox(m, Vector3.new(2.2, 40, 2.2), CFrame.new(0, 20, 0))
+	lattice(m, CFrame.new(0, H / 2, 0) * CFrame.Angles(0, 0, math.pi / 2), H)
+	part(m, "TopPlate", Vector3.new(2.3, 0.2, 2.3), CFrame.new(0, H + 0.1, 0), METAL, Enum.Material.Metal)
+	hitBox(m, Vector3.new(2.2, H, 2.2), CFrame.new(0, H / 2, 0))
+	r.towerH = H
+end
+function B.truss_xl(m, r)
+	local H = towerHeight(r)
+	-- heavy steel base with ballast blocks, wide box truss, a sleeve block on top
+	part(m, "Base", Vector3.new(8, 0.6, 8), CFrame.new(0, 0.3, 0), DARK, Enum.Material.DiamondPlate)
+	for _, o in ipairs({ { 3, 3 }, { -3, 3 }, { 3, -3 }, { -3, -3 } }) do
+		part(m, "Ballast", Vector3.new(1.6, 1.2, 1.6), CFrame.new(o[1], 1.2, o[2]), Color3.fromRGB(70, 72, 78), Enum.Material.Concrete)
+	end
+	lattice(m, CFrame.new(0, H / 2 + 0.3, 0) * CFrame.Angles(0, 0, math.pi / 2), H - 0.6, 2)
+	part(m, "Sleeve", Vector3.new(4.4, 1.6, 4.4), CFrame.new(0, H - 1.2, 0), DARK, Enum.Material.Metal)
+	part(m, "TopPlate", Vector3.new(4.2, 0.25, 4.2), CFrame.new(0, H + 0.12, 0), METAL, Enum.Material.Metal)
+	-- a ladder up the front
+	part(m, "LadderL", Vector3.new(0.12, H - 2, 0.12), CFrame.new(-0.5, H / 2, 1.95), METAL, Enum.Material.Metal)
+	part(m, "LadderR", Vector3.new(0.12, H - 2, 0.12), CFrame.new(0.5, H / 2, 1.95), METAL, Enum.Material.Metal)
+	for y = 2, H - 2, 1.5 do
+		part(m, "Rung", Vector3.new(1, 0.1, 0.1), CFrame.new(0, y, 1.95), METAL, Enum.Material.Metal)
+	end
+	hitBox(m, Vector3.new(4, H, 4), CFrame.new(0, H / 2, 0))
+	r.towerH = H
 end
 
 -- parts that move with a light's head: r.head is an invisible pivot, the visible body follows it
@@ -907,14 +948,40 @@ function B.ledcube(m, r)
 end
 -- tall video tower (like the towers around an in-the-round stadium stage)
 function B.ledtower(m, r)
-	part(m, "Base", Vector3.new(7, 1, 7), CFrame.new(0, 0.5, 0), DARK)
-	cyl(m, "Column", 44, 3.6, CFrame.new(0, 23, 0), METAL, Enum.Material.Metal)
-	for i = 0, 2 do
-		local a = i * math.pi * 2 / 3
-		screenFace(m, r, Vector3.new(11, 9, 0.4), CFrame.new(0, 47, 0) * CFrame.Angles(0, a, 0) * CFrame.new(0, 0, 3.4))
+	-- a stadium screen tower: heavy base, a box-truss mast with lights on brackets, a 4-sided LED head
+	-- with lit edges on top, a PA hang under it and a red aviation light
+	part(m, "Base", Vector3.new(8, 0.8, 8), CFrame.new(0, 0.4, 0), DARK, Enum.Material.DiamondPlate)
+	for _, o in ipairs({ { 3, 3 }, { -3, 3 }, { 3, -3 }, { -3, -3 } }) do
+		part(m, "Ballast", Vector3.new(1.8, 1.4, 1.8), CFrame.new(o[1], 1.5, o[2]), Color3.fromRGB(64, 66, 72), Enum.Material.Concrete)
 	end
-	r.neon = { cyl(m, "TopRing", 0.6, 12, CFrame.new(0, 52, 0), r.color, Enum.Material.Neon), cyl(m, "LowRing", 0.6, 12, CFrame.new(0, 42, 0), r.color, Enum.Material.Neon) }
-	part(m, "PA", Vector3.new(4, 7, 3), CFrame.new(0, 36, 2.4), Color3.fromRGB(18, 18, 20), Enum.Material.Fabric)
+	lattice(m, CFrame.new(0, 21.4, 0) * CFrame.Angles(0, 0, math.pi / 2), 41.2, 1.8)
+	r.neon = {}
+	-- lights on brackets at three levels, one on every side
+	for _, y in ipairs({ 12, 22, 32 }) do
+		for i = 0, 3 do
+			local c = CFrame.new(0, y, 0) * CFrame.Angles(0, i * math.pi / 2, 0)
+			part(m, "LightArm", Vector3.new(0.3, 0.3, 1.6), c * CFrame.new(0, 0, 2.3), METAL, Enum.Material.Metal)
+			part(m, "LightBody", Vector3.new(1.1, 1.1, 1.2), c * CFrame.new(0, 0, 3.4), DARK, Enum.Material.Metal)
+			table.insert(r.neon, part(m, "LightLens", Vector3.new(0.85, 0.85, 0.12), c * CFrame.new(0, 0, 4.05), r.color, Enum.Material.Neon))
+		end
+	end
+	-- the LED head: a frame with four screens and glowing edges
+	part(m, "HeadFrame", Vector3.new(10.2, 11, 10.2), CFrame.new(0, 47.5, 0), DARK, Enum.Material.Metal)
+	for i = 0, 3 do
+		screenFace(m, r, Vector3.new(10, 10, 0.3), CFrame.new(0, 47.5, 0) * CFrame.Angles(0, i * math.pi / 2, 0) * CFrame.new(0, 0, 5.25))
+	end
+	for _, y in ipairs({ 42, 53 }) do
+		for i = 0, 3 do
+			local c = CFrame.new(0, y, 0) * CFrame.Angles(0, i * math.pi / 2, 0)
+			table.insert(r.neon, part(m, "EdgeLED", Vector3.new(10.8, 0.45, 0.45), c * CFrame.new(0, 0, 5.4), r.color, Enum.Material.Neon))
+		end
+	end
+	part(m, "Cap", Vector3.new(8, 0.8, 8), CFrame.new(0, 53.6, 0), DARK, Enum.Material.Metal)
+	part(m, "Beacon", Vector3.new(0.7, 0.7, 0.7), CFrame.new(0, 54.4, 0), Color3.fromRGB(255, 40, 40), Enum.Material.Neon, Enum.PartType.Ball)
+	-- PA line array under the head, facing the crowd
+	for i = 0, 5 do
+		part(m, "PA", Vector3.new(3.6, 1.2, 2.2), CFrame.new(0, 40.6 - i * 1.25, 3) * CFrame.Angles(-math.rad(i * 2.5), 0, 0), Color3.fromRGB(18, 18, 20), Enum.Material.Fabric)
+	end
 end
 function B.led_floor(m, r)
 	local w, d = dims(r, r.def)
@@ -1042,44 +1109,121 @@ function B.towerlift(m, r)
 end
 
 -- stadium superstructure: two scaffold towers with PA hangs, a roof grid and mesh-covered wings
+-- the giant steel structure of a stadium tour (like the scaffold "wings" and roof of real stadium shows):
+-- two scaffold towers with a grid of tubes, braces and black scrim, PA hangs, a lattice roof with lights,
+-- a header with an LED strip and covered wings. It always stands on the ground. The roof and the wings are
+-- see-through while building (r.roofParts) so you can build under it; side lights clamp onto its front
+-- columns (r.mounts, like on a Truss Tower).
 function B.stadiumroof(m, r)
 	local w, h = dims(r, r.def)
 	local hw = w / 2
 	local depth = 34
-	local legs = { { -hw, -depth / 2 }, { -hw, depth / 2 }, { hw, -depth / 2 }, { hw, depth / 2 }, { -hw + 10, -depth / 2 }, { hw - 10, -depth / 2 } }
-	for _, l in ipairs(legs) do
-		part(m, "Leg", Vector3.new(2.4, h, 2.4), CFrame.new(l[1], h / 2, l[2]), METAL, Enum.Material.DiamondPlate)
+	local STEEL = Color3.fromRGB(70, 72, 80)
+	r.roofParts = {}
+	r.mounts = {}
+	local function roof(p)
+		table.insert(r.roofParts, p)
+		return p
 	end
-	-- lattice bracing on the towers
-	for _, sx in ipairs({ -1, 1 }) do
-		for y = 8, h - 6, 12 do
-			part(m, "Brace", Vector3.new(1, 1, depth), CFrame.new(sx * hw, y, 0), METAL, Enum.Material.Metal)
-			part(m, "Brace", Vector3.new(0.6, 0.6, math.sqrt(depth * depth + 144)), CFrame.new(sx * hw, y + 6, 0) * CFrame.Angles(math.atan2(12, depth), 0, 0), METAL, Enum.Material.Metal)
+	local function scaffoldTower(cx)
+		-- standards (vertical tubes) on a 6-stud grid, ledgers every 8 studs, diagonal braces
+		local tw = 14
+		local xs, zs = {}, {}
+		for x = -tw / 2, tw / 2 + 0.01, tw / 2 do
+			table.insert(xs, x)
 		end
+		for z = -depth / 2, depth / 2 + 0.01, depth / 4 do
+			table.insert(zs, z)
+		end
+		for _, x in ipairs(xs) do
+			for _, z in ipairs(zs) do
+				local leg = part(m, "Leg", Vector3.new(1, h, 1), CFrame.new(cx + x, h / 2, z), STEEL, Enum.Material.Metal)
+				leg.CanQuery = true
+			end
+		end
+		for y = 8, h - 2, 8 do
+			for _, x in ipairs(xs) do
+				roof(part(m, "Ledger", Vector3.new(0.5, 0.5, depth), CFrame.new(cx + x, y, 0), STEEL, Enum.Material.Metal))
+			end
+			for _, z in ipairs(zs) do
+				roof(part(m, "Ledger", Vector3.new(tw, 0.5, 0.5), CFrame.new(cx, y, z), STEEL, Enum.Material.Metal))
+			end
+			-- a walkway deck every second level
+			if y % 16 == 0 then
+				roof(part(m, "Walkway", Vector3.new(tw, 0.3, depth), CFrame.new(cx, y + 0.4, 0), Color3.fromRGB(40, 40, 46), Enum.Material.DiamondPlate))
+			end
+		end
+		for _, x in ipairs({ -tw / 2, tw / 2 }) do
+			for y = 0, h - 10, 8 do
+				local len = math.sqrt(8 * 8 + (depth / 4) ^ 2)
+				for k = 0, 3 do
+					local z0 = -depth / 2 + k * depth / 4
+					local flip = (k % 2 == 0) and 1 or -1
+					roof(part(m, "Brace", Vector3.new(0.35, 0.35, len), CFrame.new(cx + x, y + 4, z0 + depth / 8) * CFrame.Angles(flip * math.atan2(8, depth / 4), 0, 0), STEEL, Enum.Material.Metal))
+				end
+			end
+		end
+		-- black scrim on the outer side and the back
+		local side = (cx > 0) and 1 or -1
+		local scrim = roof(part(m, "Scrim", Vector3.new(0.3, h * 0.8, depth), CFrame.new(cx + side * (tw / 2 + 0.4), h * 0.45, 0), Color3.fromRGB(16, 16, 20), Enum.Material.Fabric))
+		scrim.Transparency = 0.08
+		local back = roof(part(m, "Scrim", Vector3.new(tw, h * 0.8, 0.3), CFrame.new(cx, h * 0.45, -depth / 2 - 0.4), Color3.fromRGB(16, 16, 20), Enum.Material.Fabric))
+		back.Transparency = 0.08
+		-- side lights clamp onto the front columns of the tower (both sides of it)
+		for _, x in ipairs({ -tw / 2, tw / 2 }) do
+			table.insert(r.mounts, { cf = CFrame.new(cx + x, 0, depth / 2), half = 0.55 })
+		end
+		return tw
+	end
+	local towerW = 14
+	for _, sx in ipairs({ -1, 1 }) do
+		local cx = sx * (hw - towerW / 2)
+		scaffoldTower(cx)
 		-- wings: mesh scrim on scaffolding next to the stage
-		local wing = part(m, "WingScrim", Vector3.new(26, h * 0.7, 0.4), CFrame.new(sx * (hw + 14), h * 0.35, -depth / 2 + 4), Color3.fromRGB(20, 20, 26), Enum.Material.Fabric)
+		local wing = roof(part(m, "WingScrim", Vector3.new(26, h * 0.7, 0.4), CFrame.new(sx * (hw + 14), h * 0.35, -depth / 2 + 4), Color3.fromRGB(20, 20, 26), Enum.Material.Fabric))
 		wing.Transparency = 0.15
 		for k = 0, 2 do
-			part(m, "WingPole", Vector3.new(0.8, h * 0.7, 0.8), CFrame.new(sx * (hw + 2 + k * 12), h * 0.35, -depth / 2 + 4.8), METAL, Enum.Material.Metal)
+			roof(part(m, "WingPole", Vector3.new(0.8, h * 0.7, 0.8), CFrame.new(sx * (hw + 2 + k * 12), h * 0.35, -depth / 2 + 4.8), METAL, Enum.Material.Metal))
 		end
-		-- PA line array (curved J) hanging from the roof front
+		roof(part(m, "WingLED", Vector3.new(26, 0.6, 0.3), CFrame.new(sx * (hw + 14), h * 0.7 + 0.3, -depth / 2 + 4.3), r.color, Enum.Material.Neon))
+		-- PA line array (curved J) and subs hanging from the roof front
 		for i = 0, 11 do
 			local ang = math.rad(math.max(0, i - 5) * 3)
-			part(m, "LineArray", Vector3.new(4.2, 1.4, 2.6), CFrame.new(sx * (hw - 7), h - 6 - i * 1.45, depth / 2 + 2 + math.max(0, i - 5) * 0.25) * CFrame.Angles(-ang, 0, 0), Color3.fromRGB(18, 18, 22), Enum.Material.Fabric)
+			roof(part(m, "LineArray", Vector3.new(4.2, 1.4, 2.6), CFrame.new(sx * (hw - towerW - 4), h - 6 - i * 1.45, depth / 2 + 2 + math.max(0, i - 5) * 0.25) * CFrame.Angles(-ang, 0, 0), Color3.fromRGB(18, 18, 22), Enum.Material.Fabric))
 		end
 		for i = 0, 7 do
-			part(m, "SubArray", Vector3.new(3.6, 1.6, 2.4), CFrame.new(sx * (hw - 13), h - 6 - i * 1.65, depth / 2 + 2), Color3.fromRGB(14, 14, 18), Enum.Material.Fabric)
+			roof(part(m, "SubArray", Vector3.new(3.6, 1.6, 2.4), CFrame.new(sx * (hw - towerW - 10), h - 6 - i * 1.65, depth / 2 + 2), Color3.fromRGB(14, 14, 18), Enum.Material.Fabric))
 		end
 	end
-	-- roof: front and back girders, cross trusses, a canopy skin
+	-- roof: three lattice girders across, cross trusses, a canopy skin
 	for _, z in ipairs({ -depth / 2, 0, depth / 2 }) do
-		part(m, "Girder", Vector3.new(w + 2.4, 4, 2.4), CFrame.new(0, h + 2, z), METAL, Enum.Material.DiamondPlate)
+		local L = w + 2
+		roof(part(m, "GirderTop", Vector3.new(L, 0.5, 0.5), CFrame.new(0, h + 4, z), STEEL, Enum.Material.Metal))
+		roof(part(m, "GirderBottom", Vector3.new(L, 0.5, 0.5), CFrame.new(0, h, z), STEEL, Enum.Material.Metal))
+		local n = math.max(2, math.floor(L / 5))
+		for i = 0, n - 1 do
+			local x0 = -L / 2 + i * L / n
+			local flip = (i % 2 == 0) and 1 or -1
+			local dx = L / n
+			roof(part(m, "GirderWeb", Vector3.new(0.3, math.sqrt(16 + dx * dx), 0.3), CFrame.new(x0 + dx / 2, h + 2, z) * CFrame.Angles(0, 0, flip * math.atan2(dx, 4)), STEEL, Enum.Material.Metal))
+		end
 	end
-	for x = -hw, hw, 12 do
-		part(m, "RoofTruss", Vector3.new(1.4, 1.4, depth), CFrame.new(x, h + 1, 0), METAL, Enum.Material.Metal)
+	for x = -hw + towerW, hw - towerW + 0.01, 10 do
+		roof(part(m, "RoofTruss", Vector3.new(1.2, 1.2, depth), CFrame.new(x, h + 0.6, 0), STEEL, Enum.Material.Metal))
 	end
-	part(m, "Canopy", Vector3.new(w + 4, 0.4, depth + 4), CFrame.new(0, h + 4.4, 0), Color3.fromRGB(26, 26, 32), Enum.Material.Fabric)
-	r.roofLED = part(m, "RoofLED", Vector3.new(w, 1.2, 0.3), CFrame.new(0, h + 2, depth / 2 + 1.35), r.color, Enum.Material.Neon)
+	local canopy = roof(part(m, "Canopy", Vector3.new(w + 4, 0.4, depth + 4), CFrame.new(0, h + 4.6, 0), Color3.fromRGB(26, 26, 32), Enum.Material.Fabric))
+	canopy.CastShadow = true
+	-- header at the front: a black fascia with an LED strip, and rows of lights under the roof
+	roof(part(m, "Header", Vector3.new(w + 2, 5, 0.6), CFrame.new(0, h + 2, depth / 2 + 1.2), Color3.fromRGB(14, 14, 18), Enum.Material.SmoothPlastic))
+	r.roofLED = roof(part(m, "RoofLED", Vector3.new(w, 1.2, 0.3), CFrame.new(0, h + 2, depth / 2 + 1.65), r.color, Enum.Material.Neon))
+	r.neon = {}
+	for _, z in ipairs({ depth / 2 - 4, 4, -8 }) do
+		for x = -hw + towerW + 4, hw - towerW - 3.99, 8 do
+			roof(part(m, "RoofSpotBody", Vector3.new(1.4, 1.6, 1.4), CFrame.new(x, h - 1.1, z), DARK, Enum.Material.Metal))
+			local lens = roof(part(m, "RoofSpotLens", Vector3.new(1, 0.15, 1), CFrame.new(x, h - 1.95, z), r.color, Enum.Material.Neon))
+			table.insert(r.neon, lens)
+		end
+	end
 end
 
 -- delay tower in the crowd: scaffold with a speaker cluster and a follow-spot platform
@@ -1543,10 +1687,12 @@ function B.keys(m, r)
 	r.neon = { part(m, "KeysLed", Vector3.new(0.6, 0.15, 0.1), CFrame.new(1.6, 3.65, 1.09), r.color, Enum.Material.Neon) }
 end
 function B.micstand(m, r)
+	-- the singer stands behind it (towards -Z) and looks to the crowd: the boom and the mic point back to them
 	cyl(m, "Foot", 0.2, 2, CFrame.new(0, 0.1, 0), DARK)
-	tube(m, Vector3.new(0, 0, 0), Vector3.new(0, 5.4, 0.2), 0.16, METAL)
-	tube(m, Vector3.new(0, 5.4, 0.2), Vector3.new(0, 6.2, 1.4), 0.12, METAL)
-	part(m, "Mic", Vector3.new(0.35, 0.35, 0.9), CFrame.new(0, 6.3, 1.7) * CFrame.Angles(-0.5, 0, 0), Color3.fromRGB(30, 30, 32), Enum.Material.Metal)
+	tube(m, Vector3.new(0, 0, 0), Vector3.new(0, 5.6, 0), 0.16, METAL)
+	tube(m, Vector3.new(0, 5.6, 0), Vector3.new(0, 6.7, -0.9), 0.12, METAL)
+	part(m, "MicClip", Vector3.new(0.3, 0.3, 0.3), CFrame.new(0, 6.72, -0.95), DARK, Enum.Material.Metal)
+	part(m, "Mic", Vector3.new(0.34, 0.34, 0.85), CFrame.new(0, 6.85, -1.3) * CFrame.Angles(0.35, 0, 0), Color3.fromRGB(30, 30, 32), Enum.Material.Metal)
 end
 
 ------------------------------------------------------------------ small props
@@ -2926,18 +3072,59 @@ function B.mirrorwall(m, r)
 		end
 	end
 end
+Builder.STAIR_COLORS = {
+	{ "white", "White", Color3.fromRGB(238, 238, 242) },
+	{ "black", "Black", Color3.fromRGB(24, 24, 28) },
+	{ "gold", "Gold", Color3.fromRGB(214, 176, 92) },
+	{ "silver", "Silver", Color3.fromRGB(176, 182, 192) },
+	{ "red", "Red", Color3.fromRGB(170, 30, 40) },
+	{ "pink", "Pink", Color3.fromRGB(240, 150, 190) },
+	{ "blue", "Blue", Color3.fromRGB(40, 70, 160) },
+	{ "mirror", "Mirror", Color3.fromRGB(200, 206, 216) },
+}
+function Builder.stairColor(id)
+	for _, c in ipairs(Builder.STAIR_COLORS) do
+		if c[1] == id then
+			return c[3]
+		end
+	end
+	return Builder.STAIR_COLORS[1][3]
+end
 function B.staircase(m, r)
-	-- a grand white staircase across the back of the stage, with light lines in the steps
+	-- a grand staircase across the back of the stage, with light lines in the steps and handrails on posts
+	-- (colour: rec.cc, see Builder.STAIR_COLORS)
 	local w = dims(r, r.def)
+	local cc = r.rec and r.rec.cc
+	local col = Builder.stairColor(cc)
+	local mat = (cc == "mirror") and Enum.Material.Glass or ((cc == "gold" or cc == "silver") and Enum.Material.Metal or Enum.Material.SmoothPlastic)
+	local rail = (cc == "gold") and Color3.fromRGB(240, 240, 244) or Color3.fromRGB(220, 190, 110)
 	r.lines = {}
-	for k = 0, 7 do
-		local depth = 8 - k
-		part(m, "Step", Vector3.new(w - k * 0.8, 1, depth * 1.4), CFrame.new(0, 0.5 + k, -k * 0.7), Color3.fromRGB(238, 238, 242), Enum.Material.SmoothPlastic)
+	local N = 8
+	for k = 0, N - 1 do
+		local depth = N - k
+		local st = part(m, "Step", Vector3.new(w - k * 0.8, 1, depth * 1.4), CFrame.new(0, 0.5 + k, -k * 0.7), col, mat)
+		if cc == "mirror" then
+			st.Reflectance = 0.25
+		end
 		local l = part(m, "StepLight", Vector3.new(w - k * 0.8, 0.15, 0.1), CFrame.new(0, 0.85 + k, depth * 0.7 - k * 0.7 + 0.02), WARM, Enum.Material.Neon)
 		table.insert(r.lines, l)
 	end
+	-- handrails: straight over the middle of the treads (rail 3 studs above the steps), on posts
+	local function tread(k)
+		-- middle of the visible part of step k, and its top
+		return 4.9 - 1.4 * k, k + 1
+	end
+	local railX = w / 2 - 0.4 * (N - 1) - 0.5
 	for _, x in ipairs({ -1, 1 }) do
-		tube(m, Vector3.new(x * (w / 2 - 0.3), 3.2, 5.6), Vector3.new(x * (w / 2 - 3.1), 10.2, -4.2), 0.25, Color3.fromRGB(220, 190, 110))
+		local z0, y0 = tread(0)
+		local z1, y1 = tread(N - 1)
+		tube(m, Vector3.new(x * railX, y0 + 3, z0), Vector3.new(x * railX, y1 + 3, z1), 0.25, rail)
+		for _, k in ipairs({ 0, 2, 4, 6, N - 1 }) do
+			local z, y = tread(k)
+			-- the post stands on the step and ends right under the rail
+			local railY = y0 + 3 + (y1 - y0) * (z0 - z) / (z0 - z1)
+			tube(m, Vector3.new(x * railX, y, z), Vector3.new(x * railX, railY, z), 0.16, rail)
+		end
 	end
 end
 
@@ -3017,6 +3204,7 @@ local ARTIST_MARK = {
 	harp = { 0, 0, -2.2, false, true },
 	drums = { 0, 1, -1.8, false, true },
 	djbooth = { 0, 0, -3.2, false, false },
+	micstand = { 0, 0, -2.3, false, false },
 	band_drums = { 0, 1, -1.8, false, true },
 	band_guitar = { 0, 0, 0, false, false },
 	band_bass = { 0, 0, 0, false, false },
@@ -3072,6 +3260,7 @@ function Builder.build(def, opts)
 		color = opts.color or UI.Theme.accent,
 		artistName = opts.artistName,
 		preview = opts.preview, -- small pictures (catalog, library, ghost): no live screens needed
+		rigTop = opts.rigTop, -- truss towers: height up to the rig
 		phase = math.random() * 6.28,
 		cf = CFrame.new(),
 	}
@@ -3344,6 +3533,9 @@ function Builder.animateKind(refs, ctx)
 		refs.baseRing.Color = c2
 	elseif k == "stadiumroof" then
 		refs.roofLED.Color = c1:Lerp(c2, ctx.beat or 0)
+		if refs.neon then
+			setNeon(refs, ((ctx.beatCount or 0) % 2 == 0) and c1 or c2)
+		end
 	elseif k == "delaytower" then
 		refs.blink.Transparency = (math.floor(t * 1.5) % 2 == 0) and 0 or 0.8
 	elseif k == "scissor" then
