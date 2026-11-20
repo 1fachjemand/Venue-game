@@ -1,0 +1,203 @@
+<!doctype html><html><head><meta charset="utf-8">
+<!-- Key art renderer: draws a show exported by scenario_keyart.lua with light, haze, glow and a 3D title.
+     All settings come from the URL (see tools/keyart/README.md). -->
+<style>html,body{margin:0;background:#000;overflow:hidden}
+@font-face{font-family:KA;src:url(InterDisplay-Black.otf)}
+.sub{position:absolute;left:0;right:0;text-align:center;font-family:KA,sans-serif;color:#fff;letter-spacing:.3em}</style>
+<script type="importmap">{"imports":{"three":"./three/build/three.module.js","three/addons/":"./three/examples/jsm/"}}</script>
+</head><body>
+<script type="module">
+import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { TTFLoader } from 'three/addons/loaders/TTFLoader.js';
+import { Font } from 'three/addons/loaders/FontLoader.js';
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+const q = new URLSearchParams(location.search);
+const W = innerWidth, H = innerHeight;
+const num = (k, d) => (q.get(k) || d).split(',').map(Number);
+const val = (k, d) => +(q.get(k) || d);
+const SCENE = await (await fetch(q.get('f'))).json();
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = val('exp', 1.15);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(q.get('bg') || '#07051a');
+scene.fog = new THREE.FogExp2(q.get('fogc') || '#1a0f3a', val('fog', 0.0042));
+scene.add(new THREE.HemisphereLight(0x6a5cff, 0x140a20, val('amb', 0.55)));
+
+// ---------- parts (people get rounded "plastic" blocks like Roblox avatars)
+const ROUND = /^(Head|Torso|Arm|Leg|Fan|Hair|Afro|Shoe|Thigh|Shin)/;
+const geos = {
+  box: new THREE.BoxGeometry(1, 1, 1), rbox: new RoundedBoxGeometry(1, 1, 1, 3, 0.16),
+  cyl: (() => { const g = new THREE.CylinderGeometry(0.5, 0.5, 1, 24); g.rotateZ(Math.PI / 2); return g; })(),
+  sph: new THREE.SphereGeometry(0.5, 24, 16),
+  wedge: (() => { const g = new THREE.BufferGeometry(); const v = [[-.5,-.5,-.5],[.5,-.5,-.5],[.5,-.5,.5],[-.5,-.5,.5],[-.5,.5,.5],[.5,.5,.5]];
+    const f = [[0,2,1],[0,3,2],[3,4,5],[3,5,2],[0,1,5],[0,5,4],[0,4,3],[1,2,5]]; const pos = []; f.forEach(t => t.forEach(i => pos.push(...v[i])));
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals(); return g; })(),
+};
+const LIM = num('lim', '-700,700,-500,700');
+const groups = {};
+// LED screens: in Roblox their picture is a SurfaceGui. Here: a glowing concert visual (light burst + the artist's name)
+function screenTexture(w, h, seed) {
+  const cv = document.createElement('canvas'); const R = 512; cv.width = R * Math.max(1, Math.round(w / h)); cv.height = R;
+  const g = cv.getContext('2d'); const W2 = cv.width, H2 = cv.height;
+  const pal = (q.get('scr') || '#ff3d6e,#ffb02e,#6c2bd9').split(',');
+  const bg = g.createLinearGradient(0, 0, 0, H2); bg.addColorStop(0, pal[2]); bg.addColorStop(0.55, pal[0]); bg.addColorStop(1, pal[1]);
+  g.fillStyle = bg; g.fillRect(0, 0, W2, H2);
+  g.save(); g.translate(W2 / 2, H2 * 0.62); g.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 28; i++) { g.rotate(Math.PI * 2 / 28); g.fillStyle = i % 2 ? 'rgba(255,240,200,0.18)' : 'rgba(255,255,255,0.07)'; g.beginPath(); g.moveTo(0, 0); g.lineTo(W2, -40); g.lineTo(W2, 40); g.fill(); }
+  const rg = g.createRadialGradient(0, 0, 0, 0, 0, H2 * 0.55); rg.addColorStop(0, 'rgba(255,255,230,1)'); rg.addColorStop(0.35, 'rgba(255,200,120,0.6)'); rg.addColorStop(1, 'rgba(255,120,80,0)');
+  g.fillStyle = rg; g.beginPath(); g.arc(0, 0, H2 * 0.55, 0, Math.PI * 2); g.fill(); g.restore();
+  const name = q.get('band') || '';
+  if (name && W2 > H2 * 1.4) { g.font = `900 ${Math.round(H2 * 0.2)}px KA, sans-serif`; g.textAlign = 'center'; g.fillStyle = '#fff'; g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 20; g.fillText(name, W2 / 2, H2 * 0.3); }
+  // LED pixel grid
+  g.fillStyle = 'rgba(0,0,0,0.28)'; for (let x = 0; x < W2; x += 8) g.fillRect(x, 0, 2, H2); for (let y = 0; y < H2; y += 8) g.fillRect(0, y, W2, 2);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+await document.fonts.load('80px KA');
+const SCR = val('scrb', 1.6);
+for (const p of SCENE.parts) {
+  if (p.n !== 'Screen') continue;
+  const [sx, sy, sz] = p.z; const f = p.f;
+  const tex = screenTexture(Math.max(sx, sz), sy);
+  const face = new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(SCR, SCR, SCR) }), side = new THREE.MeshStandardMaterial({ color: 0x0a0a0e });
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), [side, side, side, side, face, face]);
+  mesh.matrixAutoUpdate = false;
+  mesh.matrix.set(f[3]*sx, f[4]*sy, f[5]*sz, f[0], f[6]*sx, f[7]*sy, f[8]*sz, f[1], f[9]*sx, f[10]*sy, f[11]*sz, f[2], 0, 0, 0, 1);
+  scene.add(mesh);
+}
+for (const p of SCENE.parts) {
+  if (p.n === 'Screen') continue;
+  const [x, , z] = p.f; if (x < LIM[0] || x > LIM[1] || z < LIM[2] || z > LIM[3]) continue;
+  let geo = p.s === 'Cylinder' ? 'cyl' : (p.s === 'Ball' || p.s === 'Ellip') ? 'sph' : p.s === 'Wedge' ? 'wedge' : 'box';
+  if (geo === 'box' && (p.p || ROUND.test(p.n)) && Math.max(...p.z) < 4) geo = 'rbox';
+  const kind = p.m === 'Neon' ? 'neon' : p.m === 'Glass' ? 'glass' : /Metal|DiamondPlate/.test(p.m) ? 'metal' : /Fabric|Carpet|Grass|Concrete|Ground/.test(p.m) ? 'matte' : 'plastic';
+  const key = geo + '|' + kind + '|' + Math.round(p.t * 10);
+  (groups[key] = groups[key] || []).push(p);
+}
+const NEON = val('neon', 2.2);
+for (const key in groups) {
+  const [geo, kind, tr] = key.split('|'); const list = groups[key]; const op = 1 - (+tr) / 10;
+  let mat;
+  if (kind === 'neon') mat = new THREE.MeshBasicMaterial({ transparent: op < 1, opacity: op });
+  else if (kind === 'glass') mat = new THREE.MeshStandardMaterial({ transparent: true, opacity: Math.min(op, 0.55), roughness: 0.1, metalness: 0.2 });
+  else if (kind === 'metal') mat = new THREE.MeshStandardMaterial({ roughness: 0.35, metalness: 0.7, transparent: op < 1, opacity: op });
+  else if (kind === 'matte') mat = new THREE.MeshStandardMaterial({ roughness: 0.95, metalness: 0, transparent: op < 1, opacity: op });
+  else mat = new THREE.MeshStandardMaterial({ roughness: 0.4, metalness: 0.02, transparent: op < 1, opacity: op });
+  const im = new THREE.InstancedMesh(geos[geo], mat, list.length);
+  const m = new THREE.Matrix4(), c = new THREE.Color();
+  list.forEach((p, i) => {
+    let [sx, sy, sz] = p.z; const f = p.f;
+    if (geo === 'cyl') { const d = Math.min(sy, sz); sy = d; sz = d; }
+    if (p.s === 'Ball') { const d = Math.min(sx, sy, sz); sx = sy = sz = d; }
+    m.set(f[3]*sx, f[4]*sy, f[5]*sz, f[0], f[6]*sx, f[7]*sy, f[8]*sz, f[1], f[9]*sx, f[10]*sy, f[11]*sz, f[2], 0, 0, 0, 1);
+    im.setMatrixAt(i, m);
+    c.setRGB(p.c[0] / 255, p.c[1] / 255, p.c[2] / 255, THREE.SRGBColorSpace);
+    if (kind === 'neon') c.multiplyScalar(NEON);
+    im.setColorAt(i, c);
+  });
+  im.castShadow = kind !== 'neon' && op >= 1; im.receiveShadow = kind !== 'neon';
+  scene.add(im);
+}
+
+// ---------- light beams: soft cones in the haze (additive; fade along the beam and towards the edges)
+const beamMat = (col, alpha) => new THREE.ShaderMaterial({
+  uniforms: { col: { value: col }, alpha: { value: alpha } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+  vertexShader: 'varying float vL; varying vec3 vN; varying vec3 vV; void main(){ vL = uv.y; vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
+  fragmentShader: 'uniform vec3 col; uniform float alpha; varying float vL; varying vec3 vN; varying vec3 vV; void main(){ float e = pow(abs(dot(normalize(vN), normalize(vV))), 1.7); float a = alpha * smoothstep(1.0, 0.95, vL) * pow(vL, 1.3) * e; gl_FragColor = vec4(col * a, a); }',
+});
+const BEAM = val('beam', 1);
+const extra = (q.get('xbeams') || '').split(';').filter(Boolean).map(s => { const v = s.split(',').map(Number); return { n: 'SoftBeam', a: v.slice(0, 3), b: v.slice(3, 6), w0: v[6], w1: v[7], c: v.slice(8, 11), t: v[11] }; });
+const NOWHITE = q.get('nowhite') === '1';
+for (const b of SCENE.beams.concat(extra)) {
+  const a = new THREE.Vector3(...b.a), e = new THREE.Vector3(...b.b), len = a.distanceTo(e);
+  if (len < 0.5) continue;
+  if (NOWHITE && Math.min(...b.c) > 200) continue; // white blinders / strobes would wash the picture out
+  const g = new THREE.CylinderGeometry(b.w0 / 2, b.w1 / 2, len, 40, 1, true); // top (uv.y = 1) = the lamp
+  const col = new THREE.Color().setRGB(b.c[0] / 255, b.c[1] / 255, b.c[2] / 255, THREE.SRGBColorSpace);
+  const mesh = new THREE.Mesh(g, beamMat(col, (1 - b.t) * (b.n === 'BeamGlow' ? 0.9 : 1.6) * BEAM));
+  mesh.position.copy(a).add(e).multiplyScalar(0.5);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), a.clone().sub(e).normalize());
+  scene.add(mesh);
+}
+
+// ---------- the show's lamps + extra key lights from the URL
+const SPOT = val('spot', 1);
+for (const l of SCENE.lights) {
+  const c = new THREE.Color().setRGB(l.c[0] / 255, l.c[1] / 255, l.c[2] / 255, THREE.SRGBColorSpace);
+  if (l.k === 'SpotLight') {
+    const s = new THREE.SpotLight(c, l.b * 900 * SPOT, l.r * 2.2, THREE.MathUtils.degToRad(Math.min(80, l.a)) / 2, 0.6, 1.4);
+    s.position.set(...l.p); s.target.position.set(l.p[0] + l.d[0] * 30, l.p[1] + l.d[1] * 30, l.p[2] + l.d[2] * 30);
+    scene.add(s, s.target);
+  } else {
+    const pl = new THREE.PointLight(c, l.b * 300 * SPOT, l.r * 1.5, 1.6); pl.position.set(...l.p); scene.add(pl);
+  }
+}
+for (const k of (q.get('keys') || '').split(';').filter(Boolean)) { // x,y,z, tx,ty,tz, r,g,b, intensity, angle(deg), shadow(0/1)
+  const v = k.split(',').map(Number);
+  const s = new THREE.SpotLight(new THREE.Color().setRGB(v[6] / 255, v[7] / 255, v[8] / 255, THREE.SRGBColorSpace), v[9], 0, THREE.MathUtils.degToRad(v[10]), 0.5, 1.1);
+  s.position.set(v[0], v[1], v[2]); s.target.position.set(v[3], v[4], v[5]);
+  if (v[11]) { s.castShadow = true; s.shadow.mapSize.set(2048, 2048); s.shadow.bias = -0.0004; s.shadow.camera.near = 5; s.shadow.camera.far = 500; }
+  scene.add(s, s.target);
+}
+
+// ---------- camera + glow
+const cam = new THREE.PerspectiveCamera(val('fov', 50), W / H, 0.5, 6000);
+cam.position.set(...num('cam', '0,20,80')); cam.lookAt(...num('look', '0,12,-10'));
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, cam));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(W, H), val('bloom', 0.85), val('brad', 0.55), val('thr', 0.82)));
+composer.addPass(new OutputPass());
+composer.render();
+
+// ---------- title: chunky 3D letters (gold gradient front, orange sides, dark outline)
+if (q.get('title') !== '0') {
+  const ttf = new TTFLoader(); ttf.reversed = q.get('rev') !== '0'; // OTF (CFF) contours run the other way round
+  const font = await new Promise((res, rej) => ttf.load('InterDisplay-Black.otf', j => res(new Font(j)), undefined, rej));
+  const ts = new THREE.Scene();
+  // orthographic: the outline sits exactly behind the letters (no parallax), the tilt still shows the 3D sides
+  const hh = 107, hw = hh * W / H;
+  const tcam = new THREE.OrthographicCamera(-hw, hw, hh, -hh, 1, 3000); tcam.position.set(0, 0, 400);
+  ts.add(new THREE.AmbientLight(0xffffff, 0.75));
+  const dl = new THREE.DirectionalLight(0xffffff, 1.7); dl.position.set(-0.4, 1, 1.2); ts.add(dl);
+  const dl2 = new THREE.DirectionalLight(0xff9ad8, 1.0); dl2.position.set(1, -0.4, 0.6); ts.add(dl2);
+  const size = val('ts', 36);
+  const mk = (bevel, depth) => {
+    const g = new TextGeometry(q.get('text') || 'HEADLINER', { font, size, height: depth, curveSegments: 10, bevelEnabled: true, bevelThickness: bevel * 0.8, bevelSize: bevel, bevelSegments: 5 });
+    g.computeBoundingBox(); const bb = g.boundingBox; g.translate(-(bb.max.x + bb.min.x) / 2, -(bb.max.y + bb.min.y) / 2, 0); return g;
+  };
+  const front = mk(size * 0.03, size * 0.34);
+  front.computeBoundingBox(); const y0 = front.boundingBox.min.y, y1 = front.boundingBox.max.y;
+  const pos = front.attributes.position, cols = [];
+  const top = new THREE.Color(0xfff07a), mid = new THREE.Color(0xffbb00), bot = new THREE.Color(0xff5200);
+  for (let i = 0; i < pos.count; i++) { const u = (pos.getY(i) - y0) / (y1 - y0); const c = u > 0.5 ? mid.clone().lerp(top, (u - 0.5) * 2) : bot.clone().lerp(mid, u * 2); cols.push(c.r, c.g, c.b); }
+  front.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  const tm = new THREE.Mesh(front, [new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.28, metalness: 0.3, side: THREE.DoubleSide }), new THREE.MeshStandardMaterial({ color: 0xb84200, roughness: 0.5, metalness: 0.2, side: THREE.DoubleSide })]);
+  const outline = new THREE.Mesh(mk(size * val('ob', 0.07), size * 0.34), new THREE.MeshBasicMaterial({ color: q.get('outc') || '#1a0830', side: THREE.DoubleSide }));
+  outline.position.z = -size * 0.06;
+  // a soft dark glow behind the title so it reads over bright lights
+  const sh = new THREE.Mesh(mk(size * 0.16, size * 0.05), new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: val('shadow', 0.35) }));
+  sh.position.set(size * 0.05, -size * 0.09, -size * 0.3);
+  const grp = new THREE.Group(); grp.add(outline, tm); if (val('shadow', 0) > 0) grp.add(sh);
+  grp.position.set(...num('tpos', '0,58,0'));
+  grp.rotation.set(val('tx', 0.12), val('ty', 0), val('tz', 0));
+  grp.scale.setScalar(val('tsc', 1));
+  ts.add(grp);
+  renderer.autoClear = false; renderer.toneMapping = THREE.NoToneMapping; renderer.clearDepth(); renderer.render(ts, tcam);
+}
+if (q.get('sub')) {
+  await document.fonts.load('40px KA');
+  const d = document.createElement('div'); d.className = 'sub'; d.textContent = q.get('sub');
+  d.style.top = (q.get('suby') || '30') + '%'; d.style.fontSize = (q.get('subs') || '40') + 'px';
+  d.style.textShadow = '0 3px 0 #1a0830, 0 0 18px rgba(20,8,48,.95), 0 0 30px rgba(140,90,255,.8)';
+  d.innerHTML = '<span style="background:rgba(26,8,48,.82);border:3px solid #ffc81e;border-radius:999px;padding:.28em .2em .28em .5em">' + q.get('sub') + '</span>';
+  document.body.appendChild(d);
+}
+document.title = 'done';
+</script></body></html>
