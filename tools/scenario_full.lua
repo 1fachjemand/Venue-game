@@ -351,8 +351,23 @@ assert(app.world.target == nil, "after the first show the arrow only shows when 
 
 -- 4) the rest of the tour
 local done = false
+-- a finished tour: a small message at the side; a click on it opens the tour report
+local function clickTourToast()
+	for _, b in ipairs(app.toastFrame:GetChildren()) do
+		if b:IsA("TextButton") then
+			for _, l in ipairs(b:GetDescendants()) do
+				if l:IsA("TextLabel") and l.Text:find("TOUR FINISHED") then
+					b.MouseButton1Click:Fire() MOCK.runTasks()
+					return true
+				end
+			end
+		end
+	end
+	return false
+end
 for _ = 1, 400 do
 	if #MOCK.buttons("^Great!$") > 0 then done = true break end
+	if tour.status == "done" and clickTourToast() then steps(2) end
 	if #MOCK.buttons("^Skip show$") > 0 then MOCK.clickExact("Skip show")
 	elseif #MOCK.buttons("^Continue$") > 0 then MOCK.clickExact("Continue")
 	elseif #MOCK.buttons("^Nice!$") > 0 then MOCK.clickExact("Nice!")
@@ -1017,6 +1032,8 @@ MOCK.click("^Skip")
 steps(2)
 MOCK.clickExact("Continue")
 for _ = 1, 200 do
+	if #MOCK.buttons("^Great!$") > 0 then break end
+	if nt.status == "done" and clickTourToast() then steps(2) end
 	if #MOCK.buttons("^Great!$") > 0 then break end
 	if #MOCK.buttons("^Skip show$") > 0 then MOCK.clickExact("Skip show")
 	elseif #MOCK.buttons("^Continue$") > 0 then MOCK.clickExact("Continue")

@@ -924,6 +924,7 @@ function LiveShow.run(app, opts)
 
 	-- UI overlay (compact, so you can see the show)
 	app:enterMode("live")
+	SoundFX.setContext("show")
 	local overlay = UI.New("Frame", { Parent = app.canvas, Size = UI.px(1920, 1080), BackgroundTransparency = 1, Name = "LiveOverlay" })
 	local info = UI.Panel(overlay, UI.px(24, 72), UI.px(560, 108), T.panel)
 	info.BackgroundTransparency = 0.35
@@ -1061,9 +1062,17 @@ function LiveShow.run(app, opts)
 		for _, p in ipairs(performers) do
 			p:destroy()
 		end
+		-- the stage hands and everybody else on the stage (nothing stays behind in memory)
+		for _, job in ipairs(setupJobs or {}) do
+			for _, h in ipairs(job.hands) do
+				h.p:destroy()
+			end
+		end
+		Stage3D.peopleFolder:ClearAllChildren()
 		Venue.destroy(crowd)
 		Stage3D.clearDesign()
 		Stage3D.setLighting("designer")
+		SoundFX.setContext("menu")
 		overlay:Destroy()
 		if walkMode then
 			W.toggleFirstPerson(false)

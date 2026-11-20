@@ -60,6 +60,7 @@ function Designer.open(app, designId)
 	local self = { app = app, design = design, conns = {} }
 	Designer.current = self
 	Builder.editMode = true -- LED surfaces stay calm while building
+	SoundFX.setContext("build")
 	app:enterMode("designer")
 	Stage3D.setLighting("designer")
 
@@ -2842,6 +2843,7 @@ function Designer.close()
 	end
 	Designer.current = nil
 	Builder.editMode = false
+	SoundFX.setContext("menu")
 	self.cleanup()
 	self.app:saveDesign(self.design)
 end

@@ -462,7 +462,7 @@ function SocialScreen:post(list, p, order)
 		TextXAlignment = Enum.TextXAlignment.Left,
 		LayoutOrder = 2,
 	})
-	if p.photo and self.photos < 14 then
+	if p.photo and self.photos < 8 then
 		self.photos = self.photos + 1
 		local seed = (p.likes or 1) + (p.avatar or 1) * 31
 		photo(card, ad, p.seed or seed, p.pkind or ((seed % 2 == 0) and "selfie" or "stage"), p).LayoutOrder = 3

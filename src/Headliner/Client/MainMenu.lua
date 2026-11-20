@@ -22,7 +22,7 @@ function MainMenu.show(app, info, onStart)
 	local slots = info.slots or {}
 	local chosenSlot = "1"
 	app.backdrop.Visible = false
-	app.settings = app.settings or { music = 80, effects = 80, crowd = "High" }
+	app.settings = app.settings or { music = 80, effects = 80, crowd = "Medium" }
 	SoundFX.init(app.settings)
 	SoundFX.menu("title")
 	local root = UI.New("Frame", { Parent = app.canvas, Name = "MainMenu", Size = UI.px(1920, 1080), BackgroundTransparency = 1 })
@@ -176,15 +176,27 @@ function MainMenu.show(app, info, onStart)
 		if not SoundFX.available() then
 			UI.Label(body, "Sound files are not uploaded yet (see audio/README.md).", UI.px(64, 442), UI.px(440, 22), { textSize = 14, color = T.sub })
 		end
-		UI.Label(body, "Crowd detail in shows", UI.px(64, 486), UI.px(440, 26), { textSize = 18, font = UI.FontBold })
+		UI.Label(body, "Crowd detail in shows", UI.px(64, 470), UI.px(440, 26), { textSize = 18, font = UI.FontBold })
 		for i, lvl in ipairs({ "Low", "Medium", "High" }) do
-			UI.Button(body, lvl, UI.px(64 + (i - 1) * 148, 518), UI.px(140, 44), { color = (s.crowd == lvl) and T.accent or T.panel3, textSize = 17 }, function()
+			UI.Button(body, lvl, UI.px(64 + (i - 1) * 148, 500), UI.px(140, 40), { color = (s.crowd == lvl) and T.accent or T.panel3, textSize = 17 }, function()
 				s.crowd = lvl
 				Venue.setDetail(lvl)
 				settingsPage()
 			end)
 		end
-		UI.Button(body, "< Back", UI.px(64, 600), UI.px(200, 56), { textSize = 20 }, function()
+		-- what plays where: on / off
+		local ty = 556
+		for _, tg in ipairs({ { "menuMusic", "Menu & office music" }, { "showMusic", "Concert music" }, { "buildMusic", "Music while building" }, { "uiSounds", "Click sounds" } }) do
+			local on = s[tg[1]] ~= false
+			UI.Label(body, tg[2], UI.px(64, ty), UI.px(300, 34), { textSize = 17, font = UI.FontBold })
+			UI.Button(body, on and "ON" or "OFF", UI.px(400, ty), UI.px(100, 34), { textSize = 15, color = on and T.good or T.panel3 }, function()
+				s[tg[1]] = not on
+				SoundFX.setFlags(s)
+				settingsPage()
+			end)
+			ty = ty + 42
+		end
+		UI.Button(body, "< Back", UI.px(64, ty + 14), UI.px(200, 52), { textSize = 20 }, function()
 			home()
 		end)
 	end

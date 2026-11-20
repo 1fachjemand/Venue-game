@@ -61,6 +61,7 @@ function SoundFX.init(settings)
 	end
 	ambience = New("Sound", { Name = "Crowd", SoundGroup = groups.sfx, Volume = 0, Parent = SoundService })
 	if settings then
+		SoundFX.setFlags(settings)
 		SoundFX.setVolumes(settings.music, settings.effects)
 	end
 	-- every button click makes a sound
@@ -72,15 +73,44 @@ function SoundFX.init(settings)
 	end
 end
 
+-- what may play (settings): menu & office music, concert music, music while building, click sounds
+SoundFX.flags = { menu = true, show = true, build = true, ui = true }
+SoundFX.context = "menu" -- "menu" (main menu and the label building) | "show" | "build"
+local musicVol, fxVol = 80, 80
+local function applyVolumes()
+	if groups.music then
+		local on = SoundFX.flags[SoundFX.context] ~= false
+		groups.music.Volume = on and (musicVol / 100 * 0.7) or 0
+		groups.sfx.Volume = fxVol / 100 * 0.8
+	end
+end
 -- music / effects volume 0..100 (settings)
 function SoundFX.setVolumes(music, effects)
-	if groups.music then
-		groups.music.Volume = (music or 80) / 100 * 0.7
-		groups.sfx.Volume = (effects or 80) / 100 * 0.8
+	musicVol, fxVol = music or 80, effects or 80
+	applyVolumes()
+end
+
+-- where we are: "menu" (menu, office), "show" (a concert), "build" (stage builder)
+function SoundFX.setContext(ctx)
+	SoundFX.context = ctx or "menu"
+	applyVolumes()
+end
+-- settings: { menuMusic, showMusic, buildMusic, uiSounds } (true / false)
+function SoundFX.setFlags(st)
+	if type(st) ~= "table" then
+		return
 	end
+	SoundFX.flags.menu = st.menuMusic ~= false
+	SoundFX.flags.show = st.showMusic ~= false
+	SoundFX.flags.build = st.buildMusic ~= false
+	SoundFX.flags.ui = st.uiSounds ~= false
+	applyVolumes()
 end
 
 function SoundFX.sfx(name, volume)
+	if (name == "click" or name == "hover") and not SoundFX.flags.ui then
+		return
+	end
 	local sid = id("sfx")
 	local r = Map.SFX and Map.SFX[name]
 	if not sid or not r or not groups.sfx then

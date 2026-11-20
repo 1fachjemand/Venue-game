@@ -261,8 +261,9 @@ function App:beginGame(isNew)
 	self.screens.social = require(Screens.SocialScreen).new(self)
 	self.screens.liveshows = require(Screens.LiveShowsScreen).new(self)
 	self.phone = require(Screens.PhoneScreen).new(self)
-	self.toastFrame = UI.New("Frame", { Parent = self.canvas, Name = "Toasts", Position = UI.px(740, 150), Size = UI.px(440, 900), BackgroundTransparency = 1, ZIndex = 60 })
-	UI.List(true, 8, Enum.HorizontalAlignment.Center).Parent = self.toastFrame
+	-- messages: small, at the right edge (not in the middle of the screen)
+	self.toastFrame = UI.New("Frame", { Parent = self.canvas, Name = "Toasts", Position = UI.px(1500, 170), Size = UI.px(400, 820), BackgroundTransparency = 1, ZIndex = 60 })
+	UI.List(true, 6, Enum.HorizontalAlignment.Right).Parent = self.toastFrame
 	self.mode = "world"
 	local closeLoading = self:showLoading("HEADLINER", "Welcome to " .. self.state.labelName)
 	local World = require(Root.Client.World)
@@ -822,27 +823,39 @@ function App:devSkip(untilShow)
 end
 
 ------------------------------------------------------------------ toasts & modals
-function App:toast(text, color, seconds)
-	local f = UI.New("Frame", {
+-- a small message at the right edge; onClick (optional) makes it a button (e.g. "open the tour report")
+function App:toast(text, color, seconds, onClick)
+	-- in the stage builder the right side is the item panel: messages go next to the setlist instead
+	self.toastFrame.Position = (self.mode == "designer") and UI.px(470, 112) or UI.px(1500, 170)
+	local f = UI.New(onClick and "TextButton" or "Frame", {
 		Parent = self.toastFrame,
-		Size = UI.px(440, 0),
+		Size = UI.px(380, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundColor3 = T.panel2,
+		BackgroundTransparency = 0.04,
 		BorderSizePixel = 0,
 		LayoutOrder = -os.clock() * 1000,
 		UI.Corner(10),
 		UI.Stroke(color or T.accent2, 2, 0),
-		UI.Padding(14, 14, 10, 10),
+		UI.Padding(12, 12, 8, 8),
 	})
+	if onClick then
+		f.Text = ""
+		f.AutoButtonColor = true
+		f.MouseButton1Click:Connect(function()
+			f:Destroy()
+			onClick()
+		end)
+	end
 	UI.New("TextLabel", {
 		Parent = f,
-		Size = UI.px(412, 0),
+		Size = UI.px(356, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 		Text = text,
 		TextWrapped = true,
 		TextColor3 = T.text,
-		TextSize = 17,
+		TextSize = 15,
 		Font = UI.Font,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		RichText = true,
@@ -850,11 +863,11 @@ function App:toast(text, color, seconds)
 	local kids = self.toastFrame:GetChildren()
 	local frames = {}
 	for _, k in ipairs(kids) do
-		if k:IsA("Frame") then
+		if k:IsA("GuiObject") then
 			table.insert(frames, k)
 		end
 	end
-	if #frames > 7 then
+	if #frames > 5 then
 		table.sort(frames, function(a, b)
 			return a.LayoutOrder > b.LayoutOrder
 		end)
@@ -1061,6 +1074,17 @@ function App:openHome(page)
 		end
 		row("Music", "music")
 		row("Effects", "effects")
+		-- what plays where: on / off
+		for _, tg in ipairs({ { "menuMusic", "Menu & office music" }, { "showMusic", "Concert music" }, { "buildMusic", "Music while building" }, { "uiSounds", "Click sounds" } }) do
+			local on = st[tg[1]] ~= false
+			z(UI.Label(panel, tg[2], UI.px(36, y), UI.px(250, 36), { textSize = 16, font = UI.FontBold }))
+			z(UI.Button(panel, on and "ON" or "OFF", UI.px(304, y), UI.px(100, 36), { textSize = 15, color = on and T.good or T.panel3 }, function()
+				st[tg[1]] = not on
+				SoundFX.setFlags(st)
+				self:openHome("settings")
+			end)).Name = "Toggle_" .. tg[1]
+			y = y + 44
+		end
 		z(UI.Label(panel, "Crowd detail in shows", UI.px(36, y), UI.px(368, 30), { textSize = 17, font = UI.FontBold }))
 		y = y + 34
 		for i, lvl in ipairs({ "Low", "Medium", "High" }) do
@@ -1205,12 +1229,17 @@ function App:handleDay(ev)
 	elseif #(ev.achievements or {}) > 0 then
 		SoundFX.sfx("notify", 0.6)
 	end
-	for _, so in ipairs(ev.soldOut or {}) do
-		local tour = GS.getTour(state, so.tourId)
-		local s = tour and tour.shows[so.idx]
-		if s then
-			local v = Countries.venueById[s.venueId]
-			self:toast("<b>SOLD OUT!</b> " .. Artists.byId[tour.artistId].name .. " @ " .. v.name .. " (" .. Util.number(v.cap) .. ")", T.gold)
+	local sold = ev.soldOut or {}
+	if #sold > 2 then
+		self:toast("<b>SOLD OUT!</b> " .. #sold .. " shows sold out today.", T.gold, 4)
+	else
+		for _, so in ipairs(sold) do
+			local tour = GS.getTour(state, so.tourId)
+			local s = tour and tour.shows[so.idx]
+			if s then
+				local v = Countries.venueById[s.venueId]
+				self:toast("<b>SOLD OUT!</b> " .. Artists.byId[tour.artistId].name .. " @ " .. v.name .. " (" .. Util.number(v.cap) .. ")", T.gold, 4)
+			end
 		end
 	end
 	for _, p in ipairs(ev.played or {}) do
@@ -1263,8 +1292,15 @@ function App:handleDay(ev)
 	self:processLiveQueue()
 end
 
+-- a finished tour: a message (click it for the tour report; the report is also in the laptop: TOURS)
 function App:tourCompleted(tour)
-	self:tourReport(tour, true)
+	local ad = Artists.byId[tour.artistId]
+	SoundFX.sfx("notify", 0.5)
+	self:toast("<b>TOUR FINISHED:</b> " .. UI.esc(tour.name) .. " (" .. (ad and ad.name or "") .. ")<br/><font color='#3b82f6'>Click for the tour report</font>", T.good, 12, function()
+		if not self.modalOpen then
+			self:tourReport(tour, true)
+		end
+	end)
 end
 
 -- Tour report: real numbers per show (not estimates) with charts

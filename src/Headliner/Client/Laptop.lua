@@ -451,6 +451,17 @@ function Laptop.buildSettings(app, holder)
 	end
 	row("Music", "music")
 	row("Effects", "effects")
+	-- what plays where: on / off
+	for _, tg in ipairs({ { "menuMusic", "Menu & office music" }, { "showMusic", "Concert music" }, { "buildMusic", "Music while building" }, { "uiSounds", "Click sounds" } }) do
+		local on = s[tg[1]] ~= false
+		UI.Label(p, tg[2], UI.px(60, y), UI.px(380, 46), { textSize = 22, font = UI.FontBold })
+		UI.Button(p, on and "ON" or "OFF", UI.px(460, y), UI.px(150, 46), { textSize = 20, color = on and T.good or T.panel3 }, function()
+			s[tg[1]] = not on
+			SoundFX.setFlags(s)
+			Laptop.buildSettings(app, holder)
+		end)
+		y = y + 62
+	end
 	UI.Label(p, "Crowd detail in shows", UI.px(60, y), UI.px(400, 50), { textSize = 22, font = UI.FontBold })
 	for i, lvl in ipairs({ "Low", "Medium", "High" }) do
 		UI.Button(p, lvl, UI.px(460 + (i - 1) * 160, y), UI.px(150, 50), { color = (s.crowd == lvl) and T.accent or T.panel3, textSize = 20 }, function()

@@ -13,7 +13,7 @@ local People = require(Root.Client.People)
 local New = UI.New
 local Venue = {}
 
-Venue.maxFigures = 1100
+Venue.maxFigures = 750 -- "Medium" (settings: crowd detail)
 
 -- crowd detail setting (main menu > settings)
 function Venue.setDetail(level)

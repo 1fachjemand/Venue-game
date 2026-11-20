@@ -270,8 +270,21 @@ end
 
 ------------------------------------------------------------------ public
 -- called by the screen animation: face = { live = ViewportFrame, liveCam = Camera }, mode = "liveArtist" | "liveCrowd"
+-- every live screen face needs its own little 3D scene (a crowd of hundreds of parts or copies of the
+-- performers): only a few faces get one, the others show the song colours (memory!)
+LiveFeed.MAX_SCENES = { liveCrowd = 3, liveArtist = 3 }
 function LiveFeed:update(face, mode, ctx)
 	if not face.scene or face.scene.kind ~= mode then
+		self.scenes = self.scenes or {}
+		local used = self.scenes[mode] or 0
+		if used >= (LiveFeed.MAX_SCENES[mode] or 3) and not (face.scene and face.scene.kind == mode) then
+			face.live.Visible = false
+			return
+		end
+		self.scenes[mode] = used + 1
+		if face.scene and face.scene.kind and self.scenes[face.scene.kind] then
+			self.scenes[face.scene.kind] = math.max(0, self.scenes[face.scene.kind] - 1)
+		end
 		for _, c in ipairs(face.live:GetChildren()) do
 			if c:IsA("BasePart") then
 				c:Destroy()

@@ -42,6 +42,8 @@ local groups = {
 	{ { t = "backdrop", x = -30, z = -10, w = 18, d = 12 }, { t = "starcloth", x = -10, z = -10, w = 18, d = 12 }, { t = "scrim", x = 10, z = -10, w = 18, d = 12 }, { t = "panelwall", x = 30, z = -10, w = 18, d = 12 }, { t = "staircase", x = 0, z = 6, w = 20 } },
 	{ { t = "bulbwall", x = -30, z = -10, w = 18, d = 12 }, { t = "slatwall", x = -10, z = -10, w = 18, d = 12 }, { t = "brickwall", x = 10, z = -10, w = 18, d = 12 }, { t = "scaffold", x = 30, z = -10, w = 18, d = 12 }, { t = "mirrorwall", x = -20, z = 8, w = 14, d = 10 } },
 	{ { t = "ampwall", x = -18, z = 0 }, { t = "lightcube", x = -10, z = 2 }, { t = "planter", x = -2, z = 2 }, { t = "neonline", x = 10, z = 4 }, { t = "hedge", x = 10, z = -2 }, { t = "tvstack", x = 20, z = 0 }, { t = "rope", x = 0, z = 8 } },
+	-- round 8: heavy truss tower, LED tower, mic stand, rain curtain, roof fireworks box, a corner deck (mirrored)
+	{ { t = "deck", x = 0, z = -12, w = 60, d = 20, h = 6 }, { t = "truss_xl", x = -36, z = -4 }, { t = "ledtower", x = -22, z = 8 }, { t = "micstand", x = 0, z = -6 }, { t = "raincurtain", x = 12, z = -10, w = 20 }, { t = "rimfireworks", x = 24, z = -8 }, { t = "deck_corner", x = 38, z = -10, w = 12, d = 12, flip = true }, { t = "staircase", x = -6, z = -20, w = 20, cc = "gold" } },
 }
 for k, items in ipairs(groups) do
 	app.state.money = 90000000
@@ -79,6 +81,8 @@ for k, items in ipairs(groups) do
 		cams = { CFrame.lookAt(Vector3.new(22, y + 26, 30), Vector3.new(0, y + 18, 0)), CFrame.lookAt(Vector3.new(-20, y + 14, 16), Vector3.new(0, y + 14, 0)) }
 	elseif k == 9 or k == 10 then
 		cams = { CFrame.lookAt(Vector3.new(0, y + 22, 62), Vector3.new(0, y + 6, -4)), CFrame.lookAt(Vector3.new(-30, y + 10, 16), Vector3.new(-14, y + 5, -8)) }
+	elseif k == 12 then
+		cams = { CFrame.lookAt(Vector3.new(0, 30, 75), Vector3.new(0, 14, -6)), CFrame.lookAt(Vector3.new(-50, 26, 40), Vector3.new(-28, 18, 0)) }
 	elseif k >= 5 then
 		cams = { CFrame.lookAt(Vector3.new(2, y + 14, 44), Vector3.new(2, y + 5, 0)), CFrame.lookAt(Vector3.new(-26, y + 8, 6), Vector3.new(-16, y + 4, 0)) }
 	elseif k == 4 then
