@@ -95,8 +95,8 @@ Tutorial.STEPS = {
 	{
 		at = "laptop",
 		target = "laptop",
-		lines = { "Booked! Tickets, the stage and the announcement are done on the <b>laptop</b>. Press <b>Done</b> and come to my desk." },
-		hint = "Press Done, walk to the LAPTOP and press E.",
+		lines = { "Booked! Tickets and the announcement are done on the <b>laptop</b> in <b>your own office</b>. Press <b>Done</b> and follow me through the door at the back." },
+		hint = "Press Done, walk to the LAPTOP in your office and press E.",
 		done = function(app)
 			return app.mode == "laptop"
 		end,
@@ -112,39 +112,24 @@ Tutorial.STEPS = {
 	{
 		at = "laptop",
 		lines = { "These are the ticket prices. The promoter already set fair ones: press <b>Next</b>." },
-		hint = "Press Next: choose the stage.",
+		hint = "Press Next.",
 		done = function(app)
 			return (app.state.draft or {}).pricesSet == true
 		end,
 	},
-	{
-		at = "laptop",
-		lines = { "Every tour needs a stage. <b>Select</b> the Club Stage and press <b>Next</b>." },
-		hint = "Select a stage, then Next.",
-		done = function(app)
-			return (app.state.draft or {}).stageSet == true
-		end,
-	},
-	{
-		at = "laptop",
-		lines = { "Last step: check everything and press <b>ANNOUNCE TOUR</b>!" },
-		hint = "Press ANNOUNCE TOUR.",
-		done = function(app)
-			return #app.state.tours > 0
-		end,
-	},
+	-- before the tour is announced: Sam shows how a stage is built
 	{
 		at = "stagehall",
 		target = "stagehall",
-		lines = { "Your first tour is on sale! Now let's build a stage of your own.", "Close the laptop and follow me to the <b>STAGE HALL</b>." },
-		hint = "Go to the STAGE HALL, press E, then EDIT a stage.",
+		lines = { "Before we announce it: every tour needs a <b>stage</b>. Let me show you how to build one!", "Close the laptop and follow me to the <b>STAGE HALL</b>." },
+		hint = "Close the laptop, go to the STAGE HALL, press E, then EDIT the Club Stage.",
 		done = function(app)
 			return app.mode == "designer"
 		end,
 	},
 	{
 		at = "stagehall",
-		lines = { "This is the stage builder. Pick an item at the bottom, point at the stage and press <b>Q</b> to place it." },
+		lines = { "This is the stage builder. Pick an item at the bottom (lights, screens, effects ...), point at the stage and press <b>Q</b> to place it." },
 		hint = "Pick an item and press Q to place it.",
 		start = function(app, run)
 			run.items0 = itemCount(app)
@@ -157,7 +142,8 @@ Tutorial.STEPS = {
 		at = "stagehall",
 		lines = {
 			"Click an item to select it. The arrows move it, the gold cubes make it bigger, R turns it.",
-			"The tab <b>2  SETLIST & SHOW</b> plans what happens in every song. Press <b>DONE</b> when you're happy.",
+			"The tab <b>2  SETLIST & SHOW</b> plans what happens in every song: where the artist stands, the screens, the effects.",
+			"Press <b>DONE</b> when you're happy with your stage.",
 		},
 		hint = "Press DONE when you are finished.",
 		done = function(app)
@@ -165,9 +151,26 @@ Tutorial.STEPS = {
 		end,
 	},
 	{
+		at = "laptop",
+		target = "laptop",
+		lines = { "Looks great! Now back to <b>your office</b>: on the laptop, open the Tour Planner again and <b>select</b> your stage for the club shows." },
+		hint = "Laptop: Tour Planner, select the stage, then Next.",
+		done = function(app)
+			return (app.state.draft or {}).stageSet == true and (app.mode == "laptop" or #app.state.tours > 0)
+		end,
+	},
+	{
+		at = "laptop",
+		lines = { "Last step: check everything and press <b>ANNOUNCE TOUR</b>! Then the tickets go on sale." },
+		hint = "Press ANNOUNCE TOUR.",
+		done = function(app)
+			return #app.state.tours > 0
+		end,
+	},
+	{
 		at = "start",
 		lines = {
-			"That's all you need! Time runs by itself: pause it or speed it up at the top.",
+			"Your first tour is on sale! That's all you need. Time runs by itself: pause it or speed it up at the top.",
 			"On show day you can go to the venue and watch it live.",
 			"The house button at the top right saves your game. Good luck, boss!",
 		},

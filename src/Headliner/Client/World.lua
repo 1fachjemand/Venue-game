@@ -99,6 +99,10 @@ local function onCharacter(char)
 	end
 	World.setZoom()
 	World.freeze(World.frozen)
+	-- you start in your own office
+	if World.app and World.app.mode == "world" then
+		World.toSpawn()
+	end
 	World.resetCamera()
 	h.Seated:Connect(function(active)
 		if not active then
@@ -432,10 +436,10 @@ local function seatedFigure(f, data, look, n)
 		return pp
 	end
 	local pants, top = c3(look.pants), c3(look.top)
-	for _, sx in ipairs({ -0.48, 0.48 }) do
-		p("Thigh", Vector3.new(0.86, 0.8, 1.9), CFrame.new(sx, hipY, 0.65), pants)
-		p("Shin", Vector3.new(0.8, hipY - 0.35, 0.8), CFrame.new(sx, (hipY - 0.35) / 2 + 0.3, 1.18), pants)
-		p("Shoe", Vector3.new(0.9, 0.32, 1.1), CFrame.new(sx, 0.16, 1.32), c3(look.shoes))
+	-- straight legs forward, like a sitting Roblox character (one block per leg, the shoe at its end)
+	for _, sx in ipairs({ -0.5, 0.5 }) do
+		p("Leg", Vector3.new(0.96, 0.96, 1.9), CFrame.new(sx, hipY, 0.62), pants)
+		p("Shoe", Vector3.new(0.98, 0.98, 0.3), CFrame.new(sx, hipY, 1.72), c3(look.shoes))
 	end
 	local torsoY = hipY + 0.4 + 1
 	p("Torso", Vector3.new(2, 2, 1), CFrame.new(0, torsoY, -0.3), top)
@@ -801,10 +805,20 @@ local function animatePeople(t, dt)
 					npc.visible = true
 					npc.fig:setVisible(true)
 				end
-				npc.dist = npc.dist + dt * npc.speed
+				-- the zebra crossing works like a crossing light: people only step onto it in the first seconds of
+				-- every 20 (they wait at the kerb otherwise), so the cars and buses are never held up for long
+				local cur = alongPath(npc.path, npc.dist)
+				local nextPos = alongPath(npc.path, npc.dist + dt * npc.speed)
+				local onRoad = function(p)
+					return p.Z > 62 and p.Z < 90
+				end
+				local waiting = (not onRoad(cur)) and onRoad(nextPos) and (t % 20) > 3
+				if not waiting then
+					npc.dist = npc.dist + dt * npc.speed
+				end
 				local pos, dir = alongPath(npc.path, npc.dist)
-				npc.fig:update(O + pos, math.atan2(dir.X, dir.Z), { t = t + npc.ph, beat = 0, energy = 0, walking = true })
-				if pos.Z > 62 and pos.Z < 90 then
+				npc.fig:update(O + pos, math.atan2(dir.X, dir.Z), { t = t + npc.ph, beat = 0, energy = 0, walking = not waiting })
+				if onRoad(pos) then
 					World.crossing = true
 				end
 				if npc.dist >= npc.len then
@@ -1000,6 +1014,9 @@ local OPEN = {
 	end,
 	charts = function(app)
 		app:openStation("charts", "charts")
+	end,
+	liveboard = function(app)
+		app:openStation("liveboard", "liveshows")
 	end,
 }
 World.OPEN = OPEN
@@ -1332,11 +1349,17 @@ function World.start(app)
 			app:toast(on and "First person: on (F = off)" or "First person: off", UI.Theme.accent2, 2)
 		end
 	end))
+	-- every player has an own office with the laptop (the server gives out the offices: attribute Office)
+	local myOffice = Players.LocalPlayer:GetAttribute("Office") or 1
+	Hub.useOffice(myOffice)
 	if World.root then
 		for _, d in ipairs(World.root:GetDescendants()) do
 			if d:IsA("ProximityPrompt") then
 				local id = d:GetAttribute("Station")
-				if id then
+				local office = d:GetAttribute("Office")
+				if id and office and office ~= Hub.myOffice then
+					d.Enabled = false -- the laptop in somebody else's office
+				elseif id then
 					World.prompts[id] = d
 				end
 			end

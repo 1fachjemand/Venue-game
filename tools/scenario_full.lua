@@ -947,8 +947,29 @@ end
 log("designs now", #app.state.designs)
 
 
+-- 6b) own office: the door plate shows the label name, the laptop of the other offices is off, the LIVE SHOWS board
+do
+	local Hub = require(root.World.Hub)
+	assert(MOCK.player:GetAttribute("Office") == 1 and Hub.myOffice == 1, "the player has office 1")
+	local plateText, others = nil, 0
+	for _, d in ipairs(workspace.StarlightRecords:GetDescendants()) do
+		if d.Name == "OfficeName" and d:GetAttribute("Office") == 1 then
+			plateText = d.OfficeNameSign:FindFirstChildOfClass("TextLabel").Text
+		end
+		if d:IsA("ProximityPrompt") and d:GetAttribute("Office") and d:GetAttribute("Office") ~= 1 and not d.Enabled then
+			others = others + 1
+		end
+	end
+	log("office plate", plateText, "other laptops off", others)
+	assert(plateText == string.upper(app.state.labelName) and others == 4, "door plate + only your own laptop")
+	MOCK.clickExact("CLOSE")
+	app.world.trigger("liveboard")
+	assert(app.current == "liveshows" and app.screens.liveshows.frame.Visible, "LIVE SHOWS board opens")
+	log("live shows of other labels", #(app.screens.liveshows.shows or {}))
+	app:closeScreen()
+end
+
 -- 7) phone + laptop pages
-MOCK.clickExact("CLOSE")
 assert(app.mode == "world")
 app:openPhone()
 assert(app.mode == "phone" and app.phone.frame.Visible, "phone open")

@@ -97,6 +97,8 @@ function App.start()
 	self.player = Players.LocalPlayer
 	pcall(function()
 		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+		-- the chat stays on (you can talk to friends in the same server)
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, true)
 	end)
 
 	local gui = UI.New("ScreenGui", {
@@ -257,6 +259,7 @@ function App:beginGame(isNew)
 	self.screens.charts = require(Screens.ChartsScreen).new(self)
 	self.screens.stages = require(Screens.StagesScreen).new(self)
 	self.screens.social = require(Screens.SocialScreen).new(self)
+	self.screens.liveshows = require(Screens.LiveShowsScreen).new(self)
 	self.phone = require(Screens.PhoneScreen).new(self)
 	self.toastFrame = UI.New("Frame", { Parent = self.canvas, Name = "Toasts", Position = UI.px(740, 150), Size = UI.px(440, 900), BackgroundTransparency = 1, ZIndex = 60 })
 	UI.List(true, 8, Enum.HorizontalAlignment.Center).Parent = self.toastFrame
@@ -506,6 +509,7 @@ local TITLES = {
 	stages = "STAGE HALL",
 	charts = "CHARTS",
 	social = "SOCIAL",
+	liveshows = "LIVE SHOWS",
 }
 
 function App:buildScreenBar()

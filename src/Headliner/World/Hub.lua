@@ -10,7 +10,7 @@ local Hub = {}
 Hub.ORIGIN = Vector3.new(4000, 0, 0)
 local O = Hub.ORIGIN
 
-Hub.SPAWN = Vector3.new(0, 0, -16)
+Hub.SPAWN = Vector3.new(-32, 0, -66) -- office 1 (every client moves its player to its own office: Hub.useOffice)
 -- where Sam (the guide of the tutorial) waits: free floor spots near the stations (checked by scenario_hub)
 Hub.GUIDE_SPOTS = {
 	start = Vector3.new(-8, 0, -10),
@@ -52,6 +52,38 @@ function Hub.samRoute(from, to)
 	end
 	return pts
 end
+-- every player has an own little office in the wing behind the main office (up to 5 players): a corridor
+-- behind the back wall (door at x -4..2), the offices side by side behind it. The laptop is in your office.
+Hub.OFFICE_COUNT = 5
+Hub.CORRIDOR = { z0 = -56, z1 = -48, door = { -4, 2 } }
+Hub.OFFICE_Z = { -82, -58 }
+function Hub.officeX(i)
+	return -32 + (i - 1) * 16
+end
+-- per office: the laptop station, the spot where you start, where Sam stands, Sam's way there
+function Hub.office(i)
+	i = math.clamp(math.floor(tonumber(i) or 1), 1, Hub.OFFICE_COUNT)
+	local cx = Hub.officeX(i)
+	return {
+		index = i,
+		cx = cx,
+		laptop = Vector3.new(cx, 3.6, -76.6),
+		spawn = Vector3.new(cx, 0, -66),
+		guide = Vector3.new(cx + 4.2, 0, -70),
+		route = { Vector3.new(-8, 0, -10), Vector3.new(-1, 0, -30), Vector3.new(-1, 0, -44), Vector3.new(-1, 0, -52), Vector3.new(cx, 0, -52), Vector3.new(cx, 0, -62), Vector3.new(cx + 4.2, 0, -66), Vector3.new(cx + 4.2, 0, -70) },
+	}
+end
+-- the client uses the office of its player: laptop, start spot and Sam's way go there
+function Hub.useOffice(i)
+	local o = Hub.office(i)
+	Hub.myOffice = o.index
+	Hub.STATIONS.laptop.pos = o.laptop
+	Hub.GUIDE_SPOTS.laptop = o.guide
+	Hub.SAM_ROUTES.laptop = o.route
+	Hub.SPAWN = o.spawn
+	return o
+end
+
 -- where Sam sits: his office chair (facing the door); seatTop = height of the cushion
 Hub.SAM_SEATS = {
 	office = { pos = Vector3.new(33, 0, -42), look = Vector3.new(0, 0, 1), seatTop = 2.3 },
@@ -62,7 +94,9 @@ Hub.STATIONS = {
 	meeting = { pos = Vector3.new(-63, 3.4, -24), name = "MEETING ROOM", sub = "Artists & talent", action = "Start meeting" },
 	stagehall = { pos = Vector3.new(58, 3.6, -24), name = "STAGE HALL", sub = "Build stages", action = "Build stages" },
 	charts = { pos = Vector3.new(-20, 9, -45.4), name = "CHARTS", sub = "Top grossing tours", action = "View charts" },
+	liveboard = { pos = Vector3.new(37.4, 4, -52), name = "LIVE SHOWS", sub = "Shows of other labels", action = "See live shows" },
 }
+Hub.useOffice(1) -- (the server and the tests: office 1; every client switches to the office of its player)
 
 -- people (the client builds and animates them): staff at their desks, walkers, people at the cafe
 Hub.STAFF = {
@@ -577,6 +611,81 @@ local function shop(parent, x0, x1, o)
 end
 
 ------------------------------------------------------------------ the building
+-- the office wing: a corridor behind the main office and one office per player (laptop, PC, sofa, shelf)
+-- with a name plate at the door (the server writes the label name on it: attribute Office = index)
+local function buildOffices(shell, deco, stations, H)
+	local cz0, cz1 = Hub.CORRIDOR.z0, Hub.CORRIDOR.z1
+	local oz0, oz1 = Hub.OFFICE_Z[1], Hub.OFFICE_Z[2]
+	box(shell, "WingFloor", -42, -1, oz0 - 2, 42, 0, cz1, C.floorWood, Enum.Material.WoodPlanks)
+	box(deco, "CorridorRunner", -38, 0, cz0 + 2.2, 36, 0.06, cz1 - 2.2, Color3.fromRGB(150, 160, 190), Enum.Material.Fabric, { collide = false })
+	box(shell, "WingBack", -42, 0, oz0 - 2, 42, H + 1, oz0, C.wall)
+	box(shell, "WingSide", -42, 0, oz0, -40, H + 1, cz1, C.wall)
+	box(shell, "WingSide", 40, 0, oz0, 42, H + 1, cz1, C.wall)
+	box(shell, "WingCeiling", -40, H, oz0, 40, H + 1, cz1, C.ceiling)
+	box(shell, "WingRoof", -42, H + 1, oz0 - 2, 42, H + 2, cz1, C.grey, Enum.Material.Concrete)
+	-- the wall between corridor and offices, with a door to every office
+	local x = -40
+	for i = 1, Hub.OFFICE_COUNT do
+		local cx = Hub.officeX(i)
+		box(shell, "OfficeFront", x, 0, oz1, cx - 2.5, H, cz0, C.wall)
+		box(shell, "OfficeDoorTop", cx - 2.5, 10, oz1, cx + 2.5, H, cz0, C.wall)
+		box(deco, "OfficeDoorFrame", cx - 3.1, 0, cz0, cx - 2.5, 10, cz0 + 0.3, C.white, nil, { collide = false })
+		box(deco, "OfficeDoorFrame", cx + 2.5, 0, cz0, cx + 3.1, 10, cz0 + 0.3, C.white, nil, { collide = false })
+		box(deco, "OfficeDoorFrame", cx - 3.1, 10, cz0, cx + 3.1, 10.6, cz0 + 0.3, C.white, nil, { collide = false })
+		x = cx + 2.5
+		-- name plate in the corridor (the label name of the player who works here)
+		local plate = box(deco, "OfficeName", cx - 4, 11.2, cz0 + 0.02, cx + 4, 13, cz0 + 0.22, C.purple, nil, { collide = false })
+		plate:SetAttribute("Office", i)
+		sign(plate, Enum.NormalId.Back, "OFFICE " .. i, C.white).Name = "OfficeNameSign"
+		ceilingLight(deco, Vector3.new(cx, H - 0.15, (cz0 + cz1) / 2), 6)
+		-- walls between the offices
+		if i < Hub.OFFICE_COUNT then
+			box(shell, "OfficeWall", cx + 7.7, 0, oz0, cx + 8.3, H, oz1, C.wall)
+		end
+		local off = new("Folder", { Name = "Office" .. i }, deco)
+		box(off, "OfficeRug", cx - 5, 0, -73, cx + 5, 0.06, -61, Color3.fromRGB(214, 206, 236), Enum.Material.Fabric, { collide = false })
+		ceilingLight(off, Vector3.new(cx, H - 0.15, -70), 8)
+		-- desk at the back wall with the laptop (your station), a PC with two screens, a desk lamp
+		local dk = new("Model", { Name = "OfficeDesk" .. i }, stations)
+		box(dk, "DeskTop", cx - 5, 3, -80, cx + 5, 3.5, -75, C.wood, Enum.Material.Wood)
+		box(dk, "DeskSide", cx - 4.6, 0, -79.6, cx - 4, 3, -75.4, C.white)
+		box(dk, "DeskSide", cx + 4, 0, -79.6, cx + 4.6, 3, -75.4, C.white)
+		box(dk, "DeskFront", cx - 4, 0.6, -75.7, cx + 4, 3, -75.4, C.purple)
+		local laptop = box(dk, "Laptop", cx - 1.5, 3.5, -77.2, cx + 1.5, 3.7, -75.2, C.grey, Enum.Material.Metal)
+		local lp = Vector3.new(cx, 0, -77.6)
+		part(dk, "LaptopScreen", Vector3.new(3, 2, 0.12), CFrame.new(lp + Vector3.new(0, 4.55, -0.45)) * CFrame.Angles(math.rad(-12), 0, 0), C.grey, Enum.Material.Metal)
+		part(dk, "LaptopDisplay", Vector3.new(2.7, 1.7, 0.04), CFrame.new(lp + Vector3.new(0, 4.55, -0.45)) * CFrame.Angles(math.rad(-12), 0, 0) * CFrame.new(0, 0, 0.09), Color3.fromRGB(150, 140, 250), Enum.Material.SmoothPlastic, { collide = false })
+		local pr = prompt(laptop, "laptop", "Open laptop", "Your office", 9)
+		pr:SetAttribute("Office", i)
+		for _, mx in ipairs({ -3.2, 3.2 }) do
+			box(dk, "MonitorStand", cx + mx - 0.2, 3.5, -79.4, cx + mx + 0.2, 4.6, -79, C.dark)
+			box(dk, "Monitor", cx + mx - 1.6, 4.6, -79.5, cx + mx + 1.6, 6.6, -79.25, C.dark)
+			box(dk, "MonitorImage", cx + mx - 1.45, 4.75, -79.25, cx + mx + 1.45, 6.45, -79.2, (mx > 0) and Color3.fromRGB(110, 200, 190) or Color3.fromRGB(240, 150, 190), nil, { collide = false })
+		end
+		box(dk, "PCTower", cx + 5.4, 0, -79.6, cx + 6.8, 3.4, -76.6, C.dark, Enum.Material.Metal)
+		box(dk, "PCLight", cx + 5.38, 2.6, -77.4, cx + 5.4, 3, -76.8, C.teal, Enum.Material.Neon, { collide = false })
+		chair(dk, Vector3.new(cx, 0, -72.6), 0, C.purple)
+		-- a shelf above the desk, a sofa on the side, plants, posters
+		shelf(off, cx - 6, oz0, cx + 6, 7.4, 2, 1)
+		sofa(off, Vector3.new(cx - 5.4, 0, -64), -math.pi / 2, (i % 2 == 0) and C.teal or C.coral, 8)
+		box(off, "SideTable", cx - 6.6, 0, -69.6, cx - 4.8, 2, -67.8, C.woodDark, Enum.Material.Wood)
+		plant(off, Vector3.new(cx + 5.8, 0, -61), false)
+		plant(off, Vector3.new(cx - 6, 0, -80.4), false)
+		poster(off, Vector3.new(cx + 7.58, 8, -66), Enum.NormalId.Left, 5, 7)
+	end
+	box(shell, "OfficeFront", x, 0, oz1, 40, H, cz0, C.wall)
+	-- the corridor: lights, plants, posters, the LIVE SHOWS board at the end
+	plant(deco, Vector3.new(-38.2, 0, -50), true)
+	for _, px in ipairs({ -24, -8, 8, 24 }) do
+		poster(deco, Vector3.new(px, 7.5, -48.12), Enum.NormalId.Front, 5, 7)
+	end
+	local lb = new("Model", { Name = "LiveBoard" }, stations)
+	box(lb, "LiveFrame", 39.4, 2.5, -55.4, 39.96, 11.5, -48.6, C.dark)
+	local screen = box(lb, "LiveScreen", 39.2, 3, -55, 39.4, 11, -49, C.screen)
+	sign(screen, Enum.NormalId.Left, "LIVE SHOWS", Color3.fromRGB(255, 90, 90))
+	prompt(screen, "liveboard", "See live shows", "Other labels", 10)
+end
+
 function Hub.build(parentFolder)
 	posters = 0
 	local old = workspace:FindFirstChild("StarlightRecords")
@@ -604,7 +713,9 @@ function Hub.build(parentFolder)
 	box(deco, "DoorMat", -5, 0, 40, 5, 0.06, 45.9, C.dark, Enum.Material.Fabric, { collide = false })
 
 	------------------------------------------------------------ outer walls (all one colour, so corners never flicker)
-	box(shell, "BackWall", -90, 0, -48, 40, H + 1, -46, C.wall)
+	box(shell, "BackWall", -90, 0, -48, -4, H + 1, -46, C.wall)
+	box(shell, "BackWall", 2, 0, -48, 40, H + 1, -46, C.wall)
+	box(shell, "BackDoorTop", -4, 10, -48, 2, H + 1, -46, C.wall)
 	box(shell, "LeftWall", -90, 0, -46, -88, H + 1, 48, C.wall)
 	-- lounge front: low wall, window, top wall
 	box(shell, "LoungeFrontLow", -88, 0, 46, -40, 3.5, 48, C.wall)
@@ -687,34 +798,16 @@ function Hub.build(parentFolder)
 	spawn.AllowTeamChangeOnTouch = false
 	Hub.spawnPart = spawn
 
-	------------------------------------------------------------ OFFICE: boss desk with the laptop
-	local dk = new("Model", { Name = "BossDesk" }, stations)
-	local dp = Vector3.new(14, 0, -37)
-	box(dk, "DeskTop", 6, 3, -40, 22, 3.5, -34, C.wood, Enum.Material.Wood)
-	box(dk, "DeskSide", 6.4, 0, -39.6, 7, 3, -34.4, C.white)
-	box(dk, "DeskSide", 21, 0, -39.6, 21.6, 3, -34.4, C.white)
-	box(dk, "DeskFront", 7, 0.6, -34.7, 21, 3, -34.4, C.purple)
-	local laptop = box(dk, "Laptop", 12.5, 3.5, -36.6, 15.5, 3.7, -34.6, C.grey, Enum.Material.Metal)
-	part(dk, "LaptopScreen", Vector3.new(3, 2, 0.12), CFrame.new(dp + Vector3.new(0, 4.55, -0.45)) * CFrame.Angles(math.rad(-12), 0, 0), C.grey, Enum.Material.Metal)
-	part(dk, "LaptopDisplay", Vector3.new(2.7, 1.7, 0.04), CFrame.new(dp + Vector3.new(0, 4.55, -0.45)) * CFrame.Angles(math.rad(-12), 0, 0) * CFrame.new(0, 0, 0.09), Color3.fromRGB(150, 140, 250), Enum.Material.SmoothPlastic, { collide = false })
-	prompt(laptop, "laptop", "Open laptop", "Office", 9)
-	for _, mx in ipairs({ -4.5, 4.5 }) do
-		box(dk, "MonitorStand", dp.X + mx - 0.2, 3.5, -39.2, dp.X + mx + 0.2, 4.6, -38.8, C.dark)
-		box(dk, "Monitor", dp.X + mx - 2, 4.6, -39.3, dp.X + mx + 2, 7, -39.05, C.dark)
-		box(dk, "MonitorImage", dp.X + mx - 1.8, 4.75, -39.05, dp.X + mx + 1.8, 6.85, -39.0, (mx > 0) and Color3.fromRGB(110, 200, 190) or Color3.fromRGB(240, 150, 190), nil, { collide = false })
-	end
-	chair(dk, dp + Vector3.new(0, 0, -6.2), math.pi, C.purple)
-	box(dk, "Lamp", 20.85, 3.5, -35.75, 21.15, 5.6, -35.45, C.dark)
-	part(dk, "LampShade", Vector3.new(1.2, 0.9, 1.2), Vector3.new(21, 6.05, -35.6), C.yellow, Enum.Material.SmoothPlastic, { collide = false })
-	-- painted accent wall behind the desk + shelves + label logo
-	box(deco, "AccentWall", 2, 0, -46, 24.2, H, -45.94, C.purple)
-	shelf(deco, 4, -45.94, 13, 6, 2, 1)
-	shelf(deco, 15, -45.94, 24, 6, 2, 1)
-	local logo = box(deco, "LogoBoard", 5, 13.2, -45.9, 23, 16.8, -45.7, C.white, nil, { collide = false })
+	------------------------------------------------------------ OFFICE: the way to the players' own offices
+	-- (the laptops are in the offices behind the back wall, see buildOffices)
+	box(deco, "BackDoorFrame", -4.6, 0, -45.98, -4, 10, -45.6, C.white, nil, { collide = false })
+	box(deco, "BackDoorFrame", 2, 0, -45.98, 2.6, 10, -45.6, C.white, nil, { collide = false })
+	box(deco, "BackDoorFrame", -4.6, 10, -45.98, 2.6, 10.6, -45.6, C.white, nil, { collide = false })
+	local od = box(deco, "OfficesSign", -4, 10.9, -45.94, 2, 12.4, -45.8, C.teal, nil, { collide = false })
+	sign(od, Enum.NormalId.Back, "OFFICES", C.white)
+	local logo = box(deco, "LogoBoard", -6.6, 13.2, -45.9, 4.6, 16.8, -45.7, C.white, nil, { collide = false })
 	sign(logo, Enum.NormalId.Back, "STARLIGHT RECORDS", C.purple).Name = "LabelSign"
-	record(deco, Vector3.new(30, 9, -45.74), 0, true)
-	record(deco, Vector3.new(35.5, 9, -45.74), 0, false)
-	record(deco, Vector3.new(-3, 9, -45.74), 0, true)
+	plant(deco, Vector3.new(-6, 0, -43.6), false)
 
 	------------------------------------------------------------ OFFICE: the world map table (centre)
 	local mt = new("Model", { Name = "MapTable" }, stations)
@@ -743,16 +836,32 @@ function Hub.build(parentFolder)
 	------------------------------------------------------------ OFFICE: Sam's own office (glass room, back right)
 	local so = new("Folder", { Name = "SamOffice" }, deco)
 	-- glass walls (front with a door on the right, left side), the hall wall and back wall close the room
-	box(shell, "SamGlassFront", 24.7, 0, -23.2, 33.6, H - 0.02, -22.8, C.glass, Enum.Material.Glass, { transparency = 0.6 })
+	box(shell, "SamGlassFront", 6.7, 0, -23.2, 33.6, H - 0.02, -22.8, C.glass, Enum.Material.Glass, { transparency = 0.6 })
 	box(shell, "SamGlassFront", 38.4, 0, -23.2, 40, H - 0.02, -22.8, C.glass, Enum.Material.Glass, { transparency = 0.6 })
-	box(shell, "SamGlassSide", 24.3, 0, -46, 24.7, H - 0.02, -23.4, C.glass, Enum.Material.Glass, { transparency = 0.6 })
-	box(shell, "SamPost", 24.2, 0, -23.4, 24.8, H, -22.6, C.white)
+	box(shell, "SamGlassSide", 6.3, 0, -46, 6.7, H - 0.02, -23.4, C.glass, Enum.Material.Glass, { transparency = 0.6 })
+	box(shell, "SamPost", 6.2, 0, -23.4, 6.8, H, -22.6, C.white)
+	box(shell, "SamPost", 19.7, 0, -23.4, 20.3, H, -22.6, C.white)
 	box(shell, "SamDoorPost", 33.6, 0, -23.4, 34.4, 10, -22.6, C.white)
 	box(shell, "SamDoorPost", 37.6, 0, -23.4, 38.4, 10, -22.6, C.white)
 	box(shell, "SamDoorTop", 33.6, 10, -23.4, 38.4, H, -22.6, C.wall)
 	local sam = box(deco, "SamSign", 34.2, 10.6, -22.56, 37.8, 12.4, -22.4, C.teal, nil, { collide = false })
 	sign(sam, Enum.NormalId.Back, "SAM  |  LABEL MANAGER", C.white)
 	box(so, "SamRug", 25.5, 0, -45.5, 39.5, 0.06, -24, Color3.fromRGB(200, 214, 230), Enum.Material.Fabric, { collide = false })
+	-- the new, bigger part of his office (left): a small meeting table, gold records, a bookshelf, plants
+	box(so, "SamRug2", 8, 0, -44, 22, 0.06, -26, Color3.fromRGB(226, 214, 236), Enum.Material.Fabric, { collide = false })
+	box(so, "MeetTableTop", 11, 2.6, -38, 19, 3, -32, C.wood, Enum.Material.Wood)
+	box(so, "MeetTableLeg", 14.6, 0, -35.4, 15.4, 2.6, -34.6, C.dark, Enum.Material.Metal)
+	box(so, "MeetTableFoot", 13.5, 0, -36.5, 16.5, 0.2, -33.5, C.dark, Enum.Material.Metal)
+	chair(so, Vector3.new(13, 0, -40.4), math.pi, C.purple)
+	chair(so, Vector3.new(17, 0, -40.4), math.pi, C.purple)
+	chair(so, Vector3.new(13, 0, -29.6), 0, C.purple)
+	chair(so, Vector3.new(17, 0, -29.6), 0, C.purple)
+	box(so, "RecordWall", 8, 5, -45.94, 22, 15, -45.8, C.woodDark, Enum.Material.Wood, { collide = false })
+	for k = 0, 2 do
+		record(so, Vector3.new(10.5 + k * 4.5, 10, -45.74), 0, k ~= 1)
+	end
+	plant(so, Vector3.new(8.4, 0, -25.2), true)
+	plant(so, Vector3.new(22.6, 0, -44.4), false)
 	-- his desk at the back (he faces the door), two chairs for visitors
 	desk(so, Vector3.new(33, 0, -38), math.pi, true)
 	chair(so, Vector3.new(33, 0, -42), math.pi, C.teal)
@@ -768,6 +877,9 @@ function Hub.build(parentFolder)
 	light(shade, 14, 0.8)
 	shelf(so, 25, -46, 30.5, 0, 2, 1)
 	plant(so, Vector3.new(38.6, 0, -44.6), false)
+
+	------------------------------------------------------------ OFFICES: one for every player, behind the back wall
+	buildOffices(shell, deco, stations, H)
 
 	------------------------------------------------------------ OFFICE: staff desks (people work here)
 	local staff = new("Folder", { Name = "StaffDesks" }, deco)

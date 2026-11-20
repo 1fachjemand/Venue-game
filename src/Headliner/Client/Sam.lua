@@ -462,8 +462,11 @@ function Sam.behave()
 		return
 	end
 	if app.mode == "meeting" then
+		-- you sit down: Sam is there right away (no long walk from his office); afterwards he walks back
 		if Sam.goal ~= "board" then
-			Sam.walkTo("board")
+			Sam.walk, Sam.sitting = nil, nil
+			Sam.goal = "board"
+			standAt("board")
 		end
 	elseif Sam.goal ~= "office" then
 		Sam.goal = "office"

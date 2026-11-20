@@ -134,16 +134,60 @@ local function delta(s, full)
 	return out
 end
 
+-- every player has an own office (Hub.OFFICE_COUNT, up to 5 players): the label name goes on the door plate
+local plates = nil
+local function updatePlates()
+	if not plates then
+		plates = {}
+		local hubRoot = workspace:FindFirstChild("StarlightRecords")
+		for _, d in ipairs(hubRoot and hubRoot:GetDescendants() or {}) do
+			if d:IsA("BasePart") and d.Name == "OfficeName" and d:GetAttribute("Office") then
+				plates[d:GetAttribute("Office")] = d
+			end
+		end
+	end
+	local names = {}
+	for _, ss in pairs(sessions) do
+		if ss.office and ss.state then
+			names[ss.office] = ss.state.labelName
+		end
+	end
+	for i, plate in pairs(plates) do
+		local g = plate:FindFirstChild("OfficeNameSign")
+		local lbl = g and g:FindFirstChildOfClass("TextLabel")
+		if lbl then
+			lbl.Text = names[i] and string.upper(names[i]) or ("OFFICE " .. i)
+		end
+	end
+end
+local function freeOffice()
+	local used = {}
+	for _, ss in pairs(sessions) do
+		if ss.office then
+			used[ss.office] = true
+		end
+	end
+	for i = 1, Hub.OFFICE_COUNT do
+		if not used[i] then
+			return i
+		end
+	end
+	return 1 -- more players than offices: they share the first one
+end
+
 local function startSession(s, state, slot)
 	s.state = state
 	s.slot = slot
 	s.sent = {}
 	s.dirty = true
+	updatePlates()
 end
 
 Players.PlayerAdded:Connect(function(player)
 	local s = { loaded = false, sent = {}, saved = {} }
+	s.office = freeOffice()
 	sessions[player] = s
+	player:SetAttribute("Office", s.office)
 	-- no automatic respawn: the character comes back a moment after falling or dying
 	player.CharacterAdded:Connect(function(char)
 		local hum = char:WaitForChild("Humanoid")
@@ -171,6 +215,7 @@ end)
 Players.PlayerRemoving:Connect(function(player)
 	save(player, true)
 	sessions[player] = nil
+	updatePlates()
 end)
 
 game:BindToClose(function()
@@ -253,6 +298,7 @@ function SESSION.leave(player, s)
 		s.saved[s.slot] = s.state
 	end
 	s.state = nil
+	updatePlates()
 	if player.Character then
 		player.Character:Destroy()
 		pcall(function()
@@ -282,6 +328,47 @@ end
 function SESSION.enterWorld(player, s)
 	spawnCharacter(player)
 	return { ok = true }
+end
+
+-- the LIVE SHOWS board: the next shows of the other players' tours (you can go and watch them)
+function SESSION.liveShows(player, s)
+	local list = {}
+	for other, ss in pairs(sessions) do
+		if other ~= player and ss.state then
+			local st = ss.state
+			for _, tour in ipairs(st.tours) do
+				if tour.status ~= "done" then
+					local best, bestIdx = nil, nil
+					for i, sh in ipairs(tour.shows) do
+						if not sh.done and (not best or sh.day < best.day) then
+							best, bestIdx = sh, i
+						end
+					end
+					if best then
+						local design = GS.showDesign(st, tour, bestIdx)
+						table.insert(list, {
+							player = other.DisplayName,
+							label = st.labelName,
+							tourName = tour.name,
+							artistId = tour.artistId,
+							venueId = best.venueId,
+							inDays = best.day - st.day,
+							sold = best.sold or 0,
+							cap = best.cap or 0,
+							design = design and { id = design.id, name = design.name, class = design.class, layout = design.layout, items = design.items } or nil,
+						})
+					end
+				end
+			end
+		end
+	end
+	table.sort(list, function(a, b)
+		return a.inDays < b.inDays
+	end)
+	while #list > 12 do
+		table.remove(list)
+	end
+	return { ok = true, data = { shows = list } }
 end
 
 function SESSION.resync(player, s)
