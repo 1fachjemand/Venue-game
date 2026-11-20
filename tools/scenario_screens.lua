@@ -130,6 +130,12 @@ dump("15_designer_pending")
 MOCK.clickExact("Screens")
 MOCK.click("PLACE", 1)
 local Stage3D = require(root.Client.Stage3D)
+-- a placed deck: the small bar above the catalog, its looks open with "Style"
+for _, r in ipairs(Stage3D.items) do if r.def.deck then require(root.Client.Designer).current.select(r) break end end
+MOCK.runTasks()
+dump("15b_designer_selected")
+MOCK.clickExact("Style")
+dump("15c_designer_style")
 MOCK.clickExact("2  SETLIST & SHOW")
 for _, r in ipairs(Stage3D.items) do if r.kind == "led" then require(root.Client.Designer).current.select(r) break end end
 dump("16_designer_show")

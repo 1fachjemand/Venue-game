@@ -80,6 +80,7 @@ function Designer.open(app, designId)
 	local groupBoxes = {}
 	local lastSettings = {}
 	local gridIndex, turnIndex = 1, 1
+	local styleOpen = false -- the "Style" box (surface / colour) above the tool bar
 	local focus = Vector3.new(0, 6, 0)
 	local yaw, pitch, dist = 0, 0.6, 150
 	local rotating = false
@@ -191,7 +192,9 @@ function Designer.open(app, designId)
 		ScrollBarImageColor3 = T.stroke,
 	})
 	UI.List(false, 8).Parent = cardRow
-	local catHint = UI.Label(catalog, "", UI.px(1430, 8), UI.px(474, 36), { textSize = 14, color = T.sub, alignX = Enum.TextXAlignment.Right })
+	local catHint = UI.Label(catalog, "", UI.px(1262, 8), UI.px(380, 36), { textSize = 14, color = T.sub, alignX = Enum.TextXAlignment.Right })
+	-- the two build settings (grid and turn step) sit quietly at the end of the tab row
+	local snapBox = UI.New("Frame", { Parent = catalog, Position = UI.px(1652, 8), Size = UI.px(252, 36), BackgroundTransparency = 1 })
 
 	-- tool bar above the catalog (like the build bar in park games)
 	local toolbar = UI.Panel(root, UI.px(560, 800), UI.px(800, 58), T.panel)
@@ -636,6 +639,9 @@ function Designer.open(app, designId)
 		placeDef = nil
 		mode = refs and "selected" or "idle"
 		screenSong = 0
+		if not refs then
+			styleOpen = false
+		end
 		refreshList()
 		refreshInspector()
 		refreshToolbar()
@@ -1054,7 +1060,7 @@ function Designer.open(app, designId)
 				c.TextColor3 = on and BLACK or T.text
 			end
 		end
-		catHint.Text = (mode == "place" and placeDef) and ("Placing: " .. placeDef.name .. " - point at the stage and press Q") or (n .. " items  |  click a card to build")
+		catHint.Text = (mode == "place" and placeDef) and ("Point at the stage, Q places it") or (n .. " items  |  click a card to build")
 	end
 
 	for i, cat in ipairs(StageItems.CATEGORIES) do
@@ -1066,33 +1072,112 @@ function Designer.open(app, designId)
 	end
 
 	------------------------------------------------------------ tool bar
+	-- like the build bar in park and house building games: one small bar above the catalog that only shows
+	-- what you can do with the piece right now (name, size, price + a few buttons). Looks (surface, colour)
+	-- open on demand with "Style", grid and turn step are two quiet buttons at the end of the tab row.
+	local function hasStyle(def)
+		return def ~= nil and (def.deck or def.id == "curtain" or def.id == "ledcube")
+	end
+	local function sizeText(def, rec)
+		local sz = def.size
+		local parts = {}
+		if sz then
+			table.insert(parts, tostring(rec.w or sz.w))
+			if sz.d then
+				table.insert(parts, tostring(rec.d or sz.d))
+			end
+		end
+		if def.heights and not (sz and sz.dLabel == "Height") then
+			table.insert(parts, tostring(rec.h or def.h))
+		end
+		return (#parts > 0) and (table.concat(parts, " x ") .. " studs") or nil
+	end
+	local function refreshSnap()
+		UI.ClearChildren(snapBox)
+		UI.Button(snapBox, "Grid " .. grid(), UI.px(0, 0), UI.px(100, 36), { textSize = 14, color = T.panel2 }, function()
+			gridIndex = gridIndex % #GRIDS + 1
+			refreshSnap()
+		end).Name = "GridButton"
+		UI.Button(snapBox, "Turn step " .. TURNS[turnIndex] .. "°", UI.px(106, 0), UI.px(146, 36), { textSize = 14, color = T.panel2 }, function()
+			turnIndex = turnIndex % #TURNS + 1
+			refreshSnap()
+		end).Name = "TurnStepButton"
+	end
+	refreshSnap()
 	local function toolButton(text, w, color, textColor, cb, disabled)
 		return UI.Button(toolbar, text, nil, UI.px(w, 44), { color = color or T.panel3, textColor = textColor, textSize = 15, disabled = disabled }, cb)
 	end
 	refreshToolbar = function()
 		UI.ClearChildren(toolbar)
 		local tgt = target()
-		toolButton("Grid " .. grid(), 86, T.panel2, nil, function()
-			gridIndex = gridIndex % #GRIDS + 1
-			refreshToolbar()
-		end).LayoutOrder = 1
-		toolButton("Turn " .. TURNS[turnIndex] .. " deg", 104, T.panel2, nil, function()
-			turnIndex = turnIndex % #TURNS + 1
-			refreshToolbar()
-		end).LayoutOrder = 2
-		toolButton("Turn (R)", 100, nil, nil, function()
-			rotate(TURNS[turnIndex])
-		end, not (tgt or mode == "place")).LayoutOrder = 3
-		toolButton("Copy (C)", 100, nil, nil, copySelected, not tgt).LayoutOrder = 4
-		toolButton("Mirror (M)", 110, nil, nil, mirrorChosen, not (selected or group) or pending ~= nil).LayoutOrder = 4
-		toolButton("Delete (X)", 110, UI.shade(T.bad, 0.7), nil, deleteSelected, not tgt).LayoutOrder = 5
-		toolButton("X", 56, T.panel2, T.bad, cancel, not (tgt or mode == "place")).LayoutOrder = 6
-		local price = pending and Sim.itemPrice(pending.def, pending.rec) or nil
-		local okBtn = toolButton(pending and ("PLACE (Q)  " .. (price > 0 and Util.moneyShort(price) or "")) or "PLACE (Q)", pending and 180 or 120, pending and T.good or T.panel2, pending and BLACK or T.sub, confirm, not pending)
-		okBtn.LayoutOrder = 7
-		toolbar.Size = UI.px(pending and 990 or 930, 58)
-		toolbar.Position = UI.px(960 - (pending and 495 or 465), 800)
-		-- the tools only show while you place or change something
+		local def, rec
+		if pending then
+			def, rec = pending.def, pending.rec
+		elseif mode == "place" and placeDef then
+			def, rec = placeDef, ghostRec
+		elseif selected then
+			def, rec = selected.def, selected.rec
+		end
+		local isGroup = group ~= nil and not pending
+		local order, width = 0, 0
+		local function add(inst, w)
+			order = order + 1
+			inst.LayoutOrder = order
+			width = width + w + 6
+			return inst
+		end
+		-- what it is
+		local title, sub = nil, nil
+		if isGroup then
+			title, sub = #group .. " items", "Shift + click: add or remove"
+		elseif def then
+			title = def.name
+			local price = Sim.itemPrice(def, rec or {})
+			local bits = {}
+			local st = rec and sizeText(def, rec)
+			if st then
+				table.insert(bits, st)
+			end
+			table.insert(bits, (def.cost > 0) and Util.money(price) or "Free")
+			sub = table.concat(bits, "  |  ")
+		end
+		if title then
+			local info = add(UI.New("Frame", { Parent = toolbar, Size = UI.px(250, 44), BackgroundTransparency = 1, Name = "ToolInfo" }), 250)
+			UI.Label(info, title, UI.px(4, 0), UI.px(246, 24), { textSize = 17, font = UI.FontBlack })
+			UI.Label(info, sub or "", UI.px(4, 24), UI.px(246, 18), { textSize = 13, color = pending and T.good or T.sub, font = UI.FontBold })
+		end
+		if isGroup then
+			add(toolButton("Copy (C)", 100, nil, nil, copyGroup), 100)
+			add(toolButton("Mirror (M)", 110, nil, nil, mirrorChosen), 110)
+			add(toolButton("Delete (X)", 110, UI.shade(T.bad, 0.7), nil, deleteGroup), 110)
+		elseif tgt or mode == "place" then
+			add(toolButton("Turn (R)", 100, nil, nil, function()
+				rotate(TURNS[turnIndex])
+			end), 100)
+			if selected and not pending then
+				add(toolButton("Copy (C)", 100, nil, nil, copySelected), 100)
+				add(toolButton("Mirror (M)", 110, nil, nil, mirrorChosen), 110)
+			end
+			if tgt and hasStyle(def) then
+				add(toolButton("Style", 90, styleOpen and T.accent or nil, nil, function()
+					styleOpen = not styleOpen
+					refreshInspector()
+					refreshToolbar()
+				end), 90).Name = "StyleButton"
+			end
+			if pending or mode == "place" then
+				add(toolButton("Cancel", 90, nil, nil, cancel), 90)
+			else
+				add(toolButton("Delete (X)", 110, UI.shade(T.bad, 0.7), nil, deleteSelected), 110)
+			end
+			if pending then
+				local price = Sim.itemPrice(pending.def, pending.rec)
+				add(toolButton("PLACE (Q)  " .. (price > 0 and Util.moneyShort(price) or ""), 170, T.good, BLACK, confirm), 170)
+			end
+		end
+		toolbar.Size = UI.px(width + 16, 58)
+		toolbar.Position = UI.px(960 - math.floor((width + 16) / 2), 800)
+		-- the bar only shows while you place or change something
 		toolbar.Visible = phase == "build" and catalog.Visible and (tgt ~= nil or mode == "place" or group ~= nil)
 	end
 
@@ -1131,77 +1216,33 @@ function Designer.open(app, designId)
 		end
 	end
 
-	refreshInspector = function()
-		if refreshSetlist then
-			refreshSetlist()
-		end
-		UI.ClearChildren(inspScroll)
-		order = 0
-		local def, rec
-		if pending then
-			def, rec = pending.def, pending.rec
-		elseif mode == "place" and placeDef then
-			def, rec = placeDef, ghostRec
-		elseif selected then
-			def, rec = selected.def, selected.rec
-		end
-		if group and not pending then
-			inspector.Visible = true
-			nextOrder(UI.Label(inspScroll, "GROUP", nil, UI.px(296, 18), { textSize = 13, color = T.gold, font = UI.FontBold }))
-			nextOrder(UI.Label(inspScroll, #group .. " items selected", nil, UI.px(296, 30), { textSize = 22, font = UI.FontBlack }))
-			nextOrder(UI.Label(inspScroll, "The arrows in the middle move them together, the orange ring turns them around the middle. Shift + click adds or removes items.", nil, UI.px(296, 0), { textSize = 13, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
-			nextOrder(UI.Button(inspScroll, "Copy in place (C)", nil, UI.px(296, 36), { textSize = 15, color = T.accent2 }, copyGroup))
-			nextOrder(UI.Button(inspScroll, "Mirror to the other side (M)", nil, UI.px(296, 36), { textSize = 15 }, mirrorChosen))
-			nextOrder(UI.Button(inspScroll, "Delete all (X)", nil, UI.px(296, 36), { textSize = 15, color = UI.shade(T.bad, 0.7) }, deleteGroup))
-			nextOrder(UI.Button(inspScroll, "Clear selection", nil, UI.px(296, 32), { textSize = 13 }, function()
-				select(nil)
-			end))
-			return
-		end
-		inspector.Visible = def ~= nil
-		if not def then
-			return
-		end
-		local head = (pending and "NEW - NOT BOUGHT YET") or (mode == "place" and "PLACING") or "SELECTED"
-		nextOrder(UI.Label(inspScroll, head, nil, UI.px(296, 18), { textSize = 13, color = pending and T.good or (selected and T.gold or T.accent2), font = UI.FontBold }))
-		nextOrder(UI.Label(inspScroll, def.name, nil, UI.px(296, 30), { textSize = 22, font = UI.FontBlack }))
-		local price = Sim.itemPrice(def, rec)
-		local priceTxt = (def.cost > 0) and Util.money(price) or "Free"
-		if selected and not pending then
-			priceTxt = priceTxt .. "   (sells for " .. Util.money(math.floor(price * Config.RESALE)) .. ")"
-		end
-		nextOrder(UI.Label(inspScroll, priceTxt, nil, UI.px(296, 20), { textSize = 14, color = T.gold, font = UI.FontBold }))
-		nextOrder(UI.Label(inspScroll, def.desc, nil, UI.px(296, 0), { textSize = 13, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
-
-		local build = phase == "build"
-		if build and (def.size or def.heights) then
-			-- the size is changed with the white handles on the piece itself
-			local sz = def.size
-			local parts = {}
-			if sz then
-				local wLabel = (def.shape == "round" or def.id == "portal" or def.id == "moon") and "across" or ((def.mount == "rig") and "long" or "wide")
-				table.insert(parts, (rec.w or sz.w) .. " " .. wLabel)
-				if sz.d then
-					table.insert(parts, (rec.d or sz.d) .. ((sz.dLabel == "Height") and " high" or " deep"))
+	-- the inspector frame takes the height of what is in it (never a big empty panel)
+	local function fitInspector(x, bottomY, topY, fromBottom)
+		local h, n = 24, 0
+		for _, c in ipairs(inspScroll:GetChildren()) do
+			if c:IsA("GuiObject") then
+				n = n + 1
+				local ch = c.Size.Y.Offset
+				if c:IsA("TextLabel") and c.AutomaticSize == Enum.AutomaticSize.Y then
+					local perLine = math.max(10, math.floor(296 / (c.TextSize * 0.52)))
+					ch = math.ceil(#c.Text / perLine) * math.ceil(c.TextSize * 1.25)
 				end
+				h = h + ch
 			end
-			if def.heights and not (sz and sz.dLabel == "Height") then
-				table.insert(parts, (rec.h or def.h) .. " high")
-			end
-			nextOrder(section("SIZE"))
-			nextOrder(UI.Label(inspScroll, table.concat(parts, "  x  ") .. " studs", nil, UI.px(296, 22), { textSize = 16, font = UI.FontBold }))
-			nextOrder(UI.Label(inspScroll, "Pull the gold cubes on the piece to resize (the top cube changes the height). Hold Shift: both sides grow.", nil, UI.px(296, 0), { textSize = 13, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
 		end
-		if build and def.id == "ledcube" then
-			-- steel cables up to the roof, or the cube hangs free
-			nextOrder(section("ROOF"))
-			chips({ { true, "Connect to roof" }, { false, "No cables" } }, function(it)
-				return (rec.roof ~= false) == it[1]
-			end, function(it)
-				applyChange({ roof = it[1] })
-			end, 2)
+		h = h + math.max(0, n - 1) * 8
+		h = math.min(h, bottomY - topY)
+		inspector.Size = UI.px(324, h)
+		inspScroll.Size = UI.px(324, h)
+		inspector.Position = UI.px(x, fromBottom and (bottomY - h) or topY)
+	end
+	local function buildStyle(def, rec)
+		if not (styleOpen and def and rec and hasStyle(def) and not group and (pending or selected)) then
+			inspector.Visible = false
+			return
 		end
-		if build and def.deck then
+		inspector.Visible = true
+		if def.deck then
 			nextOrder(section("SURFACE"))
 			local list = {}
 			for _, sk in ipairs(Builder.SKINS) do
@@ -1233,18 +1274,66 @@ function Designer.open(app, designId)
 					refreshInspector()
 				end)
 			end
-		end
-		local songs = GS.songCount(self.design)
-		local showThings = def.id == "spot" or GS.PLAY_ITEMS[def.id] or Builder.SCREEN_KINDS[def.id] or FX_SONG_KINDS[def.id] or def.id == "curtain"
-		if build and def.id == "curtain" then
+		elseif def.id == "curtain" then
 			nextOrder(section("CURTAIN COLOUR"))
 			chips(Builder.CURTAIN_COLORS, function(it)
 				return (rec.cc or "red") == it[1]
 			end, function(it)
 				applyChange({ cc = it[1] })
 			end, 3)
+		elseif def.id == "ledcube" then
+			-- steel cables up to the roof, or the cube hangs free
+			nextOrder(section("CABLES"))
+			chips({ { true, "Connect to roof" }, { false, "No cables" } }, function(it)
+				return (rec.roof ~= false) == it[1]
+			end, function(it)
+				applyChange({ roof = it[1] })
+			end, 2)
 		end
-		if not build and def.id == "curtain" then
+		fitInspector(798, 792, 112, true)
+	end
+
+	refreshInspector = function()
+		if refreshSetlist then
+			refreshSetlist()
+		end
+		UI.ClearChildren(inspScroll)
+		order = 0
+		local def, rec
+		if pending then
+			def, rec = pending.def, pending.rec
+		elseif mode == "place" and placeDef then
+			def, rec = placeDef, ghostRec
+		elseif selected then
+			def, rec = selected.def, selected.rec
+		end
+		if phase == "build" then
+			-- building: no side panel. The looks of the piece open above the tool bar ("Style")
+			buildStyle(def, rec)
+			return
+		end
+		if group and not pending then
+			inspector.Visible = true
+			nextOrder(UI.Label(inspScroll, "GROUP", nil, UI.px(296, 18), { textSize = 13, color = T.gold, font = UI.FontBold }))
+			nextOrder(UI.Label(inspScroll, #group .. " items selected", nil, UI.px(296, 30), { textSize = 22, font = UI.FontBlack }))
+			nextOrder(UI.Label(inspScroll, "The arrows in the middle move them together, the orange ring turns them around the middle. Shift + click adds or removes items.", nil, UI.px(296, 0), { textSize = 13, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
+			nextOrder(UI.Button(inspScroll, "Copy in place (C)", nil, UI.px(296, 36), { textSize = 15, color = T.accent2 }, copyGroup))
+			nextOrder(UI.Button(inspScroll, "Mirror to the other side (M)", nil, UI.px(296, 36), { textSize = 15 }, mirrorChosen))
+			nextOrder(UI.Button(inspScroll, "Delete all (X)", nil, UI.px(296, 36), { textSize = 15, color = UI.shade(T.bad, 0.7) }, deleteGroup))
+			nextOrder(UI.Button(inspScroll, "Clear selection", nil, UI.px(296, 32), { textSize = 13 }, function()
+				select(nil)
+			end))
+			fitInspector(1580, 788, 112, false)
+			return
+		end
+		inspector.Visible = def ~= nil
+		if not def then
+			return
+		end
+		nextOrder(UI.Label(inspScroll, def.name, nil, UI.px(296, 28), { textSize = 21, font = UI.FontBlack }))
+		local songs = GS.songCount(self.design)
+		local showThings = def.id == "spot" or GS.PLAY_ITEMS[def.id] or Builder.SCREEN_KINDS[def.id] or FX_SONG_KINDS[def.id] or def.id == "curtain"
+		if def.id == "curtain" then
 			nextOrder(section("HOW THE CURTAIN OPENS"))
 			chips(Builder.CURTAIN_ANIMS, function(it)
 				return (rec.anim or "drop") == it[1]
@@ -1260,13 +1349,10 @@ function Designer.open(app, designId)
 			end)
 			nextOrder(UI.Label(inspScroll, "Until then the curtain hides the stage. Watch it in PREVIEW SHOW.", nil, UI.px(296, 0), { textSize = 13, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
 		end
-		if build and showThings and def.id ~= "spot" then
-			nextOrder(UI.Label(inspScroll, "What it does in which song: set it up in step 2: SETLIST & SHOW (tab at the top).", nil, UI.px(296, 0), { textSize = 14, color = T.accent2, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
-		end
-		if not build and not showThings then
+		if not showThings then
 			nextOrder(UI.Label(inspScroll, "Nothing to set up for the show here. Go back to BUILD to move or change it.", nil, UI.px(296, 0), { textSize = 14, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
 		end
-		if not build and FX_SONG_KINDS[def.id] then
+		if FX_SONG_KINDS[def.id] then
 			nextOrder(section("FIRES IN SONGS"))
 			nextOrder(UI.Label(inspScroll, "Auto = the show decides (big moments, the finale). Or pick the songs yourself.", nil, UI.px(296, 0), { textSize = 13, color = T.sub, wrap = true })).AutomaticSize = Enum.AutomaticSize.Y
 			local list = { { "auto", "Auto" } }
@@ -1317,7 +1403,7 @@ function Designer.open(app, designId)
 				end))
 			end
 		end
-		if not build and def.id == "spot" then
+		if def.id == "spot" then
 			local list = spotRecs()
 			local idx = 0
 			for i, r in ipairs(list) do
@@ -1383,7 +1469,7 @@ function Designer.open(app, designId)
 				end)
 			end
 		end
-		if not build and GS.PLAY_ITEMS[def.id] then
+		if GS.PLAY_ITEMS[def.id] then
 			local isLift = def.id == "lift" or def.id == "poplift"
 			local isTower = def.id == "towerlift"
 			nextOrder(section(isTower and "LIFTS THE ARTIST UP IN SONG" or (isLift and "ARTIST COMES UP HERE IN SONG" or "ARTIST PLAYS THIS IN SONG")))
@@ -1416,11 +1502,11 @@ function Designer.open(app, designId)
 				end, 2)
 			end
 		end
-		if not build and Builder.SCREEN_KINDS[def.id] then
+		if Builder.SCREEN_KINDS[def.id] then
 			local scr = rec.scr and Util.deepCopy(rec.scr) or { default = Builder.screenConfig({ rec = rec, kind = def.id }, nil) }
 			nextOrder(section("SCREEN SHOWS"))
 			local slot = (screenSong == 0) and "default" or tostring(screenSong)
-			stepper("For", (screenSong == 0) and "Whole show" or ("Song " .. screenSong), function()
+			stepper("For", (screenSong == 0) and "All songs" or ("Song " .. screenSong), function()
 				screenSong = math.max(0, screenSong - 1)
 				refreshInspector()
 			end, function()
@@ -1522,19 +1608,7 @@ function Designer.open(app, designId)
 				end))
 			end
 		end
-		if build then
-			nextOrder(section("POSITION"))
-			stepper("Turn", (rec.r or 0) .. " deg", function()
-				rotate(-TURNS[turnIndex])
-			end, function()
-				rotate(TURNS[turnIndex])
-			end)
-			stepper("Lift up", (rec.yo or 0) .. " st", function()
-				applyChange({ yo = math.max((def.mount == "rig") and -20 or 0, (rec.yo or 0) - 1) })
-			end, function()
-				applyChange({ yo = math.min(40, (rec.yo or 0) + 1) })
-			end)
-		elseif def.id == "spot" and selected and not pending then
+		if def.id == "spot" and selected and not pending then
 			nextOrder(UI.Button(inspScroll, "Remove this spot (X)", nil, UI.px(296, 34), { textSize = 14, color = UI.shade(T.bad, 0.7) }, deleteSelected))
 		end
 		if pending then
@@ -1542,6 +1616,7 @@ function Designer.open(app, designId)
 			UI.Button(f, "X Cancel", UI.px(0, 4), UI.px(120, 42), { textSize = 15 }, cancel)
 			UI.Button(f, "PLACE (Q)", UI.px(126, 4), UI.px(170, 42), { textSize = 17, color = T.good }, confirm)
 		end
+		fitInspector(1580, 788, 112, false)
 	end
 
 	------------------------------------------------------------ step 2: setlist & show
@@ -2326,7 +2401,11 @@ function Designer.open(app, designId)
 				catalog.Visible = show and phase == "build"
 				toolbar.Visible = show and phase == "build"
 				statsBar.Visible = show
-				inspector.Visible = show and target() ~= nil
+				if show then
+					refreshInspector()
+				else
+					inspector.Visible = false
+				end
 			end
 		end
 	end))

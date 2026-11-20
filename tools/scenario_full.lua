@@ -455,7 +455,11 @@ key(Enum.KeyCode.F)
 local deck = nil
 for _, r in ipairs(Stage3D.items) do if r.def.deck then deck = r break end end
 Designer.current.select(deck)
-log("inspector title", MOCK.texts("^SELECTED$")[1] or "none")
+-- building has no side panel: the bar above the catalog shows the piece, "Style" opens its looks
+local Designer3 = Designer.current
+log("tool bar", MOCK.texts("^Stage Deck$")[1] or "none", "style box before", Designer3.root:FindFirstChild("StyleButton", true) ~= nil, #MOCK.buttons("^LED screen$"))
+assert(#MOCK.buttons("^LED screen$") == 0, "the looks only open with Style")
+MOCK.clickExact("Style")
 MOCK.clickExact("LED screen")
 MOCK.click("Edge lights")
 MOCK.clickExact("Use on all decks")
