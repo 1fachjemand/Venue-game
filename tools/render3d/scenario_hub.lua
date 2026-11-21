@@ -59,7 +59,7 @@ for _, folder in ipairs({ workspace.StarlightRecords, workspace.HubClient }) do
 end
 WRITEFILE(OUT_DIR .. "/parts.txt", table.concat(zl, "\n"))
 -- people must not walk through things: sample every walking path against the parts of the building
-local FLAT = { Floor = true, HallFloor = true, Sidewalk = true, SidewalkFar = true, Road = true, Curb = true, CurbFar = true, Ground = true, Crosswalk = true, LaneMark = true, OfficeRug = true, LoungeRug = true, MeetingCarpet = true, DoorMat = true, EntranceSill = true, TreePit = true, Spawn = true, Boundary = true, SamRug = true, SamRug2 = true, WingFloor = true, CorridorRunner = true }
+local FLAT = { Floor = true, HallFloor = true, Sidewalk = true, SidewalkFar = true, Road = true, Curb = true, CurbFar = true, Ground = true, Crosswalk = true, LaneMark = true, OfficeRug = true, LoungeRug = true, MeetingCarpet = true, DoorMat = true, EntranceSill = true, TreePit = true, Spawn = true, Boundary = true, SamRug = true, SamRug2 = true, SamRug3 = true, WingFloor = true, CorridorRunner = true, AtriumCarpet = true }
 local hits = {}
 local paths = {}
 for _, w in ipairs(Hub.WALKS) do paths[#paths + 1] = w end
@@ -106,7 +106,7 @@ for i = 1, Hub.OFFICE_COUNT do
 	local o = Hub.office(i)
 	paths[#paths + 1] = o.route
 	paths[#paths + 1] = { o.spawn, o.spawn + Vector3.new(0.2, 0, 0.2) }
-	paths[#paths + 1] = { Vector3.new(o.cx, 0, -52), o.spawn }
+	paths[#paths + 1] = { Vector3.new(o.cx, 0, -64), o.spawn }
 end
 print("checked walking paths", #paths)
 for wi, path in ipairs(paths) do

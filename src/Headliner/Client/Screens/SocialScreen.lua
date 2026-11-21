@@ -313,12 +313,31 @@ local function photo(parent, ad, seed, kind, p)
 	-- a photo from the show: the real stage of the tour (if the post knows it), else a typical stage
 	local artistPos, zoom = nil, 1
 	local design = nil
-	if p and p.designId and SocialScreen.app then
+	if p and SocialScreen.app then
 		local GS = require(Root.Logic.GameState)
-		design = GS.getDesign(SocialScreen.app.state, p.designId)
+		local state = SocialScreen.app.state
+		if p.designId then
+			design = GS.getDesign(state, p.designId)
+		end
+		-- older posts (and posts about the announcement, sold-out shows ...): the stage of the artist's
+		-- latest tour (the stage of the next show, or the tour's main stage)
+		if not design and p.artistId then
+			for _, tour in ipairs(state.tours or {}) do
+				if tour.artistId == p.artistId then
+					local idx = 1
+					for i, sh in ipairs(tour.shows) do
+						if not sh.done then
+							idx = i
+							break
+						end
+					end
+					design = (tour.shows[idx] and GS.showDesign(state, tour, idx)) or GS.getDesign(state, tour.designId) or design
+				end
+			end
+		end
 	end
 	-- (only the newest few photos build the real stage: the feed stays light)
-	if design and kind ~= "selfie" and kind ~= "closeup" and kind ~= "barricade" and (SocialScreen.realBudget or 0) > 0 then
+	if design and kind ~= "selfie" and kind ~= "barricade" and (SocialScreen.realBudget or 0) > 0 then
 		SocialScreen.realBudget = SocialScreen.realBudget - 1
 		local ok, pos, z = pcall(realStage, vp, design, color, ad and string.upper(ad.name) or nil)
 		if ok and pos then
@@ -474,7 +493,7 @@ function SocialScreen:post(list, p, order)
 end
 
 function SocialScreen:refresh()
-	SocialScreen.realBudget = 4
+	SocialScreen.realBudget = 6
 	local state = self.app.state
 	local body = self.body
 	UI.ClearChildren(body)

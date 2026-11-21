@@ -74,6 +74,7 @@ function PhoneScreen:refresh()
 		local list = UI.Scroll(holder, UI.px(0, 0), UI.px((bw - 16) / SCALE, (bh - 8) / SCALE))
 		UI.List(true, 12).Parent = list
 		local ctx = { app = app, photos = 6 }
+		SocialScreen.realBudget = 6 -- the photos of the newest posts show the real stage of the tour
 		local n = 0
 		for _, p in ipairs(state.social or {}) do
 			n = n + 1

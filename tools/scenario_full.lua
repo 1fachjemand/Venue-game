@@ -1019,6 +1019,18 @@ end
 assert(app.mode == "world")
 app:openPhone()
 assert(app.mode == "phone" and app.phone.frame.Visible, "phone open")
+-- fan photos show the real stage of the tour
+local realPhotos, photos = 0, 0
+for _, d in ipairs(app.phone.frame:GetDescendants()) do
+	if d:IsA("ViewportFrame") then
+		photos = photos + 1
+		for _, c in ipairs(d:GetChildren()) do
+			if c:IsA("Model") and c.Name:find("^deck") then realPhotos = realPhotos + 1 break end
+		end
+	end
+end
+log("phone photos", photos, "with the tour's stage", realPhotos)
+assert(photos == 0 or realPhotos > 0, "fan photos show the tour's stage")
 MOCK.clickExact("FAN MOOD")
 MOCK.clickExact("TRENDING")
 MOCK.clickExact("FEED")
@@ -1074,6 +1086,18 @@ log("report texts", #MOCK.texts("MONEY PER SHOW"), #MOCK.texts("WHERE THE MONEY 
 MOCK.clickExact("Great!")
 local rows, best = GS.chart(app.state)
 log("best chart rank", best)
+
+-- a truss beam between two towers goes exactly through their middles and spans from one to the other
+do
+	local d = { class = "Arena", layout = "end", items = { { t = "truss", x = -20, z = 0, r = 0 }, { t = "truss", x = 20, z = 0, r = 0 } } }
+	Stage3D.renderDesign(d, {})
+	local bx, bz, br, bw = Stage3D.beamToTowers(1.3, 2.4, 0, 36)
+	log("beam between towers", bx, bz, br, bw)
+	assert(bx and math.abs(bx) < 0.01 and math.abs(bz) < 0.01 and bw == 40, "beam centred on the towers")
+	local sx, sz = Stage3D.beamToTowers(-20 + 9, 3, 0, 18)
+	assert(sx and math.abs(sz) < 0.01, "one tower: the beam's line goes through its middle")
+	Stage3D.clearDesign()
+end
 
 -- 9) cancel a tour (laptop > tours)
 planArtist("kai")
