@@ -843,7 +843,33 @@ function TP:buildStage()
 	local state = self.app.state
 	local body = self.body
 	UI.Label(body, "Which stage goes on tour?", UI.px(40, 20), UI.px(1200, 40), { textSize = 30, font = UI.FontBlack })
-	UI.Label(body, "Select one stage for each venue size. Build and name your stages in the STAGE HALL.", UI.px(40, 62), UI.px(1400, 24), { textSize = 17, color = T.sub })
+	UI.Label(body, "Select one stage for each venue size. Build and name your stages in the STAGE HALL.", UI.px(40, 62), UI.px(1100, 24), { textSize = 17, color = T.sub })
+	-- background dancers (solo artists, not in clubs): cost per show, better reviews
+	local ad = Artists.byId[self.draft.artistId or ""]
+	local bigShows = 0
+	for _, sh in ipairs(self.draft.shows) do
+		if Sim.lookOf(Countries.venueById[sh.venueId]) ~= "club" then
+			bigShows = bigShows + 1
+		end
+	end
+	if ad and ad.members == 1 and bigShows > 0 then
+		local n = math.clamp(math.floor(tonumber(self.draft.dancers) or 0), 0, Config.MAX_DANCERS)
+		local box = UI.New("Frame", { Parent = body, Name = "Dancers", Position = UI.px(1180, 10), Size = UI.px(700, 84), BackgroundColor3 = T.panel, BorderSizePixel = 0, UI.Corner(12), UI.Stroke(T.stroke, 1, 0) })
+		UI.Label(box, "BACKGROUND DANCERS", UI.px(16, 8), UI.px(300, 24), { textSize = 16, font = UI.FontBlack })
+		UI.Label(box, n == 0 and "None: the artist is alone on stage." or (n .. " dancer" .. (n == 1 and "" or "s") .. ": +" .. Util.money(n * Config.DANCER_COST) .. " per show, better reviews (not in clubs)"), UI.px(16, 36), UI.px(440, 40), { textSize = 13, color = T.sub, wrap = true })
+		local function set(v)
+			self.draft.dancers = math.clamp(v, 0, Config.MAX_DANCERS)
+			self:saveDraft()
+			self:refresh()
+		end
+		UI.Button(box, "-", UI.px(476, 16), UI.px(52, 52), { textSize = 22 }, function()
+			set(n - 1)
+		end).Name = "DancersDown"
+		UI.Label(box, tostring(n), UI.px(530, 16), UI.px(80, 52), { textSize = 28, font = UI.FontBlack, alignX = Enum.TextXAlignment.Center })
+		UI.Button(box, "+", UI.px(612, 16), UI.px(52, 52), { textSize = 22, color = T.accent }, function()
+			set(n + 1)
+		end).Name = "DancersUp"
+	end
 	local list = UI.Scroll(body, UI.px(28, 100), UI.px(W - 56, 712))
 	UI.List(true, 14).Parent = list
 	local StagesScreen = require(Root.Client.Screens.StagesScreen)

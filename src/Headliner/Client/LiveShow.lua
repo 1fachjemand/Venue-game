@@ -10,6 +10,7 @@ local GS = require(Root.Logic.GameState)
 local UI = require(Root.Client.UI)
 local Builder = require(Root.Client.Builder)
 local Stage3D = require(Root.Client.Stage3D)
+local Visuals = require(Root.Client.Visuals)
 local StageNav = require(Root.Client.StageNav)
 local People = require(Root.Client.People)
 local Venue = require(Root.Client.Venue)
@@ -32,7 +33,52 @@ end
 
 -- Builds the running order of one show.
 -- returns segments = { {kind, title, t0, t1, bpm, c1, c2, intensity, sweep, spot, lasers, phones, hits = { {time, name} }} }
-local function buildTimeline(ad, rng, songCount, hasRoof)
+-- every artist has 3 intros (before they come on); a tour always uses the same one (Visuals: screen motif)
+local INTROS = {
+	countdown = { len = 12, visual = "countdown", title = "The countdown...", c1 = Color3.fromRGB(255, 255, 255), hitsEnd = { "pyro", "co2" } },
+	reveal = { len = 12, visual = "name", title = "The name appears...", bpm = 60, hitsEnd = { "sparks" } },
+	glitch = { len = 10, visual = "glitch", title = "Signal lost...", strobeFrom = 6, hitsEnd = { "co2" } },
+	stars = { len = 12, visual = "starfield", title = "Into the stars...", hitsEnd = { "sparks", "confetti" } },
+	heartbeat = { len = 11, visual = "waveform", title = "A heartbeat...", bpm = 58, hitsEnd = { "pyro" } },
+	storm = { len = 11, visual = "lightning", title = "The storm comes...", strobeFrom = 3, hitsEnd = { "pyro", "co2" } },
+}
+LiveShow.INTROS = INTROS
+local INTRO_GENRE = {
+	Metal = { "storm", "glitch", "heartbeat", "countdown" },
+	Rock = { "storm", "countdown", "heartbeat", "reveal" },
+	EDM = { "countdown", "glitch", "stars", "storm" },
+	["Hip-Hop"] = { "glitch", "reveal", "countdown", "heartbeat" },
+	Pop = { "reveal", "stars", "countdown", "heartbeat" },
+	["K-Pop"] = { "countdown", "stars", "reveal", "glitch" },
+	Indie = { "heartbeat", "stars", "reveal", "storm" },
+	["R&B"] = { "heartbeat", "reveal", "stars", "glitch" },
+	Latin = { "countdown", "reveal", "heartbeat", "stars" },
+	Country = { "reveal", "heartbeat", "countdown", "stars" },
+}
+local function hashOf(str)
+	local h = 7
+	for i = 1, #str do
+		h = (h * 31 + string.byte(str, i)) % 1000003
+	end
+	return h
+end
+-- the 3 intros of an artist, and the one of a tour (the same in every show of that tour)
+function LiveShow.introsOf(ad)
+	local list = INTRO_GENRE[ad.genre] or INTRO_GENRE.Pop
+	local h = hashOf(ad.id)
+	local out = {}
+	for k = 0, 2 do
+		table.insert(out, list[(h + k) % #list + 1])
+	end
+	return out
+end
+function LiveShow.introFor(ad, tourKey)
+	local list = LiveShow.introsOf(ad)
+	return list[hashOf(tostring(tourKey or "")) % #list + 1]
+end
+
+local function buildTimeline(ad, rng, songCount, hasRoof, topts)
+	topts = topts or {}
 	-- song numbers refer to the artist's setlist (and to the audio file): 1 = opener, 4 = the ballad, 8 = the big hit
 	local BALLAD, HIT = AudioMap.BALLAD_INDEX or 4, AudioMap.HIT_INDEX or 8
 	local pool = {}
@@ -71,7 +117,15 @@ local function buildTimeline(ad, rng, songCount, hasRoof)
 		table.insert(segments, seg)
 		return seg
 	end
-	add({ kind = "intro", title = "The lights go down...", fog = true, len = 5, bpm = 0, c1 = Color3.fromRGB(40, 60, 255), c2 = Color3.fromRGB(140, 60, 255), intensity = 0.4, sweep = 0.3 })
+	-- before the show: house lights on, fans still find their seats; then the lights go down for the intro
+	if (topts.preshow or 0) > 0 then
+		add({ kind = "preshow", title = "Doors open: the fans find their seats", len = topts.preshow, bpm = 0, c1 = Color3.fromRGB(255, 236, 210), c2 = Color3.fromRGB(255, 236, 210), intensity = 0.05, sweep = 0.1 })
+	end
+	local intro = INTROS[topts.intro or "countdown"] or INTROS.countdown
+	local iseg = add({ kind = "intro", introType = topts.intro or "countdown", introVisual = intro.visual, title = intro.title, fog = true, len = intro.len, bpm = intro.bpm or 0, c1 = intro.c1 or base, c2 = Color3.fromRGB(140, 60, 255), intensity = 0.4, sweep = 0.3, strobeFrom = intro.strobeFrom })
+	for _, hname in ipairs(intro.hitsEnd or {}) do
+		table.insert(iseg.hits, { iseg.t1 - 0.2, hname })
+	end
 	local bpm0 = GENRE_BPM[ad.genre] or 120
 	for i, song in ipairs(order) do
 		if song.kind == "finale" then
@@ -144,6 +198,15 @@ end
 local FX_HIT = { pyro = "pyro", flamebar = "pyro", sparks = "sparks", sparkrain = "sparks", confetti = "confetti", streamers = "streamers", co2 = "co2", fireworks = "fireworks", rimfireworks = "fireworks", balls = "balls", laser = "laser", lowfog = "fog", raincurtain = "rain" }
 
 -- the moves of the artist at an instrument (they change every 4 seconds)
+-- special elements the artist rides: where they stand (y over the item or "under" it on the stage), their move
+local RIDES = {
+	showerstage = { y = 1.2, move = "rain" },
+	gownriser = { y = 1.55, move = "gown" },
+	floatplat = { y = 0.85, move = "float" },
+	flyharness = { under = true, move = "fly" },
+	descendcube = { under = true, move = "float", teleport = true },
+}
+LiveShow.RIDES = RIDES
 local PLAY_MOVES = {
 	piano = { "piano", "pianosway", "piano" },
 	keys = { "keys", "keys", "keyshype" },
@@ -152,18 +215,22 @@ local PLAY_MOVES = {
 	harp = { "harp" },
 	strum = { "strum" },
 	standmic = { "standmic" },
+	rain = { "micout", "rainarms", "hairpush", "rainarms", "spin" },
+	gown = { "micout", "wave", "point", "micout" },
+	float = { "wave", "micout", "point", "wave" },
+	fly = { "fly" },
 }
 
 ------------------------------------------------------------------ the dancers of a group (K-Pop & co.)
 -- formations: places next to the anchor (the artist's place in that song); +Z = towards the fans
 local FORMATIONS = {
-	line = { { -6, -3 }, { 6, -3 }, { -12, -3 }, { 12, -3 }, { -18, -3 }, { 18, -3 } },
-	v = { { -5, -4 }, { 5, -4 }, { -10, -8 }, { 10, -8 }, { -15, -12 }, { 15, -12 } },
-	wings = { { -9, 1 }, { 9, 1 }, { -13, -3 }, { 13, -3 }, { -17, 1 }, { 17, 1 } },
-	diamond = { { 0, -6 }, { -6, -2 }, { 6, -2 }, { 0, -11 }, { -11, -6 }, { 11, -6 } },
-	front = { { -5, 4 }, { 5, 4 }, { -10, 2 }, { 10, 2 }, { -15, 0 }, { 15, 0 } },
-	circle = { { -7, 0 }, { 7, 0 }, { 0, -7 }, { -5, -5 }, { 5, -5 }, { 0, 6 } },
-	pairs = { { -8, -2 }, { -5, -2 }, { 5, -2 }, { 8, -2 }, { -14, -5 }, { 14, -5 } },
+	line = { { -6, -3 }, { 6, -3 }, { -12, -3 }, { 12, -3 }, { -18, -3 }, { 18, -3 }, { 0, -7 } },
+	v = { { -5, -4 }, { 5, -4 }, { -10, -8 }, { 10, -8 }, { -15, -12 }, { 15, -12 }, { 0, -10 } },
+	wings = { { -9, 1 }, { 9, 1 }, { -13, -3 }, { 13, -3 }, { -17, 1 }, { 17, 1 }, { 0, -6 } },
+	diamond = { { 0, -6 }, { -6, -2 }, { 6, -2 }, { 0, -11 }, { -11, -6 }, { 11, -6 }, { 0, -16 } },
+	front = { { -5, 4 }, { 5, 4 }, { -10, 2 }, { 10, 2 }, { -15, 0 }, { 15, 0 }, { 0, -5 } },
+	circle = { { -7, 0 }, { 7, 0 }, { 0, -7 }, { -5, -5 }, { 5, -5 }, { -5, 5 }, { 5, 5 } },
+	pairs = { { -8, -2 }, { -5, -2 }, { 5, -2 }, { 8, -2 }, { -14, -5 }, { 14, -5 }, { 0, -8 } },
 }
 local FORMATION_ORDER = { "line", "v", "wings", "diamond", "front", "pairs", "circle" }
 local CREW_MOVES = {
@@ -176,10 +243,16 @@ local SYNC_MOVES = { "clap", "armwave", "hiphop", "kick", "heart", "groove", "sp
 -- plans every dancer's places and walks for the whole show. env = { findPath, onSurface, walkable, nav, start }
 function LiveShow.planCrew(ad, color, segments, walks, env)
 	local rng = Random.new(#ad.id * 97 + ad.members)
-	local n = math.min(6, ad.members - 1)
+	-- a group: the other members; a solo artist: the background dancers booked for the tour (env.dancers)
+	local n = env.dancers or math.min(6, ad.members - 1)
 	local crew = {}
 	for i = 1, n do
-		local fig = People.new(Stage3D.peopleFolder, color:Lerp(Color3.new(1, 1, 1), 0.35), 1.45, "dancer", 20 + i, People.bandLook(ad, 10 + i, Artists.BAND_STYLE))
+		local look = People.bandLook(ad, 10 + i, Artists.BAND_STYLE)
+		if env.dancers then
+			-- dancers wear matching outfits in the artist's colours
+			look = { skin = (i % 5) + 1, hair = ({ "pony", "short", "bun", "messy", "long" })[i % 5 + 1], hairColor = { 30, 24, 20 }, top = { 24, 24, 28 }, pants = { 24, 24, 28 }, shoes = { 240, 240, 240 }, acc = "none", jacket = ad.color }
+		end
+		local fig = People.new(Stage3D.peopleFolder, color:Lerp(Color3.new(1, 1, 1), 0.35), 1.45, "dancer", 20 + i, look)
 		table.insert(crew, { p = fig, i = i, plan = {}, phase = rng:NextNumber() * 6, yaw = 0 })
 	end
 	-- where the artist is in each song
@@ -414,10 +487,36 @@ function LiveShow.planSetups(items, segments, navC, navD, onSurface, nav)
 					local fig = People.new(Stage3D.peopleFolder, Color3.fromRGB(249, 115, 22), 1.35, "dancer", 300 + #jobs * 2 + i, look)
 					fig:setVisible(false)
 					local side = (i == 1) and -1 or 1
-					-- from the wing on this side of the stage, level with the piece (a little behind it)
-					local wingX = navC.X + side * (navW / 2 - 1)
-					local from = onSurface(Vector3.new(wingX, 0, math.clamp(p.Z - 2, navC.Z - navD / 2 + 2, navC.Z + navD / 2 - 2)))
+					-- from the wing on this side of the stage: the outermost point ON the stage (a deck the piece's
+					-- deck is connected to), level with the piece or behind it - never from the crowd
 					local to = onSurface(Vector3.new(p.X + side * 2.4, 0, p.Z + 1.5))
+					local from = nil
+					if nav then
+						local tries = 0
+						for _, dz in ipairs({ -2, -6, 0, -10, 4 }) do
+							local z = math.clamp(p.Z + dz, navC.Z - navD / 2 + 1, navC.Z + navD / 2 - 1)
+							local x = navC.X + side * (navW / 2 + 1)
+							while not from and (x - p.X) * side > 2 do
+								local q = Vector3.new(x, 0, z)
+								local i, j = nav.cellOf(q)
+								if nav.cellH(i, j) > 0.5 and tries < 8 then
+									tries = tries + 1
+									local cand = onSurface(q)
+									if nav.findPath(cand, to) then
+										from = cand
+									end
+								end
+								x = x - side * 2
+							end
+							if from then
+								break
+							end
+						end
+					end
+					if not from then
+						-- no deck to the side: from the back of the piece's own deck
+						from = onSurface(Vector3.new(p.X + side * 2, 0, p.Z - 3))
+					end
 					local way = nav and nav.findPath(from, to)
 					way = (way and nav.smooth(way)) or { from, to }
 					local back = {}
@@ -429,7 +528,7 @@ function LiveShow.planSetups(items, segments, navC, navD, onSurface, nav)
 					table.insert(hands, { p = fig, way = way, back = back, len = len })
 				end
 				local total = walk * 2 + CREW_BUILD + CREW_TURN
-				local tIn = math.max(segments[1].t0 + 1, seg.t0 - total - 0.3)
+				local tIn = math.max(segments[1].t1 + 1, seg.t0 - total - 0.3)
 				local job = { item = r, parts = parts, hands = hands, tIn = tIn, tOut = seg.t1 + 0.5, walk = walk, total = total }
 				showParts(job, 0)
 				table.insert(jobs, job)
@@ -513,7 +612,17 @@ function LiveShow.run(app, opts)
 	-- one song per performance place (artist spots, lifts, instruments), see GS.songPlan
 	local plan = GS.songPlan(opts.design)
 	local songCount = plan.count
-	local segments, showLength = buildTimeline(ad, rng, songCount, hasRoof)
+	-- the intro of this tour (the same in every show of the tour), a few minutes of fans arriving before it
+	local introType = opts.intro or LiveShow.introFor(ad, opts.tourId or opts.tourName)
+	local segments, showLength = buildTimeline(ad, rng, songCount, hasRoof, { preshow = opts.preshow or (opts.preview and 8 or 35), intro = introType })
+	local introSeg = segments[1]
+	for _, sg in ipairs(segments) do
+		if sg.kind == "intro" then
+			introSeg = sg
+		end
+	end
+	LiveShow.lastIntro = introType
+	LiveShow.bandOn, LiveShow.houseNow = nil, nil
 	local songStart = {} -- when song n starts (curtains that open in a later song)
 	for _, sg in ipairs(segments) do
 		if sg.song then
@@ -638,14 +747,15 @@ function LiveShow.run(app, opts)
 	end
 	local start = lift and (lift.cf.Position + Vector3.new(0, 0.4, 0)) or home
 	local upDur = liftDur(lift)
-	local liftUp0 = segments[1].t1 - upDur -- the lift rises at the end of the intro
+	local liftUp0 = introSeg.t1 - upDur -- the lift rises at the end of the intro
 	-- one walk per song: to the spot that belongs to that song
 	-- props the artist plays (set in the designer): piano / drums / DJ booth at a spot number
 	local playProps = {}
 	for _, r in ipairs(items) do
 		local n = r.rec and r.rec.play
-		if n and (r.kind == "piano" or r.kind == "drums" or r.kind == "djbooth" or r.kind == "keys" or r.kind == "acoustic" or r.kind == "harp" or r.kind == "micstand") then
+		if n and (r.kind == "piano" or r.kind == "drums" or r.kind == "djbooth" or r.kind == "keys" or r.kind == "acoustic" or r.kind == "harp" or r.kind == "micstand" or RIDES[r.kind]) then
 			local seat, move, yaw
+			local teleport = false
 			if r.kind == "piano" then
 				seat, move, yaw = (r.cf * CFrame.new(0, 0, 5.2)).Position, "piano", math.rad(r.rec.r or 0) + math.pi
 			elseif r.kind == "keys" then
@@ -658,10 +768,21 @@ function LiveShow.run(app, opts)
 				seat, move, yaw = (r.cf * CFrame.new(0, 1, -1.8)).Position, "drumsolo", math.rad(r.rec.r or 0)
 			elseif r.kind == "micstand" then
 				seat, move, yaw = (r.cf * CFrame.new(0, 0, -2.3)).Position, "standmic", math.rad(r.rec.r or 0)
+			elseif RIDES[r.kind] then
+				-- special elements: the artist stands on / under them, the element moves them (refs.ride)
+				local ride = RIDES[r.kind]
+				if ride.under then
+					local p = r.cf.Position
+					seat = Vector3.new(p.X, Stage3D.surfaceY(p.X, p.Z), p.Z)
+				else
+					seat = (r.cf * CFrame.new(0, ride.y, 0)).Position
+				end
+				move, yaw, teleport = ride.move, math.rad(r.rec.r or 0), ride.teleport == true
+				r.seatY = seat.Y
 			else
 				seat, move, yaw = (r.cf * CFrame.new(0, 0, -3.2)).Position, "dance", math.rad(r.rec.r or 0)
 			end
-			playProps[n] = { pos = seat, move = move, yaw = yaw, item = r }
+			playProps[n] = { pos = seat, move = move, yaw = yaw, item = r, teleport = teleport }
 		end
 	end
 	------------------------------------------------------------ path finding on the stage (Client/StageNav.lua)
@@ -720,7 +841,7 @@ function LiveShow.run(app, opts)
 			end
 			if lf and not play and lf ~= lift and lf.kind ~= "towerlift" and not isFinale then
 				w.kind, w.lift, w.dur = "lift", lf, liftDur(lf) -- disappear, come up on this lift
-			elseif (w[2] - cur).Magnitude < 1 then
+			elseif (w[2] - cur).Magnitude < 1 or (play and play.teleport) then
 				w.kind, w.dur = "stay", 0
 			else
 				local path = (leadRole ~= "dj") and findPath(cur, w[2]) or nil
@@ -772,6 +893,39 @@ function LiveShow.run(app, opts)
 	end
 	local curWalk = nil
 	LiveShow.lastWalks = walks -- for the automated tests
+	-- the artist walks on from the side of the stage at the end of the intro (fading in out of the dark),
+	-- unless they come up on a lift or play the DJ booth
+	local entrance = nil
+	if not lift and leadRole ~= "dj" then
+		local wing = nil
+		for _, side in ipairs({ -1, 1 }) do
+			if not wing then
+				local x = navC.X + side * (nav.navW / 2 + 1)
+				local tries = 0
+				while not wing and (x - start.X) * side > 3 and tries < 40 do
+					tries = tries + 1
+					local q = Vector3.new(x, 0, start.Z)
+					local i, j = nav.cellOf(q)
+					if nav.cellH(i, j) > 0.5 then
+						local cand = onSurface(q)
+						local way = findPath(cand, start)
+						if way then
+							wing = { from = cand, path = nav.smooth(way) }
+						end
+					end
+					x = x - side * 2
+				end
+			end
+		end
+		if wing then
+			local len = pathLength(wing.path)
+			local dur = math.clamp(len / 8, 1.5, 4)
+			entrance = { t0 = introSeg.t1 - dur, t1 = introSeg.t1, path = wing.path, len = len }
+		else
+			entrance = { t0 = introSeg.t1 - 1.5, t1 = introSeg.t1, path = { start, start }, len = 0 }
+		end
+	end
+	LiveShow.lastEntrance = entrance
 	LiveShow.lastExitLift = finaleLift
 
 	local lead = People.new(Stage3D.peopleFolder, artistColor, 1.5, leadRole, 7, ad.look)
@@ -804,13 +958,15 @@ function LiveShow.run(app, opts)
 	-- their places on the decks (path finding, never off the stage), change formations during the songs,
 	-- have their own moves and come together for moves in sync and little moments with each other
 	local crew = {}
-	if ad.members >= 2 and not hasBand and not (ad.members >= 4 and ad.genre ~= "K-Pop") then
+	local dancers = (ad.members == 1 and look ~= "club") and math.clamp(math.floor(tonumber(opts.dancers) or 0), 0, 7) or 0
+	if (ad.members >= 2 and not hasBand and not (ad.members >= 4 and ad.genre ~= "K-Pop")) or dancers > 0 then
 		crew = LiveShow.planCrew(ad, artistColor, segments, walks, {
 			findPath = findPath,
 			onSurface = onSurface,
 			walkable = nav.walkable,
 			nav = NAV,
 			start = home,
+			dancers = (dancers > 0) and dancers or nil,
 		})
 	end
 	LiveShow.lastCrew = crew -- for the automated tests
@@ -849,8 +1005,20 @@ function LiveShow.run(app, opts)
 	-- returns position, yaw, walking, hidden
 	local function leadState(t)
 		LiveShow.popping = false
+		LiveShow.entranceFade = nil
 		if leadRole == "dj" then
 			return home, centerStage and idleYaw(t) or 0, false, false
+		end
+		if entrance and t < entrance.t1 then
+			if t < entrance.t0 then
+				return start, 0, false, true
+			end
+			LiveShow.entranceFade = 1 - smooth(entrance.t0, entrance.t0 + (entrance.t1 - entrance.t0) * 0.6, t)
+			if entrance.len < 0.5 then
+				return start, 0, false, false
+			end
+			local p, yaw = pointOnPath(entrance.path, entrance.len * smooth(entrance.t0, entrance.t1, t))
+			return p, yaw, true, false
 		end
 		if lift and t < liftUp0 + upDur then
 			LiveShow.popping = lift.kind == "poplift" and t >= liftUp0
@@ -992,6 +1160,7 @@ function LiveShow.run(app, opts)
 		if char and char.PrimaryPart then
 			local spawnZ = size.center and (size.floorEnd - 6) or math.max(deckCenter.Z + 30, size.floorEnd - 8)
 			char:PivotTo(CFrame.lookAt(Vector3.new(0, 4, spawnZ), Vector3.new(0, 4, deckCenter.Z)))
+			LiveShow.walkSpawn = CFrame.lookAt(Vector3.new(0, 4, spawnZ), Vector3.new(0, 4, deckCenter.Z))
 		end
 		W.freeze(false)
 		W.setZoom(40)
@@ -1104,10 +1273,53 @@ function LiveShow.run(app, opts)
 		end
 	end
 
+	-- per frame: the artist's visuals and the intro on the screens, house lights and arriving fans before the show
+	-- (a function of its own: the frame loop below already uses very many locals)
+	local function showExtras(seg, t)
+		ctx.visualKind = seg.song and Visuals.forSong(ad, seg.song) or nil
+		ctx.introVisual = (seg.kind == "intro") and seg.introVisual or nil
+		ctx.introLeft = seg.t1 - t
+		ctx.introFrac = (t - seg.t0) / math.max(0.1, seg.len)
+		-- house lights: on while the fans arrive, then they go down
+		local house = 0
+		if seg.kind == "preshow" then
+			house = 1 - smooth(seg.t1 - 4, seg.t1, t)
+		end
+		if math.abs(house - (LiveShow.houseNow or -1)) > 0.01 then
+			LiveShow.houseNow = house
+			Stage3D.houseLights(house)
+		end
+		crowd.arrival = (seg.kind == "preshow") and (0.35 + 0.65 * smooth(seg.t0, seg.t1 - 6, t)) or 1
+	end
+	-- the lead fades in while walking on; the band and dancers come on with the intro
+	local function showPeople(seg, hidden)
+		if LiveShow.entranceFade and LiveShow.entranceFade > 0.01 and not hidden then
+			lead:setFade(LiveShow.entranceFade)
+		else
+			lead:setVisible(not hidden)
+		end
+		local onStage = seg.kind ~= "preshow"
+		if LiveShow.bandOn ~= onStage then
+			LiveShow.bandOn = onStage
+			for i, p in ipairs(performers) do
+				if i > 1 then
+					p:setVisible(onStage)
+				end
+			end
+		end
+	end
+
 	conn = RunService.RenderStepped:Connect(function(dt)
 		if finished then
 			finish()
 			return
+		end
+		-- walking in the venue: whoever falls out of the hall comes back onto the floor
+		if walkMode and LiveShow.walkSpawn then
+			local _, ch = W.humanoid()
+			if ch and ch.PrimaryPart and ch.PrimaryPart.Position.Y < -8 then
+				ch:PivotTo(LiveShow.walkSpawn)
+			end
 		end
 		dt = dt * timeScale
 		t = t + dt
@@ -1176,7 +1388,7 @@ function LiveShow.run(app, opts)
 		if curWalk and curWalk.tower then
 			leadPos = leadPos + Vector3.new(0, Builder.TOWER_HEIGHT * towerValue(curWalk.tower, t), 0)
 		end
-		lead:setVisible(not hidden)
+		showPeople(seg, hidden)
 		local energy = (seg.bpm > 0) and 1 or 0.4
 		-- what the artist does: changes every few seconds and depends on the song and genre
 		local move = "idle"
@@ -1200,6 +1412,17 @@ function LiveShow.run(app, opts)
 			local moves = PLAY_MOVES[curWalk.play.move] or { curWalk.play.move }
 			move = moves[math.floor(inSeg / 4) % #moves + 1]
 			leadYaw = curWalk.play.yaw
+		end
+		-- a special element moves the artist (up in the cube, on the dress, flying ...)
+		local rideItem = curWalk and curWalk.play and curWalk.play.item
+		if rideItem and rideItem.ride and not walking and seg.song == curWalk.spot then
+			leadPos = rideItem.ride.pos
+			if rideItem.ride.move then
+				move = rideItem.ride.move
+			end
+			if curWalk.play.move == "rain" and not rideItem.raining and t < curWalk[1] + 5 then
+				move = "idle"
+			end
 		end
 		local armsUp = 0
 		if LiveShow.popping then
@@ -1243,6 +1466,8 @@ function LiveShow.run(app, opts)
 		ctx.beatCount = beatCount
 		ctx.seg = (seg.kind == "ballad") and 3 or ((seg.kind == "finale") and 4 or 1)
 		ctx.songNum = seg.song
+		showExtras(seg, t)
+		ctx.songFrac = seg.song and math.clamp((t - seg.t0) / math.max(0.1, seg.t1 - seg.t0), 0, 1) or 0
 		ctx.c1 = seg.c1
 		ctx.c2 = seg.c2
 		ctx.intensity = seg.intensity
@@ -1272,9 +1497,10 @@ function LiveShow.run(app, opts)
 		ctx.dt = dt
 		ctx.fog = seg.fog == true
 		ctx.phones = seg.phones == true
-		ctx.curtainT = math.max(0, t - segments[1].t1)
+		ctx.curtainT = math.max(0, t - introSeg.t1)
 		ctx.songStart = songStart
 		leadNow, yawNow = leadPos, leadYaw
+		LiveShow.debugLead = leadPos -- for the automated tests
 		-- effects set to fire in chosen songs (stage builder, step 2): they ignore the automatic hits and
 		-- fire at the start, in the middle and near the end of their songs
 		local mySong = seg.song and songFx[seg.song]

@@ -127,6 +127,7 @@ end
 
 function Stage3D.setLighting(mode)
 	setShowEffects(mode == "show")
+	Lighting.ExposureCompensation = 0
 	Lighting.GlobalShadows = false
 	Lighting.FogEnd = 100000
 	Lighting.ClockTime = (mode == "show") and 0 or 14
@@ -153,6 +154,16 @@ function Stage3D.setLighting(mode)
 		Lighting.EnvironmentDiffuseScale = 0.6
 		Lighting.EnvironmentSpecularScale = 0.5
 	end
+end
+
+-- house lights before a show (1 = all lights in the hall on, 0 = the show lighting)
+function Stage3D.houseLights(k)
+	k = math.clamp(k or 0, 0, 1)
+	local show, house = Color3.fromRGB(88, 86, 108), Color3.fromRGB(170, 166, 160)
+	Lighting.Ambient = show:Lerp(house, k)
+	Lighting.OutdoorAmbient = Color3.fromRGB(92, 92, 116):Lerp(Color3.fromRGB(170, 170, 170), k)
+	Lighting.Brightness = 1.7 + 1.2 * k
+	Lighting.ExposureCompensation = 0.35 * k
 end
 
 ------------------------------------------------------------------ surfaces & placement
@@ -319,47 +330,53 @@ end
 
 -- A truss beam near Truss Towers: its ends click onto the middle of the towers. With a tower at both ends
 -- it spans exactly from one to the other (centred, turned along the line). returns x, z, r, w (or nil)
-function Stage3D.beamToTowers(x, z, r, w)
+function Stage3D.beamToTowers(x, z, r, w, except)
 	local a = math.rad(r or 0)
 	local dir = Vector3.new(math.cos(a), 0, -math.sin(a))
+	local side = Vector3.new(dir.Z, 0, -dir.X)
 	local c = Vector3.new(x, 0, z)
-	local function near(p, skip)
-		local best, bestD = nil, 7
-		for _, t in ipairs(Stage3D.items) do
-			if Stage3D.TOWERS[t.kind] and t ~= skip then
-				local q = t.cf.Position
-				local d = (Vector3.new(q.X, 0, q.Z) - p).Magnitude
-				if d < bestD then
-					best, bestD = t, d
-				end
+	-- towers near the beam's line (a little to the side is fine) and along its length
+	local near = {}
+	for _, t in ipairs(Stage3D.items) do
+		if Stage3D.TOWERS[t.kind] and t ~= except then
+			local q = t.cf.Position
+			local rel = Vector3.new(q.X, 0, q.Z) - c
+			local along, off = rel:Dot(dir), rel:Dot(side)
+			if math.abs(off) < 6 and math.abs(along) <= w / 2 + 7 then
+				table.insert(near, { t = t, along = along, p = Vector3.new(q.X, 0, q.Z) })
 			end
 		end
-		return best
 	end
-	local t1 = near(c - dir * w / 2)
-	local t2 = near(c + dir * w / 2, t1)
-	if t1 and t2 then
-		local p1, p2 = t1.cf.Position, t2.cf.Position
-		local d = Vector3.new(p2.X - p1.X, 0, p2.Z - p1.Z)
-		if d.Magnitude < 4 then
-			return nil
-		end
+	if #near == 0 then
+		return nil
+	end
+	table.sort(near, function(p, q)
+		return p.along < q.along
+	end)
+	local first, last = near[1], near[#near]
+	if #near >= 2 and (last.p - first.p).Magnitude >= 4 then
+		local d = last.p - first.p
 		local nr = math.deg(math.atan2(-d.Z, d.X))
 		-- keep the beam's own direction (no 180 degree flip)
 		if math.abs(((nr - (r or 0)) % 360 + 540) % 360 - 180) > 90 then
 			nr = nr + 180
 		end
 		nr = math.floor(nr * 2 + 0.5) / 2 % 360
-		return (p1.X + p2.X) / 2, (p1.Z + p2.Z) / 2, nr, math.floor(d.Magnitude * 2 + 0.5) / 2
+		local mid = (first.p + last.p) / 2
+		-- both ends at a tower: the beam spans exactly from one to the other
+		local endsOn = math.abs(first.along + w / 2) < 8 and math.abs(last.along - w / 2) < 8
+		return mid.X, mid.Z, nr, endsOn and math.floor(d.Magnitude * 2 + 0.5) / 2 or w
 	end
-	local t = t1 or t2
-	if t then
-		local q = t.cf.Position
-		local sign = (t == t1) and 1 or -1
-		local nc = Vector3.new(q.X, 0, q.Z) + dir * (w / 2) * sign
-		return nc.X, nc.Z, r, w
+	-- one tower: the beam's line goes right through its middle; an end close to it sits on it
+	local q = first.p
+	local along = first.along
+	local nc = q - dir * along
+	if math.abs(along + w / 2) < 7 then
+		nc = q + dir * (w / 2)
+	elseif math.abs(along - w / 2) < 7 then
+		nc = q - dir * (w / 2)
 	end
-	return nil
+	return nc.X, nc.Z, r, w
 end
 
 function Stage3D.itemCFrame(def, rec, except)
@@ -432,12 +449,36 @@ function Stage3D.numberSpots(design)
 			local m = r.rec and plan.momentOf[r.rec]
 			-- a moment inside a song: "2.5" (or "2.25", "2.75")
 			r.label.Text = m and tostring(m):gsub("%.?0+$", "") or tostring(r.spotIndex or "?")
+		elseif GS.PLAY_ITEMS[r.kind] and Builder.editMode and r.model.PrimaryPart then
+			-- instruments and lifts show their song number too (only while building)
+			if not r.songTag then
+				local g = Instance.new("BillboardGui")
+				g.Name = "SongTag"
+				g.Size = UDim2.fromOffset(52, 30)
+				g.StudsOffset = Vector3.new(0, 9, 0)
+				g.AlwaysOnTop = true
+				g.Parent = r.model.PrimaryPart
+				local l = Instance.new("TextLabel")
+				l.Size = UDim2.fromScale(1, 1)
+				l.BackgroundColor3 = Color3.fromRGB(255, 150, 40)
+				l.TextColor3 = Color3.new(0, 0, 0)
+				l.TextScaled = true
+				l.Font = Enum.Font.GothamBlack
+				l.Parent = g
+				local c = Instance.new("UICorner")
+				c.CornerRadius = UDim.new(0.3, 0)
+				c.Parent = l
+				r.songTag = l
+			end
+			r.songTag.Text = r.spotIndex and ("S" .. r.spotIndex) or "off"
+			r.songTag.BackgroundColor3 = r.spotIndex and Color3.fromRGB(255, 150, 40) or Color3.fromRGB(150, 150, 160)
 		end
 	end
 end
 
 function Stage3D.renderDesign(design, opts)
 	Stage3D.clearDesign()
+	Builder.lightsUsed = 0 -- the fixtures of this stage share the light budget
 	Stage3D.setDesign(design)
 	if not design then
 		return Stage3D.items

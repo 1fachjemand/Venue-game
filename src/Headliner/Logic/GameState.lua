@@ -452,7 +452,7 @@ function GS.addDesignFromTemplate(state, preset, name)
 end
 
 -- Places where the artist performs a song: artist spots, lifts and instruments the artist plays.
-GS.PLAY_ITEMS = { lift = true, poplift = true, towerlift = true, piano = true, keys = true, drums = true, djbooth = true, acoustic = true, harp = true, micstand = true }
+GS.PLAY_ITEMS = { lift = true, poplift = true, towerlift = true, piano = true, keys = true, drums = true, djbooth = true, acoustic = true, harp = true, micstand = true, showerstage = true, flyharness = true, descendcube = true, gownriser = true, floatplat = true }
 -- lifts: the artist comes up out of the stage (lift, pop-up) or is lifted high into the air (tower)
 GS.LIFT_ITEMS = { lift = true, poplift = true, towerlift = true }
 
@@ -793,6 +793,7 @@ function GS.createTour(state, draft)
 		price = math.max(5, math.floor(draft.price or 30)),
 		designId = design.id,
 		designs = designs,
+		dancers = (ad.members == 1) and Util.clamp(math.floor(tonumber(draft.dancers) or 0), 0, Config.MAX_DANCERS) or 0,
 		status = "announced",
 		announcedDay = state.day,
 		marketing = {},

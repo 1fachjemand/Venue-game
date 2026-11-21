@@ -316,6 +316,11 @@ do
   local d2 = 6000 * Sim.priceFactor("arena", pr2, fair) / Sim.priceFactor("arena", pr, fair)
   local byB = Sim.splitSections("arena", 20000, pr2, d2, fair)
   check(byB.golden > byA.golden and math.abs(byB.upper - byA.upper) < 5, "cheaper golden circle sells more golden tickets: " .. byA.golden .. " -> " .. byB.golden)
+  -- background dancers: solo artists only, never in clubs, cost per show
+  check(Sim.dancersAt({ artistId = "juno", dancers = 5 }, Countries.venueById.uk_o3) == 5, "dancers in an arena")
+  check(Sim.dancersAt({ artistId = "juno", dancers = 5 }, Countries.venueById.uk_fiddle) == 0, "no dancers in a club")
+  check(Sim.dancersAt({ artistId = "rusty", dancers = 5 }, Countries.venueById.uk_o3) == 0, "no dancers for a band")
+  check(Sim.dancersAt({ artistId = "juno", dancers = 12 }, Countries.venueById.uk_o3) == Config.MAX_DANCERS, "at most 7 dancers")
   Actions.run(fresh, "setDraft", { draft = { artistId = "lila", shows = { { venueId = "uk_fiddle", day = 30 } }, pricesSet = true, stageSet = true } })
   check(GS.planStage(fresh) == "announce", "ready to announce")
   local okA, _, dA = Actions.run(fresh, "announceTour", { name = "Moon Tour" })

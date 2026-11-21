@@ -164,7 +164,11 @@ function People.new(parent, outfit, scale, role, seed, look)
 		self.shoeR = mk(model, "ShoeR", Vector3.new(0.98, 0.35, 1.12) * s, c3(look.shoes))
 	end
 	if self.role == "lead" then
-		self.prop = mk(model, "Mic", Vector3.new(0.25, 0.9, 0.25) * s, Color3.fromRGB(20, 20, 20), Enum.Material.Metal)
+		-- a real hand mic: a black handle and a round silver grille
+		self.prop = mk(model, "Mic", Vector3.new(0.22, 0.8, 0.22) * s, Color3.fromRGB(20, 20, 20), Enum.Material.Metal)
+		self.micHead = mk(model, "MicHead", Vector3.new(0.4, 0.4, 0.4) * s, Color3.fromRGB(190, 192, 198), Enum.Material.DiamondPlate)
+		New("SpecialMesh", { MeshType = Enum.MeshType.Sphere, Parent = self.micHead })
+		self.micRing = mk(model, "MicRing", Vector3.new(0.3, 0.08, 0.3) * s, Color3.fromRGB(60, 60, 66), Enum.Material.Metal)
 	elseif self.role == "guitar" or self.role == "bass" then
 		-- rounded electric guitar / bass: body bouts (ellipsoids), pickguard, neck, headstock
 		local bass = self.role == "bass"
@@ -451,6 +455,22 @@ function People:update(pos, yaw, opts)
 		-- hands are busy (drums, piano, guitar ...): the hand mic is put away, the artist sings into a mic on a
 		-- boom stand in front of them
 		boomMic = true
+	elseif self.role == "lead" and (move == "rainarms" or move == "hairpush" or move == "fly") then
+		-- in the rain: one arm up to the sky / a hand in the wet hair, the mic at the mouth; flying: arms out
+		micAtMouth = move ~= "fly"
+		if move == "rainarms" then
+			lx, lz = -2.9 + math.sin(t * 1.5) * 0.15, -0.5
+			rx, rz = -2.45, 0.9
+		elseif move == "hairpush" then
+			lx, lz = -2.6, -1.1
+			rx, rz = -2.45, 0.9
+			headPitch = headPitch - 0.25
+		else
+			lx, lz = -0.3, -1.45
+			rx, rz = -0.3, 1.45
+			lean = lean + 0.15
+			micAtMouth = false
+		end
 	elseif self.role == "lead" and move == "standmic" then
 		-- singing into the Mic Stand on the stage: both hands on the mic, the hand mic is put away
 		standMic = true
@@ -486,11 +506,21 @@ function People:update(pos, yaw, opts)
 	if self.prop then
 		if self.role == "lead" then
 			self.prop.Transparency = (boomMic or standMic or self.visible == false) and 1 or 0
+			local headEnd
 			if micAtMouth then
-				-- the grille end (top) is a hand's width in front of the mouth, never inside the head
-				self.prop.CFrame = headCF * CFrame.new(0.1 * s, -0.36 * s, 1.17 * s) * CFrame.Angles(math.rad(-70), 0, 0)
+				-- held a hand's width in front of the mouth: the grille points at the mouth, never inside the head
+				self.prop.CFrame = headCF * CFrame.new(0.1 * s, -0.5 * s, 1.35 * s) * CFrame.Angles(math.rad(-65), 0, 0)
+				headEnd = 1
 			else
-				self.prop.CFrame = self.armR.CFrame * CFrame.new(0, -1.2 * s, 0)
+				-- in the fist; held out to the crowd the grille points away from the hand
+				self.prop.CFrame = self.armR.CFrame * CFrame.new(0, -1.15 * s, 0)
+				headEnd = -1
+			end
+			if self.micHead then
+				self.micHead.CFrame = self.prop.CFrame * CFrame.new(0, headEnd * 0.52 * s, 0)
+				self.micRing.CFrame = self.prop.CFrame * CFrame.new(0, headEnd * 0.32 * s, 0)
+				self.micHead.Transparency = self.prop.Transparency
+				self.micRing.Transparency = self.prop.Transparency
 			end
 		else
 			-- the neck points up to the player's fretting hand
@@ -530,10 +560,22 @@ function People:boomStand(on, root, headCF, s)
 		p.Transparency = on and 0 or 1
 	end
 	if not on then
+		self.boomHead = nil
 		return
 	end
+	-- a real stand does not move: its place is fixed when the artist starts playing (and only changes when
+	-- they move to another place), the head bobbing to the music does not move it
+	if not self.boomHead or (root.Position - self.boomRoot).Magnitude > 0.8 then
+		self.boomHead = headCF
+		self.boomRoot = root.Position
+		self.boomPlaced = false
+	elseif self.boomPlaced then
+		return
+	end
+	self.boomPlaced = true
+	headCF = self.boomHead
 	local mouth = (headCF * CFrame.new(0, -0.3 * s, 0.6 * s)).Position
-	local micPos = (headCF * CFrame.new(0.12 * s, -0.32 * s, 1.35 * s)).Position
+	local micPos = (headCF * CFrame.new(0.12 * s, -0.32 * s, 1.55 * s)).Position
 	b.mic.CFrame = CFrame.lookAt(micPos, mouth)
 	local back = (b.mic.CFrame * CFrame.new(0, 0, 0.4 * s)).Position
 	local joint = (headCF * CFrame.new(1.5 * s, -0.7 * s, 1.9 * s)).Position

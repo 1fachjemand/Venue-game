@@ -143,6 +143,7 @@ function A.createTour(state, a)
 		firstIn = num(d.firstIn),
 		gap = num(d.gap),
 		shows = shows,
+		dancers = num(d.dancers) and Util.clamp(math.floor(d.dancers), 0, Config.MAX_DANCERS) or nil,
 	})
 	if not ok then
 		return false, res
@@ -163,6 +164,7 @@ local function cleanDraft(state, d)
 	out.name = str(d.name, 40)
 	out.price = num(d.price)
 	out.pricesSet = d.pricesSet == true
+	out.dancers = num(d.dancers) and Util.clamp(math.floor(d.dancers), 0, Config.MAX_DANCERS) or nil
 	out.stageSet = d.stageSet == true
 	if type(d.shows) == "table" then
 		for _, s in ipairs(d.shows) do
@@ -234,7 +236,7 @@ function A.announceTour(state, a)
 			d.designs[vc] = best and best.id or nil
 		end
 	end
-	local ok, msg, data = A.createTour(state, { draft = { artistId = d.artistId, name = str(a.name, 40) or d.name, designs = d.designs, prices = d.prices, price = d.price, shows = d.shows } })
+	local ok, msg, data = A.createTour(state, { draft = { artistId = d.artistId, name = str(a.name, 40) or d.name, designs = d.designs, prices = d.prices, price = d.price, shows = d.shows, dancers = d.dancers } })
 	if ok then
 		state.draft = {}
 	end

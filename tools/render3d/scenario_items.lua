@@ -43,13 +43,35 @@ local groups = {
 	{ { t = "bulbwall", x = -30, z = -10, w = 18, d = 12 }, { t = "slatwall", x = -10, z = -10, w = 18, d = 12 }, { t = "brickwall", x = 10, z = -10, w = 18, d = 12 }, { t = "scaffold", x = 30, z = -10, w = 18, d = 12 }, { t = "mirrorwall", x = -20, z = 8, w = 14, d = 10 } },
 	{ { t = "ampwall", x = -18, z = 0 }, { t = "lightcube", x = -10, z = 2 }, { t = "planter", x = -2, z = 2 }, { t = "neonline", x = 10, z = 4 }, { t = "hedge", x = 10, z = -2 }, { t = "tvstack", x = 20, z = 0 }, { t = "rope", x = 0, z = 8 } },
 	-- round 8: heavy truss tower, LED tower, mic stand, rain curtain, roof fireworks box, a corner deck (mirrored)
+	-- round 9: screens without feet, the new effect models, the special elements, set pieces, new decks
+	{ { t = "led_flat", x = -40, z = -10, w = 14, d = 8 }, { t = "led_hang", x = -18, z = -6, w = 16, d = 9 }, { t = "led_flown", x = 2, z = -6 }, { t = "led_ribbon", x = 18, z = 6, w = 20, d = 2 }, { t = "led_curve", x = 0, z = -30, w = 50, d = 14 }, { t = "led_round", x = 22, z = -8, w = 12 }, { t = "led_kinetic", x = 40, z = -10, w = 24 } },
+	{ { t = "confetti", x = -20, z = 0 }, { t = "streamers", x = -12, z = 0 }, { t = "sparks", x = -4, z = 0 }, { t = "haze", x = 4, z = 0 }, { t = "lowfog", x = 12, z = 0 }, { t = "balls", x = 22, z = 0 }, { t = "fireworks", x = 32, z = 0 } },
+	{ { t = "showerstage", x = -30, z = 10, play = 1 }, { t = "gownriser", x = -6, z = 6, play = 1 }, { t = "floatplat", x = 12, z = 6, play = 1 }, { t = "flyharness", x = 28, z = 0, play = 1 }, { t = "descendcube", x = 44, z = 0, play = 1 } },
+	{ { t = "operahouse", x = -20, z = -20, w = 50 }, { t = "housefront", x = 30, z = -20 }, { t = "ruinedhouse", x = 30, z = 14 }, { t = "flowerwall", x = -20, z = 14, w = 20, d = 8 } },
+	{ { t = "deck_oct", x = -40, z = 0 }, { t = "deck_hex", x = -18, z = 0 }, { t = "deck_trap", x = 4, z = 0 }, { t = "deck_half", x = 28, z = 0 }, { t = "deck_ring", x = -20, z = 40 }, { t = "deck_rounded", x = 20, z = 36 }, { t = "deck_corner_r", x = 44, z = 30 }, { t = "prim_block", x = 0, z = 60, w = 6, d = 3, h = 8, col = { 255, 110, 190 }, mat = "Neon" }, { t = "prim_ball", x = 10, z = 60, col = { 40, 180, 200 }, mat = "Glass" }, { t = "prim_cyl", x = -10, z = 60, w = 3, h = 10, col = { 200, 160, 80 }, mat = "Metal" }, { t = "prim_tube", x = 24, z = 60, w = 10, h = 1, col = { 255, 210, 60 }, mat = "Neon" } },
 	{ { t = "deck", x = 0, z = -12, w = 60, d = 20, h = 6 }, { t = "truss_xl", x = -36, z = -4 }, { t = "ledtower", x = -22, z = 8 }, { t = "micstand", x = 0, z = -6 }, { t = "raincurtain", x = 12, z = -10, w = 20 }, { t = "rimfireworks", x = 24, z = -8 }, { t = "deck_corner", x = 38, z = -10, w = 12, d = 12, flip = true }, { t = "staircase", x = -6, z = -20, w = 20, cc = "gold" } },
 }
 for k, items in ipairs(groups) do
 	app.state.money = 90000000
-	local d = GS.addDesign(app.state, "Items " .. k, items, k == 4 and "Stadium" or "Arena", "end")
+	local d = GS.addDesign(app.state, "Items " .. k, items, (k == 4 or k == 14 or k == 16) and "Stadium" or "Arena", "end")
 	app:openDesigner(d.id)
 	for _ = 1, 3 do MOCK.step(1 / 30) end
+	if k == 14 then
+		-- the special elements in the middle of their song (rain on, dress up, platform out, flying, cube down)
+		for _, r in ipairs(Stage3D.items) do
+			require(root.Client.Builder).animate(r, { t = 1, dt = 0.03, c1 = Color3.fromRGB(255, 60, 160), c2 = Color3.fromRGB(60, 200, 255), hit = {}, beat = 0, beatCount = 0, songNum = 1, songFrac = 0.5, intensity = 0.6 })
+		end
+		for _, r in ipairs(Stage3D.items) do
+			if r.kind == "descendcube" then
+				require(root.Client.Builder).animate(r, { t = 1, dt = 0.03, c1 = Color3.fromRGB(255, 60, 160), c2 = Color3.fromRGB(60, 200, 255), hit = {}, beat = 0, beatCount = 0, songNum = 1, songFrac = 0.22, intensity = 0.6 })
+			end
+		end
+	end
+	if k == 12 then
+		for _, r in ipairs(Stage3D.items) do
+			require(root.Client.Builder).animate(r, { t = 1, dt = 0.03, c1 = Color3.fromRGB(255, 60, 160), c2 = Color3.fromRGB(60, 200, 255), hit = {}, beat = 0, beatCount = 0, intensity = 0.8 })
+		end
+	end
 	if k == 2 then
 		-- half-way: lift doors folding, tower half up
 		for _, r in ipairs(Stage3D.items) do
@@ -82,7 +104,15 @@ for k, items in ipairs(groups) do
 	elseif k == 9 or k == 10 then
 		cams = { CFrame.lookAt(Vector3.new(0, y + 22, 62), Vector3.new(0, y + 6, -4)), CFrame.lookAt(Vector3.new(-30, y + 10, 16), Vector3.new(-14, y + 5, -8)) }
 	elseif k == 12 then
-		cams = { CFrame.lookAt(Vector3.new(0, 30, 75), Vector3.new(0, 14, -6)), CFrame.lookAt(Vector3.new(-50, 26, 40), Vector3.new(-28, 18, 0)) }
+		cams = { CFrame.lookAt(Vector3.new(0, 26, 70), Vector3.new(0, 8, -10)), CFrame.lookAt(Vector3.new(-30, 18, 30), Vector3.new(-10, 10, -10)) }
+	elseif k == 13 then
+		cams = { CFrame.lookAt(Vector3.new(6, y + 10, 26), Vector3.new(6, y + 3, 0)), CFrame.lookAt(Vector3.new(-14, y + 6, 10), Vector3.new(-14, y + 3, 0)) }
+	elseif k == 14 then
+		cams = { CFrame.lookAt(Vector3.new(8, 40, 95), Vector3.new(8, 14, 0)), CFrame.lookAt(Vector3.new(-30, 16, 40), Vector3.new(-30, 8, 10)) }
+	elseif k == 15 then
+		cams = { CFrame.lookAt(Vector3.new(0, 30, 90), Vector3.new(5, 14, -5)), CFrame.lookAt(Vector3.new(-20, 20, 40), Vector3.new(-20, 12, -20)) }
+	elseif k == 16 then
+		cams = { CFrame.lookAt(Vector3.new(0, 60, 110), Vector3.new(0, 0, 30)), CFrame.lookAt(Vector3.new(-40, 30, 70), Vector3.new(-20, 0, 30)) }
 	elseif k >= 5 then
 		cams = { CFrame.lookAt(Vector3.new(2, y + 14, 44), Vector3.new(2, y + 5, 0)), CFrame.lookAt(Vector3.new(-26, y + 8, 6), Vector3.new(-16, y + 4, 0)) }
 	elseif k == 4 then

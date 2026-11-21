@@ -770,6 +770,7 @@ function Venue.build(lookKey, fill, merchColor, opts)
 		end
 	end
 	local slotList = (not opts.empty) and slots or nil
+	info.slotsAll = slots -- every seat (tools/checks/scenario_walk_stands.lua)
 
 	------------------------------------------------------------------ venue types
 	if lookKey == "arena" or lookKey == "stadium" then
@@ -1172,12 +1173,25 @@ end
 -- energy: jump height factor, speed: jumps per second-ish
 function Venue.animate(info, t, energy, speed, phonesOn, c1, c2, beatCount)
 	local parts, base, phase, cfs = info.parts, info.base, info.phase, info.cfs
+	-- before the show (info.arrival < 1): fans come in one after another and walk the last steps to their
+	-- place (all parts of one fan share the same phase)
+	local arrival = info.arrival or 1
 	for i = 1, #parts do
 		local j = math.sin(t * speed + phase[i])
 		if j < 0 then
 			j = 0
 		end
-		cfs[i] = base[i] + Vector3.new(0, j * energy, 0)
+		if arrival < 1 then
+			local due = phase[i] / 6.2832
+			if due > arrival then
+				cfs[i] = base[i] - Vector3.new(0, 400, 0)
+			else
+				local walkIn = math.clamp((arrival - due) / 0.04, 0, 1)
+				cfs[i] = base[i] + base[i].RightVector * ((1 - walkIn) * 5)
+			end
+		else
+			cfs[i] = base[i] + Vector3.new(0, j * energy, 0)
+		end
 	end
 	if #parts > 0 then
 		workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged)

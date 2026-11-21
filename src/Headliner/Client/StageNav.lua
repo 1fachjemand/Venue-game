@@ -5,6 +5,9 @@ local Root = script:FindFirstAncestor("Headliner")
 local Stage3D = require(Root.Client.Stage3D)
 
 local StageNav = {}
+-- the biggest step up or down the artist takes without stairs (a stair step is about 1 stud): a higher deck
+-- is only reached over Stairs
+StageNav.STEP = 1.6
 
 function StageNav.new()
 	-- grid over all decks (2 studs per cell); the artist only walks where there is a deck
@@ -13,22 +16,39 @@ function StageNav.new()
 	local navC, navW, navD = Stage3D.deckBox()
 	local nx0, nz0 = navC.X - navW / 2 - 2, navC.Z - navD / 2 - 2
 	local ncols, nrows = math.max(1, math.ceil((navW + 4) / NAV)), math.max(1, math.ceil((navD + 4) / NAV))
-	local navH = {}
+	local navH, navStair = {}, {}
 	local function cellH(i, j)
 		local key = i * 10000 + j
 		local h = navH[key]
 		if h == nil then
 			-- a cell counts as stage if the centre or a point near it is on a deck (small gaps between decks are fine)
 			local cx, cz = nx0 + (i + 0.5) * NAV, nz0 + (j + 0.5) * NAV
-			h = Stage3D.surfaceY(cx, cz)
+			local inst
+			h, inst = Stage3D.surfaceY(cx, cz)
 			if h < 0.5 then
 				for _, o in ipairs({ { 0.8, 0 }, { -0.8, 0 }, { 0, 0.8 }, { 0, -0.8 } }) do
-					h = math.max(h, (Stage3D.surfaceY(cx + o[1], cz + o[2])))
+					local h2, i2 = Stage3D.surfaceY(cx + o[1], cz + o[2])
+					if h2 > h then
+						h, inst = h2, i2
+					end
 				end
 			end
 			navH[key] = h
+			navStair[key] = inst ~= nil and inst.Name == "Step"
 		end
 		return h
+	end
+	-- a step between two cells: small steps anywhere, bigger ones only on Stairs
+	local function canStep(i, j, ni, nj)
+		local h, nh = cellH(i, j), cellH(ni, nj)
+		if nh <= 0.5 then
+			return false
+		end
+		local diff = math.abs(nh - h)
+		if diff <= StageNav.STEP then
+			return true
+		end
+		return diff <= 4.2 and (navStair[i * 10000 + j] or navStair[ni * 10000 + nj])
 	end
 	local function cellOf(p)
 		return math.clamp(math.floor((p.X - nx0) / NAV), 0, ncols - 1), math.clamp(math.floor((p.Z - nz0) / NAV), 0, nrows - 1)
@@ -57,8 +77,7 @@ function StageNav.new()
 				local ni, nj = i + d[1], j + d[2]
 				local nk = ni * 10000 + nj
 				if ni >= 0 and nj >= 0 and ni < ncols and nj < nrows and not prev[nk] then
-					local nh = cellH(ni, nj)
-					local ok = nh > 0.5 and math.abs(nh - h) <= 4.2
+					local ok = canStep(i, j, ni, nj)
 					if ok and d[1] ~= 0 and d[2] ~= 0 then
 						-- no cutting corners over gaps
 						ok = cellH(i + d[1], j) > 0.5 and cellH(i, j + d[2]) > 0.5
@@ -100,7 +119,7 @@ function StageNav.new()
 			if h <= 0.5 then
 				return false
 			end
-			if h0 and math.abs(h - h0) > 4.2 then
+			if h0 and math.abs(h - h0) > StageNav.STEP then
 				return false
 			end
 			h0 = h
@@ -129,7 +148,7 @@ function StageNav.new()
 	local function walkable(p)
 		local i, j = cellOf(p)
 		local h = cellH(i, j)
-		return h > 0.5 and math.abs(h - p.Y) < 4.3, Vector3.new(nx0 + (i + 0.5) * NAV, h, nz0 + (j + 0.5) * NAV)
+		return h > 0.5 and math.abs(h - p.Y) < StageNav.STEP + 0.1, Vector3.new(nx0 + (i + 0.5) * NAV, h, nz0 + (j + 0.5) * NAV)
 	end
 	return { findPath = findPath, cellH = cellH, cellOf = cellOf, smooth = smooth, walkable = walkable, NAV = NAV, navC = navC, navW = navW, navD = navD }
 end

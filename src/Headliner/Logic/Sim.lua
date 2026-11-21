@@ -22,7 +22,7 @@ function Sim.itemScale(def, rec)
 		return 1
 	end
 	local sw = (rec.w or def.size.w) / def.size.w
-	if def.shape == "round" then
+	if def.shape == "round" or def.shape == "ring" or def.shape == "half" then
 		return sw * sw
 	end
 	local sd = def.size.d and ((rec.d or def.size.d) / def.size.d) or 1
@@ -454,7 +454,7 @@ function Sim.estimate(state, draft, design)
 		local st = stFor(v)
 		local travel = Sim.travelCost(prev, v, st.count)
 		local cut = Util.round(gross * Config.ARTIST_SHARE)
-		local costs = rent + st.cost + travel + cut
+		local costs = rent + st.cost + travel + cut + Sim.dancersAt(draft, v) * Config.DANCER_COST
 		local n = Config.DEMAND_NOISE
 		local low = math.min(1, d[i] * (1 - n) / v.cap)
 		local high = math.min(1, d[i] * (1 + n) / v.cap)
@@ -474,6 +474,15 @@ function Sim.estimate(state, draft, design)
 	res.netLow = (res.grossLow or 0) - res.costs + Util.round((res.gross - (res.grossLow or 0)) * Config.ARTIST_SHARE)
 	res.netHigh = (res.grossHigh or 0) - res.costs - Util.round(((res.grossHigh or 0) - res.gross) * Config.ARTIST_SHARE)
 	return res
+end
+
+-- background dancers of a tour at this venue (solo artists only, never in clubs)
+function Sim.dancersAt(tour, venue)
+	local ad = Artists.byId[tour.artistId or ""]
+	if not ad or ad.members ~= 1 or Sim.lookOf(venue) == "club" then
+		return 0
+	end
+	return Util.clamp(math.floor(tonumber(tour.dancers) or 0), 0, Config.MAX_DANCERS)
 end
 
 ------------------------------------------------------------------ show result
@@ -501,10 +510,12 @@ function Sim.showResult(state, tour, idx, design, rnd)
 	local prodScore, st = Sim.productionScore(design, ad.genre, v.cap)
 	local travel = s.travel or 0
 	local cut = Util.round(gross * Config.ARTIST_SHARE)
-	local net = gross - rent - st.cost - travel - cut
+	local dancers = Sim.dancersAt(tour, v)
+	local dancerCost = dancers * Config.DANCER_COST
+	local net = gross - rent - st.cost - travel - cut - dancerCost
 	local fill = sold / v.cap
 
-	local rating = 0.45 * ad.skill + 0.45 * prodScore + 10 * fill - 5 + (rnd() * 8 - 4)
+	local rating = 0.45 * ad.skill + 0.45 * prodScore + 10 * fill - 5 + (rnd() * 8 - 4) + dancers * Config.DANCER_RATING
 	rating = Util.clamp(rating, 1, 100)
 	local stars = 1
 	if rating >= 88 then
@@ -533,7 +544,8 @@ function Sim.showResult(state, tour, idx, design, rnd)
 		secSold = s.secSold,
 		gross = gross,
 		rent = rent,
-		production = st.cost,
+		production = st.cost + dancerCost,
+		dancers = dancers,
 		travel = travel,
 		artistCut = cut,
 		net = net,

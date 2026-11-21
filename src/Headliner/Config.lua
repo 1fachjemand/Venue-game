@@ -16,6 +16,10 @@ Config.MIN_LEAD_DAYS = 14
 Config.MAX_LEAD_DAYS = 120
 Config.MAX_GAP_DAYS = 7
 Config.MAX_SHOWS_PER_TOUR = 60
+-- Background dancers for solo artists (not in clubs): cost per dancer and show, rating bonus per dancer
+Config.MAX_DANCERS = 7
+Config.DANCER_COST = 1500
+Config.DANCER_RATING = 1.4
 -- Part of the ticket gross that goes to the artist
 Config.ARTIST_SHARE = 0.35
 
@@ -66,17 +70,17 @@ Config.RESALE = 0.7
 -- Promoter estimates are uncertain: real demand per show varies by this much (hidden from the player)
 Config.DEMAND_NOISE = 0.15
 
-Config.MAX_DESIGN_ITEMS = 260
+Config.MAX_DESIGN_ITEMS = 440
 Config.MAX_DESIGNS = 8
 
 -- Stage size classes. A design can only be used in venues of its class or bigger.
 -- end stage: build area x minX..maxX, z minZ..maxZ (audience towards +z)
 -- center stage: square build area -center..center (audience all around)
 Config.STAGE_CLASSES = {
-	{ id = "Club", order = 1, minX = -24, maxX = 24, minZ = -22, maxZ = 14, center = 22, rigY = 27, maxItems = 40, desc = "Clubs (up to ~600 fans)" },
-	{ id = "Theatre", order = 2, minX = -36, maxX = 36, minZ = -28, maxZ = 34, center = 34, rigY = 28, maxItems = 80, desc = "Theatres & halls (up to ~8,000)" },
-	{ id = "Arena", order = 3, minX = -60, maxX = 60, minZ = -34, maxZ = 100, center = 62, rigY = 38, maxItems = 170, desc = "Arenas & amphitheatres" },
-	{ id = "Stadium", order = 4, minX = -120, maxX = 120, minZ = -70, maxZ = 200, center = 120, rigY = 75, maxItems = 340, desc = "Stadiums only" },
+	{ id = "Club", order = 1, minX = -24, maxX = 24, minZ = -22, maxZ = 14, center = 22, rigY = 27, maxItems = 50, desc = "Clubs (up to ~600 fans)" },
+	{ id = "Theatre", order = 2, minX = -36, maxX = 36, minZ = -28, maxZ = 34, center = 34, rigY = 28, maxItems = 100, desc = "Theatres & halls (up to ~8,000)" },
+	{ id = "Arena", order = 3, minX = -60, maxX = 60, minZ = -34, maxZ = 100, center = 62, rigY = 38, maxItems = 230, desc = "Arenas & amphitheatres" },
+	{ id = "Stadium", order = 4, minX = -120, maxX = 120, minZ = -70, maxZ = 200, center = 120, rigY = 75, maxItems = 440, desc = "Stadiums only" },
 }
 Config.STAGE_CLASS_BY_ID = {}
 for _, c in ipairs(Config.STAGE_CLASSES) do

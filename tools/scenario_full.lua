@@ -587,7 +587,7 @@ MOCK.clickExact("Live: artist")
 MOCK.clickExact("+", 1) -- "For": song 1
 MOCK.clickExact("Live: fans")
 MOCK.clickExact("-", 1) -- back to the whole show
-MOCK.clickExact("Tour visuals")
+MOCK.clickExact("Artist visuals")
 local ledRec, pillar = nil, nil
 for _, r in ipairs(Stage3D.items) do if r.kind == "led" then ledRec = r.rec end end
 log("tour visuals", ledRec.scr.default.m)
@@ -871,6 +871,37 @@ do
 	log("crew set-up: before", seen.before, "during", seen.during, "of", #job.parts, "crew seen", seen.hands, "after", seen.after, "from x", job.hands[1].way[1].X, job.hands[2].way[1].X, "fade in", seen.fadeIn)
 	assert(job.hands[1].way[1].X < -10 and job.hands[2].way[1].X > 10, "the stage hands come from both sides")
 	assert(doneC and seen.before == 0 and seen.during == #job.parts and seen.hands and seen.after == 0, "the crew sets the acoustic set up and takes it away")
+	for _ = 1, 10 do MOCK.step(1 / 30) end
+end
+-- round 9: fans arrive before the show, the intro of the tour, the artist walks on, background dancers,
+-- a special element (the gown riser lifts the artist), artist visuals on a screen
+do
+	local r9 = { id = "r9_test", name = "R9", class = "Arena", layout = "end", items = {
+		{ t = "deck", x = 0, z = -14, r = 0, w = 60, d = 24, h = 6 },
+		{ t = "spot", x = -10, z = -10, r = 0 },
+		{ t = "gownriser", x = 12, z = -12, r = 0, play = 2 },
+		{ t = "led_flat", x = 0, z = -24, r = 0, w = 20, d = 8, scr = { default = { m = "visuals" } } },
+	} }
+	local doneR = false
+	LiveShow.run(app, { artistId = "juno", design = r9, look = "arena", cap = 1000, sold = 900, tourName = "R9 Tour", tourId = "t99", dancers = 4, preview = true, onDone = function() doneR = true end })
+	assert(#LiveShow.lastCrew == 4, "4 background dancers for a solo artist")
+	assert(LiveShow.lastIntro and LiveShow.INTROS[LiveShow.lastIntro], "an intro for the tour")
+	assert(LiveShow.lastEntrance, "the artist walks on")
+	MOCK.click("^Speed") MOCK.click("^Speed")
+	local maxY, seenVis, hiddenAtStart, arrivedLate = 0, nil, nil, nil
+	local screen
+	for _, r in ipairs(Stage3D.items) do if r.kind == "led_flat" then screen = r end end
+	local f = 0
+	while not doneR and f < 9000 do
+		MOCK.step(1 / 30)
+		f = f + 1
+		local t = LiveShow.debugT and LiveShow.debugT() or 0
+		if LiveShow.debugLead then maxY = math.max(maxY, LiveShow.debugLead.Y) end
+		if screen and screen.faces[1].visKind then seenVis = screen.faces[1].visKind end
+	end
+	log("round 9 show: intro", LiveShow.lastIntro, "highest point of the artist", maxY, "visual", seenVis)
+	assert(doneR and maxY > 14, "the gown riser lifts the artist high")
+	assert(seenVis ~= nil, "artist visuals on the screen")
 	for _ = 1, 10 do MOCK.step(1 / 30) end
 end
 -- a group (STARLYTE, K-Pop): the other members dance on their own on the decks; a "2.5" spot (a moment in song 2)

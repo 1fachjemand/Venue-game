@@ -134,6 +134,9 @@ CF.__index = function(c, k)
 	if k == "Position" or k == "p" then return c._p
 	elseif k == "X" then return c._p.X elseif k == "Y" then return c._p.Y elseif k == "Z" then return c._p.Z
 	elseif k == "LookVector" then return v3(-c._r[3], -c._r[6], -c._r[9])
+	elseif k == "RightVector" or k == "XVector" then return v3(c._r[1], c._r[4], c._r[7])
+	elseif k == "UpVector" or k == "YVector" then return v3(c._r[2], c._r[5], c._r[8])
+	elseif k == "ZVector" then return v3(c._r[3], c._r[6], c._r[9])
 	elseif k == "VectorToWorldSpace" then
 		return function(self, v) return mv(self._r, v) end
 	elseif k == "PointToObjectSpace" then
@@ -198,11 +201,29 @@ local function c3(r, g, b)
 end
 C3.__index = function(c, k)
 	if k == "Lerp" then return function(a, b, t) assert(typeof(b) == "Color3", "Color3:Lerp expects Color3") return c3(a.R + (b.R - a.R) * t, a.G + (b.G - a.G) * t, a.B + (b.B - a.B) * t) end end
+	if k == "ToHSV" then return function(a)
+		local mx, mn = math.max(a.R, a.G, a.B), math.min(a.R, a.G, a.B)
+		local d, h = mx - mn, 0
+		if d > 0 then
+			if mx == a.R then h = ((a.G - a.B) / d) % 6 elseif mx == a.G then h = (a.B - a.R) / d + 2 else h = (a.R - a.G) / d + 4 end
+			h = h / 6
+		end
+		return h, (mx > 0) and d / mx or 0, mx
+	end end
 	error("Color3 has no member " .. tostring(k), 2)
 end
 C3.__eq = function(a, b) return a.R == b.R and a.G == b.G and a.B == b.B end
 Color3 = {
 	new = function(r, g, b) return c3(r or 0, g or 0, b or 0) end,
+	toHSV = function(c) return C3.__index(c, "ToHSV")(c) end,
+	fromHSV = function(h, s, v)
+		assert(h >= 0 and h <= 1 and s >= 0 and s <= 1 and v >= 0 and v <= 1, "fromHSV out of range")
+		local i = math.floor(h * 6) % 6
+		local f = h * 6 - math.floor(h * 6)
+		local p, q, t = v * (1 - s), v * (1 - f * s), v * (1 - (1 - f) * s)
+		local t2 = ({ { v, t, p }, { q, v, p }, { p, v, t }, { p, q, v }, { t, p, v }, { v, p, q } })[i + 1]
+		return c3(t2[1], t2[2], t2[3])
+	end,
 	fromRGB = function(r, g, b)
 		assert(r >= 0 and r <= 255 and g >= 0 and g <= 255 and b >= 0 and b <= 255, "fromRGB out of range")
 		return c3(r / 255, g / 255, b / 255)

@@ -1601,6 +1601,8 @@ function App:resolveShow(tour, idx, watch)
 		venueId = s.venueId,
 		sold = result.sold,
 		tourName = tour.name,
+		tourId = tour.id,
+		dancers = tour.dancers,
 		result = result,
 		walk = true,
 		-- the show is over: the result while you are still in the venue, then back to the office
