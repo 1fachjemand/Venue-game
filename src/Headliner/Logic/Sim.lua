@@ -342,7 +342,8 @@ function Sim.marketingMult(tour)
 			m = m * (1 + mk.boost)
 		end
 	end
-	return m
+	-- word of mouth: a great opening night (and great shows after it) make more people want to go
+	return m * (tour.buzz or 1)
 end
 
 -- Share of the final demand that has bought a ticket after `elapsed` of `total` pre-sale days

@@ -65,7 +65,24 @@ function ArtistsScreen:card(ad, order)
 		end
 	end
 	UI.Label(card, "Biggest in " .. Regions.byId[best].name, UI.px(176, 198), UI.px(264, 22), { textSize = 15 })
-	UI.Label(card, "Tickets ~" .. Util.money(Sim.fairPrice(state, ad.id, "uk")), UI.px(176, 222), UI.px(264, 22), { textSize = 15, color = T.sub })
+	if a.signed and (a.signFans or 0) > 0 then
+		-- how much they grew with you, and the next growth bonus
+		local f = total / a.signFans
+		local nextG = nil
+		for _, g in ipairs(Config.GROWTH) do
+			if not (a.growth and a.growth[tostring(g.x)]) then
+				nextG = g
+				break
+			end
+		end
+		local txt = string.format("%.1fx", f) .. " since signing"
+		if nextG then
+			txt = txt .. "  |  " .. nextG.x .. "x: +" .. Util.moneyShort(Util.round(nextG.reward * (Config.GROWTH_TIER[ad.tier or 3] or 1) / 1000) * 1000)
+		end
+		UI.Label(card, txt, UI.px(176, 222), UI.px(264, 22), { textSize = 14, color = T.good, font = UI.FontBold })
+	else
+		UI.Label(card, "Tickets ~" .. Util.money(Sim.fairPrice(state, ad.id, "uk")), UI.px(176, 222), UI.px(264, 22), { textSize = 15, color = T.sub })
+	end
 	UI.Label(card, ad.bio, UI.px(18, 262), UI.px(330, 44), { textSize = 15, color = T.sub, wrap = true, alignY = Enum.TextYAlignment.Top })
 	UI.Button(card, "> Listen", UI.px(354, 264), UI.px(80, 36), { textSize = 14 }, function()
 		if not SoundFX.preview(ad.id) then

@@ -160,6 +160,15 @@ return {
 		{ 1, "Fair prices + {artist} = taking all my friends" },
 		{ 1, "{label}, thank you for not ripping us off" },
 	},
+	-- after a great opening night: the fans who were there make the others want to go too
+	buzz = {
+		{ 1, "Everyone who saw {artist} at {venue} says it's the show of the year. Buying tickets NOW" },
+		{ 1, "The {tour} opening night clips are everywhere. I need to be there" },
+		{ 1, "My feed is just {tour} videos since last night. Okay okay I'm going" },
+		{ 1, "Heard {artist}'s new show is unreal. Getting tickets for my city before they're gone" },
+		{ 1, "If the rest of {tour} is like the opening night, we are not ready" },
+		{ 1, "Saw the {song} clip from {city} 20 times. Need it live" },
+	},
 	cancel = {
 		{ -1, "{tour} cancelled? My heart is in pieces" },
 		{ 0, "Hope everything is ok with {artist}. Health first" },

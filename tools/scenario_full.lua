@@ -398,7 +398,7 @@ MOCK.sit(nil)
 steps(2)
 assert(app.mode == "world" and not W.boardGui, "standing up ends the meeting")
 assert(not W.prompts.meeting.Enabled, "standing up hides the meeting prompt")
-cheat(function(s) s.stats.tickets = 30000 s.money = 1000000 end)
+cheat(function(s) s.stats.tickets = 60000 s.money = 1000000 end)
 nextDay()
 clearModals()
 MOCK.sit(seat)
@@ -1119,7 +1119,7 @@ assert(app.mode == "world", "phone closed")
 
 -- 8) superstar stadium tour (needs level 4), watched live with skip
 cheat(function(s)
-	s.money = 60000000 s.stats.tickets = 4000000
+	s.money = 60000000 s.stats.tickets = 9000000
 	local GSx = require(root.Logic.GameState)
 	local busy, d = GSx.artistBusy(s, "nova")
 	if busy then s.day = s.day + d end

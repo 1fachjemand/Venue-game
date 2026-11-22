@@ -536,7 +536,7 @@ function Sam.artistLine(ad, state)
 		else
 			next = "A tour in small clubs would build the hype."
 		end
-		return name .. " is one of ours (" .. who .. "), " .. fans .. " fans, hype " .. math.floor(a.hype) .. ". " .. next
+		return name .. " is one of ours (" .. who .. "), " .. fans .. " fans, hype " .. math.floor(a.hype) .. ". " .. next .. " They want at most " .. (ad.maxTourDays or 60) .. " days on the road per tour."
 	end
 	local lvl = GS.level(state)
 	local about = ad.pitch or ad.bio

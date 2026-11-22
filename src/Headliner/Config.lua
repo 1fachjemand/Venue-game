@@ -38,18 +38,24 @@ Config.SANDBOX_MONEY = 1000000000
 Config.VENUE_LEVEL = { Club = 1, Theatre = 3, Hall = 3, Arena = 5, Amphitheatre = 5, Stadium = 8 }
 
 -- Label levels: unlocked by total tickets sold. Bigger artists need a higher level.
+-- (round 11: about 2.5x the tickets of before, the label grows slower and every level is a real step)
 Config.LEVELS = {
 	{ name = "Garage Label", tickets = 0 },
-	{ name = "Indie Label", tickets = 1500 },
-	{ name = "Club Circuit Label", tickets = 6000 },
-	{ name = "Rising Label", tickets = 20000 },
-	{ name = "Hall Headliners", tickets = 55000 },
-	{ name = "Chart Label", tickets = 130000 },
-	{ name = "Major Label", tickets = 300000 },
-	{ name = "Arena Empire", tickets = 650000 },
-	{ name = "Stadium Label", tickets = 1400000 },
-	{ name = "Global Powerhouse", tickets = 3000000 },
+	{ name = "Indie Label", tickets = 4000 },
+	{ name = "Club Circuit Label", tickets = 15000 },
+	{ name = "Rising Label", tickets = 50000 },
+	{ name = "Hall Headliners", tickets = 140000 },
+	{ name = "Chart Label", tickets = 340000 },
+	{ name = "Major Label", tickets = 780000 },
+	{ name = "Arena Empire", tickets = 1700000 },
+	{ name = "Stadium Label", tickets = 3700000 },
+	{ name = "Global Powerhouse", tickets = 8000000 },
 }
+
+-- growing a small artist pays: when the fans of a signed artist reach these multiples of their fans when you
+-- signed them, the label gets a bonus (smaller artists = bigger bonus, Artists tier: GROWTH_TIER)
+Config.GROWTH = { { x = 2, reward = 30000 }, { x = 5, reward = 150000 }, { x = 10, reward = 500000 }, { x = 25, reward = 2000000 }, { x = 50, reward = 6000000 } }
+Config.GROWTH_TIER = { 2.0, 1.5, 1.0, 0.6, 0.35 }
 
 -- An artist needs a break after a tour: rest days = REST_BASE + REST_PER_SHOW * shows played (max REST_MAX)
 Config.REST_BASE = 10

@@ -172,7 +172,10 @@ local function cleanDraft(state, d)
 				break
 			end
 			if type(s) == "table" and Countries.venueById[s.venueId or ""] and num(s.day) then
-				table.insert(out.shows, { venueId = s.venueId, day = math.floor(s.day) })
+				-- (only as many days on the road as the artist wants)
+				if GS.tourSpan(out.shows, math.floor(s.day)) <= GS.maxTourDays(out.artistId) then
+					table.insert(out.shows, { venueId = s.venueId, day = math.floor(s.day) })
+				end
 			end
 		end
 	end

@@ -111,7 +111,7 @@ Tutorial.STEPS = {
 	},
 	{
 		at = "laptop",
-		lines = { "These are the ticket prices. The promoter already set fair ones: press <b>Next</b>." },
+		lines = { "These are the ticket prices. The promoter already set fair ones: press <b>Next</b>. (If it shows <b>more seats than fans</b>, cheaper tickets won't help: book fewer shows in one country or smaller venues.)" },
 		hint = "Press Next.",
 		done = function(app)
 			return (app.state.draft or {}).pricesSet == true

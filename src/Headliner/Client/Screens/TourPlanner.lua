@@ -98,11 +98,25 @@ function TP:saveDraft()
 	self:syncDraft()
 end
 
+-- the fair price of the shows of one venue kind (what a ticket is worth in their countries)
+function TP:fairBase(look)
+	local state, draft = self.app.state, self.draft
+	local sum, n = 0, 0
+	for _, s in ipairs(draft.shows) do
+		local v = Countries.venueById[s.venueId]
+		if v and Sim.lookOf(v) == look then
+			sum = sum + Sim.fairPrice(state, draft.artistId, v.countryId)
+			n = n + 1
+		end
+	end
+	return n > 0 and sum / n or Sim.ticketBase(state, draft.artistId)
+end
+-- new prices start at the fair price of the countries the shows are in
 function TP:pricesFor(look)
 	local draft = self.draft
 	draft.prices = draft.prices or {}
 	if not draft.prices[look] then
-		draft.prices[look] = Sim.defaultPrices(draft.price, look)
+		draft.prices[look] = Sim.defaultPrices(self:fairBase(look), look)
 	end
 	return draft.prices[look]
 end
@@ -571,6 +585,10 @@ function TP:dayState(day)
 			return "mine"
 		end
 	end
+	-- the artist wants to be on the road for at most this many days (first to last show)
+	if GS.tourSpan(draft.shows, day) > GS.maxTourDays(draft.artistId) then
+		return "far"
+	end
 	local busy = GS.venueBusy(state, self.picked, day)
 	if busy then
 		return "busy", busy
@@ -613,7 +631,13 @@ function TP:buildCalendar()
 	end
 	local y, m = self.calMonth[1], self.calMonth[2]
 	z(UI.Label(p, "When? " .. v.name .. ", " .. v.city, UI.px(32, 20), UI.px(1000, 36), { textSize = 26, font = UI.FontBlack }))
-	z(UI.Label(p, "Pick one or more green days.", UI.px(32, 58), UI.px(1100, 24), { textSize = 16, color = T.sub }))
+	z(UI.Label(p, "Pick one or more green days.", UI.px(32, 58), UI.px(640, 24), { textSize = 16, color = T.sub }))
+	-- the artist's limit, always in sight
+	local adx = Artists.byId[self.draft.artistId or ""]
+	if adx then
+		local used = GS.tourSpan(self.draft.shows)
+		z(UI.Pill(p, adx.name .. ": max " .. GS.maxTourDays(adx.id) .. " days on the road" .. (used > 0 and ("  (" .. used .. " planned)") or ""), UI.px(32, 92), UI.px(520, 32), T.accent2, 15))
+	end
 	z(UI.Button(p, "<", UI.px(940, 100), UI.px(52, 44), { textSize = 20 }, function()
 		m = m - 1
 		if m < 1 then
@@ -637,7 +661,7 @@ function TP:buildCalendar()
 	end
 	local d0 = Util.dayOf(y, m, 1, Config.START_YEAR)
 	local _, _, _, wd0 = Util.ymd(d0, Config.START_YEAR)
-	local COL = { past = T.panel2, mine = T.accent, ok = Color3.fromRGB(187, 247, 208), busy = Color3.fromRGB(254, 202, 202), travel = Color3.fromRGB(226, 232, 240) }
+	local COL = { past = T.panel2, mine = T.accent, ok = Color3.fromRGB(187, 247, 208), busy = Color3.fromRGB(254, 202, 202), travel = Color3.fromRGB(226, 232, 240), far = Color3.fromRGB(241, 245, 249) }
 	for dd = 1, Util.monthLength(y, m) do
 		local day = d0 + dd - 1
 		local cell = wd0 - 1 + dd - 1
@@ -649,7 +673,7 @@ function TP:buildCalendar()
 		b.Name = "Day" .. day
 		local fg = (st == "mine") and Color3.new(1, 1, 1) or ((st == "past") and T.sub or T.text)
 		z(UI.Label(b, tostring(dd), UI.px(10, 6), UI.px(60, 24), { textSize = 18, font = UI.FontBold, color = fg }))
-		local txt = (st == "busy") and ("taken: " .. tostring(why)) or ((st == "travel") and "travel day" or ((st == "ok") and "free" or ""))
+		local txt = (st == "busy") and ("taken: " .. tostring(why)) or ((st == "travel") and "travel day" or ((st == "ok") and "free" or ((st == "far") and "too long a tour" or "")))
 		if st == "mine" then
 			for _, s in ipairs(self.draft.shows) do
 				if s.day == day then
@@ -807,7 +831,23 @@ function TP:buildTickets()
 		end
 	end
 	local fairBase = fairN > 0 and fairSum / fairN or Sim.ticketBase(state, ad.id)
-	UI.Label(right, "Same prices for all " .. string.lower(LOOK_LABEL[look]) .. " of this tour. Every section sells on its own: below its fair price it sells faster, above it slower. Tickets keep selling until the show day.", UI.px(28, 50), UI.px(830, 48), { textSize = 14, color = T.sub, wrap = true })
+	-- fans against seats: when there are more seats than fans, cheaper tickets don't help (fewer shows in that
+	-- country or smaller venues do)
+	do
+		local d = Sim.demands(state, draft.artistId, draft.shows, 1)
+		local fans, seats = 0, 0
+		for i, s in ipairs(draft.shows) do
+			local v = Countries.venueById[s.venueId]
+			if Sim.lookOf(v) == look then
+				fans = fans + (d[i] or 0)
+				seats = seats + v.cap
+			end
+		end
+		local enough = fans >= seats * 0.9
+		local box = UI.New("Frame", { Parent = right, Position = UI.px(28, 50), Size = UI.px(830, 46), BackgroundColor3 = enough and Color3.fromRGB(220, 252, 231) or Color3.fromRGB(254, 243, 199), BorderSizePixel = 0, UI.Corner(10) })
+		UI.Label(box, "~" .. Util.number(math.floor(fans)) .. " fans  for  " .. Util.number(seats) .. " seats", UI.px(16, 0), UI.px(380, 46), { textSize = 18, font = UI.FontBlack, color = enough and T.good or T.warn })
+		UI.Label(box, enough and "Enough fans: fair prices sell well." or "More seats than fans: fewer shows here or smaller venues.", UI.px(400, 0), UI.px(420, 46), { textSize = 14, color = T.text, wrap = true })
+	end
 	local y = 106
 	for i, sec in ipairs(secs) do
 		local sel = sec.id == self.ticketSec

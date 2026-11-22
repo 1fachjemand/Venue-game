@@ -828,6 +828,15 @@ end
 -- a small message at the right edge; onClick (optional) makes it a button (e.g. "open the tour report")
 -- a new achievement: its name, what it was for and the reward (click: the Achievements app on the laptop)
 function App:achievementToast(id)
+	-- a small artist grew big: "grow:<artist>:<x>:<reward>"
+	local aid, x, reward = tostring(id):match("^grow:([^:]+):([^:]+):([^:]+)$")
+	if aid then
+		local ad = Artists.byId[aid]
+		local money = (not (self.state and self.state.sandbox)) and ("<br/><font color='#16a34a'><b>+" .. Util.money(tonumber(reward) or 0) .. "</b></font>") or ""
+		self:toast("<b>" .. UI.esc(ad and ad.name or "") .. " grew " .. x .. "x!</b><br/>" .. x .. " times the fans since you signed them." .. money, T.gold, 8)
+		SoundFX.sfx("cash", 0.6)
+		return
+	end
 	local a = Achievements.byId[id]
 	if not a then
 		return

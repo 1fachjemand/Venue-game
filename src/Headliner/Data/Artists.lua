@@ -287,6 +287,12 @@ end
 -- every setlist: no title twice, and Artists.SONGS songs (long shows never repeat a song)
 for _, a in ipairs(Artists.list) do
 	a.setlist = makeSetlist(a.id, a.genre, a.setlist)
+	-- how long the artist wants to be on the road at most (first to last show), different for everyone:
+	-- newcomers short tours, stars longer ones
+	local h = seedOf(a.id .. "road")
+	a.maxTourDays = 24 + a.level * 6 + (h % 6) * 4
+	-- the size class when the game starts (1 newcomer .. 5 superstar): small ones pay more when they grow
+	a.tier = a.tier or math.max(1, math.min(5, math.ceil(a.level / 2)))
 end
 
 Artists.byId = {}

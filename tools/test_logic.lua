@@ -128,7 +128,7 @@ do
   check(ok and st.money == m0 - 18000, "buy led " .. st.money)
   GS.sellItem(st, d, d.items[#d.items])
   check(st.money == m0 - 18000 + 12600, "resale 70%")
-  st.stats.tickets = 25000
+  st.stats.tickets = 60000 -- (round 11: the label levels up slower)
   check(GS.level(st) == 4 and GS.checkLevelUp(st) == "Rising Label", "level up")
   st.money = 1000000
   local ok2 = GS.sign(st, "voltage")
@@ -371,5 +371,28 @@ do
   sb.stats.shows = 1
   GS.checkAchievements(sb)
   check(sb.money == sm and sb.achievements.first_show, "sandbox: unlocked but no money")
+end
+-- round 11: max days on the road, growth bonus for small artists, opening-night buzz
+do
+  local A = require(ROOT.Logic.Actions)
+  local st = GS.new("R11", "lila")
+  local maxD = GS.maxTourDays("lila")
+  check(maxD >= 24 and maxD <= 120, "lila has a max tour length " .. maxD)
+  local venues = {}
+  for _, v in ipairs(Countries.byId.uk.venues) do if v.cap <= 600 then table.insert(venues, v.id) end end
+  local ok = A.run and A.run(st, "setDraft", { draft = { artistId = "lila", shows = { { venueId = venues[1], day = st.day + 10 }, { venueId = venues[1], day = st.day + 10 + maxD + 5 } } } })
+  check(ok and #st.draft.shows == 1, "a show beyond the artist's max days is not taken (" .. #(st.draft.shows or {}) .. ")")
+  -- growth: 2x the fans since signing = bonus (lila is a newcomer: the biggest bonus)
+  local m0 = st.money
+  for r, f in pairs(st.artists.lila.fans) do st.artists.lila.fans[r] = f * 2 end
+  local ids = GS.checkGrowth(st)
+  check(#ids == 1 and st.money > m0, "growth bonus at 2x (" .. tostring(ids[1]) .. ")")
+  check(#GS.checkGrowth(st) == 0, "growth bonus only once")
+  -- buzz: a 5-star opening night sells more for the other shows
+  local Sim2 = require(ROOT.Logic.Sim)
+  local tour = { marketing = {}, played = 0 }
+  check(Sim2.marketingMult(tour) == 1, "no buzz before the opening")
+  tour.buzz = 1.25
+  check(Sim2.marketingMult(tour) > 1.2, "buzz raises the demand")
 end
 print("FAILS", fails)

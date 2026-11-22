@@ -95,6 +95,7 @@ function GS.new(labelName, starterId, opts)
 	end
 	local starter = Artists.byId[starterId or ""] or Artists.byId.lila
 	state.artists[starter.id].signed = true
+	state.artists[starter.id].signFans = Util.totalFans(state.artists[starter.id].fans)
 	for _, p in ipairs(StageItems.PRESETS) do
 		if not p.shop then
 			GS.addDesign(state, p.name, Util.deepCopy(p.items), p.class, p.layout).template = p.name
@@ -316,9 +317,29 @@ function GS.sign(state, artistId)
 	end
 	state.money = state.money - ad.signCost
 	a.signed = true
+	a.signFans = Util.totalFans(a.fans) -- growth bonuses count from here (Config.GROWTH)
 	GS.log(state, "Signed " .. ad.name .. " for " .. Util.money(ad.signCost) .. "!")
 	Social.add(state, "sign", { artistId = ad.id }, 2)
 	return true, ad.name .. " joined your label!"
+end
+
+-- days on the road: from the first to the last show (the artist allows at most ad.maxTourDays)
+function GS.tourSpan(shows, extraDay)
+	local lo, hi = extraDay, extraDay
+	for _, s in ipairs(shows or {}) do
+		if s.day then
+			lo = lo and math.min(lo, s.day) or s.day
+			hi = hi and math.max(hi, s.day) or s.day
+		end
+	end
+	if not lo then
+		return 0
+	end
+	return hi - lo + 1
+end
+function GS.maxTourDays(artistId)
+	local ad = Artists.byId[artistId or ""]
+	return (ad and ad.maxTourDays) or 60
 end
 
 -- can the label book this venue yet? (level 1 = clubs, see Config.VENUE_LEVEL)
@@ -978,6 +999,16 @@ function GS.applyShow(state, tour, idx, r)
 	tour.played = tour.played + 1
 	tour.ratingSum = tour.ratingSum + r.rating
 	tour.status = "touring"
+	-- word of mouth (social media): the opening night counts most, later 5-star shows add a little
+	if tour.played == 1 then
+		local b = ({ 0.88, 0.94, 1.0, 1.12, 1.25 })[Util.clamp(r.stars or 3, 1, 5)]
+		tour.buzz = b
+		if b > 1 then
+			Social.add(state, "buzz", { artistId = tour.artistId, venueId = s.venueId, tour = tour }, 2)
+		end
+	elseif (r.stars or 0) >= 5 then
+		tour.buzz = math.min(1.4, (tour.buzz or 1) + 0.03)
+	end
 	if r.soldOut then
 		tour.sellouts = tour.sellouts + 1
 	end
@@ -1261,6 +1292,36 @@ function GS.achievementProgress(ach, vals)
 	return v, ach.goal, v >= ach.goal
 end
 
+-- growing a small artist pays: a bonus every time a signed artist's fans reach 2x, 5x, 10x, 25x, 50x of what
+-- they had when you signed them (newcomers pay the most). returns ids "grow:<artist>:<x>:<reward>"
+function GS.checkGrowth(state)
+	local out = {}
+	for _, ad in ipairs(Artists.list) do
+		local a = state.artists[ad.id]
+		if a and a.signed then
+			local total = Util.totalFans(a.fans)
+			if not a.signFans or a.signFans <= 0 then
+				a.signFans = total -- (older saves: counted from now on)
+			end
+			a.growth = a.growth or {}
+			local f = total / a.signFans
+			for _, g in ipairs(Config.GROWTH) do
+				local key = tostring(g.x)
+				if f >= g.x and not a.growth[key] then
+					a.growth[key] = state.day
+					local reward = Util.round(g.reward * (Config.GROWTH_TIER[ad.tier or 3] or 1) / 1000) * 1000
+					if not state.sandbox then
+						state.money = state.money + reward
+					end
+					GS.log(state, ad.name .. " has " .. g.x .. "x the fans since you signed them: bonus " .. Util.money(reward))
+					table.insert(out, "grow:" .. ad.id .. ":" .. g.x .. ":" .. reward)
+				end
+			end
+		end
+	end
+	return out
+end
+
 -- unlocks reached achievements and pays their reward (in the sandbox the money stays as it is)
 function GS.checkAchievements(state)
 	local vals = GS.achievementStats(state)
@@ -1277,6 +1338,9 @@ function GS.checkAchievements(state)
 				GS.log(state, "Achievement unlocked: " .. ach.name .. ((ach.reward or 0) > 0 and (" (+" .. Util.money(ach.reward) .. ")") or ""))
 			end
 		end
+	end
+	for _, id in ipairs(GS.checkGrowth(state)) do
+		table.insert(new, id)
 	end
 	return new
 end
