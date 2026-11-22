@@ -51,7 +51,7 @@ for (const key in groups) {
   });
   scene.add(im);
 }
-const cam = new THREE.PerspectiveCamera(62, W/H, 1, 9000);
+const cam = new THREE.PerspectiveCamera(SCENE.fov || 62, W/H, 1, 9000);
 const f = SCENE.cams[+q.get('c')];
 const m = new THREE.Matrix4().set(f[3],f[4],f[5],f[0], f[6],f[7],f[8],f[1], f[9],f[10],f[11],f[2], 0,0,0,1);
 cam.position.set(f[0], f[1], f[2]); cam.quaternion.setFromRotationMatrix(m);

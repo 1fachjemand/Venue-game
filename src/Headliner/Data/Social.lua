@@ -209,10 +209,11 @@ Social.POSTS = {
 
 -- photos fans attach: chance per post kind and the kinds of photo (see SocialScreen.photo)
 Social.PHOTOS = {
-	photo = { 1, { "stage", "selfie", "wide", "closeup", "confetti", "pyro", "phones", "barricade", "queue", "sign" } },
-	show_great = { 0.35, { "stage", "wide", "phones", "confetti", "closeup" } },
+	photo = { 1, { "stage", "selfie", "wide", "closeup", "confetti", "pyro", "phones", "barricade", "queue", "sign", "imag", "backlit", "aerial", "sidestage", "stage" } },
+	show_great = { 0.45, { "stage", "wide", "phones", "confetti", "closeup", "imag", "sidestage", "backlit" } },
+	buzz = { 0.6, { "stage", "imag", "aerial", "backlit" } },
 	show_ok = { 0.15, { "stage", "wide" } },
-	stage = { 0.7, { "pyro", "stage", "confetti", "wide" } },
+	stage = { 0.8, { "pyro", "stage", "confetti", "wide", "aerial", "backlit", "imag" } },
 	outfit = { 0.8, { "closeup" } },
 	merch = { 0.75, { "merch" } },
 	countdown = { 0.5, { "ticket", "queue" } },

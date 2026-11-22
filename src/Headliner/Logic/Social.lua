@@ -23,6 +23,20 @@ local function fill(text, c)
 	end))
 end
 
+-- texts that talk about a stage element: only when the stage of that show has one of these items
+Social.NEEDS = {
+	{ "out of the FLOOR", { "lift", "poplift" } },
+	{ "platform went up", { "floatplat" } },
+	{ "rain moment", { "showerstage", "raincurtain" } },
+	{ "giant dress", { "gownriser" } },
+	{ "on the drums", { "drums" } },
+	{ "piano moment", { "piano" } },
+	{ "fireworks", { "fireworks", "rimfireworks" } },
+	{ "lasers", { "laser" } },
+	{ "confetti", { "confetti" } },
+	{ "The screens", { "led", "led_flat", "led_hang", "led_side", "led_curve", "led_round", "led_kinetic", "ledtower", "ledcube" } },
+}
+
 -- adds `n` posts of a kind. c = { artistId, venueId?, tour?, song?, price?, item? }
 function Social.add(state, kind, c, n, rnd)
 	rnd = rnd or math.random
@@ -45,6 +59,53 @@ function Social.add(state, kind, c, n, rnd)
 		item = c.item or "",
 		label = state.labelName or "",
 	}
+	-- only texts that fit: no sections, rows or tiers in a standing club; a post about a lift, the rain,
+	-- the giant dress ... only when the stage has it
+	local look = v and Countries.VENUE_TYPES[v.type] and Countries.VENUE_TYPES[v.type].look or nil
+	local has = nil
+	if c.designId then
+		for _, d in ipairs(state.designs or {}) do
+			if d.id == c.designId then
+				has = {}
+				for _, it in ipairs(d.items or {}) do
+					has[it.t] = true
+				end
+			end
+		end
+	end
+	local function fits(text)
+		if look == "club" then
+			local low = text:lower()
+			if low:find("section") or low:find("row %d") or low:find("tier") or low:find("seat") or low:find("nosebleed") then
+				return false
+			end
+		end
+		for _, need in ipairs(Social.NEEDS) do
+			if text:find(need[1]) then
+				local ok = false
+				for _, k in ipairs(need[2]) do
+					if has and has[k] then
+						ok = true
+					end
+				end
+				if not ok then
+					return false
+				end
+			end
+		end
+		return true
+	end
+	local fitting = {}
+	for i, tpl in ipairs(list) do
+		if fits(tpl[2]) then
+			table.insert(fitting, i)
+		end
+	end
+	if #fitting == 0 then
+		for i = 1, #list do
+			fitting[i] = i
+		end
+	end
 	-- no text that was in the feed lately (the last 80 posts)
 	local used = {}
 	for i = 1, math.min(80, #state.social) do
@@ -54,10 +115,10 @@ function Social.add(state, kind, c, n, rnd)
 		end
 	end
 	for _ = 1, n or 1 do
-		local idx = math.floor(rnd() * #list) + 1
+		local idx = fitting[math.floor(rnd() * #fitting) + 1]
 		local tries = 0
 		while used[kind .. ":" .. idx] and tries < 14 do
-			idx = math.floor(rnd() * #list) + 1
+			idx = fitting[math.floor(rnd() * #fitting) + 1]
 			tries = tries + 1
 		end
 		local tpl = list[idx]

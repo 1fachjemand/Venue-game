@@ -188,7 +188,8 @@ local function realStage(vp, design, color, artistName)
 	mk(vp, Vector3.new(math.max(80, x1 - x0 + 20), 6, 30), CFrame.new(0, 3, -20), color, Enum.Material.Neon, nil, 0.93) -- haze
 	local top = topAt(cx, (z0 + z1) / 2)
 	local zoom = math.clamp((x1 - x0) / 46, 1, 4)
-	return Vector3.new(0, math.max(1, top) - 1, -26), zoom, placed
+	-- the artist stands at the front edge of the stage, on top of it (not sunk in)
+	return Vector3.new(0, math.max(0, top), -24), zoom, placed
 end
 
 -- a moment of the show for the photo: the artist coming up on the lift, at the drums, at the piano, up in
@@ -240,11 +241,18 @@ local function showMoment(placed, rng)
 	return m
 end
 
-local function star(vp, ad, color, seed, rng, pos, move, yaw)
+-- a follow spot on the artist: a soft cone from above and a glow behind them, so they stand out in the photo
+local function spotOn(vp, pos, color)
+	mk(vp, Vector3.new(36, 7, 7), CFrame.new(pos + Vector3.new(0, 18, 0)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(255, 248, 230), Enum.Material.Neon, Enum.PartType.Cylinder, 0.88)
+	mk(vp, Vector3.new(0.2, 12, 12), CFrame.new(pos + Vector3.new(0, 5, -2.5)) * CFrame.Angles(0, math.pi / 2, 0), color:Lerp(Color3.new(1, 1, 1), 0.5), Enum.Material.Neon, Enum.PartType.Cylinder, 0.78)
+	local disc = mk(vp, Vector3.new(0.2, 9, 9), CFrame.new(pos + Vector3.new(0, 0.12, 0)) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(255, 246, 226), Enum.Material.Neon, Enum.PartType.Cylinder, 0.55)
+	local _ = disc
+end
+local function star(vp, ad, color, seed, rng, pos, move, yaw, big)
 	if not ad then
 		return
 	end
-	local f = People.new(vp, color, 1.4, "lead", seed, ad.look)
+	local f = People.new(vp, color, big or 1.4, "lead", seed, ad.look)
 	local moves = { "micout", "micout", "jump", "wave", "dance" }
 	f:update(pos, yaw or 0, { t = rng:NextNumber() * 10, beat = 0.5, energy = 1, walking = false, armsUp = rng:NextNumber() < 0.4 and 1 or 0, move = move or moves[rng:NextInteger(1, #moves)] })
 	return f
@@ -474,13 +482,77 @@ local function photo(parent, ad, seed, kind, p)
 			mk(vp, Vector3.new(0.4, 2.2, 0.4), CFrame.new(sx + ox, 5.4, 1.3), Color3.fromRGB(240, 200, 170))
 		end
 		cam.CFrame = CFrame.lookAt(Vector3.new(rng:NextNumber(-3, 3), 7, 19), Vector3.new(0, 8, -20))
+	elseif kind == "imag" then
+		-- the artist big on the video screen next to the stage (IMAG), the real one small on the stage
+		star(vp, ad, color, seed, rng, artistPos)
+		spotOn(vp, artistPos, color)
+		local sx = (rng:NextNumber() < 0.5) and -1 or 1
+		-- the screen: a black frame with a window; the close-up is a big copy of the artist (head and chest)
+		-- behind the window, the frame and a black panel round it hide the rest
+		local wx, wy, ww, wh = sx * 22, 20, 20, 13
+		local bez = Color3.fromRGB(12, 12, 16)
+		local zf = -33
+		mk(vp, Vector3.new(ww + 3, 1.5, 1), CFrame.new(wx, wy + wh / 2 + 0.75, zf), bez)
+		mk(vp, Vector3.new(ww + 3, 1.5, 1), CFrame.new(wx, wy - wh / 2 - 0.75, zf), bez)
+		mk(vp, Vector3.new(1.5, wh + 3, 1), CFrame.new(wx - ww / 2 - 0.75, wy, zf), bez)
+		mk(vp, Vector3.new(1.5, wh + 3, 1), CFrame.new(wx + ww / 2 + 0.75, wy, zf), bez)
+		mk(vp, Vector3.new(ww + 3, 18, 1), CFrame.new(wx, wy - wh / 2 - 10.5, zf + 0.2), bez) -- the support under it
+		mk(vp, Vector3.new(ww - 0.2, wh - 0.2, 0.2), CFrame.new(wx, wy, zf - 6), color:Lerp(Color3.new(0, 0, 0), 0.6), Enum.Material.Neon) -- the screen's background
+		local big = People.new(vp, color, 4, "lead", seed, ad and ad.look)
+		big:update(Vector3.new(wx, wy - wh / 2 - 9, zf - 4), 0, { t = 2, beat = 0.5, energy = 1, walking = false, armsUp = 0, move = "micout" })
+		for _, d in ipairs(big.model:GetDescendants()) do
+			if d:IsA("BasePart") and (d.Name:find("^Leg") or d.Name:find("^Shoe")) then
+				d.Transparency = 1
+			end
+		end
+		crowdRows(vp, color, rng, 5, 4, true)
+		cam.CFrame = CFrame.lookAt(Vector3.new(sx * 6, 7, 14), Vector3.new(sx * 12, 12, -30))
+	elseif kind == "backlit" then
+		-- the artist as a silhouette in front of a blinding light, haze, hands in the air
+		star(vp, ad, color, seed, rng, artistPos, "pose")
+		for _, d in ipairs(vp:GetDescendants()) do
+			if d:IsA("BasePart") and d.Name ~= "Haze" and d.Position.Z > artistPos.Z - 3 and d.Position.Z < artistPos.Z + 3 and math.abs(d.Position.X - artistPos.X) < 4 then
+				d.Color = Color3.fromRGB(8, 8, 12)
+			end
+		end
+		mk(vp, Vector3.new(0.4, 34, 34), CFrame.new(artistPos + Vector3.new(0, 9, -10)) * CFrame.Angles(0, math.pi / 2, 0), Color3.fromRGB(255, 250, 235), Enum.Material.Neon, Enum.PartType.Cylinder, 0.05)
+		for k = 0, 9 do
+			local a = k / 10 * math.pi * 2
+			mk(vp, Vector3.new(60, 2.4, 2.4), CFrame.new(artistPos + Vector3.new(0, 9, -10)) * CFrame.Angles(0, 0, a), color:Lerp(Color3.new(1, 1, 1), 0.6), Enum.Material.Neon, Enum.PartType.Cylinder, 0.8)
+		end
+		crowdRows(vp, Color3.fromRGB(6, 6, 10), rng, 4, 0, false)
+		vp.Ambient = Color3.fromRGB(40, 40, 60)
+		cam.CFrame = CFrame.lookAt(Vector3.new(rng:NextNumber(-2, 2), 6, 10), artistPos + Vector3.new(0, 6, 0))
+	elseif kind == "aerial" then
+		-- from high up behind the crowd: the whole stage, a sea of phone lights
+		star(vp, ad, color, seed, rng, artistPos)
+		spotOn(vp, artistPos, color)
+		crowdRows(vp, color, rng, 10, 4, true)
+		for i = 1, 220 do
+			mk(vp, Vector3.new(0.35, 0.45, 0.1), CFrame.new(rng:NextNumber(-34, 34), rng:NextNumber(5, 7), rng:NextNumber(-26, 6)), Color3.fromRGB(255, 255, 235), Enum.Material.Neon)
+		end
+		cam.FieldOfView = 50
+		cam.CFrame = CFrame.lookAt(Vector3.new(rng:NextNumber(-12, 12), 42, 40), artistPos + Vector3.new(0, 2, 0))
+	elseif kind == "sidestage" then
+		-- from the side of the stage: the artist close, the crowd beyond
+		star(vp, ad, color, seed, rng, artistPos, "micout", math.rad(-25))
+		spotOn(vp, artistPos, color)
+		for row = 0, 5 do
+			for col = 0, 10 do
+				crowdFan(vp, -20 + col * 4 + rng:NextNumber(-1, 1), -10 + row * 3.2, Color3.fromRGB(14, 14, 20):Lerp(color, rng:NextNumber() * 0.3), rng, rng:NextNumber() < 0.5, rng:NextNumber() < 0.4)
+			end
+		end
+		cam.FieldOfView = 46
+		cam.CFrame = CFrame.lookAt(artistPos + Vector3.new(-16, 7, -6), artistPos + Vector3.new(4, 4, 10))
 	else
 		-- most photos of a real stage catch a moment of the show (lift, drums, the giant dress ...)
 		local moment = (placed and rng:NextNumber() < 0.7) and showMoment(placed, rng) or nil
 		if moment then
 			star(vp, ad, color, seed, rng, moment.pos, moment.move, moment.yaw)
+			spotOn(vp, moment.pos, color)
 		else
 			star(vp, ad, color, seed, rng, artistPos)
+			spotOn(vp, artistPos, color)
 		end
 		momentY = moment and moment.pos.Y or nil
 		crowdRows(vp, color, rng, (kind == "phones") and 7 or 6, 4, true)

@@ -416,4 +416,20 @@ do
   local cost, bonus = Sim3.dancerCostAndBonus(st, tour, arenaV)
   check(cost == Dancers.byId.d_mika.perShow and bonus > 0, "dancer cost per show and review bonus")
 end
+-- round 11: club posts never talk about sections, rows or tiers
+do
+  local Social = require(ROOT.Logic.Social)
+  local st = GS.new("Posts", "lila")
+  local club
+  for _, v in pairs(Countries.venueById) do if v.type == "Club" then club = v break end end
+  for _, kind in ipairs({ "fanproject", "photo", "soldout", "show_great", "lowsales" }) do
+    Social.add(st, kind, { artistId = "lila", venueId = club.id }, 20)
+  end
+  local bad = 0
+  for _, p in ipairs(st.social) do
+    local low = p.text:lower()
+    if low:find("section") or low:find("tier") or low:find("seat") or low:find("row %d") then bad = bad + 1 end
+  end
+  check(bad == 0, "no sections / tiers / seats in club posts (" .. bad .. ")")
+end
 print("FAILS", fails)
