@@ -198,6 +198,38 @@ function SoundFX.songSource(artistId, n)
 	return file, (idx - 1) * len, s2
 end
 
+-- the tension music of a show intro: its own cue from intro.ogg (the hit lands when the artist appears).
+-- Before intro.ogg is uploaded: the artist's first song, slowed down and muffled, like heard from backstage.
+function SoundFX.intro(kind, artistId, len)
+	local r = Map.INTRO and Map.INTRO[kind or "countdown"]
+	if r and id("intro") then
+		-- start so that the hit lands at the end of the intro
+		local skip = math.max(0, (Map.INTRO_HIT or 11.2) - (len or 11.2))
+		playRegion("intro", r[1] + skip, r[2] - skip, false, 1, "intro_" .. tostring(kind) .. tostring(os.clock()))
+		if channels[active] then
+			channels[active].PlaybackSpeed = 1
+		end
+		return
+	end
+	local file, start = SoundFX.songSource(artistId or "", 1)
+	playRegion(file, start, Map.SONG_LEN or 30, false, 0.55, "intro_fallback" .. tostring(os.clock()))
+	local s = channels[active]
+	if s then
+		s.PlaybackSpeed = 0.62
+		SoundFX.muffle(s, true)
+	end
+end
+-- a muffled sound (only the low end): for the intro fallback
+function SoundFX.muffle(s, on)
+	local eq = s:FindFirstChild("Muffle")
+	if on and not eq then
+		eq = New("EqualizerSoundEffect", { Name = "Muffle", HighGain = -40, MidGain = -18, LowGain = 4, Parent = s })
+	end
+	if eq then
+		eq.Enabled = on == true
+	end
+end
+
 -- recordings that did not load (e.g. an upload Roblox has not approved): they are skipped from then on
 SoundFX.broken = {}
 -- song n of an artist, e.g. during a show
@@ -216,6 +248,9 @@ function SoundFX.song(artistId, n, volume)
 	local key = artistId .. "_" .. n .. "_" .. tostring(os.clock())
 	playRegion(file, start, len, false, volume or 1, key)
 	local s = channels[active]
+	if s then
+		SoundFX.muffle(s, false)
+	end
 	if s and s.SoundId ~= "" then
 		s.PlaybackSpeed = speed or 1
 		-- still not loaded after a few seconds: mark it and play the song from a similar recording

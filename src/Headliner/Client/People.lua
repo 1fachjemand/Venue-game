@@ -84,33 +84,55 @@ function People.new(parent, outfit, scale, role, seed, look)
 	end
 	local style = look.hair or ((rng:NextNumber() < 0.5) and "short" or "messy")
 	local hat = look.acc == "cap" or look.acc == "beanie" or look.acc == "cowboy" or look.worker
-	if style ~= "buzz" and style ~= "afro" and style ~= "mohawk" and not hat then
-		extra("Hair", Vector3.new(1.3, 0.45, 1.3), "head", CFrame.new(0, 0.7, -0.08), hair)
+	-- hair from soft round shapes (a dome over the top of the head, strands, a bun, a tail), not blocks
+	local function soft(name, size, off)
+		local p = extra(name, size, "head", off, hair)
+		New("SpecialMesh", { MeshType = Enum.MeshType.Sphere, Parent = p })
+		return p
 	end
-	if style == "buzz" then
-		extra("Hair", Vector3.new(1.24, 0.2, 1.24), "head", CFrame.new(0, 0.55, -0.02), hair)
-	elseif style == "long" then
-		extra("HairBack", Vector3.new(1.26, 1.7, 0.4), "head", CFrame.new(0, -0.15, -0.58), hair)
+	if style ~= "afro" and style ~= "mohawk" and not hat then
+		if style == "buzz" then
+			soft("Hair", Vector3.new(1.3, 0.62, 1.32), CFrame.new(0, 0.42, -0.06))
+		else
+			soft("Hair", Vector3.new(1.42, 0.95, 1.44), CFrame.new(0, 0.4, -0.08))
+		end
+	end
+	if style == "long" then
+		soft("HairBack", Vector3.new(1.36, 2.1, 0.62), CFrame.new(0, -0.32, -0.5))
+		for _, sx in ipairs({ -1, 1 }) do
+			soft("HairSide", Vector3.new(0.36, 1.7, 0.78), CFrame.new(sx * 0.62, -0.28, -0.14))
+		end
 	elseif style == "bun" then
-		-- a knot on top: two crossed blocks
-		extra("HairBun", Vector3.new(0.72, 0.5, 0.72), "head", CFrame.new(0, 1.05, -0.3) * CFrame.Angles(0, math.rad(45), 0), hair)
-		extra("HairBun", Vector3.new(0.5, 0.36, 0.5), "head", CFrame.new(0, 1.36, -0.3), hair)
+		soft("HairBun", Vector3.new(0.78, 0.7, 0.78), CFrame.new(0, 0.95, -0.36))
+		soft("HairBun", Vector3.new(0.5, 0.42, 0.5), CFrame.new(0, 1.28, -0.4))
 	elseif style == "pony" then
-		extra("HairTail", Vector3.new(0.45, 1.5, 0.45), "head", CFrame.new(0, 0.1, -0.8) * CFrame.Angles(0.35, 0, 0), hair)
+		soft("HairTie", Vector3.new(0.42, 0.42, 0.42), CFrame.new(0, 0.5, -0.74))
+		soft("HairTail", Vector3.new(0.5, 1.0, 0.5), CFrame.new(0, 0.0, -0.9) * CFrame.Angles(0.25, 0, 0))
+		soft("HairTail", Vector3.new(0.38, 0.8, 0.38), CFrame.new(0, -0.7, -0.98) * CFrame.Angles(0.15, 0, 0))
 	elseif style == "pigtails" then
-		extra("HairTail", Vector3.new(0.4, 1.2, 0.4), "head", CFrame.new(-0.75, 0, -0.2) * CFrame.Angles(0, 0, -0.3), hair)
-		extra("HairTail", Vector3.new(0.4, 1.2, 0.4), "head", CFrame.new(0.75, 0, -0.2) * CFrame.Angles(0, 0, 0.3), hair)
+		for _, sx in ipairs({ -1, 1 }) do
+			soft("HairTail", Vector3.new(0.45, 0.9, 0.45), CFrame.new(sx * 0.78, 0.05, -0.2) * CFrame.Angles(0, 0, sx * 0.3))
+			soft("HairTail", Vector3.new(0.34, 0.7, 0.34), CFrame.new(sx * 0.95, -0.6, -0.22) * CFrame.Angles(0, 0, sx * 0.18))
+		end
 	elseif style == "afro" then
-		-- a big blocky afro: crown, both sides and the back
-		extra("Afro", Vector3.new(1.7, 0.78, 1.6), "head", CFrame.new(0, 0.74, -0.1), hair)
-		extra("Afro", Vector3.new(1.36, 0.36, 1.3), "head", CFrame.new(0, 1.28, -0.12), hair)
-		extra("Afro", Vector3.new(0.3, 1.0, 1.4), "head", CFrame.new(-0.76, 0.25, -0.12), hair)
-		extra("Afro", Vector3.new(0.3, 1.0, 1.4), "head", CFrame.new(0.76, 0.25, -0.12), hair)
-		extra("Afro", Vector3.new(1.6, 1.04, 0.35), "head", CFrame.new(0, 0.18, -0.8), hair)
+		-- a big round afro with curls on its surface
+		soft("Afro", Vector3.new(2.0, 1.75, 1.95), CFrame.new(0, 0.5, -0.14))
+		for k = 0, 7 do
+			local a = k / 8 * math.pi * 2
+			soft("AfroCurl", Vector3.new(0.6, 0.6, 0.6), CFrame.new(math.sin(a) * 0.92, 0.55 + math.cos(a * 2) * 0.25, math.cos(a) * 0.88 - 0.14))
+		end
 	elseif style == "messy" then
-		extra("HairFringe", Vector3.new(1.32, 0.35, 0.3), "head", CFrame.new(0, 0.42, 0.55) * CFrame.Angles(-0.4, 0, 0), hair)
+		-- tufts that stick out a little
+		for k, t in ipairs({ { -0.32, 0.86, 0.22, 0.5 }, { 0.1, 0.92, 0.3, -0.4 }, { 0.4, 0.82, 0.05, 0.6 }, { -0.1, 0.78, 0.5, -0.2 } }) do
+			soft("HairTuft", Vector3.new(0.5, 0.36, 0.62), CFrame.new(t[1], t[2], t[3]) * CFrame.Angles(t[4] * 0.6, k, t[4]))
+		end
+		soft("HairFringe", Vector3.new(1.2, 0.36, 0.42), CFrame.new(0.05, 0.46, 0.5) * CFrame.Angles(-0.5, 0, 0.12))
+	elseif style == "short" then
+		soft("HairFringe", Vector3.new(1.1, 0.3, 0.36), CFrame.new(-0.08, 0.5, 0.52) * CFrame.Angles(-0.55, 0, -0.1))
 	elseif style == "mohawk" then
-		extra("Mohawk", Vector3.new(0.3, 0.7, 1.3), "head", CFrame.new(0, 0.85, 0), hair)
+		for k = 0, 4 do
+			soft("Mohawk", Vector3.new(0.3, 0.75 - math.abs(k - 2) * 0.1, 0.42), CFrame.new(0, 0.92 - math.abs(k - 2) * 0.06, 0.5 - k * 0.27) * CFrame.Angles(-0.25, 0, 0))
+		end
 	end
 	local acc = look.acc or "none"
 	if acc == "sunglasses" then

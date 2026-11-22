@@ -695,6 +695,13 @@ def main():
         lua.extend(rows)
         lua.append("}")
         print("wrote sfx", flush=True)
+    # the intro cues live in intro.ogg (tools/music/make_intro.py)
+    lua.append("-- the intro tension cues in intro.ogg (tools/music/make_intro.py): 14 s each, the hit at 11.2 s")
+    lua.append("AudioMap.INTRO = {")
+    for i, k in enumerate(["countdown", "reveal", "glitch", "stars", "heartbeat", "storm"]):
+        lua.append("\t%s = { %.3f, 14.000 }," % (k, i * 14.0))
+    lua.append("}")
+    lua.append("AudioMap.INTRO_HIT = 11.2")
     lua.append("return AudioMap")
     if not only or "menu" in only:
         with open(os.path.join(ROOT, "src", "Headliner", "Data", "AudioMap.lua"), "w") as f:

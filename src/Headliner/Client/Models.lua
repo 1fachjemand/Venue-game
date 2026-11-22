@@ -450,60 +450,74 @@ function Models.install(B, H)
 	local DARKC = H.DARK
 	local TEX_SMOKE = H.TEX_SMOKE
 
-	-- Shower stage (after the rain B-stage of a big arena tour): a round glossy platform, a tall chrome shower
-	-- pole that curves over it to a huge round rain shower head. In its song the head lights up and real-looking
-	-- rain pours down over the whole platform: falling streaks, particles, splashes, mist, wet shine.
+	-- Rain stage (like the rain B-stage of big arena tours): a round black platform and, high above it, a black
+	-- rain rig: a round truss with a ring of nozzles and a few rain bars across it, hanging on chain motors.
+	-- In its song the rig's lights come on and the rain pours down: a curtain round the edge and a shower in the
+	-- middle, with splashes, mist and a wet, shining floor. Nothing looks like a bathroom.
 	function B.showerstage(m, r)
 		local R = 9
 		local SP = Enum.Material.SmoothPlastic
-		local plat = cyl(m, "Deck", 1.2, R * 2, CFrame.new(0, 0.6, 0), Color3.fromRGB(20, 22, 30), SP)
-		plat.Reflectance = 0.12
+		local black = Color3.fromRGB(22, 22, 26)
+		local metal = Color3.fromRGB(36, 36, 42)
+		local plat = cyl(m, "Deck", 1.2, R * 2, CFrame.new(0, 0.6, 0), Color3.fromRGB(18, 18, 22), SP)
+		plat.Reflectance = 0.1
 		r.surfaces = { plat }
-		-- a light ring round the edge and a chrome drain in the middle
-		r.neon = arcTube(m, "EdgeRing", CFrame.new(0, 1.18, 0) * CFrame.Angles(math.pi / 2, 0, 0), R - 0.25, 0, math.pi * 2, 32, 0.28, Color3.fromRGB(150, 210, 255), Enum.Material.Neon)
-		chrome(cyl(m, "Drain", 0.06, 2.2, CFrame.new(0, 1.22, 0), CHROME, SP))
-		for k = -2, 2 do
-			part(m, "DrainSlot", Vector3.new(1.6 - math.abs(k) * 0.3, 0.02, 0.12), CFrame.new(0, 1.26, k * 0.3), Color3.fromRGB(30, 30, 34))
-		end
-		-- the pole at the back, the curved arm, the neck and the big head
-		local HY = 30
-		local poleZ = -R + 0.6
-		chrome(cyl(m, "Pole", HY - 4, 1.0, CFrame.new(0, 1.2 + (HY - 4) / 2, poleZ), CHROME, SP))
-		chrome(cyl(m, "PoleFoot", 0.6, 2.2, CFrame.new(0, 1.5, poleZ), CHROME, SP))
-		for _, p in ipairs(arcTube(m, "Arm", CFrame.new(0, HY - 2.8, poleZ + 4) * CFrame.Angles(0, math.pi / 2, 0), 4, 0, math.pi / 2, 10, 1.0, CHROME, SP)) do
-			chrome(p)
-		end
-		chrome(tube(m, Vector3.new(0, HY + 1.2, poleZ + 3.6), Vector3.new(0, HY + 1.2, -0.4), 1.0, CHROME))
-		chrome(tube(m, Vector3.new(0, HY + 1.2, 0), Vector3.new(0, HY - 0.3, 0), 0.8, CHROME))
-		chrome(cyl(m, "Head", 0.9, 13, CFrame.new(0, HY - 0.6, 0), CHROME, SP))
-		chrome(cyl(m, "HeadDome", 0.6, 9, CFrame.new(0, HY - 0.05, 0), CHROME, SP))
-		r.face = cyl(m, "HeadFace", 0.12, 12.2, CFrame.new(0, HY - 1.08, 0), Color3.fromRGB(70, 80, 96), Enum.Material.Neon)
-		r.face.Transparency = 0.2
-		r.nozzles = {}
-		for ring = 1, 3 do
-			local rr = ring * 1.75
-			for k = 0, ring * 7 - 1 do
-				local a = k / (ring * 7) * math.pi * 2
-				part(m, "Nozzle", Vector3.new(0.3, 0.06, 0.3), CFrame.new(math.sin(a) * rr, HY - 1.17, math.cos(a) * rr), Color3.fromRGB(46, 50, 58))
+		r.neon = arcTube(m, "EdgeRing", CFrame.new(0, 1.18, 0) * CFrame.Angles(math.pi / 2, 0, 0), R - 0.25, 0, math.pi * 2, 32, 0.22, Color3.fromRGB(150, 200, 255), Enum.Material.Neon)
+		-- the rig: a round box truss (two rings top and bottom, posts between) with a ring of nozzles
+		local HY = math.clamp(((H.Builder.rigTop or 36) - 6), 18, 30)
+		local RR = R - 1.0
+		r.headY = HY - 1.4
+		for _, y in ipairs({ HY, HY - 1.2 }) do
+			for _, rr in ipairs({ RR - 0.5, RR + 0.5 }) do
+				arcTube(m, "RigChord", CFrame.new(0, y, 0) * CFrame.Angles(math.pi / 2, 0, 0), rr, 0, math.pi * 2, 28, 0.14, metal, Enum.Material.Metal)
 			end
 		end
-		r.showerLights = {}
-		for k = 0, 3 do
-			local a = k / 4 * math.pi * 2 + 0.4
-			local lp = part(m, "ShowerSpot", Vector3.new(0.6, 0.3, 0.6), CFrame.new(math.sin(a) * 4.6, HY - 1.2, math.cos(a) * 4.6), DARKC)
-			table.insert(r.showerLights, New("SpotLight", { Face = Enum.NormalId.Bottom, Angle = 70, Range = 44, Brightness = 0, Color = Color3.fromRGB(220, 235, 255), Shadows = false, Parent = lp }))
+		for k = 0, 27 do
+			local a = k / 28 * math.pi * 2
+			for _, rr in ipairs({ RR - 0.5, RR + 0.5 }) do
+				part(m, "RigPost", Vector3.new(0.1, 1.2, 0.1), CFrame.new(math.sin(a) * rr, HY - 0.6, math.cos(a) * rr), metal, Enum.Material.Metal)
+			end
 		end
-		-- the rain: long thin falling streaks you can really see, plus fine particles
+		-- rain bars across the ring (the middle gets rain too) and the nozzles under them
+		r.nozzles = {}
+		for _, a in ipairs({ 0, math.pi / 3, -math.pi / 3 }) do
+			local d = Vector3.new(math.sin(a), 0, math.cos(a))
+			tube(m, Vector3.new(0, HY - 1.2, 0) + d * RR, Vector3.new(0, HY - 1.2, 0) - d * RR, 0.24, black)
+		end
+		for k = 0, 39 do
+			local a = k / 40 * math.pi * 2
+			part(m, "Nozzle", Vector3.new(0.18, 0.25, 0.18), CFrame.new(math.sin(a) * RR, HY - 1.4, math.cos(a) * RR), black)
+		end
+		-- a thin light line under the ring (cold white while it rains)
+		r.face = cyl(m, "RigLight", 0.3, 2.4, CFrame.new(0, HY - 1.45, 0), Color3.fromRGB(40, 44, 52), Enum.Material.Neon)
+		r.face.Transparency = 0.92
+		for _, p in ipairs(arcTube(m, "RigLED", CFrame.new(0, HY - 1.32, 0) * CFrame.Angles(math.pi / 2, 0, 0), RR, 0, math.pi * 2, 28, 0.12, Color3.fromRGB(60, 66, 80), Enum.Material.Neon)) do
+			table.insert(r.neon, p)
+		end
+		-- four chain motors up to the rig
+		for k = 0, 3 do
+			local a = k / 4 * math.pi * 2 + math.pi / 4
+			local x, z = math.sin(a) * RR, math.cos(a) * RR
+			part(m, "Motor", Vector3.new(0.9, 1.1, 0.9), CFrame.new(x, HY + 0.6, z), black, Enum.Material.Metal)
+			part(m, "Chain", Vector3.new(0.12, 20, 0.12), CFrame.new(x, HY + 11.1, z), Color3.fromRGB(60, 60, 66), Enum.Material.Metal)
+		end
+		r.showerLights = {}
+		for k = 0, 5 do
+			local a = k / 6 * math.pi * 2 + 0.3
+			local lp = part(m, "RainSpot", Vector3.new(0.7, 0.5, 0.7), CFrame.new(math.sin(a) * (RR - 1.4), HY - 1.5, math.cos(a) * (RR - 1.4)), black, Enum.Material.Metal)
+			table.insert(r.showerLights, New("SpotLight", { Face = Enum.NormalId.Bottom, Angle = 70, Range = 40, Brightness = 0, Color = Color3.fromRGB(220, 235, 255), Shadows = false, Parent = lp }))
+		end
+		-- the rain: a curtain of streaks round the ring and a shower in the middle
 		r.streaks = {}
 		local rng = Random.new(5)
-		for i = 1, 70 do
-			local a, d = rng:NextNumber(0, math.pi * 2), math.sqrt(rng:NextNumber(0, 1)) * 5.6
+		for i = 1, 90 do
+			local a = rng:NextNumber(0, math.pi * 2)
+			local d = (i <= 55) and (RR + rng:NextNumber(-0.25, 0.25)) or (math.sqrt(rng:NextNumber(0, 1)) * (RR - 1.5))
 			local st = part(m, "RainStreak", Vector3.new(0.06, rng:NextNumber(2.2, 3.6), 0.06), CFrame.new(math.sin(a) * d, 10, math.cos(a) * d), Color3.fromRGB(200, 225, 255), Enum.Material.Neon)
 			st.Transparency = 1
 			table.insert(r.streaks, { p = st, x = math.sin(a) * d, z = math.cos(a) * d, o = rng:NextNumber(0, 1), v = rng:NextNumber(0.9, 1.1) })
 		end
-		r.headY = HY - 1.2
-		r.rainSrc = part(m, "RainSource", Vector3.new(11, 0.1, 11), CFrame.new(0, HY - 1.3, 0), DARKC)
+		r.rainSrc = part(m, "RainSource", Vector3.new(RR * 2, 0.1, RR * 2), CFrame.new(0, HY - 1.5, 0), DARKC)
 		r.rainSrc.Transparency = 1
 		r.rain = New("ParticleEmitter", {
 			Enabled = false,
@@ -521,11 +535,10 @@ function Models.install(B, H)
 			LightInfluence = 0.3,
 			Parent = r.rainSrc,
 		})
-		r.splashSrc = part(m, "SplashSource", Vector3.new(11, 0.1, 11), CFrame.new(0, 1.3, 0), DARKC)
+		r.splashSrc = part(m, "SplashSource", Vector3.new(RR * 2, 0.1, RR * 2), CFrame.new(0, 1.3, 0), DARKC)
 		r.splashSrc.Transparency = 1
 		r.splash = New("ParticleEmitter", { Enabled = false, Rate = 160, Lifetime = NumberRange.new(0.25, 0.45), Speed = NumberRange.new(3, 6), SpreadAngle = Vector2.new(60, 60), Acceleration = Vector3.new(0, -30, 0), Size = NumberSequence.new(0.14, 0.02), Transparency = NumberSequence.new(0.3, 1), Color = ColorSequence.new(Color3.fromRGB(230, 240, 255)), LightEmission = 0.6, Parent = r.splashSrc })
 		r.mist = New("ParticleEmitter", { Enabled = false, Rate = 26, Texture = TEX_SMOKE, Lifetime = NumberRange.new(1.4, 2.4), Speed = NumberRange.new(1, 2.5), SpreadAngle = Vector2.new(80, 80), Size = NumberSequence.new(3, 8), Transparency = NumberSequence.new(0.82, 1), Color = ColorSequence.new(Color3.fromRGB(220, 232, 248)), Parent = r.splashSrc })
-		-- a film of water on the platform that shines while it rains
 		r.water = cyl(m, "Water", 0.04, R * 2 - 1.2, CFrame.new(0, 1.23, 0), Color3.fromRGB(150, 190, 230), Enum.Material.Glass)
 		r.water.Transparency = 1
 		r.water.Reflectance = 0.5
@@ -671,6 +684,61 @@ function Models.install(B, H)
 		Models.layoutFloat(r, CFrame.new(), 0)
 	end
 
+	-- Flying harness (like the aerial flights of big pop shows): a black box-truss track in the rig that runs
+	-- out over the front, a motor trolley with a winch, a steel cable with a spreader bar and the harness straps.
+	-- In its song the cable comes down to the artist, lifts them up, flies them out over the front and back.
+	function B.flyharness(m, r)
+		local black = Color3.fromRGB(24, 24, 28)
+		local metal = Color3.fromRGB(46, 46, 52)
+		local L = 32
+		-- the track: four chords along Z with zigzag lacing (hangs from the rig: everything below y = 0)
+		for _, c in ipairs({ { -0.55, -0.2 }, { 0.55, -0.2 }, { -0.55, -1.3 }, { 0.55, -1.3 } }) do
+			tube(m, Vector3.new(c[1], c[2], -2), Vector3.new(c[1], c[2], L - 2), 0.16, metal)
+		end
+		for k = 0, math.floor(L / 1.6) - 1 do
+			local z0, z1 = -2 + k * 1.6, -2 + (k + 1) * 1.6
+			for _, x in ipairs({ -0.55, 0.55 }) do
+				tube(m, Vector3.new(x, -0.2, z0), Vector3.new(x, -1.3, z1), 0.07, metal)
+			end
+			tube(m, Vector3.new(-0.55, -1.3, z0), Vector3.new(0.55, -1.3, z1), 0.07, metal)
+		end
+		r.trolleyParts = {}
+		local function tp(p)
+			table.insert(r.trolleyParts, { p = p, off = p.CFrame })
+			return p
+		end
+		tp(part(m, "Trolley", Vector3.new(1.6, 1.0, 2.4), CFrame.new(0, -1.9, 0), black, Enum.Material.Metal))
+		tp(cylX(m, "Winch", 1.4, 1.1, CFrame.new(0, -2.8, 0), metal, Enum.Material.Metal))
+		tp(part(m, "TrolleyLED", Vector3.new(1.62, 0.12, 0.6), CFrame.new(0, -1.6, 1.0), r.color, Enum.Material.Neon))
+		for _, z in ipairs({ -0.8, 0.8 }) do
+			tp(cylX(m, "Wheel", 1.7, 0.4, CFrame.new(0, -1.45, z), black, Enum.Material.Metal))
+		end
+		r.cable = part(m, "HarnessCable", Vector3.new(0.07, 4, 0.07), CFrame.new(0, -5.3, 0), Color3.fromRGB(170, 170, 176), Enum.Material.Metal)
+		r.spreader = part(m, "Spreader", Vector3.new(1.8, 0.16, 0.16), CFrame.new(0, -7.4, 0), black, Enum.Material.Metal)
+		r.straps = {
+			part(m, "Strap", Vector3.new(0.08, 1.8, 0.08), CFrame.new(-0.7, -8.3, 0), black),
+			part(m, "Strap", Vector3.new(0.08, 1.8, 0.08), CFrame.new(0.7, -8.3, 0), black),
+		}
+		r.flyUp = -1
+	end
+	local function flyLayout(refs, base, fwd, hookY)
+		local tcf = base * CFrame.new(0, 0, fwd)
+		for _, it in ipairs(refs.trolleyParts) do
+			it.p.CFrame = tcf * it.off
+		end
+		local topY = tcf.Position.Y - 3.4
+		local len = math.max(0.3, topY - hookY)
+		local p = tcf.Position
+		refs.cable.Size = Vector3.new(0.07, len, 0.07)
+		refs.cable.CFrame = CFrame.new(p.X, topY - len / 2, p.Z)
+		local rot = base - base.Position
+		refs.spreader.CFrame = CFrame.new(p.X, hookY, p.Z) * rot
+		for i, st in ipairs(refs.straps) do
+			st.CFrame = CFrame.new(p.X, hookY, p.Z) * rot * CFrame.new((i == 1) and -0.7 or 0.7, -0.9, 0)
+		end
+	end
+	Models.flyLayout = flyLayout
+
 	-- the rig height above an element (cables go up there; at least 24 studs over the element)
 	local function rigAbove(refs, base)
 		return math.max((H.Builder.rigTop or 36) + 1, base.Position.Y + 24)
@@ -722,7 +790,7 @@ function Models.install(B, H)
 			end
 			return true
 		end
-		if k ~= "showerstage" and k ~= "gownriser" and k ~= "descendcube" and k ~= "floatplat" then
+		if k ~= "showerstage" and k ~= "gownriser" and k ~= "descendcube" and k ~= "floatplat" and k ~= "flyharness" then
 			return false
 		end
 		local rec = refs.rec or {}
@@ -737,7 +805,8 @@ function Models.install(B, H)
 		if k == "showerstage" then
 			local on = rt ~= nil and rt > 3 and f < 0.97
 			local glow = active and math.clamp((rt or 0) / 3, 0, 1) or 0
-			refs.face.Color = Color3.fromRGB(70, 80, 96):Lerp(Color3.fromRGB(225, 238, 255), glow)
+			refs.face.Color = Color3.fromRGB(40, 44, 52):Lerp(Color3.fromRGB(225, 238, 255), glow)
+			refs.face.Transparency = 0.92 - 0.6 * glow
 			if refs.raining ~= on then
 				refs.raining = on
 				refs.rain.Enabled = on
@@ -784,6 +853,27 @@ function Models.install(B, H)
 				Models.layoutCube(refs, base, up, shut)
 			end
 			refs.ride = active and { pos = (base * CFrame.new(0, 0.8 + lift, 0)).Position, move = (up > 0.1) and "wave" or nil } or nil
+			return true
+		elseif k == "flyharness" then
+			-- the stage under the track (set by LiveShow; in the builder: about 34 studs down)
+			local seatY = refs.seatY or (base.Position.Y - 34)
+			local room = math.max(4, base.Position.Y - seatY - 12)
+			local hook, lift, fwd = 0, 0, 0
+			if rt then
+				hook = smooth(rt, 0, 1.6) * (1 - smooth(f, 0.95, 0.99))
+				lift = math.min(18, room) * smooth(rt, 2.2, 6.5) * (1 - smooth(f, 0.86, 0.95))
+				fwd = 24 * (smooth(rt, 7, 12.5) - smooth(f, 0.7, 0.84))
+			end
+			local feet = seatY + lift
+			-- the hook comes down from its rest height to above the artist's head, then everything rises together
+			local restHook = base.Position.Y - 7.4
+			local hookY = restHook + ((feet + 7.4) - restHook) * hook
+			if math.abs((refs.flyUp or -1) - (hook + lift + fwd)) > 0.001 then
+				refs.flyUp = hook + lift + fwd
+				flyLayout(refs, base, fwd, hookY)
+			end
+			local p = (base * CFrame.new(0, 0, fwd)).Position
+			refs.ride = (active and rt ~= nil) and { pos = Vector3.new(p.X, feet, p.Z), move = (lift > 3) and "fly" or nil } or nil
 			return true
 		elseif k == "floatplat" then
 			local e = 0

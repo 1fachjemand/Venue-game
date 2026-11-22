@@ -7,6 +7,7 @@ Alle Dateien hier wurden mit `tools/music/make_audio.py` erzeugt (eigener Synthe
 | `menu.ogg` | Titelmusik (Hauptmenü) + Büro-Musik |
 | `sfx.ogg` | Klick, Hover, Kasse, Sold out, Level-up, Jubel, Applaus, Crowd, Pyro, CO2, Feuerwerk … |
 | `lila.ogg` … `nova.ogg` | je 12 Songs × 30 s für jeden Artist (Song 4 = Ballade, Song 8 = großer Hit) |
+| `intro.ogg` | Spannungsmusik für die Show-Intros (6 Cues à 14 s, `tools/music/make_intro.py`), ID in `Audio.lua` unter `intro` |
 
 ## So kommen die Sounds ins Spiel (einmalig, ca. 10 Minuten)
 

@@ -1457,6 +1457,9 @@ function LiveShow.run(app, opts)
 			if seg.songIndex then
 				SoundFX.song(ad.id, seg.songIndex, 1)
 				SoundFX.sfx("cheer", 0.25)
+			elseif seg.kind == "intro" then
+				-- tension music: it builds up and hits when the artist appears
+				SoundFX.intro(seg.introType, ad.id, seg.t1 - seg.t0)
 			elseif seg.kind == "break" then
 				SoundFX.stopMusic(1)
 				SoundFX.sfx("scream", 0.6)
@@ -1644,7 +1647,7 @@ function LiveShow.run(app, opts)
 		end
 		ctx.crowdEnergy = crowdEnergy * segMult
 		ctx.crowdSpeed = speed
-		Venue.animate(crowd, t, crowdEnergy * segMult, speed, seg.phones == true, seg.c1, seg.c2, beatCount)
+		Venue.animate(crowd, t, crowdEnergy * segMult, speed, seg.phones == true, seg.c1, seg.c2, beatCount, seg)
 
 		if songLbl.Text ~= seg.title then
 			songLbl.Text = seg.title

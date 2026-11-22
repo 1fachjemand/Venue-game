@@ -1906,16 +1906,6 @@ Builder.smooth = smooth
 
 -- flying harness: a winch on a track in the rig; in its song the artist is lifted up, flies out over the
 -- front of the stage and back, and comes down again
-function B.flyharness(m, r)
-	part(m, "Track", Vector3.new(1.2, 0.8, 32), CFrame.new(0, 0.4, 14), DARK, Enum.Material.Metal)
-	r.trolley = { part(m, "Trolley", Vector3.new(1.8, 1.4, 2.2), CFrame.new(0, -0.6, 0), Color3.fromRGB(240, 190, 20), Enum.Material.Metal) }
-	r.trolleyOff = { CFrame.new(0, -0.6, 0) }
-	table.insert(r.trolley, cyl(m, "Reel", 1.6, 1.2, CFrame.new(0, -1.6, 0) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(60, 62, 70), Enum.Material.Metal))
-	table.insert(r.trolleyOff, CFrame.new(0, -1.6, 0) * CFrame.Angles(0, 0, math.pi / 2))
-	r.cable = part(m, "HarnessCable", Vector3.new(0.08, 6, 0.08), CFrame.new(0, -5.4, 0), Color3.fromRGB(30, 30, 34))
-	r.harness = part(m, "Harness", Vector3.new(1.6, 0.2, 0.3), CFrame.new(0, -8.5, 0), Color3.fromRGB(30, 30, 34))
-end
-
 ------------------------------------------------------------------ set pieces after real tours
 -- gothic opera house front (three levels of boxes with arches, gold railings, red curtains)
 function B.operahouse(m, r)
@@ -2071,9 +2061,9 @@ function B.kinetic(m, r)
 		local x = -w / 2 + (i + 0.5) * w / n
 		part(m, "Winch", Vector3.new(1, 0.8, 1), CFrame.new(x, -0.4, -3), DARK)
 		part(m, "Winch", Vector3.new(1, 0.8, 1), CFrame.new(x, -0.4, 3), DARK)
-		local bar = part(m, "KineticBar", Vector3.new(0.6, 0.6, 7), CFrame.new(x, -8, 0), r.color, Enum.Material.Neon)
-		local wa = part(m, "Wire", Vector3.new(0.08, 7.6, 0.08), CFrame.new(x, -4.2, -3), METAL)
-		local wb = part(m, "Wire", Vector3.new(0.08, 7.6, 0.08), CFrame.new(x, -4.2, 3), METAL)
+		local bar = part(m, "KineticBar", Vector3.new(0.6, 0.6, 7), CFrame.new(x, -3, 0), r.color, Enum.Material.Neon)
+		local wa = part(m, "Wire", Vector3.new(0.08, 2.6, 0.08), CFrame.new(x, -1.7, -3), METAL)
+		local wb = part(m, "Wire", Vector3.new(0.08, 2.6, 0.08), CFrame.new(x, -1.7, 3), METAL)
 		table.insert(r.bars, { bar = bar, wa = wa, wb = wb, x = x, i = i })
 	end
 end
@@ -3851,22 +3841,6 @@ function Builder.animateExtra(refs, ctx)
 			kp.cable.Size = Vector3.new(0.08, drop, 0.08)
 			kp.cable.CFrame = refs.cf * CFrame.new(kp.x, -drop / 2 - 0.4, 0)
 		end
-	elseif k == "flyharness" then
-		local lift = 22 * smooth(f, 0.08, 0.2) * (1 - smooth(f, 0.85, 0.96))
-		local fwd = 28 * (smooth(f, 0.25, 0.45) - smooth(f, 0.6, 0.8))
-		local seatY = refs.seatY or (refs.cf.Position.Y - 34)
-		local base = refs.cf * CFrame.new(0, 0, fwd)
-		for i, p in ipairs(refs.trolley) do
-			p.CFrame = base * refs.trolleyOff[i]
-		end
-		local feet = Vector3.new(base.Position.X, seatY + lift, base.Position.Z)
-		local hookY = active and (feet.Y + 8.2) or (refs.cf.Position.Y - 8.5)
-		local topY = refs.cf.Position.Y - 2.4
-		local len = math.max(0.5, topY - hookY)
-		refs.cable.Size = Vector3.new(0.08, len, 0.08)
-		refs.cable.CFrame = CFrame.new(base.Position.X, topY - len / 2, base.Position.Z)
-		refs.harness.CFrame = CFrame.new(base.Position.X, hookY, base.Position.Z) * (refs.cf - refs.cf.Position)
-		refs.ride = (active and f > 0.06 and f < 0.97) and { pos = feet, move = (lift > 3) and "fly" or nil } or nil
 	end
 end
 
@@ -4320,9 +4294,12 @@ function Builder.animateKind(refs, ctx)
 			end
 		end
 	elseif k == "kinetic" then
-		local amp = 2 + 5 * (ctx.intensity or 0.5)
+		-- the wave stays high: the bars never come lower than 16 studs over the floor (and only a part of the
+		-- way down in calm songs)
+		local room = math.max(1, refs.cf.Position.Y - 16 - 2)
+		local amp = math.min(room, 3 + 6 * (ctx.intensity or 0.5)) / 2
 		for _, b in ipairs(refs.bars) do
-			local drop = 7 + (math.sin(t * 0.9 * (ctx.sweep or 1) + b.i * 0.45) + 1) * amp
+			local drop = 2 + (math.sin(t * 0.9 * (ctx.sweep or 1) + b.i * 0.45) + 1) * amp
 			b.bar.CFrame = refs.cf * CFrame.new(b.x, -drop, 0)
 			b.wa.Size = Vector3.new(0.08, drop - 0.4, 0.08)
 			b.wb.Size = Vector3.new(0.08, drop - 0.4, 0.08)

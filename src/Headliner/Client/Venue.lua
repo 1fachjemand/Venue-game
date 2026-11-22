@@ -1171,7 +1171,7 @@ function Venue.build(lookKey, fill, merchColor, opts)
 end
 
 -- energy: jump height factor, speed: jumps per second-ish
-function Venue.animate(info, t, energy, speed, phonesOn, c1, c2, beatCount)
+function Venue.animate(info, t, energy, speed, phonesOn, c1, c2, beatCount, seg)
 	local parts, base, phase, cfs = info.parts, info.base, info.phase, info.cfs
 	-- before the show (info.arrival < 1): fans come in one after another and walk the last steps to their
 	-- place (all parts of one fan share the same phase)
@@ -1196,14 +1196,10 @@ function Venue.animate(info, t, energy, speed, phonesOn, c1, c2, beatCount)
 	if #parts > 0 then
 		workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged)
 	end
-	-- LED wristbands and the arena's LED ribbon: colour waves on the beat
-	if #info.bands > 0 and c1 and info.lastBeat ~= beatCount then
-		info.lastBeat = beatCount
-		local b = beatCount or 0
-		for _, w in ipairs(info.bands) do
-			local wave = math.floor((w.z * 0.08 + w.x * 0.03) + b) % 3
-			w.part.Color = (wave == 0) and c1 or ((wave == 1) and c2 or Color3.new(1, 1, 1))
-		end
+	-- LED wristbands and the arena's LED ribbon: their own light show (Venue.bandShow), 10 times a second
+	if #info.bands > 0 and c1 and (t - (info.bandT or -1)) >= 0.1 then
+		info.bandT = t
+		Venue.bandShow(info, t, beatCount or 0, seg, c1, c2)
 	end
 	-- the venue's own PAR cans change colour with the music (every 4 beats, neighbours take turns)
 	if info.pars and c1 then
@@ -1219,6 +1215,92 @@ function Venue.animate(info, t, energy, speed, phonesOn, c1, c2, beatCount)
 		info.phonesOn = phonesOn
 		for _, p in ipairs(info.phones) do
 			p.Transparency = phonesOn and 0 or 1
+		end
+	end
+end
+
+-- The wristbands are a light show of their own, programmed per song like on real tours: a wave that runs
+-- round the whole venue, the two halves in two colours that swap, rotating sections, pulses from the stage
+-- outwards, a rainbow that turns, twinkling stars, slow breathing in the ballad. Colours: an own palette per
+-- song (mixed a little with the artist's colour), so they are not just the stage lights again.
+local BAND_PALETTES = {
+	{ Color3.fromRGB(255, 80, 170), Color3.fromRGB(255, 210, 90) },
+	{ Color3.fromRGB(40, 120, 255), Color3.fromRGB(255, 50, 70) },
+	{ Color3.fromRGB(255, 255, 255), Color3.fromRGB(80, 220, 255) },
+	{ Color3.fromRGB(150, 70, 255), Color3.fromRGB(255, 120, 220) },
+	{ Color3.fromRGB(60, 255, 150), Color3.fromRGB(40, 140, 255) },
+	{ Color3.fromRGB(255, 150, 40), Color3.fromRGB(255, 60, 120) },
+}
+local BAND_PATTERNS = { "sweep", "halves", "sections", "pulse", "rainbow", "sparkle", "sweep", "pulse" }
+local OFF = Color3.fromRGB(16, 16, 22)
+function Venue.bandShow(info, t, beat, seg, c1, c2)
+	local bands = info.bands
+	if not info.bandCenter then
+		local sx, sz = 0, 0
+		for _, w in ipairs(bands) do
+			sx, sz = sx + w.x, sz + w.z
+		end
+		info.bandCenter = Vector3.new(sx / #bands, 0, sz / #bands)
+		for _, w in ipairs(bands) do
+			local dx, dz = w.x - info.bandCenter.X, w.z - info.bandCenter.Z
+			w.a = math.atan2(dx, dz)
+			w.d = math.sqrt(dx * dx + dz * dz)
+			w.r = (math.sin(w.x * 12.9898 + w.z * 78.233) * 43758.5453) % 1
+		end
+		local far = 1
+		for _, w in ipairs(bands) do
+			far = math.max(far, w.d)
+		end
+		info.bandFar = far
+	end
+	local kind = seg and seg.kind
+	local song = (seg and seg.song) or 0
+	local pat
+	if not seg or kind == "preshow" or kind == "intro" or kind == "break" then
+		pat = "off"
+	elseif kind == "ballad" then
+		pat = "breath"
+	elseif kind == "finale" or kind == "outro" then
+		pat = "rainbow"
+	else
+		pat = BAND_PATTERNS[(song - 1) % #BAND_PATTERNS + 1]
+	end
+	local pal = BAND_PALETTES[(song - 1) % #BAND_PALETTES + 1]
+	local A, B = pal[1]:Lerp(c1, 0.25), pal[2]:Lerp(c2 or c1, 0.25)
+	local far = info.bandFar
+	for _, w in ipairs(bands) do
+		local col
+		if pat == "off" then
+			col = OFF
+		elseif pat == "sweep" then
+			-- one bright arc runs round the venue, it leaves a fading trail
+			local u = ((w.a - t * 1.6) % (math.pi * 2)) / (math.pi * 2)
+			col = (u < 0.18) and A:Lerp(Color3.new(1, 1, 1), 0.2) or B:Lerp(OFF, math.min(1, u * 1.4))
+		elseif pat == "halves" then
+			local left = w.a < 0
+			if math.floor(beat / 4) % 2 == 1 then
+				left = not left
+			end
+			col = left and A or B
+		elseif pat == "sections" then
+			local sec = math.floor((w.a + math.pi) / (math.pi * 2) * 8 + beat / 2) % 2
+			col = (sec == 0) and A or B
+		elseif pat == "pulse" then
+			-- rings of light run out from the stage on the beat
+			local u = (w.d / far - (t * 0.9) % 1) % 1
+			col = (u < 0.12) and Color3.new(1, 1, 1) or A:Lerp(OFF, math.min(1, u * 1.6))
+		elseif pat == "rainbow" then
+			col = Color3.fromHSV(((w.a / (math.pi * 2)) + t * 0.15) % 1, 0.8, 1)
+		elseif pat == "sparkle" then
+			local on = ((w.r * 7 + t * 1.3) % 1) < 0.12
+			col = on and Color3.new(1, 1, 1) or A:Lerp(OFF, 0.65)
+		else -- breath: the whole venue slowly glows up and down in one colour
+			local k = 0.5 + 0.5 * math.sin(t * 1.1 + w.d * 0.04)
+			col = OFF:Lerp(A, k)
+		end
+		if w.col ~= col then
+			w.col = col
+			w.part.Color = col
 		end
 	end
 end

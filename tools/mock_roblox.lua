@@ -250,21 +250,26 @@ UDim2 = {
 -- sequences & misc
 local NS = dt("NumberSequence")
 NumberSequence = { new = function(a, b)
+	local kps
 	if type(a) == "number" then assert(b == nil or type(b) == "number", "NumberSequence.new(n0, n1) expects numbers")
-	else assert(type(a) == "table", "NumberSequence.new invalid") end
-	return setmetatable({}, NS)
+		kps = { { Time = 0, Value = a }, { Time = 1, Value = b or a } }
+	else assert(type(a) == "table", "NumberSequence.new invalid") kps = a end
+	return setmetatable({ Keypoints = kps }, NS)
 end }
 local NSK = dt("NumberSequenceKeypoint")
 NumberSequenceKeypoint = { new = function(a, b) assert(type(a) == "number" and type(b) == "number") return setmetatable({ Time = a, Value = b }, NSK) end }
 local CS = dt("ColorSequence")
 ColorSequence = { new = function(a, b)
+	local kps
 	if typeof(a) == "Color3" then assert(b == nil or typeof(b) == "Color3", "ColorSequence.new(c0, c1) expects Color3s")
+		kps = { { Time = 0, Value = a }, { Time = 1, Value = b or a } }
 	else
 		assert(type(a) == "table" and #a >= 2, "ColorSequence keypoints")
 		for i, kp in ipairs(a) do assert(typeof(kp) == "ColorSequenceKeypoint", "bad keypoint") end
 		assert(a[1].Time == 0 and a[#a].Time == 1, "ColorSequence must start at 0 and end at 1")
+		kps = a
 	end
-	return setmetatable({}, CS)
+	return setmetatable({ Keypoints = kps }, CS)
 end }
 local CSK = dt("ColorSequenceKeypoint")
 ColorSequenceKeypoint = { new = function(t, c) assert(type(t) == "number" and typeof(c) == "Color3") return setmetatable({ Time = t, Value = c }, CSK) end }

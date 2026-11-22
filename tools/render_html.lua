@@ -67,6 +67,12 @@ local function render(inst, px, py, pw, ph, out, forced, ox, oy)
 	local w = inst.Size.X.Scale * pw + inst.Size.X.Offset
 	local h = inst.Size.Y.Scale * ph + inst.Size.Y.Offset
 	if inst.AutomaticSize == Enum.AutomaticSize.Y then h = math.max(h, (measure(inst, w))) end
+	local arc = child(inst, "UIAspectRatioConstraint")
+	if arc and h > 0 then
+		-- fit inside the given size with this width / height ratio (like Roblox's default)
+		local ratio = arc.AspectRatio or 1
+		if w / h > ratio then w = h * ratio else h = w / ratio end
+	end
 	local x, y
 	if forced then
 		x, y = forced[1], forced[2]
@@ -77,9 +83,40 @@ local function render(inst, px, py, pw, ph, out, forced, ox, oy)
 	end
 	local st = {}
 	table.insert(st, string.format("left:%.1fpx;top:%.1fpx;width:%.1fpx;height:%.1fpx;", x - ox, y - oy, w, h))
-	if inst.BackgroundTransparency < 1 then table.insert(st, "background:" .. rgb(inst.BackgroundColor3, inst.BackgroundTransparency) .. ";") end
+	local grad = child(inst, "UIGradient")
+	if inst.BackgroundTransparency < 1 and grad and grad.Enabled ~= false and grad.Color and grad.Color.Keypoints then
+		-- UIGradient: a CSS linear gradient (colour x transparency at every keypoint time)
+		local function at(seq, tt, isColor)
+			local k = seq.Keypoints
+			for i = 1, #k - 1 do
+				if tt >= k[i].Time and tt <= k[i + 1].Time then
+					local f = (tt - k[i].Time) / math.max(1e-6, k[i + 1].Time - k[i].Time)
+					if isColor then return k[i].Value:Lerp(k[i + 1].Value, f) end
+					return k[i].Value + (k[i + 1].Value - k[i].Value) * f
+				end
+			end
+			return k[#k].Value
+		end
+		local times, seen = {}, {}
+		for _, seq in ipairs({ grad.Color, grad.Transparency }) do
+			for _, kp in ipairs((seq and seq.Keypoints) or {}) do
+				if not seen[kp.Time] then seen[kp.Time] = true table.insert(times, kp.Time) end
+			end
+		end
+		table.sort(times)
+		local stops = {}
+		for _, tt in ipairs(times) do
+			local c0 = at(grad.Color, tt, true)
+			local bgc = inst.BackgroundColor3
+			local c = Color3.new(c0.R * bgc.R, c0.G * bgc.G, c0.B * bgc.B) -- (Roblox multiplies them)
+			local tr = (grad.Transparency and grad.Transparency.Keypoints) and at(grad.Transparency, tt, false) or 0
+			tr = 1 - (1 - tr) * (1 - inst.BackgroundTransparency)
+			table.insert(stops, rgb(c, tr) .. " " .. string.format("%.1f%%", tt * 100))
+		end
+		table.insert(st, "background:linear-gradient(" .. ((grad.Rotation or 0) + 90) .. "deg," .. table.concat(stops, ",") .. ");")
+	elseif inst.BackgroundTransparency < 1 then table.insert(st, "background:" .. rgb(inst.BackgroundColor3, inst.BackgroundTransparency) .. ";") end
 	local corner = child(inst, "UICorner")
-	if corner then table.insert(st, "border-radius:" .. corner.CornerRadius.Offset .. "px;") end
+	if corner then table.insert(st, "border-radius:" .. (corner.CornerRadius.Offset + corner.CornerRadius.Scale * math.min(w, h)) .. "px;") end
 	local stroke = child(inst, "UIStroke")
 	if stroke then table.insert(st, string.format("box-shadow:0 0 0 %dpx %s;", stroke.Thickness, rgb(stroke.Color, stroke.Transparency))) end
 	-- UIScale: scaled around the anchor point (like Roblox)

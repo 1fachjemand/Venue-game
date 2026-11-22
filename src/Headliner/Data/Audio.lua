@@ -18,6 +18,7 @@ Audio.IDS = {
 	dusty = 137284398220708,
 	starlyte = 139184253022183,
 	nova = 75911027991327,
+	intro = 0, -- audio/intro.ogg (the tension music of the show intros): upload it and put its ID here
 }
 
 return Audio

@@ -22,4 +22,14 @@ AudioMap.SFX = {
 	whoosh = { 40.642, 1.400 },
 	firework = { 42.292, 2.600 },
 }
+-- the intro tension cues in intro.ogg (tools/music/make_intro.py): 14 s each, the hit at 11.2 s
+AudioMap.INTRO = {
+	countdown = { 0.000, 14.000 },
+	reveal = { 14.000, 14.000 },
+	glitch = { 28.000, 14.000 },
+	stars = { 42.000, 14.000 },
+	heartbeat = { 56.000, 14.000 },
+	storm = { 70.000, 14.000 },
+}
+AudioMap.INTRO_HIT = 11.2
 return AudioMap
