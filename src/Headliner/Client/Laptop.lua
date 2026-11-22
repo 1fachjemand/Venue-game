@@ -26,6 +26,7 @@ Laptop.APPS = {
 	{ id = "artists", name = "Our Artists", color = Color3.fromRGB(147, 51, 234), glyph = "person", screen = "artists" },
 	{ id = "social", name = "Socials", color = Color3.fromRGB(219, 39, 119), glyph = "bubble", screen = "social" },
 	{ id = "stats", name = "Statistics", color = Color3.fromRGB(234, 88, 12), glyph = "bars", screen = "stats" },
+	{ id = "achievements", name = "Achievements", color = Color3.fromRGB(202, 138, 4), glyph = "trophy", screen = "achievements" },
 	{ id = "settings", name = "Settings", color = Color3.fromRGB(100, 116, 139), glyph = "gear", screen = nil },
 }
 local APP_BY_ID = {}
@@ -58,6 +59,12 @@ local function glyph(parent, kind, size)
 		f(14, 34, 8, 16, 2)
 		f(28, 24, 8, 26, 2)
 		f(42, 14, 8, 36, 2)
+	elseif kind == "trophy" then
+		f(18, 10, 28, 24, 10)
+		f(10, 14, 10, 12, 5)
+		f(44, 14, 10, 12, 5)
+		f(29, 32, 6, 10, 1)
+		f(20, 42, 24, 8, 2)
 	elseif kind == "gear" then
 		for k = 0, 3 do
 			f(28, 10, 8, 44, 2, k * 45)

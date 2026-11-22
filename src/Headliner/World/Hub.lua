@@ -338,15 +338,15 @@ local function record(parent, pos, yaw, gold)
 	part(parent, "Plate", Vector3.new(2, 0.4, 0.1), cf * CFrame.new(0, -1.6, 0.24), C.yellow, Enum.Material.Metal, { collide = false })
 end
 
-local function ceilingLight(parent, pos, len)
+local function ceilingLight(parent, pos, len, brightness)
 	local p = part(parent, "CeilingLight", Vector3.new(len, 0.3, 2), pos, C.lamp, Enum.Material.Neon, { collide = false })
-	new("SurfaceLight", { Face = Enum.NormalId.Bottom, Range = 24, Brightness = 0.9, Angle = 120, Color = Color3.fromRGB(255, 246, 232), Shadows = false }, p)
+	new("SurfaceLight", { Face = Enum.NormalId.Bottom, Range = 24, Brightness = brightness or 0.9, Angle = 120, Color = Color3.fromRGB(255, 246, 232), Shadows = false }, p)
 	return p
 end
 
-local function desk(parent, pos, yaw, withScreen)
+local function desk(parent, pos, yaw, withScreen, topColor)
 	local cf = CFrame.new(pos) * CFrame.Angles(0, yaw, 0)
-	part(parent, "DeskTop", Vector3.new(8, 0.4, 4), cf * CFrame.new(0, 3.1, 0), C.white)
+	part(parent, "DeskTop", Vector3.new(8, 0.4, 4), cf * CFrame.new(0, 3.1, 0), topColor or C.white, topColor and Enum.Material.Wood or nil)
 	part(parent, "DeskLeg", Vector3.new(0.4, 2.9, 3.6), cf * CFrame.new(-3.6, 1.45, 0), C.grey, Enum.Material.Metal)
 	part(parent, "DeskLeg", Vector3.new(0.4, 2.9, 3.6), cf * CFrame.new(3.6, 1.45, 0), C.grey, Enum.Material.Metal)
 	if withScreen then
@@ -617,6 +617,65 @@ end
 -- the office wing behind the main office: a wide, bright atrium (staff desks, a lounge, the LIVE SHOWS board)
 -- and one glass-fronted office per player (laptop, PC, sofa, shelf) with the label name over the door
 -- (the server writes it: attribute Office = index)
+-- the open middle of the office (between the meeting room and the charts): the label's hall of fame
+-- (glass cases with awards), a round island with a tree and seats all round, a jukebox, lamps and plants.
+-- The ways from the door, the meeting room and the map table stay free.
+local function buildShowcase(deco)
+	local sc = new("Folder", { Name = "Showcase" }, deco)
+	local cx, cz = -23, -26
+	part(sc, "ShowcaseRug", Vector3.new(0.06, 21, 21), CFrame.new(cx, 0.03, cz) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(214, 206, 236), Enum.Material.Fabric, { shape = Enum.PartType.Cylinder, collide = false })
+	part(sc, "ShowcaseRugRing", Vector3.new(0.05, 21.8, 21.8), CFrame.new(cx, 0.02, cz) * CFrame.Angles(0, 0, math.pi / 2), C.purple, Enum.Material.Fabric, { shape = Enum.PartType.Cylinder, collide = false })
+	-- the island: a round planter with a tree, eight cushioned seats round it (looking out)
+	part(sc, "IslandPlanter", Vector3.new(2.4, 7, 7), CFrame.new(cx, 1.2, cz) * CFrame.Angles(0, 0, math.pi / 2), C.white, Enum.Material.SmoothPlastic, { shape = Enum.PartType.Cylinder })
+	part(sc, "IslandSoil", Vector3.new(0.1, 6.4, 6.4), CFrame.new(cx, 2.42, cz) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(70, 50, 36), Enum.Material.Ground, { shape = Enum.PartType.Cylinder, collide = false })
+	part(sc, "TreeTrunk", Vector3.new(1, 7, 1), Vector3.new(cx, 5.9, cz), C.woodDark, Enum.Material.Wood)
+	for k, l in ipairs({ { 0, 10.4, 0, 7 }, { 1.8, 9.2, 1, 5 }, { -1.8, 9.6, -0.8, 5 }, { 0.6, 12.2, -0.6, 4.4 } }) do
+		part(sc, "TreeLeaves", Vector3.new(l[4], l[4], l[4]), Vector3.new(cx + l[1], l[2], cz + l[3]), (k % 2 == 0) and Color3.fromRGB(86, 168, 92) or C.plant, Enum.Material.Grass, { shape = Enum.PartType.Ball, collide = false })
+	end
+	for k = 0, 7 do
+		local a = k / 8 * math.pi * 2 + math.pi / 8
+		local cf = CFrame.new(cx + math.sin(a) * 5.4, 0, cz + math.cos(a) * 5.4) * CFrame.Angles(0, a, 0)
+		part(sc, "IslandSeat", Vector3.new(3.2, 1.6, 2.2), cf * CFrame.new(0, 0.8, 0), (k % 2 == 0) and C.teal or C.coral, Enum.Material.Fabric)
+		part(sc, "IslandSeatTop", Vector3.new(3.0, 0.3, 2.0), cf * CFrame.new(0, 1.72, 0.05), C.white, Enum.Material.Fabric, { collide = false })
+	end
+	-- the hall of fame along the charts wall: lit glass cases with a gold record, a platinum record, a trophy
+	for i, x in ipairs({ -34, -23, -12 }) do
+		local z = -39.5
+		box(sc, "CasePlinth", x - 1.8, 0, z - 1.8, x + 1.8, 3.4, z + 1.8, C.white)
+		box(sc, "CaseLight", x - 1.5, 3.4, z - 1.5, x + 1.5, 3.46, z + 1.5, Color3.fromRGB(255, 246, 226), Enum.Material.Neon, { collide = false })
+		box(sc, "CaseGlass", x - 1.6, 3.46, z - 1.6, x + 1.6, 7.6, z + 1.6, C.glass, Enum.Material.Glass, { transparency = 0.7 })
+		box(sc, "CaseTop", x - 1.7, 7.6, z - 1.7, x + 1.7, 7.9, z + 1.7, C.white)
+		if i == 3 then
+			-- a trophy: a cup on a stem
+			part(sc, "TrophyBase", Vector3.new(0.6, 1.4, 1.4), CFrame.new(x, 3.8, z) * CFrame.Angles(0, 0, math.pi / 2), C.yellow, Enum.Material.Metal, { shape = Enum.PartType.Cylinder, collide = false })
+			part(sc, "TrophyStem", Vector3.new(1.2, 0.35, 0.35), CFrame.new(x, 4.7, z) * CFrame.Angles(0, 0, math.pi / 2), C.yellow, Enum.Material.Metal, { shape = Enum.PartType.Cylinder, collide = false })
+			part(sc, "TrophyCup", Vector3.new(1.8, 1.8, 1.8), Vector3.new(x, 6.0, z), C.yellow, Enum.Material.Metal, { shape = Enum.PartType.Ball, collide = false })
+			part(sc, "TrophyRim", Vector3.new(0.2, 1.9, 1.9), CFrame.new(x, 6.7, z) * CFrame.Angles(0, 0, math.pi / 2), C.yellow, Enum.Material.Metal, { shape = Enum.PartType.Cylinder, collide = false })
+		else
+			part(sc, "AwardStand", Vector3.new(1.6, 0.2, 0.8), CFrame.new(x, 3.56, z), C.dark, Enum.Material.Metal, { collide = false })
+			part(sc, "AwardRecord", Vector3.new(0.12, 2.8, 2.8), CFrame.new(x, 5.2, z) * CFrame.Angles(0, math.pi / 2, 0), (i == 1) and C.yellow or Color3.fromRGB(214, 218, 228), Enum.Material.Metal, { shape = Enum.PartType.Cylinder, collide = false })
+			part(sc, "AwardLabel", Vector3.new(0.9, 0.9, 0.14), CFrame.new(x, 5.2, z) * CFrame.Angles(0, math.pi / 2, 0) * CFrame.new(0, 0, 0), C.white, nil, { shape = Enum.PartType.Cylinder, collide = false }).Size = Vector3.new(0.14, 0.9, 0.9)
+		end
+	end
+	-- a jukebox by the meeting room glass, looking into the room
+	local jx, jz = -37.6, -31
+	box(sc, "Jukebox", jx - 1.2, 0, jz - 2, jx + 1.2, 5.2, jz + 2, Color3.fromRGB(120, 40, 60), Enum.Material.Wood)
+	part(sc, "JukeboxTop", Vector3.new(2.4, 4, 4), CFrame.new(jx, 5.2, jz) * CFrame.Angles(0, math.pi / 2, 0), Color3.fromRGB(120, 40, 60), Enum.Material.Wood, { shape = Enum.PartType.Cylinder })
+	box(sc, "JukeboxGlow", jx + 1.2, 1.2, jz - 1.4, jx + 1.3, 6.6, jz - 1.1, C.coral, Enum.Material.Neon, { collide = false })
+	box(sc, "JukeboxGlow", jx + 1.2, 1.2, jz + 1.1, jx + 1.3, 6.6, jz + 1.4, C.teal, Enum.Material.Neon, { collide = false })
+	box(sc, "JukeboxWindow", jx + 1.2, 3.4, jz - 1.0, jx + 1.26, 5.0, jz + 1.0, Color3.fromRGB(255, 230, 170), Enum.Material.Neon, { collide = false, transparency = 0.2 })
+	box(sc, "JukeboxGrille", jx + 1.2, 0.8, jz - 1.0, jx + 1.26, 2.6, jz + 1.0, C.dark, Enum.Material.Metal, { collide = false })
+	-- floor lamps and big plants in the corners
+	for _, lp in ipairs({ { -37.5, -40.5 }, { -9.5, -16 } }) do
+		box(sc, "LampFoot", lp[1] - 0.8, 0, lp[2] - 0.8, lp[1] + 0.8, 0.2, lp[2] + 0.8, C.dark, Enum.Material.Metal)
+		box(sc, "LampPole", lp[1] - 0.12, 0.2, lp[2] - 0.12, lp[1] + 0.12, 7, lp[2] + 0.12, C.dark, Enum.Material.Metal, { collide = false })
+		local shade = part(sc, "LampShade", Vector3.new(1.6, 2.2, 2.2), CFrame.new(lp[1], 7.5, lp[2]) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(255, 240, 214), Enum.Material.SmoothPlastic, { shape = Enum.PartType.Cylinder, collide = false })
+		light(shade, 14, 0.6)
+	end
+	plant(sc, Vector3.new(-37.5, 0, -22), true)
+	plant(sc, Vector3.new(-9.5, 0, -40.5), true)
+end
+
 local function buildOffices(shell, deco, stations, H)
 	local cz0, cz1 = Hub.CORRIDOR.z0, Hub.CORRIDOR.z1
 	local oz0, oz1 = Hub.OFFICE_Z[1], Hub.OFFICE_Z[2]
@@ -628,11 +687,12 @@ local function buildOffices(shell, deco, stations, H)
 	box(shell, "WingCeiling", -40, H, oz0, 40, H + 1, cz1, C.ceiling)
 	box(shell, "WingRoof", -42, H + 1, oz0 - 2, 42, H + 2, cz1, C.grey, Enum.Material.Concrete)
 	-- a long skylight over the atrium
-	box(deco, "Skylight", -30, H - 0.08, cz0 + 8, 30, H - 0.02, cz1 - 8, Color3.fromRGB(230, 244, 255), Enum.Material.Neon, { collide = false })
-	-- lights over the atrium
+	-- (not a glowing panel: under it the white desks were far too bright)
+	box(deco, "Skylight", -30, H - 0.08, cz0 + 8, 30, H - 0.02, cz1 - 8, Color3.fromRGB(196, 222, 240), Enum.Material.SmoothPlastic, { collide = false })
+	-- soft lights over the atrium
 	for _, x in ipairs({ -30, -15, 15, 30 }) do
 		for _, z in ipairs({ -54, -66 }) do
-			ceilingLight(deco, Vector3.new(x, H - 0.15, z), 8)
+			ceilingLight(deco, Vector3.new(x, H - 0.15, z), 8, 0.45)
 		end
 	end
 	-- the offices: a glass front with a door each, walls between them
@@ -686,7 +746,7 @@ local function buildOffices(shell, deco, stations, H)
 		poster(off, Vector3.new(cx + 7.58, 8, oz0 + 15), Enum.NormalId.Left, 5, 7)
 	end
 	-- the atrium: a lounge on the left, plants, posters, the LIVE SHOWS board on the right wall
-	sofa(deco, Vector3.new(-37.9, 0, -66), math.pi / 2, C.purple, 8)
+	sofa(deco, Vector3.new(-37.9, 0, -66), -math.pi / 2, C.purple, 8) -- its back to the wall, looking into the atrium
 	box(deco, "AtriumTable", -36.2, 1.2, -68, -33, 1.5, -64, C.woodDark, Enum.Material.Wood)
 	box(deco, "AtriumTableLeg", -34.9, 0, -66.3, -34.3, 1.2, -65.7, C.dark, Enum.Material.Metal)
 	plant(deco, Vector3.new(-37.6, 0, -50.4), true)
@@ -912,7 +972,7 @@ function Hub.build(parentFolder)
 	local staff = new("Folder", { Name = "StaffDesks" }, deco)
 	for _, st in ipairs(Hub.STAFF) do
 		if st.desk then
-			desk(staff, st.desk, 0, true)
+			desk(staff, st.desk, 0, true, C.wood)
 			chair(staff, st.pos, 0, C.dark)
 		end
 	end
@@ -921,6 +981,7 @@ function Hub.build(parentFolder)
 	end
 	chair(deco, Vector3.new(-22, 0, 25.2), math.pi, C.coral)
 	plant(deco, Vector3.new(37, 0, 22), false)
+	buildShowcase(deco)
 
 	------------------------------------------------------------ OFFICE: coffee bar (front right)
 	local cb = new("Folder", { Name = "CoffeeBar" }, deco)

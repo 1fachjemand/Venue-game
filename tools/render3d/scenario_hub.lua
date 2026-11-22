@@ -116,7 +116,7 @@ for wi, path in ipairs(paths) do
 		for k = 0, n do
 			local pt = Hub.ORIGIN + a0:Lerp(a1, k / n)
 			for _, d in ipairs(workspace.StarlightRecords:GetDescendants()) do
-				if (d.ClassName == "Part" or d.ClassName == "Seat") and not FLAT[d.Name] and not d.Name:find("^Arc") and not d.Name:find("^Cont") and not d:FindFirstAncestor("Guide") and not d:FindFirstAncestor("Forklift") then
+				if (d.ClassName == "Part" or d.ClassName == "Seat") and not FLAT[d.Name] and not d.Name:find("^Arc") and not d.Name:find("^Cont") and not d:FindFirstAncestor("Guide") and not d:FindFirstAncestor("SamLocal") and not d:FindFirstAncestor("Forklift") then
 					local cf, sz = d.CFrame, d.Size
 					if cf.Position.Y - sz.Y / 2 < 6 and cf.Position.Y + sz.Y / 2 > 0.3 then
 						for _, h in ipairs({ 1, 3, 5 }) do

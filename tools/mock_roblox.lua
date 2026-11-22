@@ -427,9 +427,28 @@ function Methods.Destroy(self)
 	for _, c in ipairs(kids) do Methods.Destroy(c) end
 end
 function Methods.Clone(self)
-	local c = newInst(self.__class)
-	for k, v in pairs(self.__props) do c.__props[k] = v end
-	return c
+	-- a deep copy like Roblox: properties, attributes and all children (references to parts inside the
+	-- copy, e.g. PrimaryPart, point to the copied parts)
+	local map = {}
+	local function copy(inst)
+		local c = newInst(inst.__class)
+		map[inst] = c
+		for k, v in pairs(inst.__props) do c.__props[k] = v end
+		for k, v in pairs(inst.__attrs) do c.__attrs[k] = v end
+		for _, ch in ipairs(inst.__children) do
+			local cc = copy(ch)
+			setParent(cc, c)
+		end
+		return c
+	end
+	local root = copy(self)
+	for orig, c in pairs(map) do
+		for k, v in pairs(c.__props) do
+			if type(v) == "table" and map[v] then c.__props[k] = map[v] end
+		end
+		local _ = orig
+	end
+	return root
 end
 function Methods.GetChildren(self) local t = {} for i, c in ipairs(self.__children) do t[i] = c end return t end
 function Methods.GetDescendants(self)

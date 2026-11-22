@@ -65,8 +65,11 @@ assert(SRV().artists.lila.signed and SRV().labelName == app.state.labelName, "se
 steps(40, 0.05)
 local bubble = app.canvas:FindFirstChild("TutorialBubble")
 assert(bubble and #MOCK.texts("^SAM") == 1, "Sam talks")
-local guide = workspace.StarlightRecords:FindFirstChild("Guide")
-assert(guide, "Sam stands in the office")
+-- every player has their own Sam: a local copy, the shared one is hidden on this client
+local guide = workspace.StarlightRecords:FindFirstChild("SamLocal")
+assert(guide, "Sam stands in the office (the player's own copy)")
+assert(workspace.StarlightRecords:FindFirstChild("Guide") == nil, "the shared Sam is hidden for this player")
+assert(shared.HeadlinerServer and true, "server running")
 local function talk(n) for _ = 1, n do bubble.MouseButton1Click:Fire() MOCK.runTasks() steps(2) end end
 talk(14)
 log("tutorial step", app.state.tutorial.step, "hint", MOCK.texts("MEETING ROOM")[1], "arrow", app.world.target)
@@ -1206,4 +1209,17 @@ log("sandbox day", app3.state.day, "money", app3.state.money)
 assert(MOCK.store.data["player_1_sandbox"] ~= nil, "sandbox has its own save")
 assert(MOCK.store.data["player_1"] ~= nil, "real save still there")
 steps(30)
+-- the Achievements app on the laptop: every goal with its reward and progress
+do
+	local a3 = app3 or app
+	a3:go("achievements")
+	for _ = 1, 30 do MOCK.step(1 / 30) end
+	local scr = a3.screens.achievements
+	scr:show()
+	local card = scr and scr.frame:FindFirstChild("Ach_first_show", true)
+	log("achievements app", scr ~= nil, card ~= nil, #MOCK.texts("of 4%d unlocked"))
+	assert(card, "the achievements app shows the goals")
+	a3:closeLaptop()
+	for _ = 1, 10 do MOCK.step(1 / 30) end
+end
 log("errors", #MOCK.errors)

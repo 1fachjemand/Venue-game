@@ -254,6 +254,7 @@ function App:beginGame(isNew)
 		end
 	end
 	self.screens.stats = require(Screens.StatsScreen).new(self)
+	self.screens.achievements = require(Screens.AchievementsScreen).new(self)
 	self.screens.artists = require(Screens.ArtistsScreen).new(self)
 	self.screens.tours = require(Screens.ToursScreen).new(self)
 	self.screens.charts = require(Screens.ChartsScreen).new(self)
@@ -559,7 +560,7 @@ local STATION_PAGES = {
 }
 local PAGE_STATION = { stages = "stagehall", charts = "charts" }
 -- pages that are apps on the laptop
-local LAPTOP_APP = { office = true, tours = "tours", tourplan = "planner", planner = "planner", artists = "artists", stats = "stats" }
+local LAPTOP_APP = { office = true, tours = "tours", tourplan = "planner", planner = "planner", artists = "artists", stats = "stats", achievements = "achievements" }
 local STATION_NAME = { laptop = "LAPTOP", maptable = "WORLD MAP table", meeting = "MEETING ROOM (sit down)", stagehall = "STAGE HALL", charts = "CHARTS screen" }
 
 function App:openStation(station, page, args)
@@ -824,6 +825,19 @@ end
 
 ------------------------------------------------------------------ toasts & modals
 -- a small message at the right edge; onClick (optional) makes it a button (e.g. "open the tour report")
+-- a new achievement: its name, what it was for and the reward (click: the Achievements app on the laptop)
+function App:achievementToast(id)
+	local a = Achievements.byId[id]
+	if not a then
+		return
+	end
+	local reward = ((a.reward or 0) > 0 and not (self.state and self.state.sandbox)) and ("<br/><font color='#16a34a'><b>+" .. Util.money(a.reward) .. "</b></font>") or ""
+	self:toast("<b>Achievement unlocked:</b> " .. UI.esc(a.name) .. "<br/>" .. UI.esc(a.desc) .. reward, T.gold, 8, function()
+		self:go("achievements")
+	end)
+	SoundFX.sfx("cash", 0.6)
+end
+
 function App:toast(text, color, seconds, onClick)
 	-- in the stage builder the right side is the item panel: messages go next to the setlist instead
 	self.toastFrame.Position = (self.mode == "designer") and UI.px(470, 112) or UI.px(1500, 170)
@@ -1264,7 +1278,7 @@ function App:handleDay(ev)
 		end
 	end
 	for _, id in ipairs(ev.achievements or {}) do
-		self:toast("<b>Achievement unlocked:</b> " .. Achievements.byId[id].name .. "<br/>" .. Achievements.byId[id].desc, T.accent, 8)
+		self:achievementToast(id)
 	end
 	for _, l in ipairs(ev.live or {}) do
 		table.insert(self.liveQueue, l)
@@ -1574,7 +1588,7 @@ function App:resolveShow(tour, idx, watch)
 	local result = data.result
 	local function afterReport()
 		for _, id in ipairs(data.achievements or {}) do
-			self:toast("<b>Achievement unlocked:</b> " .. Achievements.byId[id].name, T.accent, 8)
+			self:achievementToast(id)
 		end
 		if data.completed then
 			self:tourCompleted(tour)

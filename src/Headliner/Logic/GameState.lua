@@ -1199,34 +1199,83 @@ function GS.checkLevelUp(state)
 	return nil
 end
 
-function GS.checkAchievements(state)
+-- the values the achievements measure (Data/Achievements: stat)
+function GS.achievementStats(state)
 	local st = state.stats
 	local _, bestRank = GS.chart(state)
-	local cond = {
-		first_show = st.shows >= 1,
-		first_sellout = st.sellouts >= 1,
-		theatre_sellout = st.biggestSellout >= 2500,
-		arena_sellout = st.biggestSellout >= 10000,
-		stadium_sellout = st.biggestSellout >= 40000,
-		mega_sellout = st.biggestSellout >= 80000,
-		five_stars = st.fiveStars >= 1,
-		sellouts_10 = st.sellouts >= 10,
-		sellouts_50 = st.sellouts >= 50,
-		tour_1m = st.bestTourGross >= 1000000,
-		tour_10m = st.bestTourGross >= 10000000,
-		tour_100m = st.bestTourGross >= 100000000,
-		world_tour = st.maxRegions >= 4,
-		chart_top10 = bestRank ~= nil and bestRank <= 10,
-		chart_1 = bestRank == 1,
-		rich = state.money >= 10000000,
-		superstar = state.artists.nova ~= nil and state.artists.nova.signed,
+	local signed, toursDone, countries, designs, biggest = 0, 0, {}, 0, 0
+	for _, a in pairs(state.artists) do
+		if a.signed then
+			signed = signed + 1
+		end
+	end
+	for _, t in ipairs(state.tours or {}) do
+		if t.status == "done" then
+			toursDone = toursDone + 1
+		end
+		for _, sh in ipairs(t.shows or {}) do
+			local v = sh.done and Countries.venueById[sh.venueId]
+			if v then
+				countries[v.countryId] = true
+			end
+		end
+	end
+	local nCountries = 0
+	for _ in pairs(countries) do
+		nCountries = nCountries + 1
+	end
+	for _, d in ipairs(state.designs or {}) do
+		if not d.template then
+			designs = designs + 1
+		end
+		biggest = math.max(biggest, #(d.items or {}))
+	end
+	return {
+		shows = st.shows,
+		sellouts = st.sellouts,
+		tickets = st.tickets,
+		totalGross = st.totalGross,
+		fiveStars = st.fiveStars,
+		biggestSellout = st.biggestSellout,
+		bestTourGross = st.bestTourGross,
+		maxRegions = st.maxRegions,
+		money = state.money,
+		signed = signed,
+		toursDone = toursDone,
+		countries = nCountries,
+		level = GS.level(state),
+		nova = (state.artists.nova ~= nil and state.artists.nova.signed) and 1 or 0,
+		designs = designs,
+		biggestStage = biggest,
+		rank = bestRank,
 	}
+end
+
+-- how far an achievement is: value, goal, done (rank: lower is better)
+function GS.achievementProgress(ach, vals)
+	local v = vals[ach.stat]
+	if ach.stat == "rank" then
+		return v or 0, ach.goal, v ~= nil and v <= ach.goal
+	end
+	v = v or 0
+	return v, ach.goal, v >= ach.goal
+end
+
+-- unlocks reached achievements and pays their reward (in the sandbox the money stays as it is)
+function GS.checkAchievements(state)
+	local vals = GS.achievementStats(state)
 	local new = {}
 	for _, ach in ipairs(Achievements.list) do
-		if cond[ach.id] and not state.achievements[ach.id] then
-			state.achievements[ach.id] = state.day
-			table.insert(new, ach.id)
-			GS.log(state, "Achievement unlocked: " .. ach.name)
+		if not state.achievements[ach.id] then
+			local _, _, done = GS.achievementProgress(ach, vals)
+			if done then
+				state.achievements[ach.id] = state.day
+				table.insert(new, ach.id)
+				if (ach.reward or 0) > 0 and not state.sandbox then
+					state.money = state.money + ach.reward
+				end
+				GS.log(state, "Achievement unlocked: " .. ach.name .. ((ach.reward or 0) > 0 and (" (+" .. Util.money(ach.reward) .. ")") or ""))
+			end
 		end
 	end
 	return new

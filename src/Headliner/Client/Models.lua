@@ -158,7 +158,7 @@ function Models.install(B, H)
 		chrome(part(m, "HoodOrnament", Vector3.new(0.15, 0.3, 0.9), CFrame.new(0, 3.5, -7.2), CHROME, SP))
 		chrome(tube(m, Vector3.new(1.6, 0.95, 8.0), Vector3.new(1.6, 0.95, 9.0), 0.32, CHROME))
 		-- wrap-around windshield in a chrome frame
-		local ws = CFrame.new(0, 4.15, -2.35) * CFrame.Angles(0.42, 0, 0)
+		local ws = CFrame.new(0, 4.22, -2.4) * CFrame.Angles(0.42, 0, 0)
 		local glass = part(m, "Windshield", Vector3.new(5.6, 1.8, 0.08), ws, Color3.fromRGB(180, 215, 235), Enum.Material.Glass)
 		glass.Transparency = 0.6
 		chrome(cylX(m, "ScreenTop", 5.8, 0.16, ws * CFrame.new(0, 0.92, 0), CHROME, SP))
@@ -181,7 +181,7 @@ function Models.install(B, H)
 			part(m, "SeatBack", Vector3.new(5.3, 1.5, 0.45), back, cream, Enum.Material.Leather)
 			cylX(m, "SeatRoll", 5.3, 0.5, back * CFrame.new(0, 0.75, 0), cream, Enum.Material.Leather)
 			for k = -2, 2 do
-				part(m, "Piping", Vector3.new(0.06, 1.3, 0.47), back * CFrame.new(k * 1.05, -0.05, 0), Color3.fromRGB(180, 30, 40), Enum.Material.Leather)
+				part(m, "Piping", Vector3.new(0.06, 1.3, 0.52), back * CFrame.new(k * 1.05, -0.05, 0), Color3.fromRGB(180, 30, 40), Enum.Material.Leather)
 			end
 		end
 		oval(m, "FoldedTop", Vector3.new(5.6, 0.7, 1.3), CFrame.new(0, 3.45, 4.45), cream, Enum.Material.Fabric)
@@ -1151,7 +1151,7 @@ function Models.install(B, H)
 		end
 		for _ = 1, 26 do
 			local a, d = rng:NextNumber(0, 6.28), rng:NextNumber(1, 7)
-			part(m, "Petal", Vector3.new(0.4, 0.04, 0.3), CFrame.new(math.sin(a) * d, 0.03, math.cos(a) * d) * CFrame.Angles(0, a, 0), pinks[rng:NextInteger(1, 4)])
+			part(m, "Petal", Vector3.new(0.4, 0.04, 0.3), CFrame.new(math.sin(a) * d, 0.03 + rng:NextNumber(0, 0.12), math.cos(a) * d) * CFrame.Angles(0, a, 0), pinks[rng:NextInteger(1, 4)])
 		end
 	end
 	-- crystal chandelier (hangs from the rig: built downwards)
@@ -1297,7 +1297,7 @@ function Models.install(B, H)
 			local a = (2 * i + 1) * th
 			if i ~= 0 then
 				local cf = CFrame.Angles(0, a, 0) * CFrame.new(0, wallH / 2, R * math.cos(th))
-				part(m, "Wall", Vector3.new(2 * R * math.sin(th) + 0.02, wallH, 0.3), cf, (i % 2 == 0) and red or white, Enum.Material.Fabric)
+				part(m, "Wall", Vector3.new(2 * R * math.sin(th), wallH, 0.3), cf, (i % 2 == 0) and red or white, Enum.Material.Fabric)
 			end
 		end
 		for i = 0, n - 1 do

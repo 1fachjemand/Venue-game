@@ -1108,7 +1108,7 @@ local function boardCard(parent, ad, state, signed, y, x)
 				app:toast(msg or "", ok and T.good or T.bad)
 				for _, id in ipairs((data and data.achievements) or {}) do
 					local Achievements = require(Root.Data.Achievements)
-					app:toast("<b>Achievement unlocked:</b> " .. Achievements.byId[id].name, T.accent, 8)
+					app:achievementToast(id)
 				end
 				World.drawBoard()
 				app:refreshHud()

@@ -46,6 +46,10 @@ app.laptop.windows[2].rect = { x = 300, y = 120, w = 1200, h = 720 }
 Laptop.layout(app, app.laptop.windows[2])
 dump("04f_two_windows")
 for i = #app.laptop.windows, 1, -1 do Laptop.closeWindow(app, app.laptop.windows[i]) end
+SRV().stats.shows = 12 SRV().stats.tickets = 30000 SRV().achievements.first_show = 3 app:applyDelta(app:call("resync").delta)
+Laptop.openApp(app, "achievements")
+dump("04g_achievements")
+for i = #app.laptop.windows, 1, -1 do Laptop.closeWindow(app, app.laptop.windows[i]) end
 MOCK.clickExact("Close laptop")
 MOCK.prompt("maptable")
 dump("05a_plan_artist")

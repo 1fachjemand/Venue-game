@@ -93,7 +93,7 @@ function ArtistsScreen:card(ad, order)
 				local ok, msg, data = app:act("sign", { artistId = ad.id })
 				app:toast(msg or "", ok and T.good or T.bad)
 				for _, id in ipairs((data and data.achievements) or {}) do
-					app:toast("<b>Achievement unlocked:</b> " .. Achievements.byId[id].name, T.accent, 8)
+					app:achievementToast(id)
 				end
 				app:refreshCurrent()
 			end)

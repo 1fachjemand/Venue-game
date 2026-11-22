@@ -352,4 +352,24 @@ do
   Util.syncInto(dst, { list = { { id = "b", v = 3 } }, n = 2 })
   check(dst.list[1] == keepB and keepB.v == 3 and #dst.list == 1 and dst.n == 2 and dst.gone == nil, "syncInto")
 end
+-- achievements pay their reward once (harder = more), the sandbox gets none
+do
+  local st = GS.new("Ach", "lila")
+  local m0 = st.money
+  st.stats.shows = 1
+  local new = GS.checkAchievements(st)
+  local got = {}
+  for _, id in ipairs(new) do got[id] = true end
+  check(got.first_show, "first show achievement")
+  check(st.money == m0 + 5000, "the first show pays $5,000 (got " .. tostring(st.money - m0) .. ")")
+  check(#GS.checkAchievements(st) == 0 and st.money == m0 + 5000, "no reward twice")
+  local A = require(ROOT.Data.Achievements)
+  check(#A.list >= 40, "40 achievements")
+  check(A.byId.mega_sellout.reward > A.byId.arena_sellout.reward and A.byId.arena_sellout.reward > A.byId.theatre_sellout.reward, "harder = more money")
+  local sb = GS.new("Sb", "lila", { sandbox = true })
+  local sm = sb.money
+  sb.stats.shows = 1
+  GS.checkAchievements(sb)
+  check(sb.money == sm and sb.achievements.first_show, "sandbox: unlocked but no money")
+end
 print("FAILS", fails)

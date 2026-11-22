@@ -20,9 +20,35 @@ local O = Hub.ORIGIN
 local SPEED = 9 -- studs per second (a calm walk)
 local Sam = { at = "start" }
 
+-- Every player has their own Sam: the server builds one "Guide" for everyone, each client makes a copy only
+-- it can see (things a client makes are never sent to the others) and hides the server's one for itself. So
+-- your meeting, your tutorial and Sam walking back to his office happen only on your screen.
 local function model()
+	local m = Sam.localModel
+	if m and m.Parent then
+		return m
+	end
 	local root = workspace:FindFirstChild("StarlightRecords")
-	return root and root:FindFirstChild("Guide")
+	local g = root and root:FindFirstChild("Guide")
+	if not g then
+		return nil
+	end
+	local ok, copy = pcall(function()
+		return g:Clone()
+	end)
+	if not ok or not copy then
+		return g
+	end
+	copy.Name = "SamLocal"
+	copy.Parent = root
+	if copy.PrimaryPart == nil then
+		copy.PrimaryPart = copy:FindFirstChild("HumanoidRootPart")
+	end
+	-- the shared one disappears from this player's world (only here, the server keeps it)
+	g.Parent = nil
+	Sam.localModel = copy
+	Sam.rootHeight, Sam.hipOffset, Sam.offsets, Sam.offsetModel, Sam.tracks = nil, nil, nil, nil, nil
+	return copy
 end
 Sam.model = model
 
