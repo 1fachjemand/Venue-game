@@ -39,16 +39,20 @@ local list = {
 	{ "stadium", "Runway & Moon", "Stadium", "end" },
 	{ "theatre", "Club Stage", "Theatre", "end" },
 	{ "club", "Club Stage", "Club", "end" },
-	{ "amphi", "Arena End Stage", "Arena", "end" },
+	{ "amphi", "Arena End Stage", "Arena", "end", "rock" },
+	{ "amphi", "Arena End Stage", "Arena", "end", "forest" },
+	{ "amphi", "Arena End Stage", "Arena", "end", "city" },
 }
 Venue.maxFigures = 1100
-for k, v in ipairs(list) do
+local only = {}
+for n in string.gmatch(ARGS or "", "[^,]+") do only[tonumber(n)] = true end
+for k, v in ipairs(list) do if next(only) == nil or only[k] then
 	app.state.money = 90000000
 	local p = preset(v[2])
 	local d = GS.addDesign(app.state, v[2], p.items, v[3], v[4])
 	app:openDesigner(d.id)
 	for _ = 1, 3 do MOCK.step(1 / 30) end
-	local crowd = Venue.build(v[1], 0.85, Color3.fromRGB(255, 80, 160), { layout = v[4] })
+	local crowd = Venue.build(v[1], 0.85, Color3.fromRGB(255, 80, 160), { layout = v[4], amphi = v[5] })
 	local items = {}
 	for _, d2 in ipairs(workspace.HeadlinerWorld:GetDescendants()) do
 		local cls = d2.ClassName
@@ -96,4 +100,4 @@ for k, v in ipairs(list) do
 	print("exported", v[1], v[4], #items, "fans", crowd.count, "slots", crowd.slots)
 	Venue.destroy(crowd)
 	MOCK.clickExact("DONE")
-end
+end end

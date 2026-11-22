@@ -594,6 +594,124 @@ end
 
 -- you walk through the venue: walls, stands, barriers and the stage are solid (the crowd is not),
 -- and invisible walls keep you inside
+-- The surroundings of an open-air amphitheatre (all closed: you can't walk out and you don't look into a
+-- street): "rock" = red sandstone like Red Rocks (two huge monoliths at the sides, a cliff behind the stage,
+-- rocks all round the top of the bowl), "forest" = a forest stage (two rows of tall trees all round, a wooden
+-- fence), "city" = a city amphitheatre (a two-storey stone arcade all round, the city beyond it).
+-- rx, rz = the half ellipse of the top of the bowl round (0, cz); zBack = behind the stage
+local function amphiEnv(folder, style, rx, rz, cz, zBack, topY)
+	local rng = Random.new(#style * 13 + 7)
+	local ring = {}
+	-- the ring: the half ellipse round the fans, then straight back along both sides to behind the stage
+	for k = 0, 16 do
+		local a = math.pi * k / 16
+		table.insert(ring, Vector3.new(-math.cos(a) * rx, 0, cz + math.sin(a) * rz))
+	end
+	local sides = {}
+	for k = 1, 4 do
+		local z = cz - (cz - zBack) * k / 4
+		table.insert(sides, { Vector3.new(-rx, 0, z), Vector3.new(rx, 0, z) })
+	end
+	local ground
+	if style == "rock" then
+		ground = Color3.fromRGB(150, 84, 58)
+	elseif style == "forest" then
+		ground = Color3.fromRGB(46, 70, 40)
+	else
+		ground = Color3.fromRGB(150, 146, 138)
+	end
+	local g = blk(folder, "AmphiGround", Vector3.new(rx * 2 + 260, 0.2, rz * 2 + (cz - zBack) + 260), CFrame.new(0, -0.02, (cz + rz + zBack) / 2), ground, (style == "forest") and Enum.Material.Grass or ((style == "rock") and Enum.Material.Sand or Enum.Material.Pavement))
+	g.CanCollide = false
+	local wallH = topY + 14
+	local function each(fn)
+		for i = 1, #ring - 1 do
+			fn(ring[i], ring[i + 1])
+		end
+		for i, pr in ipairs(sides) do
+			local prev = (i == 1) and { Vector3.new(-rx, 0, cz), Vector3.new(rx, 0, cz) } or sides[i - 1]
+			fn(prev[1], pr[1])
+			fn(prev[2], pr[2])
+		end
+		fn(Vector3.new(-rx, 0, zBack), Vector3.new(rx, 0, zBack))
+	end
+	if style == "rock" then
+		local reds = { Color3.fromRGB(168, 84, 58), Color3.fromRGB(146, 70, 50), Color3.fromRGB(184, 104, 72), Color3.fromRGB(126, 62, 46) }
+		each(function(a, b)
+			local mid, len = (a + b) / 2, (b - a).Magnitude
+			local out = Vector3.new(mid.X, 0, mid.Z - cz).Unit
+			for k = 0, 1 do
+				local h = wallH + rng:NextNumber(6, 26) + k * 10
+				local w = len * rng:NextNumber(0.9, 1.4)
+				local cf = CFrame.lookAt(mid + out * (6 + k * 10), mid + out * 30) * CFrame.new(0, h / 2 - 2, 0) * CFrame.Angles(rng:NextNumber(-0.12, 0.08), rng:NextNumber(-0.3, 0.3), rng:NextNumber(-0.1, 0.1))
+				blk(folder, "Rock", Vector3.new(w, h, 14 + k * 6), cf, reds[rng:NextInteger(1, #reds)], Enum.Material.Sandstone).CanCollide = false
+			end
+		end)
+		-- the two great monoliths at the sides of the bowl, tilted outwards
+		for _, sx in ipairs({ -1, 1 }) do
+			local base = Vector3.new(sx * (rx + 14), 0, cz - rz * 0.2)
+			for k = 0, 2 do
+				local h = 70 + k * 12
+				blk(folder, "Monolith", Vector3.new(26 - k * 4, h, 60 - k * 12), CFrame.new(base + Vector3.new(sx * k * 6, h / 2 - 4, -k * 10)) * CFrame.Angles(0, sx * 0.15, sx * (0.16 + k * 0.04)), reds[k + 1], Enum.Material.Sandstone).CanCollide = false
+			end
+		end
+		-- the cliff behind the stage
+		for k = 0, 6 do
+			local x = -rx + (k + 0.5) * (rx * 2) / 7
+			local h = wallH + 30 + rng:NextNumber(0, 26)
+			blk(folder, "Cliff", Vector3.new(rx * 2 / 7 + 8, h, 30), CFrame.new(x, h / 2 - 2, zBack - 20) * CFrame.Angles(rng:NextNumber(-0.06, 0.06), 0, rng:NextNumber(-0.05, 0.05)), reds[(k % 4) + 1], Enum.Material.Sandstone).CanCollide = false
+		end
+	elseif style == "forest" then
+		local trunk, greens = Color3.fromRGB(80, 56, 40), { Color3.fromRGB(38, 86, 46), Color3.fromRGB(52, 104, 54), Color3.fromRGB(30, 72, 40) }
+		each(function(a, b)
+			local len = (b - a).Magnitude
+			local n = math.max(1, math.floor(len / 7))
+			for i = 0, n - 1 do
+				local p = a:Lerp(b, (i + 0.5) / n)
+				local out = Vector3.new(p.X, 0, p.Z - cz).Unit
+				for row = 0, 1 do
+					local q = p + out * (5 + row * 9) + Vector3.new(rng:NextNumber(-2, 2), 0, rng:NextNumber(-2, 2))
+					local h = wallH + rng:NextNumber(8, 22) + row * 6
+					blk(folder, "Trunk", Vector3.new(1.6, h, 1.6), CFrame.new(q.X, h / 2, q.Z), trunk, Enum.Material.Wood).CanCollide = false
+					for c = 0, 2 do
+						local d = 14 - c * 3.5
+						local crown = blk(folder, "Crown", Vector3.new(d, d * 0.8, d), CFrame.new(q.X, h - 4 + c * 5, q.Z), greens[rng:NextInteger(1, 3)], Enum.Material.Grass)
+						crown.Shape = Enum.PartType.Ball
+						crown.CanCollide = false
+					end
+				end
+			end
+			-- a wooden fence at the top of the bowl
+			local mid = (a + b) / 2
+			blk(folder, "Fence", Vector3.new(0.4, 3, (b - a).Magnitude + 0.2), CFrame.lookAt(mid + Vector3.new(0, 1.5 + topY, 0), b + Vector3.new(0, 1.5 + topY, 0)), Color3.fromRGB(110, 80, 52), Enum.Material.WoodPlanks).CanCollide = false
+		end)
+	else
+		local stone, dark = Color3.fromRGB(196, 186, 168), Color3.fromRGB(150, 142, 128)
+		each(function(a, b)
+			local mid, len = (a + b) / 2, (b - a).Magnitude
+			local cf = CFrame.lookAt(mid, b)
+			local out = Vector3.new(mid.X, 0, mid.Z - cz).Unit
+			cf = cf + out * 3
+			-- two storeys of arches: piers, the openings dark, a band on top of each storey
+			for st = 0, 1 do
+				local y0 = st * (wallH / 2)
+				local n = math.max(1, math.floor(len / 9))
+				for i = 0, n do
+					blk(folder, "Pier", Vector3.new(3, wallH / 2, 3), cf * CFrame.new(0, y0 + wallH / 4, -len / 2 + i * len / n), stone, Enum.Material.Limestone).CanCollide = false
+				end
+				blk(folder, "ArchBack", Vector3.new(1, wallH / 2, len), cf * CFrame.new(1.2, y0 + wallH / 4, 0), dark, Enum.Material.Limestone).CanCollide = false
+				blk(folder, "ArchBand", Vector3.new(3.4, 2.4, len + 3), cf * CFrame.new(0, y0 + wallH / 2 - 1.2, 0), stone, Enum.Material.Limestone).CanCollide = false
+			end
+		end)
+	end
+	-- you can't leave: invisible walls along the whole ring
+	each(function(a, b)
+		local mid, len = (a + b) / 2, (b - a).Magnitude
+		local out = Vector3.new(mid.X, 0, mid.Z - cz).Unit
+		New("Part", { Name = "VenueBoundary", Size = Vector3.new(2, 200, len + 4), CFrame = CFrame.lookAt(mid + out * 2 + Vector3.new(0, 100, 0), b + out * 2 + Vector3.new(0, 100, 0)), Anchored = true, CanCollide = true, CanTouch = false, CanQuery = false, Transparency = 1, Parent = folder })
+	end)
+end
+Venue.amphiEnv = amphiEnv
+
 function Venue.makeWalkable(info, extraFolders)
 	local crowdPart = {}
 	for _, p in ipairs(info.parts) do
@@ -1004,10 +1122,13 @@ function Venue.build(lookKey, fill, merchColor, opts)
 			local a = math.pi * k / 8
 			table.insert(pts, Vector3.new(-math.cos(a) * (halfW + 2), 0, cz + math.sin(a) * ((z1 - z0) / 2 + 2)))
 		end
-		local o = { rows = 16, depth = 4.5, step = 2.2, offset = 1, base = 0.4, color = Color3.fromRGB(130, 124, 112) }
+		local style = opts.amphi or "city"
+		local o = { rows = 16, depth = 4.5, step = 2.2, offset = 1, base = 0.4, color = (style == "rock") and Color3.fromRGB(150, 110, 92) or ((style == "forest") and Color3.fromRGB(120, 100, 76) or Color3.fromRGB(130, 124, 112)) }
 		local out, top = stands(folder, pts, false, ctr, o, slotList, 0.6)
 		outer = halfW + out + 4
 		wallH = top + 6
+		amphiEnv(folder, style, halfW + 2 + out + 3, (z1 - z0) / 2 + 2 + out + 3, cz, zBack - 6, top)
+		info.amphiStyle = style
 		-- band shell: stepped concrete arches over the stage, smaller towards the back
 		for j = 0, 4 do
 			local R = 36 + j * 9
@@ -1021,14 +1142,6 @@ function Venue.build(lookKey, fill, merchColor, opts)
 				p.CanCollide = false
 			end
 			blk(folder, "ShellLED", Vector3.new(0.6, 0.6, 0.6), CFrame.new(0, R * 0.75 - 1.4, z + 4.4), Color3.fromRGB(255, 220, 160), Enum.Material.Neon).CanCollide = false
-		end
-		for k = 0, 9 do
-			local x = -outer + k * outer / 4.5
-			local tz = z1 + out + 12 + (k % 2) * 6
-			blk(folder, "Trunk", Vector3.new(1.5, 12, 1.5), CFrame.new(x, 6, tz), Color3.fromRGB(90, 60, 40), Enum.Material.Wood).CanCollide = false
-			local crown = blk(folder, "Crown", Vector3.new(10, 10, 10), CFrame.new(x, 15, tz), Color3.fromRGB(40, 90, 50), Enum.Material.Grass)
-			crown.Shape = Enum.PartType.Ball
-			crown.CanCollide = false
 		end
 	end
 	-- nobody stands inside a bar or merch stand
@@ -1051,7 +1164,10 @@ function Venue.build(lookKey, fill, merchColor, opts)
 	info.size = { halfW = halfW, floorEnd = z1, floorStart = z0, outer = outer, height = wallH, center = center }
 	-- outside: streets and buildings all around (footprint of the hall from its outer walls)
 	local backZ = center and (z0 - (outer - halfW)) or math.min(zBack - (outer - halfW) * 0.5, -90)
-	city(folder, -outer, outer, backZ, z1 + (outer - halfW) + 4, #lookKey * 7)
+	-- (open-air amphitheatres have their own surroundings: rocks or forest; only the city one is in a city)
+	if not (lookKey == "amphi" and info.amphiStyle ~= "city") then
+		city(folder, -outer - ((lookKey == "amphi") and 22 or 0), outer + ((lookKey == "amphi") and 22 or 0), backZ - ((lookKey == "amphi") and 24 or 0), z1 + (outer - halfW) + 4 + ((lookKey == "amphi") and 24 or 0), #lookKey * 7)
+	end
 
 	-- security in the photo pit
 	if not opts.empty then

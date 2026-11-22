@@ -779,7 +779,7 @@ function LiveShow.run(app, opts)
 			wristbands = true
 		end
 	end
-	local crowd = Venue.build(look, fill, artistColor, { layout = centerStage and "center" or "end", pits = pits, wristbands = wristbands })
+	local crowd = Venue.build(look, fill, artistColor, { layout = centerStage and "center" or "end", pits = pits, wristbands = wristbands, amphi = venue and venue.amphi or nil })
 	local deckCenter = Stage3D.deckBox()
 	-- a soft white stage wash from above the front of the stage (like the key light of a real show): the
 	-- stage and the artist are always easy to see, the coloured show lights come on top

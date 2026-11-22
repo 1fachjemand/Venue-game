@@ -92,7 +92,7 @@ Countries.list = {
 			{ id = "de_olyhall", name = "Olympus Hall", city = "Munich", type = "Arena", cap = 15500 }, -- Olympiahalle
 			{ id = "de_ubar", name = "Ubar Arena", city = "Berlin", type = "Arena", cap = 17000 }, -- Uber Arena
 			{ id = "de_lanxus", name = "Lanxus Arena", city = "Cologne", type = "Arena", cap = 20000 }, -- Lanxess Arena
-			{ id = "de_forest", name = "Forest Stage", city = "Berlin", type = "Amphitheatre", cap = 22290 }, -- Waldbuehne
+			{ id = "de_forest", name = "Forest Stage", city = "Berlin", type = "Amphitheatre", cap = 22290, amphi = "forest" }, -- Waldbuehne
 			{ id = "de_olympus", name = "Olympus Stadium", city = "Berlin", type = "Stadium", cap = 74475 }, -- Olympiastadion
 			{ id = "de_tempodrome", name = "Tempodrome", city = "Berlin", type = "Theatre", cap = 3500 }, -- Tempodrom
 			{ id = "de_palladiom", name = "Palladiom", city = "Cologne", type = "Theatre", cap = 4000 }, -- Palladium
@@ -126,7 +126,7 @@ Countries.list = {
 		venues = {
 			{ id = "it_lucciola", name = "Club Lucciola", city = "Milan", type = "Club", cap = 400 },
 			{ id = "it_forum", name = "Unipolo Forum", city = "Milan", type = "Arena", cap = 15800 }, -- Unipol Forum
-			{ id = "it_verona", name = "Arena of Verona", city = "Verona", type = "Amphitheatre", cap = 22000 }, -- Arena di Verona
+			{ id = "it_verona", name = "Arena of Verona", city = "Verona", type = "Amphitheatre", cap = 22000, amphi = "city" }, -- Arena di Verona
 			{ id = "it_sansirro", name = "San Sirro Stadium", city = "Milan", type = "Stadium", cap = 80018 }, -- San Siro
 			{ id = "it_aurora", name = "Teatro Aurora", city = "Milan", type = "Theatre", cap = 2500 }, -- fictional
 			{ id = "it_palalotto", name = "PalaLotto", city = "Rome", type = "Arena", cap = 11200 }, -- PalaLottomatica
@@ -240,8 +240,8 @@ Countries.list = {
 		venues = {
 			{ id = "us_bowery", name = "Bowery Ballhall", city = "New York", type = "Club", cap = 575 }, -- Bowery Ballroom
 			{ id = "us_fillmoore", name = "The Fillmoore", city = "San Francisco", type = "Theatre", cap = 1315 }, -- The Fillmore
-			{ id = "us_redstones", name = "Red Stones Amphitheatre", city = "Denver", type = "Amphitheatre", cap = 9525 }, -- Red Rocks
-			{ id = "us_dish", name = "Hollywood Dish", city = "Los Angeles", type = "Amphitheatre", cap = 17500 }, -- Hollywood Bowl
+			{ id = "us_redstones", name = "Red Stones Amphitheatre", city = "Denver", type = "Amphitheatre", cap = 9525, amphi = "rock" }, -- Red Rocks
+			{ id = "us_dish", name = "Hollywood Dish", city = "Los Angeles", type = "Amphitheatre", cap = 17500, amphi = "city" }, -- Hollywood Bowl
 			{ id = "us_orb", name = "The Orb", city = "Las Vegas", type = "Arena", cap = 17600 }, -- Sphere
 			{ id = "us_cryptic", name = "Cryptic.com Arena", city = "Los Angeles", type = "Arena", cap = 20000 }, -- Crypto.com Arena
 			{ id = "us_msg", name = "Madison Circle Garden", city = "New York", type = "Arena", cap = 22000 }, -- Madison Square Garden
@@ -252,9 +252,9 @@ Countries.list = {
 			{ id = "us_brooklynsteal", name = "Brooklyn Steal", city = "New York", type = "Theatre", cap = 1800 }, -- Brooklyn Steel
 			{ id = "us_wilturn", name = "The Wilturn", city = "Los Angeles", type = "Theatre", cap = 1850 }, -- The Wiltern
 			{ id = "us_rymann", name = "Rymann Auditorium", city = "Nashville", type = "Theatre", cap = 2362 }, -- Ryman Auditorium
-			{ id = "us_grecian", name = "Grecian Theatre", city = "Los Angeles", type = "Amphitheatre", cap = 5900 }, -- Greek Theatre
+			{ id = "us_grecian", name = "Grecian Theatre", city = "Los Angeles", type = "Amphitheatre", cap = 5900, amphi = "forest" }, -- Greek Theatre
 			{ id = "us_radiant", name = "Radiant City Music Hall", city = "New York", type = "Hall", cap = 5960 }, -- Radio City Music Hall
-			{ id = "us_gorge", name = "The Gorgeous Amphitheatre", city = "George, WA", type = "Amphitheatre", cap = 27500 }, -- The Gorge
+			{ id = "us_gorge", name = "The Gorgeous Amphitheatre", city = "George, WA", type = "Amphitheatre", cap = 27500, amphi = "rock" }, -- The Gorge
 			{ id = "us_chess", name = "Chess Center", city = "San Francisco", type = "Arena", cap = 19500 }, -- Chase Center
 			{ id = "us_tbgarden", name = "TB Garden", city = "Boston", type = "Arena", cap = 20000 }, -- TD Garden
 			{ id = "us_barclay", name = "Barclay Center", city = "Brooklyn", type = "Arena", cap = 20000 }, -- Barclays Center
