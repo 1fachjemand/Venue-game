@@ -198,14 +198,34 @@ function SoundFX.songSource(artistId, n)
 	return file, (idx - 1) * len, s2
 end
 
+-- recordings that did not load (e.g. an upload Roblox has not approved): they are skipped from then on
+SoundFX.broken = {}
 -- song n of an artist, e.g. during a show
 function SoundFX.song(artistId, n, volume)
 	local len = Map.SONG_LEN or 30
 	local file, start, speed = SoundFX.songSource(artistId, n)
-	playRegion(file, start, len, false, volume or 1, artistId .. "_" .. n .. "_" .. tostring(os.clock()))
+	if SoundFX.broken[file] then
+		-- this recording does not work: a similar one plays instead (never a silent show)
+		for _, alt in ipairs(SIMILAR[file] or {}) do
+			if not SoundFX.broken[alt] then
+				file = alt
+				break
+			end
+		end
+	end
+	local key = artistId .. "_" .. n .. "_" .. tostring(os.clock())
+	playRegion(file, start, len, false, volume or 1, key)
 	local s = channels[active]
 	if s and s.SoundId ~= "" then
 		s.PlaybackSpeed = speed or 1
+		-- still not loaded after a few seconds: mark it and play the song from a similar recording
+		task.delay(4, function()
+			if currentKey == key and s.TimeLength == 0 and not SoundFX.broken[file] then
+				SoundFX.broken[file] = true
+				warn("[Headliner] audio '" .. tostring(file) .. "' did not load (is the upload approved?); using a similar recording")
+				SoundFX.song(artistId, n, volume)
+			end
+		end)
 	end
 end
 

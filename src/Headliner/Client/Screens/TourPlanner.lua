@@ -383,6 +383,16 @@ function TP:routePanel(parent, x, y, w, h)
 			self:refresh()
 		end).TextColor3 = T.bad
 	end
+	-- the next free place in the list: a big "+" (another show = another country on the map)
+	if n < Config.MAX_SHOWS_PER_TOUR then
+		local add = UI.New("TextButton", { Parent = list, Name = "AddShow", Size = UI.px(w - 40, 64), BackgroundColor3 = Color3.fromRGB(239, 246, 255), BorderSizePixel = 0, LayoutOrder = n + 1, AutoButtonColor = true, Text = "", UI.Corner(10), UI.Stroke(T.accent, 2, 0) })
+		UI.Label(add, "+", UI.px(14, 0), UI.px(50, 64), { textSize = 40, font = UI.FontBlack, color = T.accent, alignX = Enum.TextXAlignment.Center })
+		UI.Label(add, "ADD A SHOW", UI.px(70, 0), UI.px(w - 120, 64), { textSize = 18, font = UI.FontBlack, color = T.accent })
+		add.MouseButton1Click:Connect(function()
+			self.sub = "map"
+			self:refresh()
+		end)
+	end
 	return p
 end
 
@@ -395,7 +405,7 @@ function TP:buildShows()
 	end
 	self.sub = "map"
 	UI.Label(body, "Where does " .. Artists.byId[aid].name .. " play?", UI.px(40, 20), UI.px(1200, 40), { textSize = 30, font = UI.FontBlack })
-	UI.Label(body, "Click a country on the map. The dot shows how many fans live there.", UI.px(40, 62), UI.px(1200, 24), { textSize = 17, color = T.sub })
+	UI.Label(body, "Pick a country.", UI.px(40, 62), UI.px(1200, 24), { textSize = 17, color = T.sub })
 	local counts = {}
 	for _, s in ipairs(self.draft.shows) do
 		local cid = Countries.venueById[s.venueId].countryId
@@ -508,10 +518,7 @@ function TP:buildCountry()
 		UI.Label(grid, "No venues to show. Turn a size on in SHOW ME.", nil, UI.px(1000, 60), { textSize = 18, color = T.sub })
 	end
 	self:routePanel(body, 1432, 20, 460, 788)
-	self:buildFooter("< World map", function()
-		self.sub = "map"
-		self:refresh()
-	end, "Done: on to the LAPTOP  >", function()
+	self:buildFooter(nil, nil, "Done: on to the LAPTOP  >", function()
 		self:leaveTo("laptop", "Shows booked! Now the <b>LAPTOP</b>: Tour Planner for tickets, stage and the announcement.")
 	end, #self.draft.shows > 0, "Pick a venue, then a date.")
 end
@@ -606,7 +613,7 @@ function TP:buildCalendar()
 	end
 	local y, m = self.calMonth[1], self.calMonth[2]
 	z(UI.Label(p, "When? " .. v.name .. ", " .. v.city, UI.px(32, 20), UI.px(1000, 36), { textSize = 26, font = UI.FontBlack }))
-	z(UI.Label(p, "Click a green day. Click more days for more nights. Click one of your shows to take it away.", UI.px(32, 58), UI.px(1100, 24), { textSize = 16, color = T.sub }))
+	z(UI.Label(p, "Pick one or more green days.", UI.px(32, 58), UI.px(1100, 24), { textSize = 16, color = T.sub }))
 	z(UI.Button(p, "<", UI.px(940, 100), UI.px(52, 44), { textSize = 20 }, function()
 		m = m - 1
 		if m < 1 then
@@ -655,6 +662,8 @@ function TP:buildCalendar()
 	z(UI.Button(p, "Done", UI.px(1100, 808), UI.px(268, 52), { color = T.accent, textSize = 20 }, function()
 		ov.Visible = false
 		UI.ClearChildren(ov)
+		-- back to the world map: there you see all your shows and the "+" for the next one
+		self.sub = "map"
 		self:refresh()
 	end)).Name = "CalendarDone"
 end

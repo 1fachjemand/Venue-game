@@ -293,6 +293,7 @@ function SESSION.save(player, s)
 end
 
 function SESSION.leave(player, s)
+	s.live = nil
 	if s.state then
 		save(player, true)
 		s.saved[s.slot] = s.state
@@ -308,21 +309,28 @@ function SESSION.leave(player, s)
 	return SESSION.hello(player, s)
 end
 
+-- (only the main menu has the Delete button: a game that was still open in this slot is closed first, so
+-- it can never be saved back after the delete)
 function SESSION.deleteSlot(player, s, a)
 	local slot = cleanSlot(a.slot)
-	if slot == "sandbox" or (s.state and s.slot == slot) then
-		return { ok = false, msg = "This slot can't be deleted now." }
+	if slot == "sandbox" then
+		return { ok = false, msg = "The sandbox can't be deleted." }
+	end
+	if s.state and s.slot == slot then
+		s.state = nil
+		s.dirty = false
 	end
 	s.saved[slot] = nil
 	if store then
 		local key = saveKey(player, slot)
-		task.spawn(function()
-			pcall(function()
-				store:RemoveAsync(key)
-			end)
+		local ok = pcall(function()
+			store:RemoveAsync(key)
 		end)
+		if not ok then
+			return { ok = false, msg = "Could not delete right now (Roblox saves are busy). Try again in a moment." }
+		end
 	end
-	return { ok = true, msg = "Slot " .. slot .. " deleted." }
+	return { ok = true, msg = "Save deleted." }
 end
 
 function SESSION.enterWorld(player, s)
@@ -330,39 +338,76 @@ function SESSION.enterWorld(player, s)
 	return { ok = true }
 end
 
--- the LIVE SHOWS board: the next shows of the other players' tours (you can go and watch them)
+-- a player's show is on right now (their client tells us when it starts and ends): friends can join it
+function SESSION.liveNow(player, s, a)
+	if a.on and s.state then
+		for _, tour in ipairs(s.state.tours) do
+			if tour.id == a.tourId and tour.shows[tonumber(a.idx) or 0] then
+				s.live = { tourId = tour.id, idx = tonumber(a.idx), seed = math.floor(tonumber(a.seed) or 1), startedAt = os.clock() }
+				return { ok = true }
+			end
+		end
+		return { ok = false }
+	end
+	s.live = nil
+	return { ok = true }
+end
+
+local function showInfo(other, st, tour, idx)
+	local sh = tour.shows[idx]
+	local design = GS.showDesign(st, tour, idx)
+	return {
+		key = tostring(other.UserId) .. ":" .. tostring(tour.id),
+		player = other.DisplayName,
+		label = st.labelName,
+		tourName = tour.name,
+		tourId = tour.id,
+		artistId = tour.artistId,
+		venueId = sh.venueId,
+		inDays = sh.day - st.day,
+		sold = sh.sold or 0,
+		cap = sh.cap or 0,
+		dancers = tour.dancers,
+		design = design and { id = design.id, name = design.name, class = design.class, layout = design.layout, items = design.items } or nil,
+	}
+end
+
+-- the LIVE SHOWS board: shows of the other players. A show that is on right now (live = true, with the
+-- seconds since it started and its seed) can be joined; the others are coming up (you can set a reminder).
 function SESSION.liveShows(player, s)
 	local list = {}
 	for other, ss in pairs(sessions) do
 		if other ~= player and ss.state then
 			local st = ss.state
+			local liveTour = ss.live and ss.live.tourId
 			for _, tour in ipairs(st.tours) do
-				if tour.status ~= "done" then
-					local best, bestIdx = nil, nil
-					for i, sh in ipairs(tour.shows) do
-						if not sh.done and (not best or sh.day < best.day) then
-							best, bestIdx = sh, i
+				if tour.status ~= "done" or tour.id == liveTour then
+					if tour.id == liveTour and tour.shows[ss.live.idx] then
+						local info = showInfo(other, st, tour, ss.live.idx)
+						info.live = true
+						info.elapsed = os.clock() - ss.live.startedAt
+						info.seed = ss.live.seed
+						info.inDays = 0
+						table.insert(list, info)
+					else
+						local bestIdx = nil
+						for i, sh in ipairs(tour.shows) do
+							if not sh.done and (not bestIdx or sh.day < tour.shows[bestIdx].day) then
+								bestIdx = i
+							end
 						end
-					end
-					if best then
-						local design = GS.showDesign(st, tour, bestIdx)
-						table.insert(list, {
-							player = other.DisplayName,
-							label = st.labelName,
-							tourName = tour.name,
-							artistId = tour.artistId,
-							venueId = best.venueId,
-							inDays = best.day - st.day,
-							sold = best.sold or 0,
-							cap = best.cap or 0,
-							design = design and { id = design.id, name = design.name, class = design.class, layout = design.layout, items = design.items } or nil,
-						})
+						if bestIdx then
+							table.insert(list, showInfo(other, st, tour, bestIdx))
+						end
 					end
 				end
 			end
 		end
 	end
 	table.sort(list, function(a, b)
+		if (a.live == true) ~= (b.live == true) then
+			return a.live == true
+		end
 		return a.inDays < b.inDays
 	end)
 	while #list > 12 do

@@ -2307,33 +2307,39 @@ function Designer.open(app, designId)
 			refreshTop()
 		end))
 		-- the two steps as tabs: 1 build the stage, 2 plan the songs
-		local b1 = tag(UI.Button(topInner, "1  BUILD", UI.px(804, 10), UI.px(150, 44), { textSize = 16, color = (phase == "build") and T.accent or T.panel3 }, function()
+		local b1 = tag(UI.Button(topInner, "1  BUILD", UI.px(804, 10), UI.px(130, 44), { textSize = 16, color = (phase == "build") and T.accent or T.panel3 }, function()
 			setPhase("build")
 		end))
 		b1.Name = "TopItem"
-		tag(UI.Button(topInner, "2  SETLIST & SHOW", UI.px(960, 10), UI.px(226, 44), { textSize = 16, color = (phase == "show") and T.accent or T.panel3 }, function()
+		tag(UI.Button(topInner, "2  SETLIST & SHOW", UI.px(940, 10), UI.px(200, 44), { textSize = 16, color = (phase == "show") and T.accent or T.panel3 }, function()
 			setPhase("show")
 		end))
 		local ad = previewArtist()
-		tag(UI.Button(topInner, "Artist: " .. (ad and ad.name or "-") .. ((ad and ad.members > 1) and (" (" .. ad.members .. ")") or ""), UI.px(1200, 10), UI.px(180, 44), { textSize = 14 }, function()
+		tag(UI.Button(topInner, "Artist: " .. (ad and ad.name or "-") .. ((ad and ad.members > 1) and (" (" .. ad.members .. ")") or ""), UI.px(1150, 10), UI.px(160, 44), { textSize = 14 }, function()
 			self.previewIndex = self.previewIndex % math.max(1, #signed) + 1
 			render()
 			refreshTop()
 			refreshStats()
 		end))
-		tag(UI.Button(topInner, "Preview show", UI.px(1390, 10), UI.px(170, 44), { color = T.accent2, textSize = 16 }, function()
+		tag(UI.Button(topInner, "Preview show", UI.px(1320, 10), UI.px(150, 44), { color = T.accent2, textSize = 16 }, function()
 			Designer.preview()
 		end))
-		tag(UI.Button(topInner, "DONE", UI.px(1570, 10), UI.px(110, 44), { color = T.good, textSize = 18 }, function()
-			Designer.close()
-			app:enterMode("menu")
-			app:go(app.returnScreen or "stages")
-		end))
-		tag(UI.Button(topInner, "Undo", UI.px(1690, 10), UI.px(70, 44), { textSize = 15 }, function()
+		-- undo / redo: two arrows (also Ctrl + Z / Ctrl + Y)
+		tag(UI.Button(topInner, "<", UI.px(1480, 10), UI.px(44, 44), { textSize = 24, font = UI.FontBlack }, function()
 			if self.undo then
 				self.undo()
 			end
 		end)).Name = "UndoButton"
+		tag(UI.Button(topInner, ">", UI.px(1530, 10), UI.px(44, 44), { textSize = 24, font = UI.FontBlack }, function()
+			if self.redo then
+				self.redo()
+			end
+		end)).Name = "RedoButton"
+		tag(UI.Button(topInner, "DONE", UI.px(1584, 10), UI.px(96, 44), { color = T.good, textSize = 18 }, function()
+			Designer.close()
+			app:enterMode("menu")
+			app:go(app.returnScreen or "stages")
+		end))
 	end
 
 	local lastMoney = nil
@@ -2936,6 +2942,8 @@ function Designer.open(app, designId)
 				confirm()
 			elseif k == Enum.KeyCode.Z and (UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl)) then
 				self.undo()
+			elseif k == Enum.KeyCode.Y and (UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl)) then
+				self.redo()
 			elseif k == Enum.KeyCode.C and building then
 				copySelected()
 			elseif k == Enum.KeyCode.M and building and (selected or group) and not pending then
@@ -2979,7 +2987,7 @@ function Designer.open(app, designId)
 	------------------------------------------------------------ undo (Ctrl + Z or the Undo button)
 	-- every finished change of the stage (placed, moved, resized, deleted, settings) is remembered
 	local HttpService = game:GetService("HttpService")
-	local undoStack = {}
+	local undoStack, redoStack = {}, {}
 	local function sigOf(items)
 		local ok, j = pcall(function()
 			return HttpService:JSONEncode(items)
@@ -2997,6 +3005,7 @@ function Designer.open(app, designId)
 		undoT = 0
 		local sig = sigOf(self.design.items)
 		if sig ~= lastSig then
+			redoStack = {} -- a new change: what was undone can't come back any more
 			table.insert(undoStack, lastSnap)
 			if #undoStack > 40 then
 				table.remove(undoStack, 1)
@@ -3005,13 +3014,7 @@ function Designer.open(app, designId)
 			lastSig = sig
 		end
 	end
-	self.undo = function()
-		watchUndo(1)
-		local prev = table.remove(undoStack)
-		if not prev then
-			app:toast("Nothing to undo.", T.warn, 2)
-			return
-		end
+	local function restore(prev)
 		select(nil)
 		setMode("idle")
 		self.design.items = Util.deepCopy(prev.items)
@@ -3025,6 +3028,26 @@ function Designer.open(app, designId)
 		refreshInspector()
 		refreshToolbar()
 		app:refreshHud()
+	end
+	self.undo = function()
+		watchUndo(1)
+		local prev = table.remove(undoStack)
+		if not prev then
+			app:toast("Nothing to undo.", T.warn, 2)
+			return
+		end
+		table.insert(redoStack, { items = Util.deepCopy(self.design.items), money = state.money })
+		restore(prev)
+	end
+	self.redo = function()
+		watchUndo(1)
+		local nxt = table.remove(redoStack)
+		if not nxt then
+			app:toast("Nothing to redo.", T.warn, 2)
+			return
+		end
+		table.insert(undoStack, { items = Util.deepCopy(self.design.items), money = state.money })
+		restore(nxt)
 	end
 	self.undoCount = function()
 		return #undoStack

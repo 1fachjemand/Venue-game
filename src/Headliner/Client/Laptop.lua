@@ -129,7 +129,8 @@ local function build(app)
 	UI.List(false, 6).Parent = lt.tasks
 	lt.clock = UI.Label(inner, "", UI.px(1380, 4), UI.px(280, 22), { textSize = 15, font = UI.FontBold, alignX = Enum.TextXAlignment.Right })
 	lt.money = UI.Label(inner, "", UI.px(1380, 26), UI.px(280, 22), { textSize = 14, color = T.good, font = UI.FontBold, alignX = Enum.TextXAlignment.Right })
-	local closeBtn = UI.Button(inner, "Close laptop", UI.px(1676, 6), UI.px(236, 40), { color = T.panel3, textSize = 16 }, function()
+	-- the way out of the laptop: a red button with an X, easy to see
+	local closeBtn = UI.Button(inner, "X   CLOSE LAPTOP", UI.px(1676, 4), UI.px(236, 44), { color = T.bad, textSize = 17 }, function()
 		app:closeLaptop()
 	end)
 	closeBtn.Name = "CloseLaptop"
@@ -347,6 +348,10 @@ function Laptop.openApp(app, id, args)
 	end).Name = "Maximize"
 	tb("X", -50, T.bad, function()
 		Laptop.closeWindow(app, w)
+		-- the last window closed with its X: players mean "I'm done", so the laptop closes too
+		if #L(app).windows == 0 then
+			app:closeLaptop()
+		end
 	end).Name = "CloseWindow"
 	-- the page, scaled to the window
 	local content = New("Frame", { Parent = f, Position = UI.px(1, TITLE), BackgroundColor3 = T.bg, BorderSizePixel = 0, ClipsDescendants = true })

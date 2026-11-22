@@ -159,7 +159,7 @@ function ToursScreen:refreshDetail()
 
 	-- show table
 	local y0 = tour.status ~= "done" and 262 or 182
-	local headers = { { "DATE", 24 }, { "VENUE", 150 }, { "TICKETS", 600 }, { "PRICE", 900 }, { "RESULT", 1050 }, { "WATCH", 1250 } }
+	local headers = { { "DATE", 24 }, { "VENUE", 150 }, { "TICKETS", 600 }, { "PRICE", 900 }, { "RESULT", 1050 }, { "SHOW DAY", 1180 } }
 	for _, h in ipairs(headers) do
 		UI.Label(d, h[1], UI.px(h[2], y0), UI.px(200, 20), { textSize = 13, color = T.sub, font = UI.FontBold })
 	end
@@ -184,10 +184,9 @@ function ToursScreen:refreshDetail()
 			UI.Label(row, Util.stars(r.stars) .. "  " .. Util.moneyShort(r.gross), UI.px(1040, 4), UI.px(220, 24), { textSize = 16, font = UI.FontBold, color = T.gold })
 			UI.Label(row, "profit " .. Util.moneyShort(r.net), UI.px(1040, 28), UI.px(220, 20), { textSize = 13, color = r.net >= 0 and T.good or T.bad })
 		else
-			UI.Label(row, s.sold >= s.cap and "waiting for show day" or "tickets on sale", UI.px(1040, 0), UI.px(110, 54), { textSize = 13, color = T.sub, wrap = true })
 			-- a show that sells badly can be dropped: the venue is paid anyway, fans are disappointed
 			if daysLeft > 0 and (tour.played > 0 or #tour.shows > 1) then
-				UI.Button(row, "CANCEL", UI.px(1150, 10), UI.px(80, 34), { color = UI.shade(T.bad, 0.6), textSize = 13 }, function()
+				UI.Button(row, "CANCEL", UI.px(1040, 10), UI.px(90, 34), { color = UI.shade(T.bad, 0.6), textSize = 13 }, function()
 					local cost, hype = GS.cancelShowCost(state, tour, i)
 					app:confirm("Cancel the show in " .. v.city .. "?", string.format("%s tickets sold so far. The venue still has to be paid (%s) and %s loses hype (-%d). The tickets are refunded. Selling few tickets can also cost money: is it worth it?", Util.number(s.sold), Util.money(cost), ad.name, hype), function()
 						local ok, msg = app:act("cancelShow", { tourId = tour.id, idx = i })
@@ -198,11 +197,21 @@ function ToursScreen:refreshDetail()
 			end
 		end
 		if not s.done then
+			-- a switch with two sides (a setting, not a button that starts something): LIVE = you travel to the
+			-- show on its day and watch it, AUTO = it is played without you and you get the result
 			local live = not s.skipLive
-			UI.Button(row, live and "WATCH" or "auto", UI.px(1236, 10), UI.px(76, 34), { color = live and T.accent or T.panel, textSize = 14 }, function()
-				app:act("setLive", { tourId = tour.id, idx = i, live = not live })
-				app:refreshCurrent()
-			end)
+			local sw = UI.New("Frame", { Parent = row, Name = "ShowDaySwitch", Position = UI.px(1170, 9), Size = UI.px(144, 36), BackgroundColor3 = Color3.fromRGB(226, 232, 240), BorderSizePixel = 0, UI.Corner(18) })
+			for k, opt in ipairs({ { "LIVE", true }, { "AUTO", false } }) do
+				local on = (opt[2] == live)
+				local b = UI.Button(sw, opt[1], UI.px(3 + (k - 1) * 70, 3), UI.px(68, 30), { color = on and (opt[2] and T.bad or Color3.fromRGB(100, 116, 139)) or Color3.fromRGB(226, 232, 240), textSize = 14 }, function()
+					if not on then
+						app:act("setLive", { tourId = tour.id, idx = i, live = opt[2] })
+						app:refreshCurrent()
+					end
+				end)
+				b.Name = "ShowDay" .. opt[1]
+				UI.Corner(15).Parent = b
+			end
 		end
 	end
 end

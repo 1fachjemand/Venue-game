@@ -140,8 +140,8 @@ app.laptop.tasks:FindFirstChild("Task_stats").MouseButton1Click:Fire() MOCK.runT
 assert(app.laptop.windows[2].frame.Visible, "back from the taskbar")
 dbl("settings")
 for i = #app.laptop.windows, 1, -1 do app.laptop.windows[i].frame:FindFirstChild("CloseWindow", true).MouseButton1Click:Fire() MOCK.runTasks() end
-assert(#app.laptop.windows == 0 and app.screens.tours.frame.Parent == app.content, "windows closed, pages back")
-MOCK.clickExact("Close laptop")
+assert(app.screens.tours.frame.Parent == app.content, "windows closed, pages back")
+-- closing the last window with its X closes the laptop too
 assert(app.mode == "world", "close returns to walking")
 local function openPlanner()
 	MOCK.prompt("laptop")
@@ -305,7 +305,7 @@ log("tour", tour.name, "#shows", #tour.shows, "price", tour.price, tour.shows[2]
 MOCK.click("^Social Ads")
 MOCK.clickExact("+")
 log("tour price after +", tour.price, tour.shows[3].price)
-MOCK.clickExact("Close laptop")
+MOCK.clickExact("X   CLOSE LAPTOP")
 assert(SRV().tours[1] and SRV().tours[1].id == tour.id, "the tour is not on the server")
 
 
@@ -425,7 +425,7 @@ steps(2)
 -- "Our Artists" is an app on the laptop
 app:go("artists")
 assert(app.mode == "laptop" and app.screens.artists.frame.Visible, "artists open on the laptop")
-MOCK.clickExact("Close laptop")
+MOCK.clickExact("X   CLOSE LAPTOP")
 
 -- 6) stage builder: place every item type the new way (card -> click into the world -> tick)
 MOCK.prompt("stagehall")
@@ -605,7 +605,11 @@ for _, r in ipairs(Stage3D.items) do if r.kind == "led" then Designer.current.se
 for _, r in ipairs(Stage3D.items) do if r.kind == "led" then log("screen config", r.rec.scr.default.m, r.rec.scr["1"] and r.rec.scr["1"].m) break end end
 for _, r in ipairs(Stage3D.items) do if r.kind == "piano" then Designer.current.select(r) break end end
 -- the instrument is set up in the setlist on the left (no panel on the right)
-MOCK.clickExact(">", 1)
+do
+	local up = app.canvas:FindFirstChild("SongUp", true)
+	up.MouseButton1Click:Fire()
+	MOCK.runTasks()
+end
 local pl = nil
 for _, rec in ipairs(design.items) do if rec.t == "piano" then pl = rec.play end end
 log("piano plays in song", pl)
@@ -1047,6 +1051,47 @@ do
 	assert(app.current == "liveshows" and app.screens.liveshows.frame.Visible, "LIVE SHOWS board opens")
 	log("live shows of other labels", #(app.screens.liveshows.shows or {}))
 	app:closeScreen()
+	-- a friend in the same server: their show is on right now (JOIN, at the same moment) and a tour coming up
+	-- (REMIND ME: a message when it starts)
+	local GSx = require(root.Logic.GameState)
+	local Countries = require(root.Data.Countries)
+	local friend = { UserId = 777, DisplayName = "Friend", Parent = game }
+	local fst = GSx.new("Friend Records", "juno")
+	local fd = GSx.addDesign(fst, "Friend Stage", { { t = "deck", x = 0, z = -10, w = 40, d = 20, h = 6 }, { t = "spot", x = 0, z = -8 } }, "Club", "end")
+	local ftour = { id = "ft1", name = "Friend Tour", artistId = "juno", status = "running", designId = fd.id, shows = { { venueId = nil, day = fst.day + 3, cap = 500, sold = 300 } } }
+	local anyVenue
+	for id, v in pairs(Countries.venueById) do if v.cap and v.cap < 2000 then anyVenue = id break end end
+	ftour.shows[1].venueId = anyVenue
+	table.insert(fst.tours, ftour)
+	local sessions = shared.HeadlinerServer.sessions
+	sessions[friend] = { state = fst, loaded = true, saved = {}, sent = {} }
+	app.world.trigger("liveboard")
+	local list = app.screens.liveshows.shows or {}
+	assert(#list == 1 and not list[1].live, "the friend's tour is on the board (coming up)")
+	MOCK.clickExact("REMIND ME")
+	assert(app.reminders[list[1].key], "reminder set")
+	app:closeScreen()
+	sessions[friend].live = { tourId = "ft1", idx = 1, seed = 4242, startedAt = os.clock() - 60 }
+	local toastBefore = #MOCK.texts("LIVE NOW")
+	for _ = 1, 8 * 30 do MOCK.step(1 / 30) end
+	log("reminder message", #MOCK.texts("LIVE NOW") - toastBefore)
+	assert(#MOCK.texts("LIVE NOW") > toastBefore, "a message when the reminded show starts")
+	app.world.trigger("liveboard")
+	list = app.screens.liveshows.shows or {}
+	log("friend show live", list[1] and list[1].live, list[1] and math.floor(list[1].elapsed or 0))
+	assert(list[1] and list[1].live and (list[1].elapsed or 0) >= 59, "the friend's show is live")
+	MOCK.clickExact("JOIN")
+	for _ = 1, 10 do MOCK.step(1 / 30) end
+	local tNow = require(root.Client.LiveShow).debugT()
+	log("joined at", tNow)
+	assert(tNow > 55, "joined at the same moment as the friend")
+	for _ = 1, 9000 do
+		if not app.inShow then break end
+		MOCK.step(1 / 10)
+	end
+	clearModals()
+	sessions[friend] = nil
+	app.reminders = {}
 end
 
 -- 7) phone + laptop pages
@@ -1092,7 +1137,7 @@ assert(tp.step == 3, "laptop: tickets for nova")
 pricesAndAnnounce()
 local nt = app.state.tours[1]
 log("nova tour", nt.name, nt.shows[1].venueId, nt.shows[1].sold)
-MOCK.clickExact("Close laptop")
+MOCK.clickExact("X   CLOSE LAPTOP")
 found = false
 for _ = 1, 200 do
 	clearModals()
@@ -1145,7 +1190,7 @@ MOCK.clickExact("Cancel tour")
 MOCK.clickExact("Yes")
 log("tours after cancel", nTours, "->", #app.state.tours, "server", #SRV().tours)
 assert(#SRV().tours == nTours - 1, "cancel did not reach the server")
-MOCK.clickExact("Close laptop")
+MOCK.clickExact("X   CLOSE LAPTOP")
 
 -- 10) leave and come back: the server saved, the next session continues
 local money = SRV().money
@@ -1185,7 +1230,7 @@ app2:leaveToMenu()
 local labels = MOCK.texts("^PLAY$")
 log("slots with a game", #labels)
 assert(#labels == 2, "two slots in use")
-MOCK.clickExact("Delete", 2)
+MOCK.clickExact("X", 2)
 MOCK.clickExact("Yes")
 assert(#MOCK.texts("^PLAY$") == 1 and MOCK.store.data["player_1_slot2"] == nil, "slot 2 deleted")
 app2.gui:Destroy()

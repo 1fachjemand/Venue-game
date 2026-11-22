@@ -261,6 +261,7 @@ function App:beginGame(isNew)
 	self.screens.stages = require(Screens.StagesScreen).new(self)
 	self.screens.social = require(Screens.SocialScreen).new(self)
 	self.screens.liveshows = require(Screens.LiveShowsScreen).new(self)
+	require(Screens.LiveShowsScreen).watchReminders(self)
 	self.phone = require(Screens.PhoneScreen).new(self)
 	-- messages: small, at the right edge (not in the middle of the screen)
 	self.toastFrame = UI.New("Frame", { Parent = self.canvas, Name = "Toasts", Position = UI.px(1500, 170), Size = UI.px(400, 820), BackgroundTransparency = 1, ZIndex = 60 })
@@ -1134,6 +1135,7 @@ end
 
 -- saves, removes the world and the game screens and shows the title screen again
 function App:leaveToMenu()
+	self.reminderLoop = false
 	local res = self:call("leave")
 	local info = res.data
 	if type(info) == "string" then
@@ -1609,7 +1611,15 @@ function App:resolveShow(tour, idx, watch)
 	local s = tour.shows[idx]
 	local closeLoading = self:showLoading(string.upper(Artists.byId[tour.artistId].name), "Tonight: " .. Countries.venueById[s.venueId].name .. ", " .. Countries.venueById[s.venueId].city)
 	self.inShow = true
+	-- friends in this server can join the show while it is on (same seed = the same show for them)
+	local seed = math.random(1, 99999)
+	task.spawn(function()
+		pcall(function()
+			self:call("liveNow", { on = true, tourId = tour.id, idx = idx, seed = seed })
+		end)
+	end)
 	LiveShow.run(self, {
+		seed = seed,
 		artistId = tour.artistId,
 		design = GS.showDesign(self.state, tour, idx),
 		venueId = s.venueId,
@@ -1621,6 +1631,11 @@ function App:resolveShow(tour, idx, watch)
 		walk = true,
 		-- the show is over: the result while you are still in the venue, then back to the office
 		onFinish = function(leave)
+			task.spawn(function()
+				pcall(function()
+					self:call("liveNow", { on = false })
+				end)
+			end)
 			self:showResult(tour, idx, result, function()
 				local closeBack = self:showLoading("HEADLINER", "Back to the office")
 				leave()
@@ -1630,6 +1645,11 @@ function App:resolveShow(tour, idx, watch)
 		onDone = function()
 			self.inShow = false
 			self:closeScreen()
+			task.spawn(function()
+				pcall(function()
+					self:call("liveNow", { on = false })
+				end)
+			end)
 			afterReport()
 		end,
 	})

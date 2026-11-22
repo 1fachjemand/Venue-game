@@ -692,7 +692,8 @@ function LiveShow.run(app, opts)
 	local rating = (opts.result and opts.result.rating) or 80
 	local artistColor = UI.rgb(ad.color)
 	local cityName = venue and venue.city or "Rehearsal"
-	local rng = Random.new(math.floor(os.clock() * 1000) % 100000)
+	-- (opts.seed: friends who join a show get exactly the same show: same songs, same timing)
+	local rng = Random.new(opts.seed or (math.floor(os.clock() * 1000) % 100000))
 	local hasRoof = Venue.LOOKS[look] and Venue.LOOKS[look].roof ~= nil
 	-- one song per performance place (artist spots, lifts, instruments), see GS.songPlan
 	local plan = GS.songPlan(opts.design)
@@ -1261,11 +1262,15 @@ function LiveShow.run(app, opts)
 	local taskCtx = { app = app, venue = venue, look = look, crowd = crowd, items = items, overlay = overlay, character = walkMode and select(2, W.humanoid()) or nil, t = 0, timeScale = 1 }
 	ShowTasks.start(taskCtx)
 	local camCF = nil
-	local t = 0
+	-- joining a friend's show that is already running: start where they are (opts.startAt seconds in)
+	local t = math.clamp(opts.startAt or 0, 0, math.max(0, showLength - 10))
 	LiveShow.debugT = function()
 		return t -- the show clock (for the automated tests)
 	end
 	local hitIndex = 1
+	while hits[hitIndex] and hits[hitIndex][1] < t do
+		hitIndex = hitIndex + 1 -- (joined late: what already happened does not fire again)
+	end
 	local beatCount = 0
 	local lastBeatT = 0
 	local segIndex = 1

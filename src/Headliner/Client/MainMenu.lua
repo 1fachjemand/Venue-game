@@ -237,14 +237,15 @@ function MainMenu.show(app, info, onStart)
 			local sv = slots[k]
 			local card = UI.Panel(body, UI.px(64, y), UI.px(440, 84), T.panel)
 			if sv then
-				UI.Label(card, sv.labelName, UI.px(18, 10), UI.px(260, 30), { textSize = 22, font = UI.FontBlack })
-				UI.Label(card, Util.date(sv.day, Config.START_YEAR) .. "   " .. Util.money(sv.money), UI.px(18, 44), UI.px(260, 24), { textSize = 15, color = T.sub })
-				UI.Button(card, "PLAY", UI.px(290, 14), UI.px(136, 40), { color = T.accent, textSize = 18 }, function()
+				UI.Label(card, sv.labelName, UI.px(18, 10), UI.px(224, 30), { textSize = 22, font = UI.FontBlack })
+				UI.Label(card, Util.date(sv.day, Config.START_YEAR) .. "   " .. Util.money(sv.money), UI.px(18, 44), UI.px(224, 24), { textSize = 15, color = T.sub })
+				UI.Button(card, "PLAY", UI.px(250, 14), UI.px(124, 56), { color = T.accent, textSize = 20 }, function()
 					if app:continueGame(k) then
 						start(false)
 					end
 				end)
-				UI.Button(card, "Delete", UI.px(330, 58), UI.px(96, 20), { textSize = 12, color = T.panel }, function()
+				-- a proper red button (the old one was tiny and hard to hit)
+				UI.Button(card, "X", UI.px(382, 14), UI.px(44, 56), { textSize = 20, color = Color3.fromRGB(254, 226, 226) }, function()
 					app:confirm("Delete \"" .. UI.esc(sv.labelName) .. "\"?", "This save is gone for good. Are you sure?", function()
 						local res = app:call("deleteSlot", { slot = k })
 						if res.ok then

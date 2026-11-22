@@ -50,7 +50,7 @@ SRV().stats.shows = 12 SRV().stats.tickets = 30000 SRV().achievements.first_show
 Laptop.openApp(app, "achievements")
 dump("04g_achievements")
 for i = #app.laptop.windows, 1, -1 do Laptop.closeWindow(app, app.laptop.windows[i]) end
-MOCK.clickExact("Close laptop")
+MOCK.clickExact("X   CLOSE LAPTOP")
 MOCK.prompt("maptable")
 dump("05a_plan_artist")
 MOCK.clickExact("CLOSE")
@@ -102,7 +102,7 @@ for _ = 1, 6 do
 	if #MOCK.buttons("^Nice!$") > 0 then MOCK.clickExact("Nice!") end
 end
 dump("09_tours")
-MOCK.clickExact("Close laptop")
+MOCK.clickExact("X   CLOSE LAPTOP")
 dump("11b_world_after")
 local seat = workspace.StarlightRecords:FindFirstChild("MeetingSeat1", true)
 MOCK.sit(seat)
