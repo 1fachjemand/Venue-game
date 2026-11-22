@@ -55,7 +55,8 @@ function Stage3D.bounds()
 	if Stage3D.layout == "center" then
 		return -c.center, c.center, -c.center, c.center
 	end
-	return c.minX, c.maxX, c.minZ, c.maxZ
+	-- big venues: the build area reaches back to the drapes behind the stage (backZ)
+	return c.minX, c.maxX, c.backZ or c.minZ, c.maxZ
 end
 
 function Stage3D.setDesign(design)
@@ -470,7 +471,9 @@ function Stage3D.numberSpots(design)
 				c.Parent = l
 				r.songTag = l
 			end
-			r.songTag.Text = r.spotIndex and ("S" .. r.spotIndex) or "off"
+			local again = r.rec and plan.againOf and plan.againOf[r.rec]
+			r.songTag.Text = r.spotIndex and ("S" .. r.spotIndex .. (again and (" + S" .. again) or "")) or "off"
+			r.songTag.Parent.Size = UDim2.fromOffset(again and 96 or 52, 30)
 			r.songTag.BackgroundColor3 = r.spotIndex and Color3.fromRGB(255, 150, 40) or Color3.fromRGB(150, 150, 160)
 		end
 	end

@@ -455,6 +455,10 @@ end
 GS.PLAY_ITEMS = { lift = true, poplift = true, towerlift = true, piano = true, keys = true, drums = true, djbooth = true, acoustic = true, harp = true, micstand = true, showerstage = true, flyharness = true, descendcube = true, gownriser = true, floatplat = true }
 -- lifts: the artist comes up out of the stage (lift, pop-up) or is lifted high into the air (tower)
 GS.LIFT_ITEMS = { lift = true, poplift = true, towerlift = true }
+-- built into the stage for the whole tour (like on real tours): the crew never carries these on and off
+GS.FIXED_ITEMS = { lift = true, poplift = true, towerlift = true, showerstage = true, flyharness = true, descendcube = true, gownriser = true, floatplat = true }
+-- a lift can be used twice: rec.play2 = a second song (e.g. the entrance in song 1 and the exit in the finale)
+GS.TWICE_ITEMS = { lift = true, poplift = true }
 
 -- The setlist of a design. Lifts and instruments keep the song number set in the builder,
 -- artist spots take the free song numbers in the order they were placed.
@@ -466,7 +470,7 @@ function GS.isMoment(it)
 end
 function GS.songPlan(design, extraSpot)
 	local items = (design and design.items) or {}
-	local place, songOf = {}, {}
+	local place, songOf, againOf = {}, {}, {}
 	local moments, momentOf = {}, {}
 	for _, it in ipairs(items) do
 		if GS.isMoment(it) then
@@ -489,6 +493,11 @@ function GS.songPlan(design, extraSpot)
 			if type(n) == "number" and n >= 1 then
 				songOf[it] = n
 				place[n] = place[n] or it
+			end
+			local n2 = it.play2
+			if GS.TWICE_ITEMS[it.t] and type(n2) == "number" and n2 >= 1 and n2 ~= n then
+				place[n2] = place[n2] or it
+				againOf[it] = n2
 			end
 		end
 	end
@@ -516,7 +525,7 @@ function GS.songPlan(design, extraSpot)
 		end
 	end
 	local count = (top == 0) and 4 or Util.clamp(top, 3, StageItems.MAX_SPOTS)
-	return { count = count, songOf = songOf, place = place, moments = moments, momentOf = momentOf }
+	return { count = count, songOf = songOf, againOf = againOf, place = place, moments = moments, momentOf = momentOf }
 end
 
 -- number of songs a design plays (at least 3, nothing placed = 4)

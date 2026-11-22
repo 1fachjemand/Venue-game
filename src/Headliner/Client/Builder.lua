@@ -302,6 +302,50 @@ end
 local function deckBlock(m, cx, cz, w, d, h)
 	return part(m, "Deck", Vector3.new(w, h, d), CFrame.new(cx, h / 2, cz), DECK_COLOR)
 end
+-- A smooth ring (or a part of one) from exact pieces: every segment is a trapezoid made of one block and two
+-- flat wedges, so neighbours meet edge to edge (no gaps outside, no overlaps inside, no z-fighting).
+-- ri = 0 makes a filled disc slice (two wedges per segment). The ring lies flat in the XZ plane of `base`
+-- (thickness h along base's Y, angle 0 = base's +Z, growing towards +X). mk(size, cf, kind) makes a part.
+local function ringPieces(mk, ri, ro, a0, a1, n, h, base)
+	local th = (a1 - a0) / n / 2
+	local c, t = math.cos(th), math.tan(th)
+	-- apothems: the corners of every piece lie exactly on the two circles
+	local rI, rO = ri * c, ro * c
+	local bi, bo = rI * t, rO * t
+	local depth = rO - rI
+	local zc = (rI + rO) / 2
+	local tw = bo - bi
+	local made = {}
+	for i = 0, n - 1 do
+		local seg = base * CFrame.Angles(0, a0 + (2 * i + 1) * th, 0)
+		if bi > 0.02 then
+			table.insert(made, mk(Vector3.new(2 * bi + 0.002, h, depth), seg * CFrame.new(0, 0, zc), "block"))
+		end
+		if tw > 0.01 then
+			-- right angle at the outer edge, next to the block: "fl" on the +X side, "fr" on the -X side
+			table.insert(made, mk(Vector3.new(h, tw, depth), seg * CFrame.new(bi + tw / 2, 0, zc) * CFrame.Angles(0, 0, -math.pi / 2), "wedge"))
+			table.insert(made, mk(Vector3.new(h, tw, depth), seg * CFrame.new(-bi - tw / 2, 0, zc) * CFrame.Angles(0, 0, math.pi / 2), "wedge"))
+		end
+	end
+	return made
+end
+Builder.ringPieces = ringPieces
+local function deckMaker(m)
+	return function(size, cf, kind)
+		if kind == "wedge" then
+			return New("WedgePart", { Name = "Deck", Size = size, CFrame = cf, Color = DECK_COLOR, Material = Enum.Material.SmoothPlastic, Anchored = true, CanCollide = false, CanTouch = false, CastShadow = false, Parent = m })
+		end
+		return part(m, "Deck", size, cf, DECK_COLOR)
+	end
+end
+-- the light line along a circle: short straight pieces on the same polygon as the deck's edge
+local function circleEdge(m, list, cx, cz, rad, a0, a1, n, h, color)
+	for i = 0, n - 1 do
+		local p0, p1 = a0 + i * (a1 - a0) / n, a0 + (i + 1) * (a1 - a0) / n
+		table.insert(list, edge(m, cx + math.sin(p0) * rad, cz + math.cos(p0) * rad, cx + math.sin(p1) * rad, cz + math.cos(p1) * rad, h, color))
+	end
+end
+
 -- octagon (regular when w = d): a cross of two blocks and four corner triangles
 function B.deck_oct(m, r)
 	local w, d, h = dims(r, r.def)
@@ -360,28 +404,14 @@ function B.deck_trap(m, r)
 	}
 	finishDeck(r)
 end
--- half round: the flat side at the back, the round side to the front (strips that follow the curve)
+-- half round: the flat side at the back, the round side to the front (smooth: exact slices of a disc)
 function B.deck_half(m, r)
 	local w, _, h = dims(r, r.def)
 	local rad = w / 2
-	local n = 16
-	r.surfaces = {}
-	for i = 0, n - 1 do
-		local x0 = -rad + i * w / n
-		local xc = x0 + w / n / 2
-		local len = math.sqrt(math.max(0.01, rad * rad - xc * xc))
-		table.insert(r.surfaces, deckBlock(m, xc, -rad / 2 + len / 2, w / n + 0.02, len, h))
-	end
+	local n = math.clamp(math.floor(w / 2), 16, 32)
+	r.surfaces = ringPieces(deckMaker(m), 0, rad, -math.pi / 2, math.pi / 2, n, h, CFrame.new(0, h / 2, -rad / 2))
 	r.neon = { edge(m, -rad, -rad / 2, rad, -rad / 2, h, r.color) }
-	local prev = nil
-	for k = 0, 12 do
-		local a = math.pi * k / 12
-		local pt = { -math.cos(a) * rad, -rad / 2 + math.sin(a) * rad }
-		if prev then
-			table.insert(r.neon, edge(m, prev[1], prev[2], pt[1], pt[2], h, r.color))
-		end
-		prev = pt
-	end
+	circleEdge(m, r.neon, 0, -rad / 2, rad, -math.pi / 2, math.pi / 2, n, h, r.color)
 	finishDeck(r)
 end
 -- ring: a round runway around a hole in the middle (in-the-round shows walk all the way round)
@@ -389,20 +419,11 @@ function B.deck_ring(m, r)
 	local w, _, h = dims(r, r.def)
 	local outer = w / 2
 	local width = math.clamp(w * 0.22, 4, 18)
-	local mid = outer - width / 2
-	local n = 20
-	r.surfaces = {}
-	for i = 0, n - 1 do
-		local a = (i + 0.5) / n * math.pi * 2
-		local len = 2 * math.pi * mid / n * 1.04 + width * 0.14
-		local p = part(m, "Deck", Vector3.new(len, h, width), CFrame.new(math.sin(a) * mid, h / 2, math.cos(a) * mid) * CFrame.Angles(0, a + math.pi / 2, 0), DECK_COLOR)
-		table.insert(r.surfaces, p)
-	end
+	local n = math.clamp(math.floor(w * 0.6), 32, 56)
+	r.surfaces = ringPieces(deckMaker(m), outer - width, outer, 0, math.pi * 2, n, h, CFrame.new(0, h / 2, 0))
 	r.neon = {}
-	for i = 0, n - 1 do
-		local a0, a1 = i / n * math.pi * 2, (i + 1) / n * math.pi * 2
-		table.insert(r.neon, edge(m, math.sin(a0) * outer, math.cos(a0) * outer, math.sin(a1) * outer, math.cos(a1) * outer, h, r.color))
-	end
+	circleEdge(m, r.neon, 0, 0, outer, 0, math.pi * 2, n, h, r.color)
+	circleEdge(m, r.neon, 0, 0, outer - width, 0, math.pi * 2, n, h, r.color)
 	finishDeck(r)
 end
 -- rounded rectangle: soft corners
@@ -509,16 +530,16 @@ function B.prim_corner(m, r)
 	local w, d, h = dims(r, r.def)
 	primPart(m, r, Vector3.new(w, h, d), CFrame.new(0, h / 2, 0), "corner")
 end
+local function primMaker(m, r)
+	return function(size, cf, kind)
+		return primPart(m, r, size, cf, kind ~= "block" and kind or nil)
+	end
+end
 function B.prim_tube(m, r)
 	local w, _, h = dims(r, r.def)
 	local rad = w / 2
-	local thick = math.max(0.3, w * 0.08)
-	local n = 24
-	for i = 0, n - 1 do
-		local a = (i + 0.5) / n * math.pi * 2
-		local len = 2 * math.pi * (rad - thick / 2) / n * 1.08
-		primPart(m, r, Vector3.new(len, h, thick), CFrame.new(math.sin(a) * (rad - thick / 2), h / 2, math.cos(a) * (rad - thick / 2)) * CFrame.Angles(0, a + math.pi / 2, 0))
-	end
+	local thick = math.max(0.3, w * 0.1)
+	r.surfaces = ringPieces(primMaker(m, r), rad - thick, rad, 0, math.pi * 2, math.clamp(math.floor(w * 2), 32, 56), h, CFrame.new(0, h / 2, 0))
 end
 
 B.deck_corner_r = function(m, r)
@@ -4494,7 +4515,12 @@ function Builder.animateKind(refs, ctx)
 			end
 		end
 		if on then
-			refs.head.CFrame = refs.headHome * CFrame.Angles(0, math.sin(t * 0.9 + refs.phase) * 0.8, 0) * CFrame.Angles(math.sin(t * 1.4) * 0.25, 0, 0)
+			-- while you place it (preview) the beams show where they go, but the head stands still
+			if ctx.preview then
+				refs.head.CFrame = refs.headHome
+			else
+				refs.head.CFrame = refs.headHome * CFrame.Angles(0, math.sin(t * 0.9 + refs.phase) * 0.8, 0) * CFrame.Angles(math.sin(t * 1.4) * 0.25, 0, 0)
+			end
 			followHead(refs)
 			local c = (math.floor(ctx.beatCount / 16) % 2 == 0) and Color3.fromRGB(60, 255, 90) or c2
 			if refs.lastC ~= c then

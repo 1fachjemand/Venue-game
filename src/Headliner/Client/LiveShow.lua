@@ -462,7 +462,7 @@ function LiveShow.planSetups(items, segments, navC, navD, onSurface, nav)
 	local navW = (nav and nav.navW) or navD
 	for _, r in ipairs(items) do
 		local rec = r.rec
-		if rec and rec.setup == "crew" and type(rec.play) == "number" and rec.play > 1 then
+		if rec and rec.setup == "crew" and type(rec.play) == "number" and rec.play > 1 and not GS.FIXED_ITEMS[rec.t] then
 			local seg = nil
 			for _, s2 in ipairs(segments) do
 				if s2.song == rec.play then
@@ -656,6 +656,11 @@ function LiveShow.run(app, opts)
 			if not liftAt[n] then
 				liftAt[n] = r
 			end
+			-- the same lift used again (rec.play2): e.g. the exit in the finale
+			local n2 = r.rec and plan.againOf and plan.againOf[r.rec]
+			if n2 and not liftAt[n2] then
+				liftAt[n2] = r
+			end
 		elseif r.kind == "djbooth" and not booth then
 			booth = r
 		elseif r.kind == "drums" and not drums then
@@ -835,11 +840,13 @@ function LiveShow.run(app, opts)
 			if lf and lf.kind == "towerlift" then
 				w.tower = lf
 			end
-			local isFinale = lf and not play and spotIdx == songCount and songCount > 1 and lf ~= lift and (lf.kind == "lift" or lf.kind == "poplift") and outroSeg.kind == "outro"
+			-- (the entrance lift can be the exit too when it is set again for the last song)
+			local again = lf ~= lift or spotIdx > 1
+			local isFinale = lf and not play and spotIdx == songCount and songCount > 1 and again and (lf.kind == "lift" or lf.kind == "poplift") and outroSeg.kind == "outro"
 			if isFinale then
 				finaleLift = lf
 			end
-			if lf and not play and lf ~= lift and lf.kind ~= "towerlift" and not isFinale then
+			if lf and not play and again and lf.kind ~= "towerlift" and not isFinale then
 				w.kind, w.lift, w.dur = "lift", lf, liftDur(lf) -- disappear, come up on this lift
 			elseif (w[2] - cur).Magnitude < 1 or (play and play.teleport) then
 				w.kind, w.dur = "stay", 0

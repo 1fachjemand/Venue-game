@@ -7,6 +7,7 @@ g = lua.globals()
 g.READFILE = lambda p: open(p, encoding="utf-8").read()
 g.WRITEFILE = lambda p, s: open(p, "w", encoding="utf-8").write(s)
 g.OUT_DIR = os.environ.get("OUT_DIR", ".")
+g.ARGS = os.environ.get("SCENARIO_ARGS", "")
 g.API_DATA = lua.execute(open(sys.argv[1]).read())
 lua.execute(open(os.path.join(ROOT, "tools", "mock_roblox.lua")).read())
 

@@ -39,7 +39,7 @@ local TURNS = { 15, 45, 90 }
 local BLACK = Color3.new(0, 0, 0)
 local GEOMETRY_KEYS = { col = true, mat = true, flip = true, w = true, d = true, h = true, skin = true, edge = true, scr = true, cc = true, anim = true, roof = true, yo = true }
 -- settings that only change the show (no new model needed)
-local SHOW_KEYS = { play = true, songs = true, cs = true, anim = true, mid = true, song = true, setup = true }
+local SHOW_KEYS = { play = true, play2 = true, songs = true, cs = true, anim = true, mid = true, song = true, setup = true }
 -- effects that can fire in chosen songs (rec.songs = { 1, 4, ... }; false / nil = automatic)
 local FX_SONG_KINDS = { flamebar = true, sparkrain = true, pyro = true, sparks = true, confetti = true, streamers = true, co2 = true, fireworks = true, rimfireworks = true, balls = true, laser = true, lowfog = true, raincurtain = true }
 Designer.FX_SONG_KINDS = FX_SONG_KINDS
@@ -498,7 +498,80 @@ function Designer.open(app, designId)
 	local function isWallDef(def)
 		return def and not def.deck and def.size and def.size.dLabel == "Height" and def.id ~= "stadiumroof"
 	end
-	local function floorY(rec, def)
+	-- local axes of a piece turned by rec.r: right (+X) and front (+Z)
+	local function axesOf(r)
+		local a = math.rad(r or 0)
+		return Vector3.new(math.cos(a), 0, -math.sin(a)), Vector3.new(math.sin(a), 0, math.cos(a))
+	end
+	local function footOf(rec, def)
+		local w = rec.w or (def.size and def.size.w) or 4
+		local d = rec.d or (def.size and def.size.d) or w
+		if def.shape == "half" then
+			d = w / 2
+		elseif def.shape == "round" or def.shape == "ring" then
+			d = w
+		end
+		return w, d
+	end
+	-- a new deck stands on the deck it is completely on (a small deck on a big stage goes on top of it);
+	-- a deck that only partly overlaps another one stays on the floor
+	local function deckRestY(rec, def, except)
+		local w, d = footOf(rec, def)
+		local right, front = axesOf(rec.r)
+		local c = Vector3.new(rec.x, 0, rec.z)
+		local hc = Stage3D.surfaceY(rec.x, rec.z, except)
+		if hc < 0.3 then
+			return 0
+		end
+		local same = 0
+		for _, o in ipairs({ { 0.35, 0.35 }, { -0.35, 0.35 }, { 0.35, -0.35 }, { -0.35, -0.35 }, { 0.42, 0 }, { -0.42, 0 }, { 0, 0.42 }, { 0, -0.42 } }) do
+			local p = c + right * (o[1] * w) + front * (o[2] * d)
+			if math.abs(Stage3D.surfaceY(p.X, p.Z, except) - hc) < 0.06 then
+				same = same + 1
+			end
+		end
+		return same >= 7 and hc or 0
+	end
+	-- small pieces (lights, speakers, instruments) on the edge of a deck stand on the deck, not half in it
+	local function itemRestY(rec, def, except)
+		local best = Stage3D.surfaceY(rec.x, rec.z, except)
+		local rr = 0.9
+		if def.size and def.size.w then
+			rr = math.clamp(math.min(rec.w or def.size.w, rec.d or def.size.d or def.size.w) * 0.3, 0.5, 1.6)
+		end
+		for _, o in ipairs({ { rr, 0 }, { -rr, 0 }, { 0, rr }, { 0, -rr } }) do
+			best = math.max(best, (Stage3D.surfaceY(rec.x + o[1], rec.z + o[2], except)))
+		end
+		return best
+	end
+	-- Stairs fit themselves to the stage behind them: they turn to the deck next to them (the high end
+	-- at the deck), and their height is exactly the step from where they stand up to the deck's top.
+	-- returns true when they found a deck (rec.r, rec.h and rec.y are set)
+	local function fitStairs(rec, def, except)
+		local w, d = footOf(rec, def)
+		local base0 = rec.r or 0
+		for k = 0, 3 do
+			local r = (base0 + k * 90) % 360
+			local right, front = axesOf(r)
+			local c = Vector3.new(rec.x, 0, rec.z)
+			local fp = c + front * (d / 2 - 0.6)
+			local base = Stage3D.surfaceY(fp.X, fp.Z, except)
+			local top = math.huge
+			for _, s in ipairs({ -0.3, 0, 0.3 }) do
+				local bp = c - front * (d / 2 + 1.2) + right * (s * w)
+				top = math.min(top, (Stage3D.surfaceY(bp.X, bp.Z, except)))
+			end
+			local rise = top - base
+			if rise >= 0.8 and rise <= 30 then
+				rec.r = r
+				rec.h = math.floor(rise * 10 + 0.5) / 10
+				rec.y = base
+				return true
+			end
+		end
+		return false
+	end
+	local function floorY(rec, def, except)
 		if isWallDef(def) and def.mount == "floor" then
 			rec.y = wallBaseY(rec, def)
 			return
@@ -514,16 +587,20 @@ function Designer.open(app, designId)
 			elseif rec.y == nil then
 				rec.y = Stage3D.surfaceY(rec.x, rec.z)
 			end
+		elseif def.id == "stairs" then
+			if not fitStairs(rec, def, except) and rec.y == nil then
+				rec.y = deckRestY(rec, def, except)
+			end
 		elseif def.deck then
-			-- stage decks never stack by themselves: they stand on the floor (or where they already are);
-			-- higher decks are made with the green arrow or the height handle
+			-- a new deck goes on top of the stage it is completely on; one that only partly overlaps stays
+			-- on the floor (moving a deck later keeps its height: higher decks with the green arrow / handle)
 			if rec.y == nil then
-				rec.y = 0
+				rec.y = deckRestY(rec, def, except)
 			end
 		elseif def.ground then
 			rec.y = 0
 		elseif def.mount ~= "rig" then
-			rec.y = Stage3D.surfaceY(rec.x, rec.z)
+			rec.y = itemRestY(rec, def, except)
 		end
 	end
 
@@ -1737,7 +1814,21 @@ function Designer.open(app, designId)
 			end, function()
 				applyChange({ play = math.min(StageItems.MAX_SPOTS, (cur or 0) + 1) })
 			end)
-			if not isLift and not isTower and cur then
+			if isLift then
+				-- the same lift a second time (e.g. entrance in song 1, exit in the finale)
+				local again = rec.play2
+				stepper("Again in song", again and tostring(again) or "Off", function()
+					local n = (again or 1) - 1
+					applyChange({ play2 = (n >= 1 and n ~= cur) and n or false })
+				end, function()
+					local n = math.min(StageItems.MAX_SPOTS, (again or 0) + 1)
+					if n == cur then
+						n = math.min(StageItems.MAX_SPOTS, n + 1)
+					end
+					applyChange({ play2 = n })
+				end)
+			end
+			if not GS.FIXED_ITEMS[def.id] and cur then
 				-- like on real tours: the crew brings it on before the song and takes it off again after it
 				nextOrder(UI.Label(inspScroll, "ON STAGE", nil, UI.px(296, 18), { textSize = 13, color = T.sub, font = UI.FontBold }))
 				chips({ { "stay", "Stay on stage" }, { "crew", "Crew sets it up" } }, function(it)
@@ -2036,7 +2127,8 @@ function Designer.open(app, designId)
 			elseif isTower and cur == nil then
 				cur = plan.songOf[sRec]
 			end
-			local box = UI.New("Frame", { Parent = setlistPanel, Name = "PlayBox", Position = UI.px(12, 108), Size = UI.px(406, (not isLift and not isTower and cur) and 178 or 122), BackgroundColor3 = Color3.fromRGB(219, 234, 254), BorderSizePixel = 0, UI.Corner(10), UI.Stroke(T.accent, 2, 0) })
+			local fixed = GS.FIXED_ITEMS[sDef.id]
+			local box = UI.New("Frame", { Parent = setlistPanel, Name = "PlayBox", Position = UI.px(12, 108), Size = UI.px(406, ((not fixed and cur) or isLift) and 178 or 122), BackgroundColor3 = Color3.fromRGB(219, 234, 254), BorderSizePixel = 0, UI.Corner(10), UI.Stroke(T.accent, 2, 0) })
 			UI.Label(box, "SELECTED: " .. string.upper(sDef.name), UI.px(14, 8), UI.px(380, 24), { textSize = 17, font = UI.FontBlack, color = T.accent })
 			UI.Label(box, isTower and "Lifts the artist up in song" or (isLift and "The artist comes up here in song" or "The artist plays it in song"), UI.px(14, 34), UI.px(230, 22), { textSize = 14, color = T.sub })
 			local function setSong(n)
@@ -2057,10 +2149,29 @@ function Designer.open(app, designId)
 			UI.Button(box, ">", UI.px(224, 60), UI.px(52, 46), { textSize = 20 }, function()
 				setSong(math.min(StageItems.MAX_SPOTS, (cur or 0) + 1))
 			end).Name = "SongUp"
+			if isLift then
+				-- the same lift once more: e.g. up in song 1 and down again in the finale
+				local again = sRec.play2
+				UI.Label(box, "Again in song", UI.px(14, 128), UI.px(120, 30), { textSize = 14, color = T.sub })
+				UI.Button(box, "<", UI.px(136, 120), UI.px(46, 46), { textSize = 20 }, function()
+					local n = (again or 1) - 1
+					applyChange({ play2 = (n >= 1 and n ~= cur) and n or false })
+				end).Name = "AgainDown"
+				UI.Label(box, again and ("SONG " .. again) or "OFF", UI.px(184, 120), UI.px(120, 46), { textSize = 20, font = UI.FontBlack, alignX = Enum.TextXAlignment.Center })
+				UI.Button(box, ">", UI.px(306, 120), UI.px(46, 46), { textSize = 20 }, function()
+					local n = math.min(StageItems.MAX_SPOTS, (again or 0) + 1)
+					if n == cur then
+						n = math.min(StageItems.MAX_SPOTS, n + 1)
+					end
+					applyChange({ play2 = n })
+				end).Name = "AgainUp"
+			end
 			if not isLift and not isTower and cur then
 				UI.Button(box, "Off", UI.px(284, 60), UI.px(108, 46), { textSize = 15 }, function()
 					setSong(false)
 				end)
+			end
+			if not fixed and cur then
 				local stay = (sRec.setup or "stay") == "stay"
 				UI.Button(box, "On stage all show", UI.px(14, 116), UI.px(186, 50), { textSize = 14, color = stay and T.accent or T.panel }, function()
 					applyChange({ setup = "stay" })
@@ -2296,6 +2407,16 @@ function Designer.open(app, designId)
 			wallSnap(tmpRec, def, ghost)
 			x, z = tmpRec.x, tmpRec.z
 		end
+		local stairY = nil
+		if def.id == "stairs" then
+			-- stairs next to a deck turn to it and grow to its height (shown right away in the preview)
+			local fr = { x = x, z = z, r = rec.r, w = rec.w, d = rec.d }
+			if fitStairs(fr, def) then
+				rec.r, rec.h, stairY = fr.r, fr.h, fr.y
+			else
+				rec.h = nil
+			end
+		end
 		local ok = Stage3D.inBounds(x, z) and #self.design.items < cls().maxItems and state.money >= Sim.itemPrice(def, rec) and (def.mount ~= "side" or onTower == true)
 		local key = def.id .. tostring(ok) .. tostring(rec.w) .. tostring(rec.d) .. tostring(rec.h) .. tostring(rec.skin) .. tostring(rec.cc) .. tostring(rec.flip) .. tostring(rec.mat) .. (type(rec.col) == "table" and table.concat(rec.col, ",") or "")
 		if not ghost or ghostKey ~= key then
@@ -2305,9 +2426,16 @@ function Designer.open(app, designId)
 			ghost.model.Parent = Stage3D.world
 			ghostKey = key
 		end
-		local tmp = { x = x, z = z, r = rec.r, yo = rec.yo, y = sy, w = rec.w }
+		local tmp = { x = x, z = z, r = rec.r, yo = rec.yo, y = sy, w = rec.w, d = rec.d }
 		if isWallDef(def) and def.mount == "floor" then
 			tmp.y = wallBaseY(tmp, def)
+		elseif def.deck then
+			tmp.y = deckRestY(tmp, def)
+		elseif def.mount == "floor" and not def.ground then
+			tmp.y = itemRestY(tmp, def)
+		end
+		if stairY then
+			tmp.y = stairY
 		end
 		Builder.place(ghost, Stage3D.itemCFrame(def, tmp))
 		ghost.ok, ghost.x, ghost.z, ghost.y = ok, x, z, sy
@@ -2493,13 +2621,22 @@ function Designer.open(app, designId)
 			if d.kind == "move" and isWall(def) then
 				wallSnap(rec, def, tgt)
 			end
-			floorY(rec, def)
+			if d.kind == "move" and def.deck then
+				edgeSnap(rec, def)
+			end
+			local rebuild = false
+			if d.kind == "move" and def.id == "stairs" then
+				local oh = rec.h
+				fitStairs(rec, def, tgt)
+				rebuild = rec.h ~= oh -- the steps change: build them again
+			end
+			floorY(rec, def, tgt)
 			if d.kind == "move" and def.deck then
 				edgeSnap(rec, def)
 			elseif d.kind == "size" and def.deck and not d.both then
 				resizeSnap(rec, def, d.face, d.boxCF)
 			end
-			if d.kind == "size" or def.id == "ledcube" then
+			if d.kind == "size" or def.id == "ledcube" or rebuild then
 				buildPending(rec)
 			else
 				placePending()
@@ -2531,8 +2668,24 @@ function Designer.open(app, designId)
 			if isWall(def) then
 				wallSnap(rec, def, tgt)
 			end
-			local newY = isWall(def) and wallBaseY(rec, def) or Stage3D.surfaceY(rec.x, rec.z, tgt)
-			if def.deck then
+			local newY = isWall(def) and wallBaseY(rec, def) or itemRestY(rec, def, tgt)
+			if def.id == "stairs" then
+				-- stairs moved next to a deck fit themselves to it again (turn + height)
+				edgeSnap(rec, def)
+				local fr = { x = rec.x, z = rec.z, r = rec.r, w = rec.w, d = rec.d }
+				if fitStairs(fr, def, tgt) then
+					newY = fr.y
+					rec.r = fr.r
+					if fr.h ~= (rec.h or def.h) then
+						local ok = GS.changeItem(state, rec, { h = fr.h })
+						if not ok then
+							newY = d.y
+						end
+					end
+				else
+					newY = d.y
+				end
+			elseif def.deck then
 				-- a deck keeps its own height (it never jumps onto another deck) and lines up with its neighbours
 				newY = d.y
 				edgeSnap(rec, def)
@@ -2591,7 +2744,7 @@ function Designer.open(app, designId)
 			for _, m in ipairs(drag.group) do
 				local rec, def = m.refs.rec, m.refs.def
 				rec.x, rec.z = m.x + dx, m.z + dz
-				rec.yo = math.clamp(m.yo + dy, (def.mount == "rig") and -20 or 0, 40)
+				rec.yo = math.clamp(m.yo + dy, (def.mount == "rig") and -20 or 0, Stage3D.rigY() + 6)
 				Builder.place(m.refs, Stage3D.itemCFrame(def, rec, m.refs))
 			end
 			return
@@ -2600,7 +2753,8 @@ function Designer.open(app, designId)
 		if face == Enum.NormalId.Top or face == Enum.NormalId.Bottom then
 			local sign = (face == Enum.NormalId.Top) and 1 or -1
 			local minY = (tgt.def.mount == "rig") and -20 or 0
-			rec.yo = math.clamp(math.floor((drag.yo + sign * distance) / grid() + 0.5) * grid(), minY, 40)
+			-- as high as the rig (speakers and lights go right up a Heavy Truss Tower in a stadium)
+			rec.yo = math.clamp(math.floor((drag.yo + sign * distance) / grid() + 0.5) * grid(), minY, Stage3D.rigY() + 6)
 		else
 			-- along the arrow in whole grid steps from where the piece was: it never slides sideways
 			local dir = drag.boxCF:VectorToWorldSpace(Vector3.FromNormalId(face))
