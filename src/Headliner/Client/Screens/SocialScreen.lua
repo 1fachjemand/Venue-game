@@ -102,7 +102,8 @@ local function realStage(vp, design, color, artistName)
 	local decks, others = {}, {}
 	for _, rec in ipairs(design.items) do
 		local def = StageItems.byId[rec.t]
-		if def and not def.hidden and rec.t ~= "spot" then
+		-- (no Kabuki curtain: it is down when the show is on, a photo never shows it closed)
+		if def and not def.hidden and rec.t ~= "spot" and rec.t ~= "curtain" then
 			if def.deck then
 				table.insert(decks, { def = def, rec = rec })
 			else
@@ -144,12 +145,15 @@ local function realStage(vp, design, color, artistName)
 	local cls = Config.STAGE_CLASS_BY_ID[design.class or "Arena"] or Config.STAGE_CLASS_BY_ID.Arena
 	local saveRig = Builder.rigTop
 	Builder.rigTop = cls.rigY - 1.9
+	local placed = {}
 	local function put(e)
 		local def, rec = e.def, e.rec
 		local ok, refs = pcall(Builder.build, def, { color = color, artistName = artistName, rec = rec, preview = true })
 		if not ok or not refs then
 			return
 		end
+		refs.rec = rec
+		table.insert(placed, refs)
 		local y
 		if def.mount == "rig" then
 			y = cls.rigY - ((def.id == "truss_beam") and 0 or 2)
@@ -170,24 +174,79 @@ local function realStage(vp, design, color, artistName)
 	for _, e in ipairs(decks) do
 		put(e)
 	end
-	for i = 1, math.min(30, #others) do
-		put(others[i])
+	-- the pieces the artist plays or rides always make it into the photo (a moment of the show)
+	local MOMENT = { lift = true, poplift = true, drums = true, piano = true, gownriser = true, floatplat = true, descendcube = true, showerstage = true, harp = true, keys = true }
+	local count = 0
+	for _, e in ipairs(others) do
+		if MOMENT[e.def.id] or count < 30 then
+			put(e)
+			count = count + (MOMENT[e.def.id] and 0 or 1)
+		end
 	end
 	Builder.rigTop = saveRig
 	mk(vp, Vector3.new(400, 1, 400), CFrame.new(0, -0.5, -20), Color3.fromRGB(12, 12, 18))
 	mk(vp, Vector3.new(math.max(80, x1 - x0 + 20), 6, 30), CFrame.new(0, 3, -20), color, Enum.Material.Neon, nil, 0.93) -- haze
 	local top = topAt(cx, (z0 + z1) / 2)
 	local zoom = math.clamp((x1 - x0) / 46, 1, 4)
-	return Vector3.new(0, math.max(1, top) - 1, -26), zoom
+	return Vector3.new(0, math.max(1, top) - 1, -26), zoom, placed
 end
 
-local function star(vp, ad, color, seed, rng, pos, move)
+-- a moment of the show for the photo: the artist coming up on the lift, at the drums, at the piano, up in
+-- the giant dress, lying on the floating platform, in the glass cube, in the rain ... (the piece is shown
+-- in that moment). returns { pos, yaw, move } or nil
+local function showMoment(placed, rng)
+	local Models = require(Root.Client.Models)
+	local list = {}
+	for _, r in ipairs(placed or {}) do
+		local k, cf = r.kind, r.cf
+		if k == "lift" or k == "poplift" then
+			table.insert(list, { pos = cf.Position + Vector3.new(0, r.topY or 0.4, 0), yaw = 0, move = "pop" })
+		elseif k == "drums" then
+			table.insert(list, { pos = (cf * CFrame.new(0, 1, -1.8)).Position, yaw = math.rad(r.rec.r or 0), move = "drumsolo" })
+		elseif k == "piano" then
+			table.insert(list, { pos = (cf * CFrame.new(0, 0, 5.2)).Position, yaw = math.rad(r.rec.r or 0) + math.pi, move = "piano" })
+		elseif k == "keys" then
+			table.insert(list, { pos = (cf * CFrame.new(0, 0, -2.4)).Position, yaw = math.rad(r.rec.r or 0), move = "keyshype" })
+		elseif k == "harp" then
+			table.insert(list, { pos = (cf * CFrame.new(0, 0, -2.2)).Position, yaw = math.rad(r.rec.r or 0), move = "harp" })
+		elseif k == "gownriser" and Models.layoutGown then
+			table.insert(list, { pos = (cf * CFrame.new(0, 19.55, 0)).Position, yaw = 0, move = "gown", item = r, set = function()
+				Models.layoutGown(r, cf, 1)
+			end })
+		elseif k == "floatplat" and Models.layoutFloat then
+			table.insert(list, { pos = (cf * CFrame.new(0, 14.65, 0)).Position, yaw = 0, move = (rng:NextNumber() < 0.5) and "lie" or "sitedge", set = function()
+				Models.layoutFloat(r, cf, 1)
+			end })
+		elseif k == "descendcube" and Models.layoutCube then
+			table.insert(list, { pos = (cf * CFrame.new(0, 14.8, 0)).Position, yaw = 0, move = "wave", set = function()
+				Models.layoutCube(r, cf, 1, 1)
+			end })
+		elseif k == "showerstage" and Models.animate then
+			table.insert(list, { pos = (cf * CFrame.new(0, 1.2, 0)).Position, yaw = 0, move = "rainarms", set = function()
+				local n = (type(r.rec.play) == "number") and r.rec.play or 1
+				r.rec = { play = n, t = "showerstage" }
+				r.readySong, r.readyAt = n, 0
+				pcall(Models.animate, r, { t = 8 + rng:NextNumber() * 3, songNum = n, songFrac = 0.5 })
+			end })
+		end
+	end
+	if #list == 0 then
+		return nil
+	end
+	local m = list[rng:NextInteger(1, #list)]
+	if m.set then
+		m.set()
+	end
+	return m
+end
+
+local function star(vp, ad, color, seed, rng, pos, move, yaw)
 	if not ad then
 		return
 	end
 	local f = People.new(vp, color, 1.4, "lead", seed, ad.look)
 	local moves = { "micout", "micout", "jump", "wave", "dance" }
-	f:update(pos, 0, { t = rng:NextNumber() * 10, beat = 0.5, energy = 1, walking = false, armsUp = rng:NextNumber() < 0.4 and 1 or 0, move = move or moves[rng:NextInteger(1, #moves)] })
+	f:update(pos, yaw or 0, { t = rng:NextNumber() * 10, beat = 0.5, energy = 1, walking = false, armsUp = rng:NextNumber() < 0.4 and 1 or 0, move = move or moves[rng:NextInteger(1, #moves)] })
 	return f
 end
 
@@ -312,7 +371,8 @@ local function photo(parent, ad, seed, kind, p)
 	end
 	-- a photo from the show: the real stage of the tour (if the post knows it), else a typical stage
 	local artistPos, zoom = nil, 1
-	local design = nil
+	local design, placed = nil, nil
+	local momentY = nil
 	if p and SocialScreen.app then
 		local GS = require(Root.Logic.GameState)
 		local state = SocialScreen.app.state
@@ -339,9 +399,9 @@ local function photo(parent, ad, seed, kind, p)
 	-- (only the newest few photos build the real stage: the feed stays light)
 	if design and kind ~= "selfie" and kind ~= "barricade" and (SocialScreen.realBudget or 0) > 0 then
 		SocialScreen.realBudget = SocialScreen.realBudget - 1
-		local ok, pos, z = pcall(realStage, vp, design, color, ad and string.upper(ad.name) or nil)
+		local ok, pos, z, pl = pcall(realStage, vp, design, color, ad and string.upper(ad.name) or nil)
 		if ok and pos then
-			artistPos, zoom = pos, z
+			artistPos, zoom, placed = pos, z, pl
 		end
 	end
 	artistPos = artistPos or stageSet(vp, color, rng, { beams = (kind == "phones") and 0.88 or 0.75 })
@@ -415,7 +475,14 @@ local function photo(parent, ad, seed, kind, p)
 		end
 		cam.CFrame = CFrame.lookAt(Vector3.new(rng:NextNumber(-3, 3), 7, 19), Vector3.new(0, 8, -20))
 	else
-		star(vp, ad, color, seed, rng, artistPos)
+		-- most photos of a real stage catch a moment of the show (lift, drums, the giant dress ...)
+		local moment = (placed and rng:NextNumber() < 0.7) and showMoment(placed, rng) or nil
+		if moment then
+			star(vp, ad, color, seed, rng, moment.pos, moment.move, moment.yaw)
+		else
+			star(vp, ad, color, seed, rng, artistPos)
+		end
+		momentY = moment and moment.pos.Y or nil
 		crowdRows(vp, color, rng, (kind == "phones") and 7 or 6, 4, true)
 		if kind == "confetti" then
 			local cols = { color, Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 214, 0), Color3.fromRGB(255, 80, 160), Color3.fromRGB(80, 220, 255) }
@@ -443,7 +510,9 @@ local function photo(parent, ad, seed, kind, p)
 			end
 			vp.Ambient = Color3.fromRGB(60, 60, 90)
 		end
-		cam.CFrame = CFrame.lookAt(Vector3.new(rng:NextNumber(-8, 8), 6.5, 12), Vector3.new(0, 9, -30))
+		-- a moment high up (dress, platform, cube): the phone points higher
+		local lookY = math.max(9, (momentY or 0) + 2)
+		cam.CFrame = CFrame.lookAt(Vector3.new(rng:NextNumber(-8, 8), 6.5 + (lookY - 9) * 0.4, 12), Vector3.new(0, lookY, -30))
 	end
 	if zoom > 1 then
 		-- a big stage: step back (and up) so the whole stage is in the photo

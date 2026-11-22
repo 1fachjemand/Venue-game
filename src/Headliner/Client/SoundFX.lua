@@ -154,15 +154,59 @@ function SoundFX.menu(which)
 	local r = Map.MENU and Map.MENU[which]
 	if r then
 		playRegion("menu", r[1], r[2], true, (which == "office") and 0.6 or 0.9, "menu_" .. which)
+		if channels[active] then
+			channels[active].PlaybackSpeed = 1
+		end
 	end
 end
 
--- song n (1..12) of an artist, e.g. during a show
+-- recordings that sound alike (a long setlist borrows songs from these, a little faster or slower)
+local SIMILAR = {
+	juno = { "nova", "starlyte" }, nova = { "juno", "starlyte" }, starlyte = { "juno", "nova" },
+	rusty = { "neon", "ironclad" }, neon = { "lila", "rusty" }, ironclad = { "rusty", "voltage" },
+	lila = { "neon", "dusty" }, dusty = { "lila", "rusty" }, voltage = { "kai", "starlyte" },
+	kai = { "velvet", "voltage" }, velvet = { "kai", "luna" }, luna = { "velvet", "juno" },
+}
+local function hashOf(s)
+	local h = 7
+	for i = 1, #s do
+		h = (h * 31 + string.byte(s, i)) % 100003
+	end
+	return h
+end
+-- where song n of an artist is: { file key, start (s), playback speed }. Songs 1..12 are the artist's own
+-- recording (an artist without an own one uses a similar artist's, a little faster or slower so two artists
+-- never sound the same); songs 13+ come from similar recordings, so a long show never repeats a song.
+function SoundFX.songSource(artistId, n)
+	local per = Map.SONGS_PER_FILE or 12
+	local len = Map.SONG_LEN or 30
+	local ad = require(Root.Data.Artists).byId[artistId]
+	local own = (Audio.IDS[artistId] ~= nil) and artistId or (ad and ad.audio) or artistId
+	local h = hashOf(artistId)
+	local speed = 1
+	if own ~= artistId then
+		speed = ({ 0.94, 0.97, 1.03, 1.06 })[h % 4 + 1]
+	end
+	if n <= per then
+		return own, (n - 1) * len, speed
+	end
+	local sims = SIMILAR[own] or { own }
+	local k = math.floor((n - 1) / per) -- 1, 2 ...
+	local file = sims[(k - 1) % #sims + 1]
+	local idx = ((n - 1) % per + (h % 5)) % per + 1
+	local s2 = ({ 0.95, 1.05, 0.97, 1.03 })[(h + k) % 4 + 1]
+	return file, (idx - 1) * len, s2
+end
+
+-- song n of an artist, e.g. during a show
 function SoundFX.song(artistId, n, volume)
 	local len = Map.SONG_LEN or 30
-	-- an audio file holds 12 songs; longer setlists reuse them
-	n = ((n - 1) % (Map.SONGS_PER_FILE or 12)) + 1
-	playRegion(artistId, (n - 1) * len, len, false, volume or 1, artistId .. "_" .. n .. "_" .. tostring(os.clock()))
+	local file, start, speed = SoundFX.songSource(artistId, n)
+	playRegion(file, start, len, false, volume or 1, artistId .. "_" .. n .. "_" .. tostring(os.clock()))
+	local s = channels[active]
+	if s and s.SoundId ~= "" then
+		s.PlaybackSpeed = speed or 1
+	end
 end
 
 -- listen to an artist (their big hit), then back to the office music

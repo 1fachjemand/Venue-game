@@ -237,11 +237,13 @@ Social.ITEM_NAMES = {
 
 -- more posts from Data/SocialMore.lua
 do
-	local more = require(script:FindFirstAncestor("Headliner").Data.SocialMore)
-	for kind, list in pairs(more) do
-		Social.POSTS[kind] = Social.POSTS[kind] or {}
-		for _, p in ipairs(list) do
-			table.insert(Social.POSTS[kind], p)
+	local data = script:FindFirstAncestor("Headliner").Data
+	for _, more in ipairs({ require(data.SocialMore), require(data.SocialExtra) }) do
+		for kind, list in pairs(more) do
+			Social.POSTS[kind] = Social.POSTS[kind] or {}
+			for _, p in ipairs(list) do
+				table.insert(Social.POSTS[kind], p)
+			end
 		end
 	end
 end

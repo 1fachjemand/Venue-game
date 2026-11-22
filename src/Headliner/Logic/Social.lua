@@ -45,15 +45,23 @@ function Social.add(state, kind, c, n, rnd)
 		item = c.item or "",
 		label = state.labelName or "",
 	}
+	-- no text that was in the feed lately (the last 80 posts)
 	local used = {}
+	for i = 1, math.min(80, #state.social) do
+		local key = state.social[i].tpl
+		if key then
+			used[key] = true
+		end
+	end
 	for _ = 1, n or 1 do
-		local tpl = pick(list, rnd)
+		local idx = math.floor(rnd() * #list) + 1
 		local tries = 0
-		while used[tpl] and tries < 5 do
-			tpl = pick(list, rnd)
+		while used[kind .. ":" .. idx] and tries < 14 do
+			idx = math.floor(rnd() * #list) + 1
 			tries = tries + 1
 		end
-		used[tpl] = true
+		local tpl = list[idx]
+		used[kind .. ":" .. idx] = true
 		local first = pick(Data.FIRST, rnd)
 		local handle = "@" .. pick(Data.HANDLE_A, rnd) .. "." .. pick(Data.HANDLE_B, rnd)
 		local likes = math.floor((20 + rnd() * 400) * (tpl[1] > 0 and 2.5 or 1) * (1 + (c.reach or 0)))
@@ -70,6 +78,7 @@ function Social.add(state, kind, c, n, rnd)
 			text = fill(tpl[2], ctx),
 			mood = tpl[1],
 			kind = kind,
+			tpl = kind .. ":" .. idx,
 			likes = likes,
 			reposts = math.floor(likes * (0.05 + rnd() * 0.2)),
 			artistId = c.artistId,
@@ -121,10 +130,14 @@ function Social.onShow(state, tour, idx, r, design, rnd)
 	local s = tour.shows[idx]
 	local c = { artistId = tour.artistId, venueId = s.venueId, tour = tour, price = s.price, reach = reach(state, tour.artistId), designId = design and design.id }
 	local kind = (r.stars >= 4) and "show_great" or ((r.stars == 3) and "show_ok" or "show_bad")
-	Social.add(state, kind, c, (r.stars >= 4) and 3 or 2, rnd)
+	Social.add(state, kind, c, (r.stars >= 4) and 4 or 3, rnd)
 	if r.stars >= 3 then
-		Social.add(state, "photo", c, 1 + math.floor(rnd() * 2), rnd)
-		Social.add(state, (rnd() < 0.5) and "outfit" or "setlist", c, 1, rnd)
+		Social.add(state, "photo", c, 2 + math.floor(rnd() * 2), rnd)
+		Social.add(state, "outfit", c, 1, rnd)
+		Social.add(state, "setlist", c, 1, rnd)
+		if rnd() < 0.4 then
+			Social.add(state, "sign", c, 1, rnd)
+		end
 	end
 	-- a post about a special stage item
 	if design and r.stars >= 3 then
@@ -138,7 +151,7 @@ function Social.onShow(state, tour, idx, r, design, rnd)
 		end
 		if #found > 0 then
 			c.item = found[math.floor(rnd() * #found) + 1]
-			Social.add(state, "stage", c, 1, rnd)
+			Social.add(state, "stage", c, 2, rnd)
 		end
 	end
 	if r.fill < 0.6 then
@@ -150,7 +163,7 @@ end
 function Social.daily(state, rnd)
 	rnd = rnd or math.random
 	for _, tour in ipairs(state.tours) do
-		if tour.status ~= "done" and rnd() < 0.25 then
+		if tour.status ~= "done" and rnd() < 0.45 then
 			for _, s in ipairs(tour.shows) do
 				if not s.done then
 					local kinds = { "fanproject", "merch", "countdown" }

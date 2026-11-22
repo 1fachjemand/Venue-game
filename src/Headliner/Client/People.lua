@@ -297,6 +297,31 @@ function People:update(pos, yaw, opts)
 		lean = -0.15
 		bob = 0
 	end
+	-- signature moves of lead artists (LiveShow.movesOf gives every artist their own mix)
+	if move == "twirl" then
+		hipYaw = (t * 4.2) % (math.pi * 2)
+		bob = bob * 0.5
+	elseif move == "hairflip" then
+		local ph = math.sin(t * 3)
+		headPitch = -0.35 + ph * 0.45
+		lean = -0.1 + ph * 0.18
+	elseif move == "crouch" then
+		drop = 1.0 * s
+		lean = 0.3
+		bob = 0
+	elseif move == "leanback" then
+		lean = -0.32
+		headPitch = -0.35
+		bob = bob * 0.3
+	elseif move == "fistpump" then
+		bob = math.abs(math.sin(opts.beat * math.pi)) * 0.5 * s * e
+	elseif move == "sway" then
+		sway = math.sin(t * 1.6) * 0.13
+		hipYaw = math.sin(t * 0.8) * 0.2
+		bob = bob * 0.3
+	elseif move == "blowkiss" then
+		hipYaw = 0.2
+	end
 	if move == "sitedge" then
 		drop = 2 * s -- sitting right on the platform, legs stretched out
 		bob = 0
@@ -329,6 +354,8 @@ function People:update(pos, yaw, opts)
 		legLA, legRA = math.sin(t * 6.4) * 0.3, -math.sin(t * 6.4) * 0.3
 	elseif move == "pose" then
 		legLA, legRA = -0.25, 0.15
+	elseif move == "crouch" then
+		legLA, legRA = -1.3, 0.35
 	elseif move == "sitedge" then
 		legLA, legRA = -1.45 + math.sin(t * 1.3) * 0.12, -1.5 - math.sin(t * 1.3) * 0.12
 	elseif move == "lie" then
@@ -498,6 +525,26 @@ function People:update(pos, yaw, opts)
 			lx, lz = 0.55, -0.35
 		else
 			lx, lz = -0.7 + math.sin(t * 0.8) * 0.3, -1.35
+		end
+	elseif self.role == "lead" and (move == "twirl" or move == "hairflip" or move == "crouch" or move == "leanback" or move == "fistpump" or move == "sway" or move == "blowkiss") then
+		-- singing with the mic at the mouth, the free arm makes the move
+		rx, rz = -2.45, 0.9
+		micAtMouth = true
+		if move == "twirl" then
+			lx, lz = -2.7, -0.7
+		elseif move == "hairflip" then
+			lx, lz = -2.6, -1.1
+		elseif move == "crouch" then
+			lx, lz = -1.0, -0.3
+		elseif move == "leanback" then
+			lx, lz = -1.3, -1.35
+		elseif move == "fistpump" then
+			lx, lz = -2.95 + math.abs(math.sin(opts.beat * math.pi)) * 0.7, -0.25
+		elseif move == "sway" then
+			lx, lz = -0.9 + math.sin(t * 1.6) * 0.2, -0.95
+		else
+			local kiss = (t * 0.7) % 1 < 0.45
+			lx, lz = kiss and -2.65 or -1.7, kiss and -0.35 or -0.6
 		end
 	elseif self.role == "lead" and move == "standmic" then
 		-- singing into the Mic Stand on the stage: both hands on the mic, the hand mic is put away

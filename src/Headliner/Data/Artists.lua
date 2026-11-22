@@ -142,7 +142,8 @@ local TIER = {
 }
 -- the audio file of a similar artist (new artists have no own recording yet)
 local AUDIO = { Pop = "juno", Rock = "rusty", Indie = "lila", EDM = "voltage", ["Hip-Hop"] = "kai", Metal = "ironclad", ["R&B"] = "velvet", Latin = "luna", Country = "dusty", ["K-Pop"] = "starlyte" }
--- words for more song titles (every artist gets 20 songs: their own first, then from these)
+-- words for more song titles (every artist gets Artists.SONGS songs: their own first, then from these)
+Artists.SONGS = 32
 local WORDS = {
 	Pop = { { "Sugar", "Golden", "Electric", "Pink", "Midnight", "Glitter", "Candy", "Starlight", "Summer", "Cherry", "Velvet", "Disco" }, { "Heart", "Kiss", "Daydream", "Radio", "Party", "Crush", "Sky", "Lights", "Diary", "Fever", "Sparks", "Weekend" } },
 	Rock = { { "Highway", "Broken", "Thunder", "Gasoline", "Wild", "Electric", "Rusty", "Midnight", "Iron", "Neon", "Burning", "Loud" }, { "Road", "Heart", "Engine", "Riders", "Anthem", "Nights", "Blues", "Fire", "Rebels", "Garage", "Saints", "Radio" } },
@@ -173,7 +174,7 @@ local function makeSetlist(id, genre, own)
 	local w = WORDS[genre] or WORDS.Pop
 	local h = seedOf(id)
 	local tries = 0
-	while #out < 20 and tries < 400 do
+	while #out < Artists.SONGS and tries < 900 do
 		tries = tries + 1
 		h = (h * 1103515245 + 12345) % 2147483648
 		local a = w[1][h % #w[1] + 1]
@@ -281,6 +282,11 @@ do
 			a.level = BASE[old] + ((i > half and not a.starter) and 1 or 0)
 		end
 	end
+end
+
+-- every setlist: no title twice, and Artists.SONGS songs (long shows never repeat a song)
+for _, a in ipairs(Artists.list) do
+	a.setlist = makeSetlist(a.id, a.genre, a.setlist)
 end
 
 Artists.byId = {}

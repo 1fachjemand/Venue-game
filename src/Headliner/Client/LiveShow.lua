@@ -81,15 +81,22 @@ local function buildTimeline(ad, rng, songCount, hasRoof, topts)
 	topts = topts or {}
 	-- song numbers refer to the artist's setlist (and to the audio file): 1 = opener, 4 = the ballad, 8 = the big hit
 	local BALLAD, HIT = AudioMap.BALLAD_INDEX or 4, AudioMap.HIT_INDEX or 8
-	local pool = {}
+	-- the artist's best-known songs (2..12) first in a random order, then the deep cuts (13+): a short show
+	-- plays the known ones, a long show adds more, no song twice
+	local pool, deep = {}, {}
 	for i = 2, #ad.setlist do
 		if i ~= BALLAD and i ~= HIT then
-			table.insert(pool, i)
+			table.insert((i <= 12) and pool or deep, i)
 		end
 	end
-	for i = #pool, 2, -1 do
-		local j = rng:NextInteger(1, i)
-		pool[i], pool[j] = pool[j], pool[i]
+	for _, list in ipairs({ pool, deep }) do
+		for i = #list, 2, -1 do
+			local j = rng:NextInteger(1, i)
+			list[i], list[j] = list[j], list[i]
+		end
+	end
+	for _, i in ipairs(deep) do
+		table.insert(pool, i)
 	end
 	local middle = {}
 	for i = 1, songCount - 3 do
@@ -217,6 +224,47 @@ function LiveShow.floatPose(ad)
 	return FLOAT_POSES[h % #FLOAT_POSES + 1]
 end
 LiveShow.RIDES = RIDES
+-- the moves of an artist in a song: the genre's moves plus three signature moves of their own (the same in
+-- every show, different from artist to artist), calmer in the ballad, wilder in the finale
+local GENRE_MOVES = {
+	Metal = { "headbang", "fistpump", "headbang", "micout" },
+	Rock = { "headbang", "jump", "point", "micout" },
+	Pop = { "dance", "point", "jump", "wave" },
+	["K-Pop"] = { "dance", "point", "twirl", "wave" },
+	["Hip-Hop"] = { "point", "jump", "fistpump", "micout" },
+	["R&B"] = { "sway", "dance", "point", "micout" },
+	Latin = { "dance", "twirl", "point", "wave" },
+	Country = { "wave", "point", "sway", "micout" },
+	Indie = { "sway", "dance", "point", "micout" },
+	EDM = { "jump", "fistpump", "point", "wave" },
+}
+local SIGNATURE = { "twirl", "hairflip", "crouch", "leanback", "fistpump", "sway", "blowkiss", "kneel", "micout" }
+local movesCache = {}
+function LiveShow.movesOf(ad, kind)
+	local key = ad.id .. "|" .. tostring(kind)
+	if movesCache[key] then
+		return movesCache[key]
+	end
+	local h = 7
+	for i = 1, #ad.id do
+		h = (h * 31 + string.byte(ad.id, i)) % 99991
+	end
+	local list = {}
+	for _, mv in ipairs(GENRE_MOVES[ad.genre] or GENRE_MOVES.Pop) do
+		table.insert(list, mv)
+	end
+	for k = 0, 2 do
+		table.insert(list, 2 + k * 2, SIGNATURE[(h + k * 4) % #SIGNATURE + 1])
+	end
+	if kind == "ballad" then
+		list = { "sway", list[2], "leanback", "micout", list[4] }
+	elseif kind == "finale" then
+		table.insert(list, "jump")
+		table.insert(list, "micout")
+	end
+	movesCache[key] = list
+	return list
+end
 -- the artist on a special element: the element starts when they have arrived (refs.readyAt); it carries
 -- them (refs.ride.pos) and gives the move. Returns the new position and move.
 function LiveShow.rideStep(curWalk, seg, walking, t, leadPos, move, ad)
@@ -1443,12 +1491,7 @@ function LiveShow.run(app, opts)
 		elseif seg.kind == "outro" then
 			move = (inSeg < 2.5) and "bow" or "wave"
 		elseif seg.song then
-			local cycle = (ad.genre == "Metal" or ad.genre == "Rock") and { "headbang", "jump", "point", "micout" } or { "dance", "point", "jump", "wave" }
-			if seg.kind == "finale" then
-				cycle = { "jump", "micout", "jump", "wave" }
-			elseif seg.kind == "mid" then
-				cycle = { "dance", "point", "micout", "dance" }
-			end
+			local cycle = LiveShow.movesOf(ad, seg.kind)
 			move = cycle[(math.floor(inSeg / 4) + seg.song) % #cycle + 1]
 		end
 		if curWalk and curWalk.play and t >= curWalk[1] + 5 and not walking then
