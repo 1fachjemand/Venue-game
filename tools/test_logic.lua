@@ -395,4 +395,25 @@ do
   tour.buzz = 1.25
   check(Sim2.marketingMult(tour) > 1.2, "buzz raises the demand")
 end
+-- round 11: signed dancers (fee, per-show cost, skill grows, training makes them busy)
+do
+  local Dancers = require(ROOT.Data.Dancers)
+  local st = GS.new("Dance", "lila")
+  st.money = 1000000
+  local ok = GS.signDancer(st, "d_mika")
+  check(ok and st.dancers.d_mika and st.money == 1000000 - Dancers.byId.d_mika.fee, "sign a dancer")
+  check(GS.dancerBusy(st, "d_mika") == nil, "a new dancer is ready")
+  local s0 = st.dancers.d_mika.skill
+  local ok2 = GS.trainDancer(st, "d_mika")
+  check(ok2 and st.dancers.d_mika.skill == s0 + Dancers.TRAIN_GAIN and GS.dancerBusy(st, "d_mika") ~= nil, "training: better, then busy")
+  st.day = st.day + Dancers.TRAIN_DAYS + 1
+  check(GS.dancerBusy(st, "d_mika") == nil, "back from training")
+  -- cost and bonus on a tour
+  local Sim3 = require(ROOT.Logic.Sim)
+  local tour = { artistId = "lila", dancerIds = { "d_mika" } }
+  local arenaV
+  for _, v in pairs(Countries.venueById) do if v.type == "Arena" then arenaV = v break end end
+  local cost, bonus = Sim3.dancerCostAndBonus(st, tour, arenaV)
+  check(cost == Dancers.byId.d_mika.perShow and bonus > 0, "dancer cost per show and review bonus")
+end
 print("FAILS", fails)

@@ -3,6 +3,7 @@ local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local Countries = require(Root.Data.Countries)
 local Artists = require(Root.Data.Artists)
+local Dancers = require(Root.Data.Dancers)
 local StageItems = require(Root.Data.StageItems)
 local Achievements = require(Root.Data.Achievements)
 local Rivals = require(Root.Data.Rivals)
@@ -69,6 +70,7 @@ function GS.new(labelName, starterId, opts)
 		tours = {},
 		nextId = 1,
 		achievements = {},
+		dancers = {}, -- signed background dancers: [id] = { skill, shows, trainUntil }
 		log = {},
 		social = {},
 		levelSeen = 1,
@@ -321,6 +323,89 @@ function GS.sign(state, artistId)
 	GS.log(state, "Signed " .. ad.name .. " for " .. Util.money(ad.signCost) .. "!")
 	Social.add(state, "sign", { artistId = ad.id }, 2)
 	return true, ad.name .. " joined your label!"
+end
+
+------------------------------------------------------------------ background dancers (Data/Dancers.lua)
+function GS.myDancers(state)
+	state.dancers = state.dancers or {}
+	return state.dancers
+end
+-- why a signed dancer can't go on a tour now (nil = ready): in training, or on another tour that is not done
+function GS.dancerBusy(state, id, ignoreTourId)
+	local dd = GS.myDancers(state)[id]
+	if not dd then
+		return "not signed"
+	end
+	if (dd.trainUntil or 0) > state.day then
+		return "in training (" .. (dd.trainUntil - state.day) .. " days)"
+	end
+	for _, t in ipairs(state.tours or {}) do
+		if t.status ~= "done" and t.id ~= ignoreTourId then
+			for _, did in ipairs(t.dancerIds or {}) do
+				if did == id then
+					return "on tour with " .. (Artists.byId[t.artistId] and Artists.byId[t.artistId].name or "an artist")
+				end
+			end
+		end
+	end
+	return nil
+end
+function GS.signDancer(state, id)
+	local d = Dancers.byId[id or ""]
+	local mine = GS.myDancers(state)
+	if not d then
+		return false, "Unknown dancer."
+	end
+	if mine[id] then
+		return false, "Already signed."
+	end
+	local n = 0
+	for _ in pairs(mine) do
+		n = n + 1
+	end
+	if n >= Dancers.MAX_SIGNED then
+		return false, "You have " .. Dancers.MAX_SIGNED .. " dancers already."
+	end
+	if state.money < d.fee then
+		return false, "Not enough money to sign " .. d.name .. "."
+	end
+	state.money = state.money - d.fee
+	mine[id] = { skill = d.skill, shows = 0, trainUntil = 0 }
+	GS.log(state, d.name .. " dances for your label now.")
+	return true, d.name .. " signed!"
+end
+function GS.releaseDancer(state, id)
+	local mine = GS.myDancers(state)
+	if not mine[id] then
+		return false, "Not signed."
+	end
+	if GS.dancerBusy(state, id) and GS.dancerBusy(state, id):find("^on tour") then
+		return false, "On tour right now."
+	end
+	mine[id] = nil
+	return true, "Released."
+end
+function GS.trainDancer(state, id)
+	local mine = GS.myDancers(state)
+	local dd = mine[id]
+	if not dd then
+		return false, "Not signed."
+	end
+	local busy = GS.dancerBusy(state, id)
+	if busy then
+		return false, "Can't train now: " .. busy .. "."
+	end
+	if dd.skill >= 99 then
+		return false, "Already the best."
+	end
+	local cost = Dancers.trainCost(dd.skill)
+	if state.money < cost then
+		return false, "Not enough money for the training (" .. Util.money(cost) .. ")."
+	end
+	state.money = state.money - cost
+	dd.skill = math.min(99, dd.skill + Dancers.TRAIN_GAIN)
+	dd.trainUntil = state.day + Dancers.TRAIN_DAYS
+	return true, (Dancers.byId[id] and Dancers.byId[id].name or "") .. " is training for " .. Dancers.TRAIN_DAYS .. " days."
 end
 
 -- days on the road: from the first to the last show (the artist allows at most ad.maxTourDays)
@@ -824,6 +909,7 @@ function GS.createTour(state, draft)
 		designId = design.id,
 		designs = designs,
 		dancers = (ad.members == 1) and Util.clamp(math.floor(tonumber(draft.dancers) or 0), 0, Config.MAX_DANCERS) or 0,
+		dancerIds = nil,
 		status = "announced",
 		announcedDay = state.day,
 		marketing = {},
@@ -885,6 +971,17 @@ function GS.createTour(state, draft)
 		prev = v
 	end
 	tour.price = tour.shows[1].price
+	-- the signed dancers chosen for this tour (ready ones only); without a choice the old count stays
+	if ad.members == 1 and type(draft.dancerIds) == "table" then
+		local ids = {}
+		for _, id in ipairs(draft.dancerIds) do
+			if #ids < Config.MAX_DANCERS and GS.myDancers(state)[id] and not GS.dancerBusy(state, id) then
+				table.insert(ids, id)
+			end
+		end
+		tour.dancerIds = ids
+		tour.dancers = #ids
+	end
 	table.insert(state.tours, 1, tour)
 	Sim.updateTourSales(state, tour)
 	GS.log(state, ad.name .. " announced \"" .. tour.name .. "\" (" .. #tour.shows .. " shows).")
@@ -999,6 +1096,16 @@ function GS.applyShow(state, tour, idx, r)
 	tour.played = tour.played + 1
 	tour.ratingSum = tour.ratingSum + r.rating
 	tour.status = "touring"
+	-- the dancers of the tour learn with every show (only where they danced: not in clubs)
+	if tour.dancerIds and (r.dancers or 0) > 0 then
+		for _, id in ipairs(tour.dancerIds) do
+			local dd = GS.myDancers(state)[id]
+			if dd then
+				dd.shows = (dd.shows or 0) + 1
+				dd.skill = math.min(99, dd.skill + Dancers.SHOW_GAIN)
+			end
+		end
+	end
 	-- word of mouth (social media): the opening night counts most, later 5-star shows add a little
 	if tour.played == 1 then
 		local b = ({ 0.88, 0.94, 1.0, 1.12, 1.25 })[Util.clamp(r.stars or 3, 1, 5)]

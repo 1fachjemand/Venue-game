@@ -255,6 +255,7 @@ function App:beginGame(isNew)
 	end
 	self.screens.stats = require(Screens.StatsScreen).new(self)
 	self.screens.achievements = require(Screens.AchievementsScreen).new(self)
+	self.screens.extras = require(Screens.ExtrasScreen).new(self)
 	self.screens.artists = require(Screens.ArtistsScreen).new(self)
 	self.screens.tours = require(Screens.ToursScreen).new(self)
 	self.screens.charts = require(Screens.ChartsScreen).new(self)
@@ -561,7 +562,7 @@ local STATION_PAGES = {
 }
 local PAGE_STATION = { stages = "stagehall", charts = "charts" }
 -- pages that are apps on the laptop
-local LAPTOP_APP = { office = true, tours = "tours", tourplan = "planner", planner = "planner", artists = "artists", stats = "stats", achievements = "achievements" }
+local LAPTOP_APP = { office = true, tours = "tours", tourplan = "planner", planner = "planner", artists = "artists", stats = "stats", achievements = "achievements", extras = "extras" }
 local STATION_NAME = { laptop = "LAPTOP", maptable = "WORLD MAP table", meeting = "MEETING ROOM (sit down)", stagehall = "STAGE HALL", charts = "CHARTS screen" }
 
 function App:openStation(station, page, args)
@@ -1636,6 +1637,7 @@ function App:resolveShow(tour, idx, watch)
 		tourName = tour.name,
 		tourId = tour.id,
 		dancers = tour.dancers,
+		dancerIds = tour.dancerIds,
 		result = result,
 		walk = true,
 		-- the show is over: the result while you are still in the venue, then back to the office

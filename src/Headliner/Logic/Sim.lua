@@ -455,7 +455,7 @@ function Sim.estimate(state, draft, design)
 		local st = stFor(v)
 		local travel = Sim.travelCost(prev, v, st.count)
 		local cut = Util.round(gross * Config.ARTIST_SHARE)
-		local costs = rent + st.cost + travel + cut + Sim.dancersAt(draft, v) * Config.DANCER_COST
+		local costs = rent + st.cost + travel + cut + (Sim.dancerCostAndBonus(state, draft, v))
 		local n = Config.DEMAND_NOISE
 		local low = math.min(1, d[i] * (1 - n) / v.cap)
 		local high = math.min(1, d[i] * (1 + n) / v.cap)
@@ -483,7 +483,32 @@ function Sim.dancersAt(tour, venue)
 	if not ad or ad.members ~= 1 or Sim.lookOf(venue) == "club" then
 		return 0
 	end
+	if type(tour.dancerIds) == "table" then
+		return math.min(#tour.dancerIds, Config.MAX_DANCERS)
+	end
 	return Util.clamp(math.floor(tonumber(tour.dancers) or 0), 0, Config.MAX_DANCERS)
+end
+-- what the dancers cost per show and how much they help the review (signed dancers: their own fee and
+-- skill; an old tour with just a number: the standard values)
+function Sim.dancerCostAndBonus(state, tour, venue)
+	local n = Sim.dancersAt(tour, venue)
+	if n == 0 then
+		return 0, 0
+	end
+	if type(tour.dancerIds) == "table" then
+		local Dancers = require(Root.Data.Dancers)
+		local cost, bonus = 0, 0
+		for i, id in ipairs(tour.dancerIds) do
+			if i <= n then
+				local d = Dancers.byId[id]
+				local dd = state and state.dancers and state.dancers[id]
+				cost = cost + (d and d.perShow or Config.DANCER_COST)
+				bonus = bonus + Config.DANCER_RATING * ((dd and dd.skill) or (d and d.skill) or 50) / 55
+			end
+		end
+		return cost, bonus
+	end
+	return n * Config.DANCER_COST, n * Config.DANCER_RATING
 end
 
 ------------------------------------------------------------------ show result
@@ -512,11 +537,11 @@ function Sim.showResult(state, tour, idx, design, rnd)
 	local travel = s.travel or 0
 	local cut = Util.round(gross * Config.ARTIST_SHARE)
 	local dancers = Sim.dancersAt(tour, v)
-	local dancerCost = dancers * Config.DANCER_COST
+	local dancerCost, dancerBonus = Sim.dancerCostAndBonus(state, tour, v)
 	local net = gross - rent - st.cost - travel - cut - dancerCost
 	local fill = sold / v.cap
 
-	local rating = 0.45 * ad.skill + 0.45 * prodScore + 10 * fill - 5 + (rnd() * 8 - 4) + dancers * Config.DANCER_RATING
+	local rating = 0.45 * ad.skill + 0.45 * prodScore + 10 * fill - 5 + (rnd() * 8 - 4) + dancerBonus
 	rating = Util.clamp(rating, 1, 100)
 	local stars = 1
 	if rating >= 88 then

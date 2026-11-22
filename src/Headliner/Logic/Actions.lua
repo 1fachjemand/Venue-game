@@ -144,6 +144,7 @@ function A.createTour(state, a)
 		gap = num(d.gap),
 		shows = shows,
 		dancers = num(d.dancers) and Util.clamp(math.floor(d.dancers), 0, Config.MAX_DANCERS) or nil,
+		dancerIds = (type(d.dancerIds) == "table") and d.dancerIds or nil,
 	})
 	if not ok then
 		return false, res
@@ -165,6 +166,16 @@ local function cleanDraft(state, d)
 	out.price = num(d.price)
 	out.pricesSet = d.pricesSet == true
 	out.dancers = num(d.dancers) and Util.clamp(math.floor(d.dancers), 0, Config.MAX_DANCERS) or nil
+	-- the chosen signed dancers (only yours, at most MAX_DANCERS)
+	if type(d.dancerIds) == "table" then
+		out.dancerIds = {}
+		for _, id in ipairs(d.dancerIds) do
+			if type(id) == "string" and GS.myDancers(state)[id] and #out.dancerIds < Config.MAX_DANCERS then
+				table.insert(out.dancerIds, id)
+			end
+		end
+		out.dancers = #out.dancerIds
+	end
 	out.stageSet = d.stageSet == true
 	if type(d.shows) == "table" then
 		for _, s in ipairs(d.shows) do
@@ -199,6 +210,16 @@ local function cleanDraft(state, d)
 		end
 	end
 	return out
+end
+
+function A.signDancer(state, a)
+	return GS.signDancer(state, a.dancerId)
+end
+function A.releaseDancer(state, a)
+	return GS.releaseDancer(state, a.dancerId)
+end
+function A.trainDancer(state, a)
+	return GS.trainDancer(state, a.dancerId)
 end
 
 function A.setDraft(state, a)
@@ -239,7 +260,7 @@ function A.announceTour(state, a)
 			d.designs[vc] = best and best.id or nil
 		end
 	end
-	local ok, msg, data = A.createTour(state, { draft = { artistId = d.artistId, name = str(a.name, 40) or d.name, designs = d.designs, prices = d.prices, price = d.price, shows = d.shows, dancers = d.dancers } })
+	local ok, msg, data = A.createTour(state, { draft = { artistId = d.artistId, name = str(a.name, 40) or d.name, designs = d.designs, prices = d.prices, price = d.price, shows = d.shows, dancers = d.dancers, dancerIds = d.dancerIds } })
 	if ok then
 		state.draft = {}
 	end

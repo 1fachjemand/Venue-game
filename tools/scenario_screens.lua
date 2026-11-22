@@ -50,6 +50,10 @@ SRV().stats.shows = 12 SRV().stats.tickets = 30000 SRV().achievements.first_show
 Laptop.openApp(app, "achievements")
 dump("04g_achievements")
 for i = #app.laptop.windows, 1, -1 do Laptop.closeWindow(app, app.laptop.windows[i]) end
+SRV().money = 300000 SRV().dancers = { d_mika = { skill = 44, shows = 6, trainUntil = 0 }, d_yuna = { skill = 72, shows = 2, trainUntil = SRV().day + 3 } } app:applyDelta(app:call("resync").delta)
+Laptop.openApp(app, "extras")
+dump("04h_extras")
+for i = #app.laptop.windows, 1, -1 do Laptop.closeWindow(app, app.laptop.windows[i]) end
 MOCK.clickExact("X   CLOSE LAPTOP")
 MOCK.prompt("maptable")
 dump("05a_plan_artist")

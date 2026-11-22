@@ -902,22 +902,55 @@ function TP:buildStage()
 		end
 	end
 	if ad and ad.members == 1 and bigShows > 0 then
-		local n = math.clamp(math.floor(tonumber(self.draft.dancers) or 0), 0, Config.MAX_DANCERS)
-		local box = UI.New("Frame", { Parent = body, Name = "Dancers", Position = UI.px(1180, 10), Size = UI.px(700, 84), BackgroundColor3 = T.panel, BorderSizePixel = 0, UI.Corner(12), UI.Stroke(T.stroke, 1, 0) })
-		UI.Label(box, "BACKGROUND DANCERS", UI.px(16, 8), UI.px(300, 24), { textSize = 16, font = UI.FontBlack })
-		UI.Label(box, n == 0 and "None: the artist is alone on stage." or (n .. " dancer" .. (n == 1 and "" or "s") .. ": +" .. Util.money(n * Config.DANCER_COST) .. " per show, better reviews (not in clubs)"), UI.px(16, 36), UI.px(440, 40), { textSize = 13, color = T.sub, wrap = true })
-		local function set(v)
-			self.draft.dancers = math.clamp(v, 0, Config.MAX_DANCERS)
-			self:saveDraft()
-			self:refresh()
+		-- your signed dancers as chips: click to take them on the tour (busy ones are grey)
+		local Dancers = require(Root.Data.Dancers)
+		local chosen = {}
+		self.draft.dancerIds = self.draft.dancerIds or {}
+		for _, id in ipairs(self.draft.dancerIds) do
+			chosen[id] = true
 		end
-		UI.Button(box, "-", UI.px(476, 16), UI.px(52, 52), { textSize = 22 }, function()
-			set(n - 1)
-		end).Name = "DancersDown"
-		UI.Label(box, tostring(n), UI.px(530, 16), UI.px(80, 52), { textSize = 28, font = UI.FontBlack, alignX = Enum.TextXAlignment.Center })
-		UI.Button(box, "+", UI.px(612, 16), UI.px(52, 52), { textSize = 22, color = T.accent }, function()
-			set(n + 1)
-		end).Name = "DancersUp"
+		local box = UI.New("Frame", { Parent = body, Name = "Dancers", Position = UI.px(1060, 6), Size = UI.px(820, 90), BackgroundColor3 = T.panel, BorderSizePixel = 0, UI.Corner(12), UI.Stroke(T.stroke, 1, 0) })
+		local cost = 0
+		for _, id in ipairs(self.draft.dancerIds) do
+			cost = cost + ((Dancers.byId[id] and Dancers.byId[id].perShow) or 0)
+		end
+		UI.Label(box, "DANCERS" .. ((#self.draft.dancerIds > 0) and ("  " .. #self.draft.dancerIds .. "  |  " .. Util.money(cost) .. " per show") or ""), UI.px(14, 6), UI.px(600, 22), { textSize = 15, font = UI.FontBlack })
+		local x = 14
+		local any = false
+		for _, d in ipairs(Dancers.list) do
+			if GS.myDancers(state)[d.id] then
+				any = true
+				local busy = GS.dancerBusy(state, d.id)
+				local on = chosen[d.id] == true
+				local w = #d.name * 9 + 40
+				if x + w < 800 then
+					local b = UI.Button(box, d.name .. " " .. math.floor(GS.myDancers(state)[d.id].skill), UI.px(x, 36), UI.px(w, 42), { textSize = 13, color = on and T.accent or (busy and T.panel3 or T.panel2), disabled = busy ~= nil and not on }, function()
+						local ids = self.draft.dancerIds
+						if on then
+							for i, id in ipairs(ids) do
+								if id == d.id then
+									table.remove(ids, i)
+									break
+								end
+							end
+						elseif #ids < Config.MAX_DANCERS then
+							table.insert(ids, d.id)
+						end
+						self.draft.dancers = #ids
+						self:saveDraft()
+						self:refresh()
+					end)
+					b.Name = "Pick_" .. d.id
+					x = x + w + 8
+				end
+			end
+		end
+		if not any then
+			UI.Button(box, "Sign dancers in EXTRAS on the laptop", UI.px(14, 36), UI.px(400, 42), { textSize = 14, color = T.panel2 }, function()
+				local Laptop = require(Root.Client.Laptop)
+				Laptop.openApp(self.app, "extras")
+			end)
+		end
 	end
 	local list = UI.Scroll(body, UI.px(28, 100), UI.px(W - 56, 712))
 	UI.List(true, 14).Parent = list

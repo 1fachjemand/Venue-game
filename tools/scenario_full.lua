@@ -1264,6 +1264,18 @@ do
 	local card = scr and scr.frame:FindFirstChild("Ach_first_show", true)
 	log("achievements app", scr ~= nil, card ~= nil, #MOCK.texts("of 4%d unlocked"))
 	assert(card, "the achievements app shows the goals")
+	-- EXTRAS: sign a dancer, train them
+	local ex = a3.screens.extras
+	ex:show()
+	local sign = ex.frame:FindFirstChild("Sign_d_mika", true)
+	sign.MouseButton1Click:Fire() MOCK.runTasks()
+	for _ = 1, 4 do MOCK.step(1 / 30) end
+	log("dancer signed", a3.state.dancers and a3.state.dancers.d_mika ~= nil)
+	assert(a3.state.dancers.d_mika, "a dancer signed in EXTRAS")
+	local train = ex.frame:FindFirstChild("Train_d_mika", true)
+	train.MouseButton1Click:Fire() MOCK.runTasks()
+	MOCK.clickExact("Train")
+	assert(a3.state.dancers.d_mika.trainUntil > a3.state.day, "the dancer is training")
 	a3:closeLaptop()
 	for _ = 1, 10 do MOCK.step(1 / 30) end
 end

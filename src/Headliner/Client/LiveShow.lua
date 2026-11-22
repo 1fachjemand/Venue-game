@@ -224,6 +224,17 @@ function LiveShow.floatPose(ad)
 	return FLOAT_POSES[h % #FLOAT_POSES + 1]
 end
 LiveShow.RIDES = RIDES
+function LiveShow.dancerLooks(ids)
+	if type(ids) ~= "table" then
+		return nil
+	end
+	local Dancers = require(Root.Data.Dancers)
+	local out = {}
+	for i, id in ipairs(ids) do
+		out[i] = Dancers.byId[id] and Dancers.byId[id].look or nil
+	end
+	return out
+end
 -- the moves of an artist in a song: the genre's moves plus three signature moves of their own (the same in
 -- every show, different from artist to artist), calmer in the ballad, wilder in the finale
 local GENRE_MOVES = {
@@ -336,6 +347,11 @@ function LiveShow.planCrew(ad, color, segments, walks, env)
 		if env.dancers then
 			-- dancers wear matching outfits in the artist's colours
 			look = { skin = (i % 5) + 1, hair = ({ "pony", "short", "bun", "messy", "long" })[i % 5 + 1], hairColor = { 30, 24, 20 }, top = { 24, 24, 28 }, pants = { 24, 24, 28 }, shoes = { 240, 240, 240 }, acc = "none", jacket = ad.color }
+			-- your signed dancers keep their own face and hair (the costume is the tour's)
+			local own = env.dancerLooks and env.dancerLooks[i]
+			if own then
+				look.skin, look.hair, look.hairColor = own.skin or look.skin, own.hair or look.hair, own.hairColor or look.hairColor
+			end
 		end
 		local fig = People.new(Stage3D.peopleFolder, color:Lerp(Color3.new(1, 1, 1), 0.35), 1.45, "dancer", 20 + i, look)
 		table.insert(crew, { p = fig, i = i, plan = {}, phase = rng:NextNumber() * 6, yaw = 0 })
@@ -1060,6 +1076,7 @@ function LiveShow.run(app, opts)
 			nav = NAV,
 			start = home,
 			dancers = (dancers > 0) and dancers or nil,
+			dancerLooks = LiveShow.dancerLooks(opts.dancerIds),
 		})
 	end
 	LiveShow.lastCrew = crew -- for the automated tests

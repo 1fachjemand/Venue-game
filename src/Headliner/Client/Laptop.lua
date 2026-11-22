@@ -27,6 +27,7 @@ Laptop.APPS = {
 	{ id = "social", name = "Socials", color = Color3.fromRGB(219, 39, 119), glyph = "bubble", screen = "social" },
 	{ id = "stats", name = "Statistics", color = Color3.fromRGB(234, 88, 12), glyph = "bars", screen = "stats" },
 	{ id = "achievements", name = "Achievements", color = Color3.fromRGB(202, 138, 4), glyph = "trophy", screen = "achievements" },
+	{ id = "extras", name = "Extras", color = Color3.fromRGB(236, 72, 153), glyph = "person", screen = "extras" },
 	{ id = "settings", name = "Settings", color = Color3.fromRGB(100, 116, 139), glyph = "gear", screen = nil },
 }
 local APP_BY_ID = {}
@@ -179,7 +180,8 @@ function Laptop.buildIcons(app)
 	local lt = L(app)
 	UI.ClearChildren(lt.iconLayer)
 	for i, a in ipairs(Laptop.APPS) do
-		local pos = lt.icons[a.id] or { 28, 84 + (i - 1) * 126 }
+		-- six icons per column (the desktop is not tall enough for more)
+		local pos = lt.icons[a.id] or { 28 + math.floor((i - 1) / 6) * 132, 84 + ((i - 1) % 6) * 126 }
 		lt.icons[a.id] = pos
 		local b = New("TextButton", { Parent = lt.iconLayer, Name = "Icon_" .. a.id, Position = UI.px(pos[1], pos[2]), Size = UI.px(116, 122), BackgroundColor3 = T.accent, BackgroundTransparency = 1, AutoButtonColor = false, Text = "", UI.Corner(10) })
 		appTile(b, a, 68, UI.px(24, 8))

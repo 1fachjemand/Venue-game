@@ -99,7 +99,7 @@ local function render(inst, px, py, pw, ph, out, forced, ox, oy)
 		end
 		local times, seen = {}, {}
 		for _, seq in ipairs({ grad.Color, grad.Transparency }) do
-			for _, kp in ipairs((seq and seq.Keypoints) or {}) do
+			for _, kp in ipairs((type(seq) == "table" and seq.Keypoints) or {}) do
 				if not seen[kp.Time] then seen[kp.Time] = true table.insert(times, kp.Time) end
 			end
 		end
@@ -109,7 +109,7 @@ local function render(inst, px, py, pw, ph, out, forced, ox, oy)
 			local c0 = at(grad.Color, tt, true)
 			local bgc = inst.BackgroundColor3
 			local c = Color3.new(c0.R * bgc.R, c0.G * bgc.G, c0.B * bgc.B) -- (Roblox multiplies them)
-			local tr = (grad.Transparency and grad.Transparency.Keypoints) and at(grad.Transparency, tt, false) or 0
+			local tr = (type(grad.Transparency) == "table" and grad.Transparency.Keypoints) and at(grad.Transparency, tt, false) or 0
 			tr = 1 - (1 - tr) * (1 - inst.BackgroundTransparency)
 			table.insert(stops, rgb(c, tr) .. " " .. string.format("%.1f%%", tt * 100))
 		end
