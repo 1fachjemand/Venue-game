@@ -183,6 +183,11 @@ CFrame = {
 	end,
 	Angles = angles,
 	fromEulerAnglesXYZ = angles,
+	fromMatrix = function(pos, vX, vY, vZ)
+		assert(isV3(pos) and isV3(vX) and isV3(vY), "CFrame.fromMatrix expects Vector3s")
+		vZ = vZ or vX:Cross(vY)
+		return cf(pos, { vX.X, vY.X, vZ.X, vX.Y, vY.Y, vZ.Y, vX.Z, vY.Z, vZ.Z })
+	end,
 	lookAt = function(eye, at)
 		assert(isV3(eye) and isV3(at), "CFrame.lookAt expects Vector3s")
 		local look = (at - eye).Unit

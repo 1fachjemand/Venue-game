@@ -199,14 +199,51 @@ local FX_HIT = { pyro = "pyro", flamebar = "pyro", sparks = "sparks", sparkrain 
 
 -- the moves of the artist at an instrument (they change every 4 seconds)
 -- special elements the artist rides: where they stand (y over the item or "under" it on the stage), their move
+-- (the artist always walks there: the element waits until they have arrived, refs.readyAt)
 local RIDES = {
 	showerstage = { y = 1.2, move = "rain" },
-	gownriser = { y = 1.55, move = "gown" },
-	floatplat = { y = 0.85, move = "float" },
+	gownriser = { y = 1.45, move = "gown" },
+	floatplat = { y = 0.65, move = "float" },
 	flyharness = { under = true, move = "fly" },
-	descendcube = { under = true, move = "float", teleport = true },
+	descendcube = { y = 0.8, move = "float" },
 }
+-- what an artist does up on the floating platform: their own pose, the same on every show
+local FLOAT_POSES = { "lie", "sitedge", "kneel", "lie", "pose", "sitedge" }
+function LiveShow.floatPose(ad)
+	local h = 0
+	for i = 1, #ad.id do
+		h = (h * 31 + string.byte(ad.id, i)) % 9973
+	end
+	return FLOAT_POSES[h % #FLOAT_POSES + 1]
+end
 LiveShow.RIDES = RIDES
+-- the artist on a special element: the element starts when they have arrived (refs.readyAt); it carries
+-- them (refs.ride.pos) and gives the move. Returns the new position and move.
+function LiveShow.rideStep(curWalk, seg, walking, t, leadPos, move, ad)
+	local rideItem = curWalk and curWalk.play and curWalk.play.item
+	if not rideItem or walking or seg.song ~= curWalk.spot then
+		return leadPos, move
+	end
+	if RIDES[rideItem.kind] and rideItem.readySong ~= seg.song then
+		-- the artist has arrived: now the element may start (it never leaves without them)
+		rideItem.readySong, rideItem.readyAt = seg.song, t
+	end
+	local ride = rideItem.ride
+	if not ride then
+		return leadPos, move
+	end
+	if ride.move then
+		move = ride.move
+	end
+	if ride.posing then
+		-- up on the floating platform: stand and wave first, then the artist's own pose
+		move = (t - (rideItem.readyAt or t) < 11) and "wave" or LiveShow.floatPose(ad)
+	end
+	if curWalk.play.move == "rain" and not rideItem.raining then
+		move = "idle"
+	end
+	return ride.pos, move
+end
 local PLAY_MOVES = {
 	piano = { "piano", "pianosway", "piano" },
 	keys = { "keys", "keys", "keyshype" },
@@ -1421,16 +1458,7 @@ function LiveShow.run(app, opts)
 			leadYaw = curWalk.play.yaw
 		end
 		-- a special element moves the artist (up in the cube, on the dress, flying ...)
-		local rideItem = curWalk and curWalk.play and curWalk.play.item
-		if rideItem and rideItem.ride and not walking and seg.song == curWalk.spot then
-			leadPos = rideItem.ride.pos
-			if rideItem.ride.move then
-				move = rideItem.ride.move
-			end
-			if curWalk.play.move == "rain" and not rideItem.raining and t < curWalk[1] + 5 then
-				move = "idle"
-			end
-		end
+		leadPos, move = LiveShow.rideStep(curWalk, seg, walking, t, leadPos, move, ad)
 		local armsUp = 0
 		if LiveShow.popping then
 			move = "pop"

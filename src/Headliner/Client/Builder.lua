@@ -1904,66 +1904,6 @@ local function smooth(x, a, b)
 end
 Builder.smooth = smooth
 
--- shower stage (like the rain B-stage of a big arena tour): a round platform with a ring of warm lights at
--- the edge and a huge round shower head high above; in its song the rain pours down all over it
-function B.showerstage(m, r)
-	local w = 18
-	local plat = cyl(m, "Deck", 1.2, w, CFrame.new(0, 0.6, 0), Color3.fromRGB(18, 18, 22), Enum.Material.SmoothPlastic)
-	plat.Reflectance = 0.08
-	r.surfaces = { plat }
-	r.wetParts = { plat }
-	r.edgeLights = {}
-	for i = 0, 23 do
-		local a = i / 24 * math.pi * 2
-		local c = CFrame.new(math.sin(a) * (w / 2 + 0.35), 0.75, math.cos(a) * (w / 2 + 0.35)) * CFrame.Angles(0, a, 0)
-		part(m, "EdgeLamp", Vector3.new(0.9, 0.9, 0.5), c, Color3.fromRGB(30, 30, 34), Enum.Material.Metal)
-		table.insert(r.edgeLights, part(m, "EdgeBulb", Vector3.new(0.6, 0.6, 0.08), c * CFrame.new(0, 0, 0.28), Color3.fromRGB(255, 214, 150), Enum.Material.Neon))
-	end
-	-- the shower head: a big dark disc with a ring of nozzles, on three steel cables
-	local hy = 32
-	cyl(m, "ShowerHead", 0.8, w + 2, CFrame.new(0, hy, 0), Color3.fromRGB(40, 42, 48), Enum.Material.Metal)
-	cyl(m, "ShowerRim", 0.4, w + 2.6, CFrame.new(0, hy - 0.45, 0), Color3.fromRGB(150, 150, 158), Enum.Material.Metal)
-	for ring = 1, 3 do
-		local rr = ring * w / 7
-		for k = 0, ring * 8 - 1 do
-			local a = k / (ring * 8) * math.pi * 2
-			part(m, "ShowerNozzle", Vector3.new(0.3, 0.2, 0.3), CFrame.new(math.sin(a) * rr, hy - 0.5, math.cos(a) * rr), DARK)
-		end
-	end
-	for k = 0, 2 do
-		local a = k / 3 * math.pi * 2
-		part(m, "ShowerCable", Vector3.new(0.1, 14, 0.1), CFrame.new(math.sin(a) * (w / 2), hy + 7.4, math.cos(a) * (w / 2)), Color3.fromRGB(170, 170, 176), Enum.Material.Metal)
-	end
-	r.showerLights = {}
-	for k = 0, 3 do
-		local a = k / 4 * math.pi * 2 + 0.4
-		local lp = part(m, "ShowerSpot", Vector3.new(0.8, 0.6, 0.8), CFrame.new(math.sin(a) * 5, hy - 0.7, math.cos(a) * 5), DARK, Enum.Material.Metal)
-		local sl = New("SpotLight", { Face = Enum.NormalId.Bottom, Angle = 60, Range = 40, Brightness = 0, Color = Color3.fromRGB(235, 240, 255), Shadows = false, Parent = lp })
-		table.insert(r.showerLights, sl)
-	end
-	r.rainSrc = part(m, "RainSource", Vector3.new(w - 2, 0.1, w - 2), CFrame.new(0, hy - 0.8, 0), DARK)
-	r.rainSrc.Transparency = 1
-	r.rain = New("ParticleEmitter", {
-		Enabled = false,
-		Rate = 900,
-		EmissionDirection = Enum.NormalId.Bottom,
-		Lifetime = NumberRange.new((hy - 1.5) / 62, (hy - 1.5) / 56),
-		Speed = NumberRange.new(56, 62),
-		SpreadAngle = Vector2.new(0, 1),
-		Size = NumberSequence.new(0.08),
-		Squash = NumberSequence.new(2.8),
-		Orientation = Enum.ParticleOrientation.VelocityParallel,
-		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(0.85, 0.3), NumberSequenceKeypoint.new(1, 1) }),
-		Color = ColorSequence.new(Color3.fromRGB(225, 235, 255)),
-		LightEmission = 0.7,
-		LightInfluence = 0.4,
-		Parent = r.rainSrc,
-	})
-	r.mistSrc = part(m, "MistSource", Vector3.new(w - 2, 0.1, w - 2), CFrame.new(0, 1.4, 0), DARK)
-	r.mistSrc.Transparency = 1
-	r.mist = New("ParticleEmitter", { Enabled = false, Rate = 30, Texture = TEX_SMOKE, Lifetime = NumberRange.new(1, 1.8), Speed = NumberRange.new(1, 3), SpreadAngle = Vector2.new(70, 70), Size = NumberSequence.new(2, 6), Transparency = NumberSequence.new(0.8, 1), Color = ColorSequence.new(Color3.fromRGB(225, 235, 250)), Parent = r.mistSrc })
-end
-
 -- flying harness: a winch on a track in the rig; in its song the artist is lifted up, flies out over the
 -- front of the stage and back, and comes down again
 function B.flyharness(m, r)
@@ -1974,73 +1914,6 @@ function B.flyharness(m, r)
 	table.insert(r.trolleyOff, CFrame.new(0, -1.6, 0) * CFrame.Angles(0, 0, math.pi / 2))
 	r.cable = part(m, "HarnessCable", Vector3.new(0.08, 6, 0.08), CFrame.new(0, -5.4, 0), Color3.fromRGB(30, 30, 34))
 	r.harness = part(m, "Harness", Vector3.new(1.6, 0.2, 0.3), CFrame.new(0, -8.5, 0), Color3.fromRGB(30, 30, 34))
-end
-
--- descending cube: a glowing glass cube in the rig; at the start of its song it comes down to the stage with
--- the artist inside, then flies up again
-function B.descendcube(m, r)
-	r.cubeAll = {}
-	local function add(p)
-		table.insert(r.cubeAll, { p, p.CFrame })
-		return p
-	end
-	local W, H = 8, 10
-	local top = -6
-	r.cubeH = H
-	r.neon = {}
-	for _, x in ipairs({ -W / 2, W / 2 }) do
-		for _, z in ipairs({ -W / 2, W / 2 }) do
-			table.insert(r.neon, add(part(m, "CubeEdge", Vector3.new(0.3, H, 0.3), CFrame.new(x, top - H / 2, z), r.color, Enum.Material.Neon)))
-		end
-	end
-	for _, y in ipairs({ top, top - H }) do
-		for _, z in ipairs({ -W / 2, W / 2 }) do
-			table.insert(r.neon, add(part(m, "CubeEdge", Vector3.new(W, 0.3, 0.3), CFrame.new(0, y, z), r.color, Enum.Material.Neon)))
-		end
-		for _, x in ipairs({ -W / 2, W / 2 }) do
-			table.insert(r.neon, add(part(m, "CubeEdge", Vector3.new(0.3, 0.3, W), CFrame.new(x, y, 0), r.color, Enum.Material.Neon)))
-		end
-	end
-	r.cubeGlass = {}
-	for k = 0, 3 do
-		local a = k * math.pi / 2
-		local g = add(part(m, "CubeGlass", Vector3.new(W, H, 0.1), CFrame.new(math.sin(a) * W / 2, top - H / 2, math.cos(a) * W / 2) * CFrame.Angles(0, a, 0), r.color, Enum.Material.Glass))
-		g.Transparency = 0.6
-		table.insert(r.cubeGlass, g)
-	end
-	add(part(m, "CubeFloor", Vector3.new(W, 0.3, W), CFrame.new(0, top - H, 0), DARK, Enum.Material.Metal))
-	r.cables = {}
-	for _, c in ipairs({ { -W / 2, -W / 2 }, { W / 2, W / 2 } }) do
-		table.insert(r.cables, { part(m, "CubeCable", Vector3.new(0.08, 6, 0.08), CFrame.new(c[1], -3, c[2]), Color3.fromRGB(170, 170, 176), Enum.Material.Metal), c })
-	end
-	r.cubeTop = top
-end
-
--- gown riser: a giant dress in layers; in its song the artist stands on top and it rises high up
-function B.gownriser(m, r)
-	r.layers = {}
-	local cols = { Color3.fromRGB(150, 16, 30), Color3.fromRGB(170, 20, 36), Color3.fromRGB(150, 16, 30), Color3.fromRGB(180, 24, 40), Color3.fromRGB(160, 18, 34) }
-	for i = 0, 4 do
-		local d = 18 - i * 2.8
-		local p = cyl(m, "GownLayer", 0.3, d, CFrame.new(0, 0.3, 0), cols[i + 1], Enum.Material.Fabric)
-		table.insert(r.layers, { p = p, d = d })
-	end
-	r.top = cyl(m, "GownTop", 0.3, 3.6, CFrame.new(0, 1.4, 0), Color3.fromRGB(120, 10, 24), Enum.Material.Fabric)
-	r.surfaces = { r.top }
-	r.gownUp = -1
-end
-
--- floating platform: a flat platform with a glowing underside on four cables; in its song it lifts the artist
--- up and floats out over the fans and back
-function B.floatplat(m, r)
-	r.plat = part(m, "FloatDeck", Vector3.new(10, 0.8, 10), CFrame.new(0, 0.4, 0), Color3.fromRGB(24, 24, 28), Enum.Material.Metal)
-	r.under = part(m, "FloatGlow", Vector3.new(9.4, 0.1, 9.4), CFrame.new(0, -0.02, 0), r.color, Enum.Material.Neon)
-	r.neon = { r.under }
-	r.cables = {}
-	for _, c in ipairs({ { -4.7, -4.7 }, { 4.7, -4.7 }, { -4.7, 4.7 }, { 4.7, 4.7 } }) do
-		table.insert(r.cables, { part(m, "FloatCable", Vector3.new(0.08, 30, 0.08), CFrame.new(c[1], 15.8, c[2]), Color3.fromRGB(170, 170, 176), Enum.Material.Metal), c })
-	end
-	r.surfaces = { r.plat }
 end
 
 ------------------------------------------------------------------ set pieces after real tours
@@ -2102,39 +1975,6 @@ function B.housefront(m, r)
 	end
 	r.neon = {}
 end
--- a burnt, broken house overgrown with flowers
-function B.ruinedhouse(m, r)
-	local burnt = Color3.fromRGB(46, 36, 32)
-	local wood = Color3.fromRGB(90, 70, 56)
-	part(m, "RuinWall", Vector3.new(14, 16, 1), CFrame.new(-8, 8, -2), burnt, Enum.Material.WoodPlanks)
-	part(m, "RuinWall", Vector3.new(10, 10, 1), CFrame.new(6, 5, -2) * CFrame.Angles(0, 0, 0.06), burnt, Enum.Material.WoodPlanks)
-	part(m, "RuinSide", Vector3.new(1, 12, 10), CFrame.new(-15, 6, 3), burnt, Enum.Material.WoodPlanks)
-	part(m, "FallenRoof", Vector3.new(16, 0.8, 8), CFrame.new(2, 9, 1) * CFrame.Angles(0.2, 0.3, -0.45), wood, Enum.Material.WoodPlanks)
-	part(m, "Beam", Vector3.new(0.8, 0.8, 14), CFrame.new(-4, 4, 3) * CFrame.Angles(0.5, 0.2, 0), wood, Enum.Material.Wood)
-	part(m, "WindowHole", Vector3.new(4, 4, 0.2), CFrame.new(-8, 10, -1.4), Color3.fromRGB(10, 10, 12))
-	part(m, "Puddle", Vector3.new(12, 0.05, 6), CFrame.new(0, 0.03, 4), Color3.fromRGB(40, 60, 90), Enum.Material.Glass).Reflectance = 0.3
-	local cols = { Color3.fromRGB(255, 170, 200), Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 120, 170), Color3.fromRGB(250, 220, 120) }
-	for i = 1, 34 do
-		local a = i * 2.39
-		local x, y = -14 + (i * 5.7) % 28, (i % 7) * 2.2 + 0.5
-		part(m, "Flower", Vector3.new(1.3, 1.3, 1.3), CFrame.new(x, y, -1.2 + math.sin(a) * 0.4), cols[i % 4 + 1], Enum.Material.SmoothPlastic, Enum.PartType.Ball)
-		part(m, "Leaf", Vector3.new(1.2, 0.2, 0.6), CFrame.new(x + 0.6, y - 0.6, -1.1) * CFrame.Angles(0, 0, a), Color3.fromRGB(70, 140, 70))
-	end
-end
--- a wall of flowers (any size)
-function B.flowerwall(m, r)
-	local w, h = dims(r, r.def)
-	part(m, "Greenery", Vector3.new(w, h, 1), CFrame.new(0, h / 2, -0.2), Color3.fromRGB(56, 110, 56), Enum.Material.Grass)
-	local cols = { Color3.fromRGB(255, 170, 200), Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 120, 170), Color3.fromRGB(250, 220, 120), Color3.fromRGB(200, 150, 255) }
-	local n = math.clamp(math.floor(w * h / 5), 10, 160)
-	for i = 1, n do
-		local x = -w / 2 + 0.8 + ((i * 0.618) % 1) * (w - 1.6)
-		local y = 0.8 + ((i * 0.381 + i / n) % 1) * (h - 1.6)
-		local d = 0.9 + (i % 3) * 0.35
-		part(m, "Flower", Vector3.new(d, d, d), CFrame.new(x, y, 0.4), cols[i % 5 + 1], Enum.Material.SmoothPlastic, Enum.PartType.Ball)
-	end
-end
-
 function B.rimfireworks(m, r)
 	-- the firing system: a case with a key switch and an antenna; the shells start from the stadium roof
 	part(m, "Case", Vector3.new(2.4, 1.4, 1.6), CFrame.new(0, 0.7, 0), Color3.fromRGB(30, 32, 36), Enum.Material.Metal)
@@ -3017,25 +2857,6 @@ function B.skyline(m, r)
 	end
 end
 
-function B.flowers(m, r)
-	-- flower garden: soil bed with an edge, stems, leaves and blossoms with a centre
-	part(m, "Edge", Vector3.new(10.4, 1, 6.4), CFrame.new(0, 0.5, 0), Color3.fromRGB(120, 100, 80), Enum.Material.Brick)
-	part(m, "Bed", Vector3.new(10, 1.1, 6), CFrame.new(0, 0.55, 0), Color3.fromRGB(60, 40, 30), Enum.Material.Ground)
-	local cols = { Color3.fromRGB(255, 90, 140), Color3.fromRGB(255, 220, 80), Color3.fromRGB(255, 255, 255), Color3.fromRGB(190, 120, 255), Color3.fromRGB(255, 130, 60) }
-	for i = 0, 27 do
-		local x, z = -4.3 + (i % 7) * 1.45, -2.2 + math.floor(i / 7) * 1.45
-		local h = 1.2 + (i * 3 % 4) * 0.35
-		part(m, "Stem", Vector3.new(0.12, h, 0.12), CFrame.new(x, 1.1 + h / 2, z), Color3.fromRGB(50, 120, 50))
-		oval(m, "Leaf", Vector3.new(0.7, 0.12, 0.35), CFrame.new(x + 0.25, 1.4 + h * 0.4, z) * CFrame.Angles(0, i, 0.4), Color3.fromRGB(60, 140, 60))
-		local d = 0.9 + (i * 7 % 5) * 0.12
-		local top = CFrame.new(x, 1.15 + h, z)
-		for k = 0, 4 do
-			oval(m, "Petal", Vector3.new(d * 0.55, 0.12, d * 0.3), top * CFrame.Angles(0, k * math.pi * 2 / 5, 0) * CFrame.new(d * 0.3, 0, 0), cols[i % #cols + 1])
-		end
-		part(m, "Centre", Vector3.new(d * 0.35, d * 0.35, d * 0.35), top + Vector3.new(0, 0.08, 0), Color3.fromRGB(240, 190, 40), Enum.Material.SmoothPlastic, Enum.PartType.Ball)
-	end
-end
-
 function B.chair(m, r)
 	-- wooden chair with turned legs, stretchers and a slatted back
 	local wood = Color3.fromRGB(120, 80, 50)
@@ -3375,57 +3196,6 @@ function B.choir(m, r)
 end
 
 ------------------------------------------------------------------ new set pieces
-function B.vintagecar(m, r)
-	-- 1950s convertible: long body with fins, chrome bumpers, round lights, white-wall tyres
-	local paint = r.color:Lerp(Color3.fromRGB(200, 40, 50), 0.5)
-	oval(m, "Body", Vector3.new(6, 2.6, 15), CFrame.new(0, 2.2, 0), paint, Enum.Material.SmoothPlastic)
-	part(m, "Hood", Vector3.new(5.6, 1, 5), CFrame.new(0, 3, -4.5), paint)
-	part(m, "Trunk", Vector3.new(5.6, 1, 4), CFrame.new(0, 3, 5), paint)
-	for _, x in ipairs({ -2.6, 2.6 }) do
-		New("WedgePart", { Name = "Fin", Size = Vector3.new(0.4, 1.4, 3.6), CFrame = CFrame.new(x, 4.1, 5.5) * CFrame.Angles(0, math.pi, 0), Color = paint, Material = Enum.Material.SmoothPlastic, Anchored = true, CanCollide = false, CanTouch = false, CastShadow = false, Parent = m })
-		for _, z in ipairs({ -4.6, 4.6 }) do
-			cyl(m, "Tyre", 1, 2.4, CFrame.new(x, 1.2, z) * CFrame.Angles(0, 0, -math.pi / 2), Color3.fromRGB(20, 20, 22))
-			cyl(m, "WhiteWall", 1.05, 1.5, CFrame.new(x, 1.2, z) * CFrame.Angles(0, 0, -math.pi / 2), Color3.fromRGB(240, 240, 240))
-			cyl(m, "Hubcap", 1.1, 0.8, CFrame.new(x, 1.2, z) * CFrame.Angles(0, 0, -math.pi / 2), Color3.fromRGB(210, 210, 220), Enum.Material.Metal)
-		end
-	end
-	part(m, "Windshield", Vector3.new(5, 1.6, 0.15), CFrame.new(0, 4.1, -2) * CFrame.Angles(-0.4, 0, 0), Color3.fromRGB(180, 210, 230), Enum.Material.Glass).Transparency = 0.4
-	part(m, "Seat", Vector3.new(5, 1.2, 1.6), CFrame.new(0, 3.3, 0.6), Color3.fromRGB(240, 235, 220), Enum.Material.Leather)
-	part(m, "SeatBack", Vector3.new(4.92, 1.6, 0.5), CFrame.new(0, 4.1, 1.5), Color3.fromRGB(240, 235, 220), Enum.Material.Leather)
-	cyl(m, "Wheel", 0.15, 1.2, CFrame.new(-1.2, 3.9, -0.9) * CFrame.Angles(math.pi / 2 - 0.5, 0, 0), Color3.fromRGB(240, 235, 220))
-	for _, z in ipairs({ -7.6, 7.6 }) do
-		part(m, "Bumper", Vector3.new(6.2, 0.6, 0.6), CFrame.new(0, 1.5, z), Color3.fromRGB(220, 220, 230), Enum.Material.Metal)
-	end
-	r.neon = {}
-	for _, x in ipairs({ -2, 2 }) do
-		table.insert(r.neon, cyl(m, "HeadLight", 0.3, 1, CFrame.new(x, 2.4, -7.5) * CFrame.Angles(math.pi / 2, 0, 0), Color3.fromRGB(255, 250, 220), Enum.Material.Neon))
-		part(m, "TailLight", Vector3.new(0.6, 0.6, 0.2), CFrame.new(x * 1.2, 3.6, 7.35), Color3.fromRGB(255, 40, 40), Enum.Material.Neon)
-	end
-end
-
-function B.motorbike(m, r)
-	-- chopper on a kickstand: two wheels with spokes, tank, long fork, high handlebars
-	local chrome = Color3.fromRGB(210, 210, 220)
-	for _, z in ipairs({ -3.4, 3 }) do
-		cyl(m, "Tyre", 0.7, 2.8, CFrame.new(0, 1.4, z) * CFrame.Angles(0, 0, -math.pi / 2), Color3.fromRGB(20, 20, 22))
-		cyl(m, "Rim", 0.75, 2, CFrame.new(0, 1.4, z) * CFrame.Angles(0, 0, -math.pi / 2), chrome, Enum.Material.Metal)
-		cyl(m, "Hub", 0.8, 0.6, CFrame.new(0, 1.4, z) * CFrame.Angles(0, 0, -math.pi / 2), Color3.fromRGB(40, 40, 44), Enum.Material.Metal)
-	end
-	tube(m, Vector3.new(0, 1.4, -3.4), Vector3.new(0, 4.6, -2), 0.25, chrome)
-	tube(m, Vector3.new(0, 1.4, 3), Vector3.new(0, 2.6, 0.5), 0.25, chrome)
-	part(m, "Engine", Vector3.new(1.4, 1.6, 2), CFrame.new(0, 2, 0.3), Color3.fromRGB(60, 60, 66), Enum.Material.Metal)
-	for k = 0, 4 do
-		part(m, "Fin", Vector3.new(1.6, 0.1, 1.6), CFrame.new(0, 2.6 + k * 0.25, 0.16), chrome, Enum.Material.Metal)
-	end
-	oval(m, "Tank", Vector3.new(1.6, 1.2, 2.8), CFrame.new(0, 3.6, -0.6), r.color, Enum.Material.SmoothPlastic)
-	oval(m, "Seat", Vector3.new(1.3, 0.5, 2.6), CFrame.new(0, 3.3, 1.6), Color3.fromRGB(30, 22, 18), Enum.Material.Leather)
-	tube(m, Vector3.new(-1.4, 6, -2.2), Vector3.new(1.4, 6, -2.2), 0.18, chrome)
-	tube(m, Vector3.new(0, 4.6, -2), Vector3.new(0, 6, -2.2), 0.2, chrome)
-	cyl(m, "Lamp", 0.5, 0.9, CFrame.new(0, 4.4, -2.5) * CFrame.Angles(math.pi / 2, 0, 0), Color3.fromRGB(255, 250, 220), Enum.Material.Neon)
-	tube(m, Vector3.new(0.7, 1.4, 1), Vector3.new(0.9, 1.3, 4), 0.35, chrome)
-	tube(m, Vector3.new(-0.3, 1.8, 0.2), Vector3.new(-1.2, 0.05, 0.8), 0.12, METAL)
-end
-
 function B.throne(m, r)
 	-- royal throne on a dais: high carved back, armrests, velvet cushions, gold trim
 	local gold = Color3.fromRGB(214, 172, 66)
@@ -3927,8 +3697,9 @@ local ARTIST_MARK = {
 	djbooth = { 0, 0, -3.2, false, false },
 	micstand = { 0, 0, -2.3, false, false },
 	showerstage = { 0, 1.2, 0, false, false },
-	gownriser = { 0, 1.55, 0, false, false },
-	floatplat = { 0, 0.8, 0, false, false },
+	gownriser = { 0, 1.45, 0, false, false },
+	floatplat = { 0, 0.65, 0, false, false },
+	descendcube = { 0, 0.8, 0, false, false },
 	band_drums = { 0, 1, -1.8, false, true },
 	band_guitar = { 0, 0, 0, false, false },
 	band_bass = { 0, 0, 0, false, false },
@@ -4065,6 +3836,10 @@ local SIDE_ANIM = { sidewash = "par", sidebeam = "beambar", sideblinder = "blind
 
 -- the special elements and moving screens (see LiveShow: refs.ride = where the artist stands)
 function Builder.animateExtra(refs, ctx)
+	-- the special elements of Client/Models.lua animate themselves
+	if Builder.modelsAnimate and Builder.modelsAnimate(refs, ctx) then
+		return
+	end
 	local k = refs.kind
 	local rec = refs.rec or {}
 	local active = type(rec.play) == "number" and rec.play == ctx.songNum
@@ -4076,24 +3851,6 @@ function Builder.animateExtra(refs, ctx)
 			kp.cable.Size = Vector3.new(0.08, drop, 0.08)
 			kp.cable.CFrame = refs.cf * CFrame.new(kp.x, -drop / 2 - 0.4, 0)
 		end
-	elseif k == "showerstage" then
-		local on = active and f > 0.35 and f < 0.97
-		if refs.raining ~= on then
-			refs.raining = on
-			refs.rain.Enabled = on
-			refs.mist.Enabled = on
-			for _, sl in ipairs(refs.showerLights) do
-				sl.Brightness = on and 3 or 0
-			end
-			for _, p in ipairs(refs.wetParts) do
-				p.Reflectance = on and 0.3 or 0.08
-			end
-		end
-		local glow = active and 1 or 0.35
-		for i, b in ipairs(refs.edgeLights) do
-			b.Transparency = 1 - glow * (0.75 + 0.25 * math.sin((ctx.t or 0) * 2 + i))
-		end
-		refs.ride = nil
 	elseif k == "flyharness" then
 		local lift = 22 * smooth(f, 0.08, 0.2) * (1 - smooth(f, 0.85, 0.96))
 		local fwd = 28 * (smooth(f, 0.25, 0.45) - smooth(f, 0.6, 0.8))
@@ -4110,51 +3867,6 @@ function Builder.animateExtra(refs, ctx)
 		refs.cable.CFrame = CFrame.new(base.Position.X, topY - len / 2, base.Position.Z)
 		refs.harness.CFrame = CFrame.new(base.Position.X, hookY, base.Position.Z) * (refs.cf - refs.cf.Position)
 		refs.ride = (active and f > 0.06 and f < 0.97) and { pos = feet, move = (lift > 3) and "fly" or nil } or nil
-	elseif k == "descendcube" then
-		local seatY = refs.seatY or (refs.cf.Position.Y - 34)
-		local full = (refs.cf.Position.Y + refs.cubeTop - refs.cubeH) - seatY
-		local down = active and (smooth(f, 0.02, 0.2) - smooth(f, 0.3, 0.45)) or 0
-		local dy = full * down
-		for _, e in ipairs(refs.cubeAll) do
-			e[1].CFrame = refs.cf * CFrame.new(0, -dy, 0) * e[2] -- e[2]: built at the origin = local
-		end
-		for _, c in ipairs(refs.cables) do
-			local len = 6 + dy
-			c[1].Size = Vector3.new(0.08, len, 0.08)
-			c[1].CFrame = refs.cf * CFrame.new(c[2][1], -len / 2, c[2][2])
-		end
-		local blink = ((ctx.beatCount or 0) % 2 == 0) and ctx.c1 or ctx.c2
-		for _, g in ipairs(refs.cubeGlass) do
-			g.Color = blink or g.Color
-		end
-		local floorY = refs.cf.Position.Y + refs.cubeTop - refs.cubeH - dy
-		refs.ride = (active and f < 0.3) and { pos = Vector3.new(refs.cf.Position.X, floorY + 0.15, refs.cf.Position.Z) } or nil
-	elseif k == "gownriser" then
-		local up = active and (smooth(f, 0.05, 0.2) - smooth(f, 0.85, 0.97)) or 0
-		if math.abs(up - refs.gownUp) > 0.002 then
-			refs.gownUp = up
-			local H = 1.4 + 16 * up
-			for i, l in ipairs(refs.layers) do
-				local y0 = H * (i - 1) / 5
-				local hh = math.max(0.3, H / 5 + 0.2)
-				l.p.Size = Vector3.new(hh, l.d, l.d)
-				l.p.CFrame = refs.cf * CFrame.new(0, y0 + hh / 2, 0) * CFrame.Angles(0, 0, math.pi / 2)
-			end
-			refs.top.CFrame = refs.cf * CFrame.new(0, H + 0.15, 0) * CFrame.Angles(0, 0, math.pi / 2)
-		end
-		refs.ride = (active and up > 0.01) and { pos = (refs.cf * CFrame.new(0, 1.4 + 16 * up + 0.3, 0)).Position } or nil
-	elseif k == "floatplat" then
-		local up = active and (smooth(f, 0.05, 0.18) - smooth(f, 0.88, 0.97)) or 0
-		local fwd = active and 34 * (smooth(f, 0.18, 0.4) - smooth(f, 0.7, 0.88)) or 0
-		local c = refs.cf * CFrame.new(0, 12 * up, fwd)
-		refs.plat.CFrame = c * CFrame.new(0, 0.4, 0)
-		refs.under.CFrame = c * CFrame.new(0, -0.02, 0)
-		for _, cb in ipairs(refs.cables) do
-			local len = 30 - 12 * up
-			cb[1].Size = Vector3.new(0.08, len, 0.08)
-			cb[1].CFrame = c * CFrame.new(cb[2][1], 0.8 + len / 2, cb[2][2])
-		end
-		refs.ride = (active and (up > 0.01 or fwd > 0.5)) and { pos = (c * CFrame.new(0, 0.85, 0)).Position } or nil
 	end
 end
 
@@ -4917,5 +4629,27 @@ function Builder.rest(refs)
 		Builder.animate(refs, { t = 0, c1 = refs.color, c2 = refs.color, hit = {}, inflate = 0.25, beat = 0, beatCount = 0 })
 	end
 end
+
+-- the detailed models (cars, flowers, special elements, more shapes) live in Client/Models.lua
+require(Root.Client.Models).install(B, {
+	part = part,
+	cyl = cyl,
+	tube = tube,
+	arcTube = arcTube,
+	oval = oval,
+	New = New,
+	ringPieces = ringPieces,
+	dims = dims,
+	primPart = primPart,
+	primLook = primLook,
+	edge = edge,
+	beam = beam,
+	addLight = addLight,
+	smooth = smooth,
+	DARK = DARK,
+	METAL = METAL,
+	TEX_SMOKE = TEX_SMOKE,
+	Builder = Builder,
+})
 
 return Builder

@@ -873,6 +873,37 @@ do
 	assert(doneC and seen.before == 0 and seen.during == #job.parts and seen.hands and seen.after == 0, "the crew sets the acoustic set up and takes it away")
 	for _ = 1, 10 do MOCK.step(1 / 30) end
 end
+-- round 10: the special elements wait for the artist (floating platform, glass cube, shower), a lift used twice
+do
+	local r10 = { id = "r10_test", name = "R10", class = "Arena", layout = "end", items = {
+		{ t = "deck", x = 0, z = -14, r = 0, w = 70, d = 26, h = 6 },
+		{ t = "lift", x = 0, z = -10, r = 0, play = 1, play2 = 5 },
+		{ t = "floatplat", x = -20, z = -12, r = 0, play = 2 },
+		{ t = "descendcube", x = 20, z = -12, r = 0, play = 3 },
+		{ t = "showerstage", x = 0, z = -18, r = 0, play = 4 },
+	} }
+	local doneR = false
+	LiveShow.run(app, { artistId = "juno", design = r10, look = "arena", cap = 1000, sold = 900, tourName = "R10 Tour", tourId = "t98", preview = true, onDone = function() doneR = true end })
+	MOCK.click("^Speed") MOCK.click("^Speed")
+	local seen, early = {}, {}
+	local f = 0
+	while not doneR and f < 12000 do
+		MOCK.step(1 / 30)
+		f = f + 1
+		for _, r in ipairs(Stage3D.items) do
+			local moved = (r.kind == "floatplat" and (r.floatUp or 0) > 0.01) or (r.kind == "descendcube" and (r.cubeUp or 0) > 0.01) or (r.kind == "showerstage" and r.raining)
+			if moved then
+				seen[r.kind] = true
+				if r.readySong ~= r.rec.play then early[r.kind] = true end
+			end
+		end
+	end
+	log("round 10 specials moved", seen.floatplat, seen.descendcube, seen.showerstage, "before the artist was there", early.floatplat, early.descendcube, early.showerstage, "exit lift", LiveShow.lastExitLift ~= nil)
+	assert(seen.floatplat and seen.descendcube and seen.showerstage, "the special elements work in their songs")
+	assert(not early.floatplat and not early.descendcube and not early.showerstage, "no special element starts before the artist is on it")
+	assert(LiveShow.lastExitLift ~= nil, "the entrance lift is the exit lift too")
+	for _ = 1, 10 do MOCK.step(1 / 30) end
+end
 -- round 9: fans arrive before the show, the intro of the tour, the artist walks on, background dancers,
 -- a special element (the gown riser lifts the artist), artist visuals on a screen
 do

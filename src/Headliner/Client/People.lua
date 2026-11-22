@@ -297,7 +297,19 @@ function People:update(pos, yaw, opts)
 		lean = -0.15
 		bob = 0
 	end
+	if move == "sitedge" then
+		drop = 2 * s -- sitting right on the platform, legs stretched out
+		bob = 0
+		lean = -0.25
+	elseif move == "lie" or move == "gown" then
+		bob = 0
+	end
 	local root = CFrame.new(pos) * CFrame.Angles(0, yaw + hipYaw, 0) * CFrame.new(shiftX, bob + lift - drop, 0)
+	if move == "lie" then
+		-- lying on the back, the feet towards where they look, face up (the back just on the floor)
+		root = CFrame.new(pos + Vector3.new(0, 0.55 * s, 0)) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(-math.pi / 2, 0, 0) * CFrame.new(0, -2 * s, 0)
+		headPitch = -0.2 + math.sin(t * 0.8) * 0.08
+	end
 	local swing = (move == "walk") and math.sin(t * 9) * 0.6 or beatWave * 0.12 * e
 
 	-- legs
@@ -317,6 +329,10 @@ function People:update(pos, yaw, opts)
 		legLA, legRA = math.sin(t * 6.4) * 0.3, -math.sin(t * 6.4) * 0.3
 	elseif move == "pose" then
 		legLA, legRA = -0.25, 0.15
+	elseif move == "sitedge" then
+		legLA, legRA = -1.45 + math.sin(t * 1.3) * 0.12, -1.5 - math.sin(t * 1.3) * 0.12
+	elseif move == "lie" then
+		legLA, legRA = -0.85 + math.sin(t * 0.7) * 0.08, -0.05 -- one knee up
 	end
 	self.legL.CFrame = root * CFrame.new(-0.5 * s, 2 * s, 0) * CFrame.Angles(legLA, 0, 0) * CFrame.new(0, -1 * s, 0)
 	self.legR.CFrame = root * CFrame.new(0.5 * s, 2 * s, 0) * CFrame.Angles(legRA, 0, 0) * CFrame.new(0, -1 * s, 0)
@@ -470,6 +486,18 @@ function People:update(pos, yaw, opts)
 			rx, rz = -0.3, 1.45
 			lean = lean + 0.15
 			micAtMouth = false
+		end
+	elseif self.role == "lead" and (move == "lie" or move == "sitedge" or move == "gown") then
+		-- the mic stays at the mouth; lying: the free arm reaches up to the sky; sitting: leaning back on it;
+		-- in the giant dress: the free arm opens wide and slowly sweeps
+		rx, rz = -2.45, 0.9
+		micAtMouth = true
+		if move == "lie" then
+			lx, lz = -1.6 + math.sin(t * 0.9) * 0.25, -0.15
+		elseif move == "sitedge" then
+			lx, lz = 0.55, -0.35
+		else
+			lx, lz = -0.7 + math.sin(t * 0.8) * 0.3, -1.35
 		end
 	elseif self.role == "lead" and move == "standmic" then
 		-- singing into the Mic Stand on the stage: both hands on the mic, the hand mic is put away

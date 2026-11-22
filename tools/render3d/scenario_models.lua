@@ -54,7 +54,10 @@ for k, name in ipairs(list) do
 	for i, r in ipairs(Stage3D.items) do
 		local e = g.items[i]
 		if e and e.anim then
-			local ctx = { t = e.anim.t or 3, dt = 0.03, c1 = Color3.fromRGB(255, 60, 160), c2 = Color3.fromRGB(60, 200, 255), hit = {}, beat = 0, beatCount = 0, songNum = e.play or 1, songFrac = e.anim.songFrac or 0.5, intensity = 0.7 }
+			if e.anim.rt then
+				r.readySong, r.readyAt = e.play or 1, (e.anim.t or 30) - e.anim.rt
+			end
+			local ctx = { t = e.anim.t or 30, dt = 0.03, c1 = Color3.fromRGB(255, 60, 160), c2 = Color3.fromRGB(60, 200, 255), hit = {}, beat = 0, beatCount = 0, songNum = e.play or 1, songFrac = e.anim.songFrac or 0.5, intensity = 0.7 }
 			for _ = 1, e.anim.frames or 1 do Builder.animate(r, ctx) end
 		end
 	end
@@ -67,7 +70,7 @@ for k, name in ipairs(list) do
 			for _, ch in ipairs(d2:GetChildren()) do if ch.ClassName == "SpecialMesh" then shape = "Ellip" end end
 			local s, c = d2.Size, d2.Color
 			table.insert(parts, string.format('{"s":"%s","z":[%s,%s,%s],"c":[%d,%d,%d],"m":"%s","t":%s,"f":%s}', shape, num(s.X), num(s.Y), num(s.Z), math.floor(c.R * 255), math.floor(c.G * 255), math.floor(c.B * 255), d2.Material.Name, num(d2.Transparency), cfs(d2.CFrame)))
-			if d2:FindFirstAncestor("Design") or d2:FindFirstAncestorWhichIsA("Model") then
+			if d2:IsDescendantOf(Stage3D.designFolder) then
 				local p = d2.CFrame.Position
 				if math.abs(p.X) < 400 and math.abs(p.Z) < 400 then
 					lo = Vector3.new(math.min(lo.X, p.X), math.min(lo.Y, p.Y), math.min(lo.Z, p.Z))
@@ -78,7 +81,7 @@ for k, name in ipairs(list) do
 	end
 	local c = g.center or (lo + hi) / 2
 	local size = g.size or math.max(hi.X - lo.X, hi.Z - lo.Z, hi.Y - lo.Y, 8)
-	local dist = size * 0.95 + 6
+	local dist = size * (g.zoom or 0.62) + 3
 	local cams = {
 		CFrame.lookAt(c + Vector3.new(0, size * 0.25 + 2, dist), c),
 		CFrame.lookAt(c + Vector3.new(-dist * 0.7, size * 0.55 + 4, dist * 0.7), c),
