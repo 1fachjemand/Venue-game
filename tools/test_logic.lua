@@ -432,4 +432,11 @@ do
   end
   check(bad == 0, "no sections / tiers / seats in club posts (" .. bad .. ")")
 end
+-- an update with bigger level steps never takes a reached level away
+do
+  local st = GS.new("Old", "lila")
+  st.stats.tickets = 30000
+  st.levelSeen = 5
+  check(GS.level(st) == 5, "a reached level stays after an update (" .. GS.level(st) .. ")")
+end
 print("FAILS", fails)

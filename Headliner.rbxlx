@@ -1,10 +1,10 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
 <External>null</External>
 <External>nil</External>
-<Item class="Workspace" referent="RBX2CBDDA596A2644B8BE1D2FD11280B1EA"><Properties><string name="Name">Workspace</string><bool name="StreamingEnabled">false</bool></Properties></Item>
-<Item class="Lighting" referent="RBX0E2BAE2297CA4CF2AA06FCF26B7EC8A6"><Properties><string name="Name">Lighting</string><token name="Technology">4</token><bool name="GlobalShadows">false</bool></Properties></Item>
-<Item class="Players" referent="RBX98513CC77F1E46E28E9EBFAFB36A2486"><Properties><string name="Name">Players</string><bool name="CharacterAutoLoads">false</bool></Properties></Item>
-<Item class="ReplicatedStorage" referent="RBX9EE4D8D1A64844B78FF3ABEC085F9050"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="Folder" referent="RBXD565FE5CA94546CB8125C6289DDAF2B1"><Properties><string name="Name">Headliner</string></Properties><Item class="Folder" referent="RBX8BA57FFAF8C2497FAD3B6CC63224A5DC"><Properties><string name="Name">Client</string></Properties><Item class="ModuleScript" referent="RBX5BD0E4575AA6401F81FA23E52CF4342E"><Properties><string name="Name">App</string><ProtectedString name="Source"><![CDATA[-- Main client controller: talks to the server, HUD, the station screens, popups, shows.
+<Item class="Workspace" referent="RBXB4DAC0C9FF4F42EFB716D1C4E9741F73"><Properties><string name="Name">Workspace</string><bool name="StreamingEnabled">false</bool></Properties></Item>
+<Item class="Lighting" referent="RBX2F57EA3012F84A99BD707F6949C0483A"><Properties><string name="Name">Lighting</string><token name="Technology">4</token><bool name="GlobalShadows">false</bool></Properties></Item>
+<Item class="Players" referent="RBXD9676DD6725744F8A1DB0A54A7F6A178"><Properties><string name="Name">Players</string><bool name="CharacterAutoLoads">false</bool></Properties></Item>
+<Item class="ReplicatedStorage" referent="RBX2F5495588AEE4CE782B320572A58CC12"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="Folder" referent="RBX7C1CC78AA059455B8824247B012D3355"><Properties><string name="Name">Headliner</string></Properties><Item class="Folder" referent="RBX3752782F21394402AB0590C0273998E2"><Properties><string name="Name">Client</string></Properties><Item class="ModuleScript" referent="RBX566849B8AB244139A88147DE9417AB42"><Properties><string name="Name">App</string><ProtectedString name="Source"><![CDATA[-- Main client controller: talks to the server, HUD, the station screens, popups, shows.
 -- The game state lives on the server (src/server/GameServer). `app.state` is a copy that the
 -- server keeps up to date; every change goes through app:act(name, args).
 local Players = game:GetService("Players")
@@ -1725,7 +1725,7 @@ end
 
 return App
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX6B3792BB04214B79B738AA29A9479F79"><Properties><string name="Name">Builder</string><ProtectedString name="Source"><![CDATA[-- Builds 3D models for stage items and animates them during shows.
+<Item class="ModuleScript" referent="RBX4FE677A9EB944EFE95F6C3E9E9498396"><Properties><string name="Name">Builder</string><ProtectedString name="Source"><![CDATA[-- Builds 3D models for stage items and animates them during shows.
 -- Every item is built around the local origin (bottom centre for floor items, hanging point for rig items)
 -- and then moved into place with Builder.place().
 local TweenService = game:GetService("TweenService")
@@ -6358,7 +6358,7 @@ require(Root.Client.Models).install(B, {
 
 return Builder
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX9EB24F396F254A809D42CCA58EEB54AD"><Properties><string name="Name">Designer</string><ProtectedString name="Source"><![CDATA[-- STAGE BUILDER: build a stage in 3D.
+<Item class="ModuleScript" referent="RBX0EF914F99CE246E19DD12D6416F00122"><Properties><string name="Name">Designer</string><ProtectedString name="Source"><![CDATA[-- STAGE BUILDER: build a stage in 3D.
 -- Works like park builder games: pick an item in the catalog at the bottom, click into the world to put it down,
 -- line it up with the coloured gizmo (red = X, green = height, blue = Z, orange ring = turn, gold cubes = size)
 -- and confirm with the green tick. Click a placed item to select and change it.
@@ -9569,7 +9569,7 @@ end
 
 return Designer
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXAACE12ACFFE4488C80156C066794CDC0"><Properties><string name="Name">Laptop</string><ProtectedString name="Source"><![CDATA[-- The laptop in the office: a little computer of its own.
+<Item class="ModuleScript" referent="RBX441824A0FFE1426CB4C39AB17787B316"><Properties><string name="Name">Laptop</string><ProtectedString name="Source"><![CDATA[-- The laptop in the office: a little computer of its own.
 -- Power on -> start screen with the label name -> LOG IN -> desktop with apps.
 -- Apps open in windows: move them (title bar), resize them (corner), full screen (double click or the
 -- square button), minimise, close, several at once. The taskbar shows the open windows, the time and money.
@@ -10199,7 +10199,7 @@ end
 
 return Laptop
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX8C89ED3810C84D438B0C4983838B9017"><Properties><string name="Name">LiveFeed</string><ProtectedString name="Source"><![CDATA[-- Live camera pictures for LED screens ("Live: artist" / "Live: crowd").
+<Item class="ModuleScript" referent="RBXB21132C601094477ABCB1A016CFE0321"><Properties><string name="Name">LiveFeed</string><ProtectedString name="Source"><![CDATA[-- Live camera pictures for LED screens ("Live: artist" / "Live: crowd").
 -- Every screen face gets its own little 3D scene inside its ViewportFrame:
 --   artist: copies of the performers (synced every frame) in front of a glowing LED wall, the camera slowly circles them
 --   crowd:  a crowd of fans with raised arms, light sticks and phone lights, the camera pans along the rows
@@ -10509,7 +10509,7 @@ end
 
 return LiveFeed
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXF52EACC1F70B4AFB965F750EA237DC3F"><Properties><string name="Name">LiveShow</string><ProtectedString name="Source"><![CDATA[-- Plays a concert in 3D: venue + crowd + your stage design + the artist.
+<Item class="ModuleScript" referent="RBXD0F63079F87C4DF7B8B7068D66A2F5AE"><Properties><string name="Name">LiveShow</string><ProtectedString name="Source"><![CDATA[-- Plays a concert in 3D: venue + crowd + your stage design + the artist.
 -- Every show gets its own running order: the songs, the ballad position, effects and colours change.
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -12214,7 +12214,7 @@ end
 
 return LiveShow
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXB8EB91106C6047E8A6E97776869B7261"><Properties><string name="Name">MainMenu</string><ProtectedString name="Source"><![CDATA[-- Title screen: menu on the left, a famous venue at night on the right (see MenuScene).
+<Item class="ModuleScript" referent="RBXB3C1B4F13A994472A719BD1603EE6FA0"><Properties><string name="Name">MainMenu</string><ProtectedString name="Source"><![CDATA[-- Title screen: menu on the left, a famous venue at night on the right (see MenuScene).
 -- New game: name your label, then pick your first artist.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
@@ -12532,7 +12532,7 @@ end
 
 return MainMenu
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX7768C28582F345038ACD1B9CE6BC1F8E"><Properties><string name="Name">Map2D</string><ProtectedString name="Source"><![CDATA[-- The world map of the tour planner: a real top-down map (Natural Earth borders, Data/WorldMap2D.lua,
+<Item class="ModuleScript" referent="RBX9337CBF48FF34AAD9A2125B8BF39C588"><Properties><string name="Name">Map2D</string><ProtectedString name="Source"><![CDATA[-- The world map of the tour planner: a real top-down map (Natural Earth borders, Data/WorldMap2D.lua,
 -- made by tools/gen_map2d.py) on a light sea. Only the continents and the big islands are drawn.
 -- The countries you can tour are lighter; under the mouse they light up, a click opens them.
 -- Mouse wheel / + - zoom, drag moves the map; it always fills the frame (no empty sky around it).
@@ -12849,7 +12849,7 @@ end
 
 return Map2D
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXD9AFD04DE5294467BEC68AA28247F6A2"><Properties><string name="Name">MenuScene</string><ProtectedString name="Source"><![CDATA[-- Main menu background: detailed parody versions of famous venues at night.
+<Item class="ModuleScript" referent="RBX5744C4C3266D4BEE97AF25746C124C42"><Properties><string name="Name">MenuScene</string><ProtectedString name="Source"><![CDATA[-- Main menu background: detailed parody versions of famous venues at night.
 -- Every scene is a whole city district built from parts. The camera flies through the streets
 -- (Catmull-Rom spline through key points) and ends at the venue. Between scenes the 3D view
 -- fades to black (ColorCorrection, so the menu UI stays visible) while the next district is built.
@@ -14906,7 +14906,7 @@ end
 
 return MenuScene
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX6C99022651264B72B76AE7A65790A51E"><Properties><string name="Name">Models</string><ProtectedString name="Source"><![CDATA[-- Detailed stage pieces (set pieces, special elements, shapes). Builder installs them into its builder
+<Item class="ModuleScript" referent="RBXC7B60BACCFB44F4B8A3386A0C63A0E3F"><Properties><string name="Name">Models</string><ProtectedString name="Source"><![CDATA[-- Detailed stage pieces (set pieces, special elements, shapes). Builder installs them into its builder
 -- table: Models.install(B, H) with H = Builder's part helpers. Every model is built around the local origin
 -- (bottom centre), the front (towards the fans) is +Z unless a comment says otherwise.
 -- Geometry helpers:
@@ -16409,7 +16409,7 @@ end
 
 return Models
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXAD5839E9CFA44946B27B56F5A397EF72"><Properties><string name="Name">People</string><ProtectedString name="Source"><![CDATA[-- Blocky performer figures (no external assets needed). Figures face +Z (towards the crowd) at yaw 0.
+<Item class="ModuleScript" referent="RBXB1AE6999917B40D7ABD388948602D0BE"><Properties><string name="Name">People</string><ProtectedString name="Source"><![CDATA[-- Blocky performer figures (no external assets needed). Figures face +Z (towards the crowd) at yaw 0.
 local Root = script:FindFirstAncestor("Headliner")
 local UI = require(Root.Client.UI)
 local New = UI.New
@@ -17162,7 +17162,7 @@ end
 
 return People
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX44C7E06BB5C240F1B017426DF07B1F0E"><Properties><string name="Name">Sam</string><ProtectedString name="Source"><![CDATA[-- Sam, the label manager (the R15 character "Guide" in the building, made by Hub.buildGuide).
+<Item class="ModuleScript" referent="RBX05789789316249D9AD23F01A269AEEE8"><Properties><string name="Name">Sam</string><ProtectedString name="Source"><![CDATA[-- Sam, the label manager (the R15 character "Guide" in the building, made by Hub.buildGuide).
 -- He walks from room to room on checked ways (Hub.SAM_ROUTES), talks and waves in the tutorial,
 -- works at the desk of his own office after it, and stands next to the board in your meetings
 -- (click an artist on the board: Sam says a few words about them, Sam.say).
@@ -17748,7 +17748,7 @@ end
 
 return Sam
 ]]></ProtectedString></Properties></Item>
-<Item class="Folder" referent="RBX0EFCAB8D56C0425EBF6553B73BB7C9F6"><Properties><string name="Name">Screens</string></Properties><Item class="ModuleScript" referent="RBX3F21E8AF3AFD4268BBCFD71FABEB89F5"><Properties><string name="Name">AchievementsScreen</string><ProtectedString name="Source"><![CDATA[-- ACHIEVEMENTS (laptop app): every goal with its reward and how far you are. Unlocked ones are gold and
+<Item class="Folder" referent="RBX8F8A49C982B147518933FA5FEB3FB79B"><Properties><string name="Name">Screens</string></Properties><Item class="ModuleScript" referent="RBXDC1FFF134C4A45EB83B39F1697D68DB0"><Properties><string name="Name">AchievementsScreen</string><ProtectedString name="Source"><![CDATA[-- ACHIEVEMENTS (laptop app): every goal with its reward and how far you are. Unlocked ones are gold and
 -- show the day you got them; the harder a goal, the bigger the reward (paid out when it unlocks).
 local Root = script:FindFirstAncestor("Headliner")
 local Util = require(Root.Logic.Util)
@@ -17850,7 +17850,7 @@ end
 
 return AchievementsScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX818DE7D421764094AD42863F422EFD2A"><Properties><string name="Name">ArtistsScreen</string><ProtectedString name="Source"><![CDATA[-- ARTISTS screen: your roster and the talent scout.
+<Item class="ModuleScript" referent="RBX4AF85E2C1C0C402FA3EDD19E992FF29F"><Properties><string name="Name">ArtistsScreen</string><ProtectedString name="Source"><![CDATA[-- ARTISTS screen: your roster and the talent scout.
 local Root = script:FindFirstAncestor("Headliner")
 local Achievements = require(Root.Data.Achievements)
 local Config = require(Root.Config)
@@ -17993,7 +17993,7 @@ end
 
 return ArtistsScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX1107207E3F344F61B85112947DAE5955"><Properties><string name="Name">ChartsScreen</string><ProtectedString name="Source"><![CDATA[-- CHARTS screen: Top grossing tours of all time + achievements + records.
+<Item class="ModuleScript" referent="RBXE0C4ACB6667B4EFFB5484E0F4BBC395C"><Properties><string name="Name">ChartsScreen</string><ProtectedString name="Source"><![CDATA[-- CHARTS screen: Top grossing tours of all time + achievements + records.
 local Root = script:FindFirstAncestor("Headliner")
 local Achievements = require(Root.Data.Achievements)
 local Util = require(Root.Logic.Util)
@@ -18075,7 +18075,7 @@ end
 
 return ChartsScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX2EDCE8C9A6E445229047075B64078A2E"><Properties><string name="Name">ExtrasScreen</string><ProtectedString name="Source"><![CDATA[-- EXTRAS (laptop app): things for your tours besides the artist and the stage. For now: background dancers.
+<Item class="ModuleScript" referent="RBXF154599598AA4CE2884C72AA59CAB8CE"><Properties><string name="Name">ExtrasScreen</string><ProtectedString name="Source"><![CDATA[-- EXTRAS (laptop app): things for your tours besides the artist and the stage. For now: background dancers.
 -- Sign dancers for your label, see their skill and shows, train them (better, but away for a few days),
 -- let them go. On a tour you pick them in the Tour Planner (step Stage).
 local Root = script:FindFirstAncestor("Headliner")
@@ -18179,7 +18179,7 @@ end
 
 return ExtrasScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX514689FEE3C24DD0BDD11C1B39AEBECA"><Properties><string name="Name">LiveShowsScreen</string><ProtectedString name="Source"><![CDATA[-- LIVE SHOWS board (in the office wing): the shows of the other players in this server.
+<Item class="ModuleScript" referent="RBX6590935019F748B888BC80B08964869E"><Properties><string name="Name">LiveShowsScreen</string><ProtectedString name="Source"><![CDATA[-- LIVE SHOWS board (in the office wing): the shows of the other players in this server.
 -- A show that is on right now: JOIN takes you into it at the same moment as its player (same show, same
 -- songs). A show that is still coming: REMIND ME, and you get a message when it starts.
 local Root = script:FindFirstAncestor("Headliner")
@@ -18315,7 +18315,7 @@ end
 
 return LiveShowsScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX6DEE86EA9C3D462CB0F74A0392F59E81"><Properties><string name="Name">PhoneScreen</string><ProtectedString name="Source"><![CDATA[-- The phone (SOCIAL): opens from the phone button at any time while walking around.
+<Item class="ModuleScript" referent="RBX2C25648A2A0C4E0EBD3C7F8262036E1E"><Properties><string name="Name">PhoneScreen</string><ProtectedString name="Source"><![CDATA[-- The phone (SOCIAL): opens from the phone button at any time while walking around.
 -- A smartphone on the right side of the screen with the fan feed, the fan mood and trending hashtags.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
@@ -18433,7 +18433,7 @@ end
 
 return PhoneScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX571EB98EBC3944ABBF9EB95967ADF1C6"><Properties><string name="Name">SocialScreen</string><ProtectedString name="Source"><![CDATA[-- SOCIAL: what fans post about your artists. Good shows get love, bad shows and high prices get criticism.
+<Item class="ModuleScript" referent="RBX4EADDEDF8DC54611B11FAFE82AF04EC8"><Properties><string name="Name">SocialScreen</string><ProtectedString name="Source"><![CDATA[-- SOCIAL: what fans post about your artists. Good shows get love, bad shows and high prices get criticism.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local Artists = require(Root.Data.Artists)
@@ -19144,7 +19144,7 @@ end
 
 return SocialScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXA28B235FB8F94E20B427FB3EB6CE8D62"><Properties><string name="Name">StagesScreen</string><ProtectedString name="Source"><![CDATA[-- MY STAGES: all your stage designs in one place. Edit, copy, delete or start a new one.
+<Item class="ModuleScript" referent="RBX6C518A248FBC4AA69103DDB43E77913A"><Properties><string name="Name">StagesScreen</string><ProtectedString name="Source"><![CDATA[-- MY STAGES: all your stage designs in one place. Edit, copy, delete or start a new one.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local StageItems = require(Root.Data.StageItems)
@@ -19464,7 +19464,7 @@ end
 
 return StagesScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX8EE685A689D4485FB41A72C29B05CAF1"><Properties><string name="Name">StatsScreen</string><ProtectedString name="Source"><![CDATA[-- STATISTICS (laptop app): the label in numbers, every artist and every tour.
+<Item class="ModuleScript" referent="RBX2441238BC62649D58235E26CBCB1E51E"><Properties><string name="Name">StatsScreen</string><ProtectedString name="Source"><![CDATA[-- STATISTICS (laptop app): the label in numbers, every artist and every tour.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local Util = require(Root.Logic.Util)
@@ -19546,7 +19546,7 @@ end
 
 return StatsScreen
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXFFAA9585515B4A92911C263E60E8AE37"><Properties><string name="Name">TourPlanner</string><ProtectedString name="Source"><![CDATA[-- TOUR PLANNER (an app on the laptop): one thing after the other.
+<Item class="ModuleScript" referent="RBX0FE0EB1A98374CA8AF56DDE33E8646EC"><Properties><string name="Name">TourPlanner</string><ProtectedString name="Source"><![CDATA[-- TOUR PLANNER (an app on the laptop): one thing after the other.
 -- 1 Artist  ->  2 Shows (map -> venues of a country -> date)  ->  3 Tickets  ->  4 Stage  ->  5 Announce
 -- The plan lives on the server (state.draft, action setDraft) so it survives closing the laptop.
 local Root = script:FindFirstAncestor("Headliner")
@@ -20670,7 +20670,7 @@ end
 
 return TP
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX91D691F4D5544645A53AD6C082F949E7"><Properties><string name="Name">ToursScreen</string><ProtectedString name="Source"><![CDATA[-- TOURS screen: ticket sales, prices, marketing and results of your tours.
+<Item class="ModuleScript" referent="RBX91276BC6E17240FCA9E2B14A3DA15104"><Properties><string name="Name">ToursScreen</string><ProtectedString name="Source"><![CDATA[-- TOURS screen: ticket sales, prices, marketing and results of your tours.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local Countries = require(Root.Data.Countries)
@@ -20891,7 +20891,7 @@ end
 return ToursScreen
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="ModuleScript" referent="RBXB71C6FD3A9CA4E5C9870FEDCFDDB4036"><Properties><string name="Name">ShowTasks</string><ProtectedString name="Source"><![CDATA[-- Mini tasks during a live show (planned for a later update: fix a spotlight, refill the merch stand ...).
+<Item class="ModuleScript" referent="RBX891B4A11BB19443B84DF1CD0CA6D68B1"><Properties><string name="Name">ShowTasks</string><ProtectedString name="Source"><![CDATA[-- Mini tasks during a live show (planned for a later update: fix a spotlight, refill the merch stand ...).
 -- The live show calls start / update / stop; every task registered here gets the show context:
 --   ctx = { app, venue, look, crowd (Venue.build info), items (stage items), overlay (UI frame),
 --           character, t (show time), seg (current part of the show), timeScale }
@@ -20930,7 +20930,7 @@ end
 
 return ShowTasks
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX81EA10E574E2406681EFA2273E2E2856"><Properties><string name="Name">SoundFX</string><ProtectedString name="Source"><![CDATA[-- Music and sound effects. Every sound is a part (PlaybackRegion) of a few uploaded files, see Data/Audio.lua.
+<Item class="ModuleScript" referent="RBX1BAB6359450748DABDFC8C7E25E3D867"><Properties><string name="Name">SoundFX</string><ProtectedString name="Source"><![CDATA[-- Music and sound effects. Every sound is a part (PlaybackRegion) of a few uploaded files, see Data/Audio.lua.
 -- Without uploaded IDs every function quietly does nothing.
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
@@ -21246,7 +21246,7 @@ end
 
 return SoundFX
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX14E8CFF383674CDDB62147D53F7C525B"><Properties><string name="Name">Stage3D</string><ProtectedString name="Source"><![CDATA[-- The 3D world: ground, the build area of the current stage design, and the placed design items.
+<Item class="ModuleScript" referent="RBX2A0BFF935F764ACFAD1E2FFEAAE2DBA7"><Properties><string name="Name">Stage3D</string><ProtectedString name="Source"><![CDATA[-- The 3D world: ground, the build area of the current stage design, and the placed design items.
 -- There is no fixed stage: everything (decks, catwalks, center stages) is built from items.
 local Lighting = game:GetService("Lighting")
 local Root = script:FindFirstAncestor("Headliner")
@@ -21783,7 +21783,7 @@ end
 
 return Stage3D
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX510A31AEA97F4354A595B4A93F4D012E"><Properties><string name="Name">StageNav</string><ProtectedString name="Source"><![CDATA[-- Where the artist can walk on the stage: a grid over all decks (2 studs per cell). The artist only walks
+<Item class="ModuleScript" referent="RBX6325D686FB1B4F80A2A76BEA46A4A974"><Properties><string name="Name">StageNav</string><ProtectedString name="Source"><![CDATA[-- Where the artist can walk on the stage: a grid over all decks (2 studs per cell). The artist only walks
 -- where there is a deck and steps up/down small heights (stairs). Used by the show (LiveShow) and by the
 -- stage builder, so the golden path in SETLIST & SHOW shows the real way.
 local Root = script:FindFirstAncestor("Headliner")
@@ -21940,7 +21940,7 @@ end
 
 return StageNav
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXBECB1F896B384C0381F72625B5F45209"><Properties><string name="Name">Tutorial</string><ProtectedString name="Source"><![CDATA[-- The tutorial: Sam, the label manager, walks you through your first tour and your first stage.
+<Item class="ModuleScript" referent="RBXEE1C9CDC93904AE9A725332D93723E8E"><Properties><string name="Name">Tutorial</string><ProtectedString name="Source"><![CDATA[-- The tutorial: Sam, the label manager, walks you through your first tour and your first stage.
 -- A speech bubble at the bottom: click to go on. When you have to do something, the bubble gets small,
 -- shows what to do, and the golden arrow shows the way. Skip any time; the progress is saved
 -- (state.tutorial, action "tutorial").
@@ -22351,7 +22351,7 @@ end
 
 return Tutorial
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXCE8218D17206478394CC492DCE3B20F9"><Properties><string name="Name">UI</string><ProtectedString name="Source"><![CDATA[-- Tiny UI toolkit. All layouts are designed for a 1920x1080 canvas that gets scaled to the screen.
+<Item class="ModuleScript" referent="RBXFE8FEAB72B634CADADE12376F5280870"><Properties><string name="Name">UI</string><ProtectedString name="Source"><![CDATA[-- Tiny UI toolkit. All layouts are designed for a 1920x1080 canvas that gets scaled to the screen.
 local TweenService = game:GetService("TweenService")
 
 local UI = {}
@@ -22621,7 +22621,7 @@ end
 
 return UI
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXC7A121806A974A93BC87908BCA1AD830"><Properties><string name="Name">Venue</string><ProtectedString name="Source"><![CDATA[-- Builds the inside of a venue around the stage and fills it with a crowd.
+<Item class="ModuleScript" referent="RBXC536C62FE5A64D408D81D033C6333778"><Properties><string name="Name">Venue</string><ProtectedString name="Source"><![CDATA[-- Builds the inside of a venue around the stage and fills it with a crowd.
 --   arena:   oval bowl with lower and upper tier, sections with stairs, concourse, suites, LED ribbon, roof rig,
 --            black drapes behind an end stage (or a full bowl around a center stage)
 --   stadium: football stadium with pitch and floor cover, two tiers all around, roof with floodlights
@@ -24056,7 +24056,7 @@ end
 
 return Venue
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXD8EBE2600F2A4A3AAD791991CD29F006"><Properties><string name="Name">VenueModels</string><ProtectedString name="Source"><![CDATA[-- Small 3D pictures of venues from the outside (tour planner cards): a ViewportFrame with a simple model
+<Item class="ModuleScript" referent="RBX77AF7C09457544C58F2032D035869972"><Properties><string name="Name">VenueModels</string><ProtectedString name="Source"><![CDATA[-- Small 3D pictures of venues from the outside (tour planner cards): a ViewportFrame with a simple model
 -- per venue type (Club, Theatre, Hall, Arena, Amphitheatre, Stadium).
 local Root = script:FindFirstAncestor("Headliner")
 local UI = require(Root.Client.UI)
@@ -24196,7 +24196,7 @@ end
 
 return VenueModels
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXA6453A4E638640AC85CD21A6019BC73E"><Properties><string name="Name">Visuals</string><ProtectedString name="Source"><![CDATA[-- Tour visuals on the screens: every artist has 8 of their own (chosen by genre and name), one for every
+<Item class="ModuleScript" referent="RBX604F4548E80D44B9B0223EDEFB4C9291"><Properties><string name="Name">Visuals</string><ProtectedString name="Source"><![CDATA[-- Tour visuals on the screens: every artist has 8 of their own (chosen by genre and name), one for every
 -- song of the setlist (song n shows visual n, after 8 it starts again), like the video content of real tours
 -- (waveforms and a big face, lightning for metal, hearts for pop ...). Drawn with GUI frames inside a screen.
 --   Visuals.forArtist(ad)            -> list of 8 kinds
@@ -25211,7 +25211,7 @@ end
 
 return Visuals
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX81B86176E3244EB1B22142DF5A44C808"><Properties><string name="Name">World</string><ProtectedString name="Source"><![CDATA[-- The label building on the client: the player's character, the stations (ProximityPrompts),
+<Item class="ModuleScript" referent="RBX43DAFC1A4E7E43FDBDF45D57CADDC881"><Properties><string name="Name">World</string><ProtectedString name="Source"><![CDATA[-- The label building on the client: the player's character, the stations (ProximityPrompts),
 -- name tags over the stations, the guide arrow, the world map on the table, the charts wall and
 -- the stage hall door. The building itself is built by the server (World/Hub.lua).
 local Players = game:GetService("Players")
@@ -26648,7 +26648,7 @@ end
 return World
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="ModuleScript" referent="RBXB3C94F75CAE24A12A3267624ECF830E1"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[-- HEADLINER :: global tuning values
+<Item class="ModuleScript" referent="RBX5B509E1A22554D8BBEF94ADBE34C76CD"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[-- HEADLINER :: global tuning values
 local Config = {}
 
 Config.GAME_TITLE = "HEADLINER"
@@ -26768,7 +26768,7 @@ Config.MARKETING = {
 
 return Config
 ]]></ProtectedString></Properties></Item>
-<Item class="Folder" referent="RBX26B1C6BE95E74C4DA1DE67B0287AF654"><Properties><string name="Name">Data</string></Properties><Item class="ModuleScript" referent="RBXEE7218180D1F46E1B3AF9DB5A7807818"><Properties><string name="Name">Achievements</string><ProtectedString name="Source"><![CDATA[-- Goals with a money reward (the harder, the more). Checked after every day, show and tour.
+<Item class="Folder" referent="RBX1BACE0516DF74FB4B1276F4FB6E9E5C8"><Properties><string name="Name">Data</string></Properties><Item class="ModuleScript" referent="RBX302F0EB7AB974AA6B577640FAB81BB38"><Properties><string name="Name">Achievements</string><ProtectedString name="Source"><![CDATA[-- Goals with a money reward (the harder, the more). Checked after every day, show and tour.
 -- stat = what is measured (GS.achievementStats), goal = the value to reach (rank: at most this place).
 local Achievements = {
 	list = {
@@ -26831,7 +26831,7 @@ for _, a in ipairs(Achievements.list) do
 end
 return Achievements
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXC507DEE1C4B54765943AED687812718B"><Properties><string name="Name">Artists</string><ProtectedString name="Source"><![CDATA[-- Fictional artists. fans = starting fan count per region.
+<Item class="ModuleScript" referent="RBXF62A6111219F4B799F83CD78739C6278"><Properties><string name="Name">Artists</string><ProtectedString name="Source"><![CDATA[-- Fictional artists. fans = starting fan count per region.
 -- skill (0-100) = live performance quality. pricePower = how much fans pay compared to an average act.
 -- members: 1 = solo, 2+ = band/group. level = label level needed to sign. starter = can be picked for free at game start.
 
@@ -27136,7 +27136,7 @@ end
 
 return Artists
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX5737B16F86CE42D78E1DD9A938442236"><Properties><string name="Name">Audio</string><ProtectedString name="Source"><![CDATA[-- Roblox asset IDs of the uploaded audio files (folder audio/ in the project, made by tools/music/make_audio.py).
+<Item class="ModuleScript" referent="RBXD37F5AE0DB9F49D0899C23BD5EAA619E"><Properties><string name="Name">Audio</string><ProtectedString name="Source"><![CDATA[-- Roblox asset IDs of the uploaded audio files (folder audio/ in the project, made by tools/music/make_audio.py).
 -- 0 = not uploaded yet: the game simply stays silent for that part.
 -- Every artist file holds 12 songs of 30 s (song n starts at (n - 1) * 30 s), see Data/AudioMap.lua.
 local Audio = {}
@@ -27161,7 +27161,7 @@ Audio.IDS = {
 
 return Audio
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXA254140A2D3144BC805444745F1D0DE6"><Properties><string name="Name">AudioMap</string><ProtectedString name="Source"><![CDATA[-- Generated by tools/music/make_audio.py: where each sound sits inside the uploaded files (seconds).
+<Item class="ModuleScript" referent="RBXA2D09370D7A542D48E1049D338490247"><Properties><string name="Name">AudioMap</string><ProtectedString name="Source"><![CDATA[-- Generated by tools/music/make_audio.py: where each sound sits inside the uploaded files (seconds).
 local AudioMap = {}
 AudioMap.SONG_LEN = 30
 AudioMap.BALLAD_INDEX = 4
@@ -27197,7 +27197,7 @@ AudioMap.INTRO = {
 AudioMap.INTRO_HIT = 11.2
 return AudioMap
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXD1FEFB4E9E124718B8FFACEEE730F244"><Properties><string name="Name">Countries</string><ProtectedString name="Source"><![CDATA[-- Countries and venues.
+<Item class="ModuleScript" referent="RBXA10BC57D9E624C40BE1721EB73377BC6"><Properties><string name="Name">Countries</string><ProtectedString name="Source"><![CDATA[-- Countries and venues.
 -- Venue names are parody names inspired by real venues. Capacities follow the real venues'
 -- concert capacities (source: Wikipedia infoboxes, checked Nov 2026). Venues marked "fictional" are made up.
 --
@@ -27800,7 +27800,7 @@ end
 
 return Countries
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX55A521259372463CA92467C94E0B0EE8"><Properties><string name="Name">Dancers</string><ProtectedString name="Source"><![CDATA[-- Background dancers you can sign for your label (Laptop: EXTRAS). They dance with solo artists in halls,
+<Item class="ModuleScript" referent="RBX15A0C0D28037479E9D115259A16CA430"><Properties><string name="Name">Dancers</string><ProtectedString name="Source"><![CDATA[-- Background dancers you can sign for your label (Laptop: EXTRAS). They dance with solo artists in halls,
 -- arenas and stadiums (not in clubs), cost a fee per show and get better with every show (or with training).
 -- fee = signing fee, perShow = what one show costs, skill = 0..100 (better = better reviews)
 local Dancers = {}
@@ -27838,7 +27838,7 @@ end
 
 return Dancers
 ]]></ProtectedString></Properties></Item>
-<Item class="Folder" referent="RBX9ACD98965D2140C181EF931A3B073C43"><Properties><string name="Name">MenuCity</string></Properties><Item class="ModuleScript" referent="RBX87519599416942C283B92B5F0B4C338C"><Properties><string name="Name">lanxus</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="Folder" referent="RBXE95068DFC8114DCF88336925BF52E337"><Properties><string name="Name">MenuCity</string></Properties><Item class="ModuleScript" referent="RBXE404779615024506A1E7A280DABADB77"><Properties><string name="Name">lanxus</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -28791,7 +28791,7 @@ return {
 	A = { dom = { -3472, -646 }, bridge = { -2455, -424 } },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX0C79B80286384884B285AFE224D1FA9F"><Properties><string name="Name">madrid</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBX64C90BB89576487BA89DCEB835630B73"><Properties><string name="Name">madrid</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -29300,7 +29300,7 @@ return {
 	A = {  },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX8B0FD917ADFF4057AEF0EB2854B514C4"><Properties><string name="Name">msg</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBXF5A20B88795C44238824ED753A9F3209"><Properties><string name="Name">msg</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z (map turned -29 deg)
 return {
@@ -29901,7 +29901,7 @@ return {
 	A = { empire = { 1365, -233 }, penn = { -238, 159 } },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX8F9B9BDF74164D35921A247C2D383731"><Properties><string name="Name">o3</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBXBDC54F9087AF448888D96F32773DA9CC"><Properties><string name="Name">o3</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -30491,7 +30491,7 @@ return {
 	A = {  },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX215F2E8536A248BDAFDC876939723F59"><Properties><string name="Name">paris</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBX98C77B8EBE6D46F7809B70A5CFE2C8D4"><Properties><string name="Name">paris</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -31179,7 +31179,7 @@ return {
 	A = {  },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX284E0DF2481B4FC092BF9EC161AB36DF"><Properties><string name="Name">wembley</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBX6C422981ADCC4DB784D439283B8B706C"><Properties><string name="Name">wembley</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -31599,7 +31599,7 @@ return {
 	A = { station = { 12, -1636 } },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX21A83569446C42D8B3A01AB597A3E751"><Properties><string name="Name">zurich</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
+<Item class="ModuleScript" referent="RBX8BE102692A42440895BF0A0014A07030"><Properties><string name="Name">zurich</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/osm/build_city.py. Map data (c) OpenStreetMap contributors, ODbL (OpenFreeMap / OpenMapTiles).
 -- B = buildings {x, z, w, d, yaw, h, minH, style}, R = roads {x1, z1, x2, z2, width, kind}, W/G/P = water/green/plaza {x, z, w, d, yaw}
 -- studs (1 stud = 0.5 m), venue at (0, 0), north = -z
 return {
@@ -32235,7 +32235,7 @@ return {
 }
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="ModuleScript" referent="RBX98E45547BDE8497097B777CA2D804CA5"><Properties><string name="Name">Regions</string><ProtectedString name="Source"><![CDATA[-- World regions. Artists have a fan count per region.
+<Item class="ModuleScript" referent="RBX8A3C0D0E5C8E43E98AF253FCC7860DAF"><Properties><string name="Name">Regions</string><ProtectedString name="Source"><![CDATA[-- World regions. Artists have a fan count per region.
 local Regions = {
 	list = {
 		{ id = "EU", name = "Europe" },
@@ -32254,7 +32254,7 @@ end
 
 return Regions
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX6528A515AFB846B3990ECB7B7E5A063C"><Properties><string name="Name">Reviews</string><ProtectedString name="Source"><![CDATA[-- Review quotes by star rating. {artist} {venue} {city} are replaced.
+<Item class="ModuleScript" referent="RBX5B91A8CB4FE74461A0492C190BD1D8A8"><Properties><string name="Name">Reviews</string><ProtectedString name="Source"><![CDATA[-- Review quotes by star rating. {artist} {venue} {city} are replaced.
 return {
 	[1] = {
 		"\"A night to forget. {artist} looked lost at {venue}.\"",
@@ -32279,7 +32279,7 @@ return {
 	},
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXE97B8ACDC317448C94385BC11EB0C21C"><Properties><string name="Name">Rivals</string><ProtectedString name="Source"><![CDATA[-- Fictional rival tours for the "Top Grossing Tours" chart. Beat them all!
+<Item class="ModuleScript" referent="RBX5048522FCBC643E6A0E9EF51CEEE0222"><Properties><string name="Name">Rivals</string><ProtectedString name="Source"><![CDATA[-- Fictional rival tours for the "Top Grossing Tours" chart. Beat them all!
 return {
 	{ artist = "Aurora Vale", tour = "The Celestial Tour", gross = 520000000, shows = 120, attendance = 6100000 },
 	{ artist = "The Midnight Kings", tour = "Crown & Glory Tour", gross = 410000000, shows = 88, attendance = 4200000 },
@@ -32296,7 +32296,7 @@ return {
 	{ artist = "The Weekend Plans", tour = "Small Rooms Tour", gross = 600000, shows = 24, attendance = 30000 },
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX764036435EC143D49D7D95B13857A161"><Properties><string name="Name">Social</string><ProtectedString name="Source"><![CDATA[-- Fan posts for the SOCIAL feed. Placeholders: {artist} {venue} {city} {country} {tour} {song} {price} {tag} {item} {label}
+<Item class="ModuleScript" referent="RBX1E47005880024AC2A1615B93C9801DF4"><Properties><string name="Name">Social</string><ProtectedString name="Source"><![CDATA[-- Fan posts for the SOCIAL feed. Placeholders: {artist} {venue} {city} {country} {tour} {song} {price} {tag} {item} {label}
 -- mood: 1 = positive, 0 = neutral, -1 = negative. photo = the post shows a concert photo.
 local Social = {}
 
@@ -32549,7 +32549,7 @@ end
 
 return Social
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXF3CF9C189DFF4B4889F93708472006D8"><Properties><string name="Name">SocialExtra</string><ProtectedString name="Source"><![CDATA[-- Even more fan posts (merged into Social.POSTS by Data/Social.lua), so the feed rarely repeats itself.
+<Item class="ModuleScript" referent="RBX27D45121CEF34008AC948CA566C0CC65"><Properties><string name="Name">SocialExtra</string><ProtectedString name="Source"><![CDATA[-- Even more fan posts (merged into Social.POSTS by Data/Social.lua), so the feed rarely repeats itself.
 -- Same format: { mood, text }. Placeholders: {artist} {venue} {city} {country} {tour} {song} {price} {tag} {item} {label}
 return {
 	announce = {
@@ -32730,7 +32730,7 @@ return {
 	},
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX43F33AC240FE41ED9E4B3B1461B86928"><Properties><string name="Name">SocialMore</string><ProtectedString name="Source"><![CDATA[-- More fan posts (merged into Social.POSTS by Data/Social.lua). Same format: { mood, text }.
+<Item class="ModuleScript" referent="RBXA81B5631F90F452E8C35649545FEB404"><Properties><string name="Name">SocialMore</string><ProtectedString name="Source"><![CDATA[-- More fan posts (merged into Social.POSTS by Data/Social.lua). Same format: { mood, text }.
 -- Placeholders: {artist} {venue} {city} {country} {tour} {song} {price} {tag} {item} {label}
 return {
 	announce = {
@@ -32898,7 +32898,7 @@ return {
 	},
 }
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXD099A167A33C44D4955BD705954668BC"><Properties><string name="Name">StageItems</string><ProtectedString name="Source"><![CDATA[-- Stage design catalog.
+<Item class="ModuleScript" referent="RBXB84098CAB9FA464183190635407B276C"><Properties><string name="Name">StageItems</string><ProtectedString name="Source"><![CDATA[-- Stage design catalog.
 -- cost  = production cost per show (crew, transport, power)
 -- pts   = production value points (more points = more impressive show)
 -- tags  = used for genre bonuses
@@ -33302,7 +33302,7 @@ end
 
 return StageItems
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX9CE22844A43541D781462AF250FF097D"><Properties><string name="Name">WorldMap2D</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/gen_map2d.py from Natural Earth borders (world-atlas 2.0.2, public domain).
+<Item class="ModuleScript" referent="RBX678084C752CB4291BEE802D93BC83155"><Properties><string name="Name">WorldMap2D</string><ProtectedString name="Source"><![CDATA[-- AUTO-GENERATED by tools/gen_map2d.py from Natural Earth borders (world-atlas 2.0.2, public domain).
 -- Top-down world map, 4 cells per degree, longitude -170..190, latitude 76..-56. Small islands are left out.
 -- rects = { row, col, width, height } in cells (0-based). tone 1..4 = neutral land, cid = playable country.
 return {
@@ -33460,7 +33460,7 @@ return {
 }
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="Folder" referent="RBX33B529D89E244D78A4919C63041E12C5"><Properties><string name="Name">Logic</string></Properties><Item class="ModuleScript" referent="RBX495E3944A7FD46549821825F47B23216"><Properties><string name="Name">Actions</string><ProtectedString name="Source"><![CDATA[-- Everything that changes the game state, by name. The server runs these on the real game state
+<Item class="Folder" referent="RBXDA428AAC220E49C5BE752F414F9386AA"><Properties><string name="Name">Logic</string></Properties><Item class="ModuleScript" referent="RBX41618C2ABDE343CDB02E8E262AD1496D"><Properties><string name="Name">Actions</string><ProtectedString name="Source"><![CDATA[-- Everything that changes the game state, by name. The server runs these on the real game state
 -- (the client only asks for them). Pure Lua (no Roblox APIs), so the logic tests can run it too.
 -- Actions.run(state, name, args) -> ok, message, data
 local Root = script:FindFirstAncestor("Headliner")
@@ -33998,7 +33998,7 @@ end
 local _ = Artists
 return Actions
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX595376D00DB64722BC8A4D8F58AEF908"><Properties><string name="Name">GameState</string><ProtectedString name="Source"><![CDATA[-- Game state: everything that gets saved. Pure Lua (no Roblox APIs).
+<Item class="ModuleScript" referent="RBXFD4C9C157FDA408AA700933B9AC2A046"><Properties><string name="Name">GameState</string><ProtectedString name="Source"><![CDATA[-- Game state: everything that gets saved. Pure Lua (no Roblox APIs).
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
 local Countries = require(Root.Data.Countries)
@@ -34298,6 +34298,8 @@ function GS.level(state)
 			lvl = i
 		end
 	end
+	-- a level once reached is never lost (also when the level steps were made bigger in an update)
+	lvl = math.max(lvl, math.min(#Config.LEVELS, math.floor(tonumber(state.levelSeen) or 1)))
 	return lvl, Config.LEVELS[lvl], Config.LEVELS[lvl + 1]
 end
 
@@ -35454,7 +35456,7 @@ end
 
 return GS
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBX9791C270F8614FF68554388D16FC3E2E"><Properties><string name="Name">Sim</string><ProtectedString name="Source"><![CDATA[-- Simulation formulas: demand, ticket sales, production value, show results.
+<Item class="ModuleScript" referent="RBX1CBC62EEA6C94255B7BDF32B5AC41926"><Properties><string name="Name">Sim</string><ProtectedString name="Source"><![CDATA[-- Simulation formulas: demand, ticket sales, production value, show results.
 -- Pure Lua (no Roblox APIs) so it can be unit tested outside of Roblox.
 local Root = script:FindFirstAncestor("Headliner")
 local Config = require(Root.Config)
@@ -36044,7 +36046,7 @@ end
 
 return Sim
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXA33ECC441A3E416EA6D3283CCC9BC6EC"><Properties><string name="Name">Social</string><ProtectedString name="Source"><![CDATA[-- Generates fan posts for the SOCIAL feed. Pure Lua (no Roblox APIs).
+<Item class="ModuleScript" referent="RBXFB8A1AE98A6C46B7859DA1E5B4561AC3"><Properties><string name="Name">Social</string><ProtectedString name="Source"><![CDATA[-- Generates fan posts for the SOCIAL feed. Pure Lua (no Roblox APIs).
 local Root = script:FindFirstAncestor("Headliner")
 local Data = require(Root.Data.Social)
 local Countries = require(Root.Data.Countries)
@@ -36320,7 +36322,7 @@ end
 
 return Social
 ]]></ProtectedString></Properties></Item>
-<Item class="ModuleScript" referent="RBXCD908D249A824D419AF15C21AE993EC9"><Properties><string name="Name">Util</string><ProtectedString name="Source"><![CDATA[-- Small helpers (pure Lua, no Roblox APIs)
+<Item class="ModuleScript" referent="RBXA8B34B59D954438DA5A21F6B01EF215F"><Properties><string name="Name">Util</string><ProtectedString name="Source"><![CDATA[-- Small helpers (pure Lua, no Roblox APIs)
 local Util = {}
 
 function Util.clamp(x, a, b)
@@ -36570,7 +36572,7 @@ end
 return Util
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="Folder" referent="RBXD853BEF7615D40489B6B2D509959BFD1"><Properties><string name="Name">World</string></Properties><Item class="ModuleScript" referent="RBXAD28D708EEAD4B6892465AE40740AF3B"><Properties><string name="Name">Hub</string><ProtectedString name="Source"><![CDATA[-- The label building "Starlight Records" and its little street: the walkable hub.
+<Item class="Folder" referent="RBXE35156176701479CA4460B33C4D49C7C"><Properties><string name="Name">World</string></Properties><Item class="ModuleScript" referent="RBX11827BADA02747B3B572B78F89992D73"><Properties><string name="Name">Hub</string><ProtectedString name="Source"><![CDATA[-- The label building "Starlight Records" and its little street: the walkable hub.
 -- Built once by the server (so seats and prompts work); the client adds name tags, posters, people,
 -- the table map and the charts screen (Client/World.lua).
 -- Style: bright and friendly (daylight, light wood, white walls, painted colour accents, no neon strips).
@@ -38228,11 +38230,11 @@ end
 return Hub
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="Folder" referent="RBX2F4A33F4611E4FACAE4AD9611AE8EE11"><Properties><string name="Name">Remotes</string></Properties><Item class="RemoteFunction" referent="RBXB883A87A544A42CE8275307FADB346F4"><Properties><string name="Name">Action</string></Properties></Item>
+<Item class="Folder" referent="RBX0C92F85D02D24E9F9C360EF3D9DB8E11"><Properties><string name="Name">Remotes</string></Properties><Item class="RemoteFunction" referent="RBXBB9F33051BBD4326A6CD254552914D6A"><Properties><string name="Name">Action</string></Properties></Item>
 </Item>
 </Item>
 </Item>
-<Item class="ServerScriptService" referent="RBX491553D19CF343DBBDA3DDF4869D40ED"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBX7D35B98FF54E431EB1114F18B872EC0D"><Properties><string name="Name">GameServer</string><bool name="Disabled">false</bool><ProtectedString name="Source"><![CDATA[-- HEADLINER server: owns the game state of every player, runs all actions (Logic/Actions.lua),
+<Item class="ServerScriptService" referent="RBX6D1C82AA0FDE40059695E8152B668DAF"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBXDC6119CFF1424A7D969862A83B50F939"><Properties><string name="Name">GameServer</string><bool name="Disabled">false</bool><ProtectedString name="Source"><![CDATA[-- HEADLINER server: owns the game state of every player, runs all actions (Logic/Actions.lua),
 -- saves to the DataStore (only works in a published place) and builds the label building.
 -- The client only shows the state: after every action the server sends the parts that changed.
 local Players = game:GetService("Players")
@@ -38706,7 +38708,7 @@ Remotes.Action.OnServerInvoke = function(player, name, args)
 end
 ]]></ProtectedString></Properties></Item>
 </Item>
-<Item class="StarterPlayer" referent="RBX41D7A8A2E216416D920542FED53ED4D7"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX2562959542804660A243571F3BAA5DE8"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX9B2F5912120E4317B039FBF62DEA881D"><Properties><string name="Name">Main</string><bool name="Disabled">false</bool><ProtectedString name="Source"><![CDATA[-- HEADLINER client entry point
+<Item class="StarterPlayer" referent="RBX7191A62587BD4F7E840C713AED4680B5"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX40EDFD180FAD486EB6F0E8DFD9FDFA29"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX0049E1E8125244D1AB59030E27EFDB52"><Properties><string name="Name">Main</string><bool name="Disabled">false</bool><ProtectedString name="Source"><![CDATA[-- HEADLINER client entry point
 if not game:IsLoaded() then
 	game.Loaded:Wait()
 end

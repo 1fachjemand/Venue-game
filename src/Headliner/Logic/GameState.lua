@@ -298,6 +298,8 @@ function GS.level(state)
 			lvl = i
 		end
 	end
+	-- a level once reached is never lost (also when the level steps were made bigger in an update)
+	lvl = math.max(lvl, math.min(#Config.LEVELS, math.floor(tonumber(state.levelSeen) or 1)))
 	return lvl, Config.LEVELS[lvl], Config.LEVELS[lvl + 1]
 end
 
